@@ -225,3 +225,67 @@ fn bound_fraction_names_the_bounding_resource() {
     assert!(close(p.bound_fraction.iter().sum(), 1.0));
     assert!(close(p.bound_fraction[1], 1.0), "{:?}", p.bound_fraction);
 }
+
+/// Memory-only kernel with plenty of bandwidth and a fixed load latency.
+fn latency_bound(prefetch_distance: u32) -> (Kernel, Machine) {
+    let mut k = compute_only(46);
+    k.tile.per_iteration = Work {
+        loads: vec![access("load", 4096.0)],
+        ..Work::default()
+    };
+    k.tile.iterations = 64;
+    k.tile.prefetch_distance = prefetch_distance;
+    let mut m = machine(&k);
+    m.dram_bw = vec![(1.0, 1e9)];
+    m.l2_bw = vec![(1.0, 1e9)];
+    m.dram_latency_ns = 1000.0;
+    m.dram_latency_loaded_ns = 1000.0;
+    m.l2_latency_ns = 1000.0;
+    m.l2_latency_loaded_ns = 1000.0;
+    (k, m)
+}
+
+#[test]
+fn latency_bound_time_follows_littles_law() {
+    // One round trip per `prefetch_distance` iterations, including the prefill.
+    for d in [1, 2, 4] {
+        let (k, m) = latency_bound(d);
+        let p = run(&k, m);
+        assert!(
+            close(p.makespan_ns, 64.0 / f64::from(d) * 1000.0),
+            "d={d}: {}",
+            p.makespan_ns
+        );
+    }
+}
+
+#[test]
+fn synchronous_loads_pay_one_round_trip_per_iteration() {
+    let (k, m) = latency_bound(0);
+    let p = run(&k, m);
+    assert!(close(p.makespan_ns, 64.0 * 1000.0), "{}", p.makespan_ns);
+}
+
+#[test]
+fn load_raises_latency() {
+    // One CTA per SM with one 16 KiB stage in flight: bandwidth bound at idle
+    // latency, latency bound once latency grows with load.
+    let mut k = compute_only(46);
+    k.tile.per_iteration = Work {
+        loads: vec![access("load", 16384.0)],
+        ..Work::default()
+    };
+    k.tile.iterations = 16;
+    k.tile.prefetch_distance = 1;
+    let idle = run(&k, machine(&k));
+    let mut m = machine(&k);
+    m.dram_latency_loaded_ns = 10.0 * m.dram_latency_ns;
+    m.l2_latency_loaded_ns = 10.0 * m.l2_latency_ns;
+    let loaded = run(&k, m);
+    assert!(
+        loaded.makespan_ns > 1.2 * idle.makespan_ns,
+        "{} vs {}",
+        loaded.makespan_ns,
+        idle.makespan_ns
+    );
+}

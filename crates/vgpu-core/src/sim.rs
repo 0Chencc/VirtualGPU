@@ -71,8 +71,11 @@ pub struct Machine {
     /// (active SMs, bytes per ns).
     pub dram_bw: Vec<(f64, f64)>,
     pub l2_bw: Vec<(f64, f64)>,
+    /// Load latency at idle and at saturation of each level.
     pub dram_latency_ns: f64,
+    pub dram_latency_loaded_ns: f64,
     pub l2_latency_ns: f64,
+    pub l2_latency_loaded_ns: f64,
     /// (MMA-issuing warps on the SM, FLOP per ns for the whole SM).
     pub mma: Vec<(f64, f64)>,
     /// Warp instructions per ns per SM.
@@ -97,6 +100,20 @@ fn curve<T>(
 }
 
 impl Machine {
+    /// Latencies when DRAM and L2 deliver the given fractions of their peak
+    /// bandwidth: linear between the idle and the saturated measurement.
+    fn latency(&self, dram_util: f64, l2_util: f64) -> Latency {
+        let lerp = |a: f64, b: f64, u: f64| a + (b - a) * u.clamp(0.0, 1.0);
+        Latency {
+            dram: lerp(self.dram_latency_ns, self.dram_latency_loaded_ns, dram_util),
+            l2: lerp(self.l2_latency_ns, self.l2_latency_loaded_ns, l2_util),
+        }
+    }
+
+    fn peak(curve: &[(f64, f64)]) -> f64 {
+        curve[curve.len() - 1].1
+    }
+
     /// The unperturbed profile (draw 0).
     pub fn nominal(p: &Profile, mma_key: &str) -> Result<Machine, ModelError> {
         let m = &p.measured;
@@ -118,7 +135,17 @@ impl Machine {
                 "l2_bw_by_active_sms",
             )?,
             dram_latency_ns: m.memory.dram_latency_ns.value,
+            dram_latency_loaded_ns: m
+                .memory
+                .dram_latency_loaded_ns
+                .as_ref()
+                .map_or(m.memory.dram_latency_ns.value, |v| v.value),
             l2_latency_ns: m.memory.l2_latency_ns.value,
+            l2_latency_loaded_ns: m
+                .memory
+                .l2_latency_loaded_ns
+                .as_ref()
+                .map_or(m.memory.l2_latency_ns.value, |v| v.value),
             mma: curve(
                 mma_points,
                 |q| (q.mma_warps_per_sm.into(), q.tflops_per_sm.value * 1e3),
@@ -171,7 +198,12 @@ struct Demand {
     /// All bytes through L2 (loads and stores).
     bytes: f64,
     dram_bytes: f64,
-    latency_ns: f64,
+    /// Latency that does not depend on memory load (CTA launch).
+    fixed_latency_ns: f64,
+    /// Memory round trips not hidden by the pipeline.
+    round_trips: f64,
+    /// Fraction of loaded bytes served by L2.
+    hit_fraction: f64,
     /// No overlap of memory and compute within the CTA.
     serial: bool,
 }
@@ -182,8 +214,22 @@ impl Demand {
             && self.warp_insts == 0.0
             && self.smem_bytes == 0.0
             && self.bytes == 0.0
-            && self.latency_ns == 0.0
+            && self.fixed_latency_ns == 0.0
+            && self.round_trips == 0.0
     }
+
+    /// Exposed latency given the current DRAM and L2 load latencies.
+    fn latency(&self, lat: Latency) -> f64 {
+        self.fixed_latency_ns
+            + self.round_trips * (self.hit_fraction * lat.l2 + (1.0 - self.hit_fraction) * lat.dram)
+    }
+}
+
+/// Load latencies at the current memory utilization, in ns.
+#[derive(Debug, Clone, Copy)]
+struct Latency {
+    dram: f64,
+    l2: f64,
 }
 
 struct Cta {
@@ -274,7 +320,7 @@ impl<'a, L: L2> Sim<'a, L> {
         let (compute, steps, loads, stores, round_trips, serial) = match phase {
             Phase::Launch => {
                 return Demand {
-                    latency_ns: self.m.cta_launch_ns,
+                    fixed_latency_ns: self.m.cta_launch_ns,
                     ..Demand::default()
                 }
             }
@@ -303,12 +349,6 @@ impl<'a, L: L2> Sim<'a, L> {
         self.load_bytes += load_bytes;
         self.l2_hit_bytes += hits;
         self.dram_bytes += misses + stores;
-        let latency = if load_bytes > 0.0 {
-            round_trips * (hits * self.m.l2_latency_ns + misses * self.m.dram_latency_ns)
-                / load_bytes
-        } else {
-            0.0
-        };
         let steps = f64::from(steps);
         Demand {
             flops: compute.mma_flops * steps,
@@ -316,7 +356,13 @@ impl<'a, L: L2> Sim<'a, L> {
             smem_bytes: compute.smem_bytes * steps,
             bytes: load_bytes + stores,
             dram_bytes: misses + stores,
-            latency_ns: latency,
+            fixed_latency_ns: 0.0,
+            round_trips: if load_bytes > 0.0 { round_trips } else { 0.0 },
+            hit_fraction: if load_bytes > 0.0 {
+                hits / load_bytes
+            } else {
+                0.0
+            },
             serial,
         }
     }
@@ -398,7 +444,7 @@ struct Scratch {
 }
 
 /// `mma_per_cta[u]` is the tensor throughput of each of `u` MMA-issuing CTAs on one SM.
-fn rates(ctas: &[Cta], m: &Machine, mma_per_cta: &[f64], s: &mut Scratch) {
+fn rates(ctas: &[Cta], m: &Machine, mma_per_cta: &[f64], lat: Latency, s: &mut Scratch) {
     let n_sm = m.sm_count as usize;
     s.mma_users.clear();
     s.mma_users.resize(n_sm, 0);
@@ -438,12 +484,14 @@ fn rates(ctas: &[Cta], m: &Machine, mma_per_cta: &[f64], s: &mut Scratch) {
             0.0
         };
         s.terms
-            .push([d.latency_ns, t_mma, t_issue, t_smem, 0.0, 0.0]);
+            .push([d.latency(lat), t_mma, t_issue, t_smem, 0.0, 0.0]);
         let t_sm = t_mma.max(t_issue).max(t_smem);
+        let latency = d.latency(lat);
+        // Time without memory bandwidth limits: caps the bandwidth demand.
         s.t_compute.push(if d.serial {
-            d.latency_ns + t_sm
+            latency + t_sm
         } else {
-            d.latency_ns.max(t_sm)
+            latency.max(t_sm)
         });
     }
 
@@ -493,10 +541,14 @@ fn rates(ctas: &[Cta], m: &Machine, mma_per_cta: &[f64], s: &mut Scratch) {
         s.terms[i][4] = t_l2;
         s.terms[i][5] = t_dram;
         let t_mem = t_l2.max(t_dram);
+        let [latency, t_mma, t_issue, t_smem, ..] = s.terms[i];
+        let t_sm = t_mma.max(t_issue).max(t_smem);
+        // Synchronous loads: the CTA waits for its loads, then computes. The
+        // wait is the longer of the round trip and the transfer.
         let t = if d.serial {
-            s.t_compute[i] + t_mem
+            latency.max(t_mem) + t_sm
         } else {
-            s.t_compute[i].max(t_mem)
+            latency.max(t_sm).max(t_mem)
         };
         s.rate.push(1.0 / t);
     }
@@ -546,8 +598,21 @@ pub fn simulate<L: L2>(
     let mut busy_sm_ns = 0.0;
     let mut events = 0u64;
     let mut bound_ns = [0.0f64; 6];
+    // Memory utilization carried between events; latency depends on it and
+    // it depends on the rates, so each event takes two damped passes.
+    let (dram_peak, l2_peak) = (Machine::peak(&m.dram_bw), Machine::peak(&m.l2_bw));
+    let mut util = (0.0, 0.0);
+    let achieved = |ctas: &[Cta], rate: &[f64]| {
+        ctas.iter().zip(rate).fold((0.0, 0.0), |(d, l), (c, &r)| {
+            (d + r * c.demand.dram_bytes, l + r * c.demand.bytes)
+        })
+    };
     while !ctas.is_empty() {
-        rates(&ctas, m, &mma_per_cta, &mut s);
+        for _ in 0..2 {
+            rates(&ctas, m, &mma_per_cta, m.latency(util.0, util.1), &mut s);
+            let (d, l) = achieved(&ctas, &s.rate);
+            util = (0.5 * (util.0 + d / dram_peak), 0.5 * (util.1 + l / l2_peak));
+        }
         let dt = ctas
             .iter()
             .zip(&s.rate)
