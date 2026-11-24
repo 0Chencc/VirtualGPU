@@ -1,7 +1,7 @@
 //! Online, phase-segment-level L2 cache reuse model (v1).
 
 use crate::ir::{AccessEntry, CachePolicy, KernelIR, Op, Strided2dEntry};
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum L2InitState {
@@ -76,8 +76,15 @@ struct OpBinding {
 }
 
 #[derive(Debug, Clone)]
+struct ResidentChunk {
+    key: ChunkKey,
+    step_aligned_bytes: u64,
+    full_stream_bytes: u64,
+}
+
+#[derive(Debug, Clone)]
 struct ResidentTile {
-    chunks: Vec<(ChunkKey, u64)>,
+    chunks: Vec<ResidentChunk>,
 }
 
 /// Stateful, instance-local L2 reuse model driven by Agent 4's event scheduler.
@@ -88,6 +95,7 @@ pub struct L2Model<'a> {
     options: L2Options,
     op_bindings: HashMap<String, OpBinding>,
     load_bindings: Vec<OpBinding>,
+    total_read_footprint_bytes: u64,
     resident_tiles: HashMap<(u32, u32), ResidentTile>,
     active_chunks: HashMap<ChunkKey, (u32, u64)>,
     active_working_set_bytes: u64,
@@ -146,13 +154,14 @@ impl<'a> L2Model<'a> {
             }
         }
 
-        Self {
+        let mut model = Self {
             ir,
             profile,
             initial_state,
             options,
             op_bindings,
             load_bindings,
+            total_read_footprint_bytes: 0,
             resident_tiles: HashMap::new(),
             active_chunks: HashMap::new(),
             active_working_set_bytes: 0,
@@ -160,7 +169,9 @@ impl<'a> L2Model<'a> {
             recent_set: HashMap::new(),
             recent_bytes: 0,
             spill_l2_pressure_bytes: 0,
-        }
+        };
+        model.total_read_footprint_bytes = model.compute_total_read_footprint();
+        model
     }
 
     pub fn begin_tile(&mut self, _sm_id: u32, cta_id: u32, outer_idx: u32, _t_ns: f64) {
@@ -168,21 +179,27 @@ impl<'a> L2Model<'a> {
         if self.resident_tiles.contains_key(&tile_key) {
             return;
         }
+        let inner_trips = self.ir.inner_trip_count(cta_id, outer_idx).unwrap_or(1).max(1);
         let mut chunks = Vec::with_capacity(self.load_bindings.len());
         for b in &self.load_bindings {
             if let Some(entry) = self.lookup_strided(&b.access_ref, cta_id, outer_idx) {
                 let ckey = make_chunk_key(b.tensor_idx, entry);
-                let aligned = self.sector_aligned_step_bytes(entry);
-                if aligned == 0 {
+                let step_aligned = self.sector_aligned_step_bytes(entry);
+                if step_aligned == 0 {
                     continue;
                 }
-                let entry_ref = self.active_chunks.entry(ckey).or_insert((0, aligned));
+                let full_stream = full_chunk_stream_bytes(step_aligned, entry, inner_trips);
+                let entry_ref = self.active_chunks.entry(ckey).or_insert((0, step_aligned));
                 if entry_ref.0 == 0 {
                     self.active_working_set_bytes =
-                        self.active_working_set_bytes.saturating_add(aligned);
+                        self.active_working_set_bytes.saturating_add(step_aligned);
                 }
                 entry_ref.0 += 1;
-                chunks.push((ckey, aligned));
+                chunks.push(ResidentChunk {
+                    key: ckey,
+                    step_aligned_bytes: step_aligned,
+                    full_stream_bytes: full_stream,
+                });
             }
         }
         self.resident_tiles.insert(tile_key, ResidentTile { chunks });
@@ -192,15 +209,17 @@ impl<'a> L2Model<'a> {
         let Some(tile) = self.resident_tiles.remove(&(cta_id, outer_idx)) else {
             return;
         };
-        for (ckey, aligned) in tile.chunks {
-            if let Some(slot) = self.active_chunks.get_mut(&ckey) {
+        for rc in tile.chunks {
+            if let Some(slot) = self.active_chunks.get_mut(&rc.key) {
                 slot.0 = slot.0.saturating_sub(1);
                 if slot.0 == 0 {
-                    self.active_chunks.remove(&ckey);
-                    self.active_working_set_bytes =
-                        self.active_working_set_bytes.saturating_sub(aligned);
+                    self.active_chunks.remove(&rc.key);
+                    self.active_working_set_bytes = self
+                        .active_working_set_bytes
+                        .saturating_sub(rc.step_aligned_bytes);
                     if self.options.cross_wave_reuse {
-                        self.push_recent(ckey, aligned);
+                        // Account for the full K-stream volume that flowed through L2 during this tile.
+                        self.push_recent(rc.key, rc.full_stream_bytes);
                     }
                 }
             }
@@ -256,7 +275,8 @@ impl<'a> L2Model<'a> {
         let total_f = total_aligned as f64;
 
         if is_write || binding.is_write {
-            // Store phases write through/back to DRAM; report full aligned traffic to DRAM.
+            // Intentional M1 simplification: treat all global stores as DRAM write-back traffic
+            // without modeling write-allocate L2 hit credit.
             return L2SplitResult {
                 l2_bytes: 0.0,
                 dram_bytes: total_f,
@@ -286,13 +306,23 @@ impl<'a> L2Model<'a> {
         // Intra-wave sharing: R concurrent CTAs sharing a chunk incur 1/R DRAM fetch.
         let mut raw_hit = (sharing_count - 1.0) / sharing_count;
 
-        // Cross-wave or warm-L2 hit credit.
-        let in_recent = self.options.cross_wave_reuse && self.recent_set.contains_key(&ckey);
-        if in_recent || self.initial_state == L2InitState::Warm {
+        let eff_cap = self.profile.l2_effective_capacity_bytes.max(1) as f64;
+
+        // Cross-wave hit: only hits if the full K-stream chunk has not been evicted from recent_lru.
+        if self.options.cross_wave_reuse && self.recent_set.contains_key(&ckey) {
             raw_hit = raw_hit.max(1.0);
         }
 
-        let eff_cap = self.profile.l2_effective_capacity_bytes.max(1) as f64;
+        // Warm L2: only the fraction of total kernel read footprint that fits in L2 can be pre-warmed.
+        if self.initial_state == L2InitState::Warm {
+            let warm_hit = if self.total_read_footprint_bytes == 0 {
+                1.0
+            } else {
+                (eff_cap / self.total_read_footprint_bytes as f64).clamp(0.0, 1.0)
+            };
+            raw_hit = raw_hit.max(warm_hit);
+        }
+
         let working_set =
             (self.active_working_set_bytes.saturating_add(self.spill_l2_pressure_bytes)) as f64;
 
@@ -394,6 +424,34 @@ impl<'a> L2Model<'a> {
         self.active_working_set_bytes
     }
 
+    pub fn total_read_footprint_bytes(&self) -> u64 {
+        self.total_read_footprint_bytes
+    }
+
+    fn compute_total_read_footprint(&self) -> u64 {
+        let mut seen = HashSet::new();
+        let mut total: u64 = 0;
+        let total_ctas = self.ir.total_ctas() as u32;
+        for cta_id in 0..total_ctas {
+            let outer_trips = self.ir.outer_trip_count(cta_id).unwrap_or(1) as u32;
+            for outer_idx in 0..outer_trips {
+                let inner_trips = self.ir.inner_trip_count(cta_id, outer_idx).unwrap_or(1).max(1);
+                for b in &self.load_bindings {
+                    if let Some(entry) = self.lookup_strided(&b.access_ref, cta_id, outer_idx) {
+                        let ckey = make_chunk_key(b.tensor_idx, entry);
+                        if seen.insert(ckey) {
+                            let step_aligned = self.sector_aligned_step_bytes(entry);
+                            let full_stream =
+                                full_chunk_stream_bytes(step_aligned, entry, inner_trips);
+                            total = total.saturating_add(full_stream);
+                        }
+                    }
+                }
+            }
+        }
+        total
+    }
+
     fn lookup_strided(&self, access_ref: &str, cta_id: u32, outer_idx: u32) -> Option<Strided2dEntry> {
         let idx = self.ir.dense_tile_index(cta_id, outer_idx)?;
         match self.ir.access_map.get(access_ref)? {
@@ -412,24 +470,35 @@ impl<'a> L2Model<'a> {
         entry.rows().saturating_mul(aligned_row)
     }
 
-    fn push_recent(&mut self, key: ChunkKey, bytes: u64) {
-        if self.recent_set.contains_key(&key) {
-            return;
-        }
+    fn push_recent(&mut self, key: ChunkKey, full_bytes: u64) {
         let cap = self.profile.l2_effective_capacity_bytes;
-        if bytes > cap {
+        if full_bytes == 0 || full_bytes > cap {
             return;
         }
-        while self.recent_bytes.saturating_add(bytes) > cap {
+        if let Some(prev_bytes) = self.recent_set.remove(&key) {
+            self.recent_bytes = self.recent_bytes.saturating_sub(prev_bytes);
+            if let Some(pos) = self.recent_lru.iter().position(|(k, _)| *k == key) {
+                self.recent_lru.remove(pos);
+            }
+        }
+        while self.recent_bytes.saturating_add(full_bytes) > cap {
             let Some((old_k, old_b)) = self.recent_lru.pop_front() else {
                 break;
             };
             self.recent_set.remove(&old_k);
             self.recent_bytes = self.recent_bytes.saturating_sub(old_b);
         }
-        self.recent_lru.push_back((key, bytes));
-        self.recent_set.insert(key, bytes);
-        self.recent_bytes = self.recent_bytes.saturating_add(bytes);
+        self.recent_lru.push_back((key, full_bytes));
+        self.recent_set.insert(key, full_bytes);
+        self.recent_bytes = self.recent_bytes.saturating_add(full_bytes);
+    }
+}
+
+fn full_chunk_stream_bytes(step_aligned: u64, entry: Strided2dEntry, inner_trips: u64) -> u64 {
+    if entry.inner_step_byte_stride() == 0 {
+        step_aligned
+    } else {
+        step_aligned.saturating_mul(inner_trips)
     }
 }
 
@@ -447,6 +516,7 @@ fn make_chunk_key(tensor_idx: usize, e: Strided2dEntry) -> ChunkKey {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ir::TripCounts;
 
     fn rtx4070_l2_profile() -> L2Profile {
         L2Profile {
@@ -480,13 +550,99 @@ mod tests {
         assert!((res_a.l2_bytes + res_a.dram_bytes - res_a.sector_aligned_bytes as f64).abs() < 1e-3);
         assert!(!res_a.near_cliff);
 
-        // End wave 1 and verify cross-wave reuse for a CTA sharing the same A row (pid_m=0, pid_n=2 -> cta_id=16).
+        // End wave 1 (8 A stripes + 2 B stripes = 10 MB <= 30 MB C_eff) -> fits in recent_lru.
         for cta in 0..16u32 {
             l2.end_tile(cta % 46, cta, 0, 1000.0);
         }
         l2.begin_tile(0, 16, 0, 1000.0);
         let res_a_next = l2.split(0, 16, 0, "load_A", 0, 128, false, CachePolicy::Default, 1000.0);
-        assert!((res_a_next.hit_ratio - 1.0).abs() < 1e-6, "cross-wave A hit expected");
+        assert!((res_a_next.hit_ratio - 1.0).abs() < 1e-6, "10 MB wave fits in 30 MB L2");
+    }
+
+    #[test]
+    fn cross_wave_history_accounts_for_full_k_stream_and_evicts_on_4096_gemm() {
+        let json = include_str!("../../../../schemas/examples/gemm_sm89.json");
+        let ir = KernelIR::from_json_str(json).unwrap();
+        let prof = rtx4070_l2_profile(); // 36 MB nominal, 30 MB effective
+        let mut l2 = L2Model::new(&ir, prof, L2InitState::Cold, L2Options::default());
+
+        // 4096^3 f16 GEMM has 32 MB A + 32 MB B = 64 MB total read footprint.
+        assert_eq!(l2.total_read_footprint_bytes(), 64 * 1024 * 1024);
+
+        // Simulate 46-SM GPU with 2 CTAs/SM -> 92 CTAs per wave across all 1024 CTAs.
+        // Group 0 (CTAs 0..256) streams 8 MB of A + 32 MB of B = 40 MB > 30 MB effective L2,
+        // so earlier B stripes must be evicted before Group 1 (CTAs 256..512) reuses them.
+        let wave_size = 92u32;
+        let mut total_b_hit_wave2_plus = 0.0;
+        let mut count_b_wave2_plus = 0u32;
+
+        for wave_start in (0..1024u32).step_by(wave_size as usize) {
+            let wave_end = (wave_start + wave_size).min(1024);
+            for cta in wave_start..wave_end {
+                l2.begin_tile(cta % 46, cta, 0, 0.0);
+            }
+            if wave_start >= 256 {
+                // Measure solo-CTA cross-wave B hit by checking after intra-wave isolation,
+                // or check directly on Group 1 start where B cols 0..N were streamed in Group 0.
+                let res_b = l2.split(0, wave_start, 0, "load_B", 0, 128, false, CachePolicy::Default, 0.0);
+                total_b_hit_wave2_plus += res_b.hit_ratio;
+                count_b_wave2_plus += 1;
+            }
+            for cta in wave_start..wave_end {
+                l2.end_tile(cta % 46, cta, 0, 1000.0);
+            }
+        }
+
+        // Now dispatch a single solo CTA 256 (pid_m=8, pid_n=0) after the full 64 MB streamed:
+        // its B column 0 (1 MB) was evicted long ago, so cross-wave hit must be 0.0 (not 1.0).
+        l2.begin_tile(0, 256, 0, 2000.0);
+        let solo_b = l2.split(0, 256, 0, "load_B", 0, 128, false, CachePolicy::Default, 2000.0);
+        assert!(
+            solo_b.hit_ratio < 0.01,
+            "evicted B stripe after 64 MB stream must miss, got {}",
+            solo_b.hit_ratio
+        );
+        // Average hit across later waves must also be strictly below 1.0 (not falsely 1.0).
+        let avg_b_hit = total_b_hit_wave2_plus / count_b_wave2_plus as f64;
+        assert!(
+            avg_b_hit < 0.95,
+            "cross-wave B hit on 64 MB GEMM in 30 MB L2 must be well below 1.0, got {}",
+            avg_b_hit
+        );
+    }
+
+    #[test]
+    fn warm_state_scales_hit_ratio_by_l2_capacity_vs_footprint() {
+        let json = include_str!("../../../../schemas/examples/gemm_sm89.json");
+        let ir_large = KernelIR::from_json_str(json).unwrap();
+        let prof = rtx4070_l2_profile(); // 30 MB effective L2
+
+        // Large 4096^3 GEMM: 64 MB footprint > 30 MB L2 -> warm hit must be < 1.0 (30/64 = 0.46875).
+        let mut l2_large = L2Model::new(&ir_large, prof, L2InitState::Warm, L2Options::default());
+        l2_large.begin_tile(0, 0, 0, 0.0);
+        let large_res = l2_large.split(0, 0, 0, "load_A", 0, 128, false, CachePolicy::Default, 0.0);
+        let expected_large = (30.0 * 1024.0 * 1024.0) / (64.0 * 1024.0 * 1024.0);
+        assert!(
+            (large_res.hit_ratio - expected_large).abs() < 1e-6,
+            "expected warm hit {}, got {}",
+            expected_large,
+            large_res.hit_ratio
+        );
+        assert!(large_res.hit_ratio < 1.0);
+
+        // Small footprint (reduce K iterations from 128 to 8 -> 4 MB total footprint <= 30 MB L2):
+        // warm hit should be 1.0.
+        let mut ir_small = ir_large.clone();
+        ir_small.body.pipeline_loop.trip_counts = TripCounts::Uniform(8);
+        let mut l2_small = L2Model::new(&ir_small, prof, L2InitState::Warm, L2Options::default());
+        assert_eq!(l2_small.total_read_footprint_bytes(), 4 * 1024 * 1024);
+        l2_small.begin_tile(0, 0, 0, 0.0);
+        let small_res = l2_small.split(0, 0, 0, "load_A", 0, 8, false, CachePolicy::Default, 0.0);
+        assert!(
+            (small_res.hit_ratio - 1.0).abs() < 1e-6,
+            "small 4 MB footprint in 30 MB warm L2 should hit ~1.0, got {}",
+            small_res.hit_ratio
+        );
     }
 
     #[test]

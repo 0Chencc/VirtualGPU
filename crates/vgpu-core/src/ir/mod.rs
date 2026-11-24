@@ -404,6 +404,16 @@ impl KernelIR {
         }
     }
 
+    pub fn inner_trip_count(&self, cta_id: u32, outer_idx: u32) -> Option<u64> {
+        match &self.body.pipeline_loop.trip_counts {
+            TripCounts::Uniform(n) => Some(*n),
+            TripCounts::PerItem(v) => {
+                let idx = self.dense_tile_index(cta_id, outer_idx)?;
+                v.get(idx).copied()
+            }
+        }
+    }
+
     pub fn total_outer_tiles(&self) -> u64 {
         match &self.body.outer_loop.trip_counts {
             TripCounts::Uniform(n) => self.total_ctas().saturating_mul(*n),
