@@ -210,3 +210,10 @@ fn every_byte_is_accounted_for() {
         loads * 0.5 + f64::from(k.grid) * 32768.0
     ));
 }
+
+#[test]
+fn fully_prefetched_loop_loads_each_iteration_once() {
+    let k = gemm(46, 2, 4); // prefetch distance beyond the trip count
+    let p = run(&k, machine(&k));
+    assert!(close(p.load_bytes, 46.0 * 2.0 * 16384.0));
+}

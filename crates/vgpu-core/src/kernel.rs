@@ -28,12 +28,13 @@ pub struct Work {
 /// What one CTA does for one output tile.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Tile {
+    /// Work outside the software pipeline, executed once before it.
     pub prologue: Work,
     pub iterations: u32,
     pub per_iteration: Work,
-    /// Iterations in flight in the software pipeline. Zero means synchronous
-    /// loads: no overlap of loads and compute within the CTA. The prologue's
-    /// own loads are listed explicitly in `prologue`.
+    /// Iterations in flight in the software pipeline. The first
+    /// `prefetch_distance` iterations' loads are issued in the prologue. Zero
+    /// means synchronous loads: no overlap of loads and compute within the CTA.
     pub prefetch_distance: u32,
     pub epilogue: Work,
 }

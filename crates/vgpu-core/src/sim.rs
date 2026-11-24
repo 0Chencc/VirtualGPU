@@ -230,50 +230,85 @@ struct Sim<'a, L: L2> {
 }
 
 impl<'a, L: L2> Sim<'a, L> {
+    /// Traffic of `accesses` over steps `[k0, k1)`, as (L2 hit bytes, DRAM bytes).
+    #[allow(clippy::too_many_arguments)]
+    fn traffic(
+        &mut self,
+        accesses: &[Access],
+        k0: u32,
+        k1: u32,
+        is_write: bool,
+        sm: u32,
+        program: u32,
+        tile: u32,
+    ) -> (f64, f64) {
+        let (mut hits, mut misses) = (0.0, 0.0);
+        if k1 > k0 {
+            for a in accesses {
+                let (h, m) = self
+                    .l2
+                    .split(sm, program, tile, a, k0, k1, is_write, self.t);
+                hits += h;
+                misses += m;
+            }
+        }
+        (hits, misses)
+    }
+
+    /// Phase demands under the KernelIR convention: the pipeline's first
+    /// `prefetch_distance` loads are issued in the prologue (prefill), the
+    /// steady state loads the rest, and the last `prefetch_distance`
+    /// iterations only compute (drain). `prologue` holds only work outside
+    /// the software pipeline.
     fn demand(&mut self, phase: Phase, sm: u32, program: u32, tile: u32) -> Demand {
-        let tl = &self.k.tile;
-        let (work, steps, serial) = match phase {
+        let k = self.k;
+        let tl = &k.tile;
+        let n = tl.iterations;
+        let d = tl.prefetch_distance.min(n);
+        let (compute, steps, loads, stores, round_trips, serial) = match phase {
             Phase::Launch => {
                 return Demand {
                     latency_ns: self.m.cta_launch_ns,
                     ..Demand::default()
                 }
             }
-            Phase::Prologue => (&tl.prologue, 1, false),
-            Phase::Main => (&tl.per_iteration, tl.iterations, tl.prefetch_distance == 0),
-            Phase::Epilogue => (&tl.epilogue, 1, false),
+            Phase::Prologue => {
+                let (h0, m0) = self.traffic(&tl.prologue.loads, 0, 1, false, sm, program, tile);
+                let (h1, m1) =
+                    self.traffic(&tl.per_iteration.loads, 0, d, false, sm, program, tile);
+                let st = self.traffic(&tl.prologue.stores, 0, 1, true, sm, program, tile);
+                (&tl.prologue, 1, (h0 + h1, m0 + m1), st, 1.0, false)
+            }
+            Phase::Main => {
+                let ld = self.traffic(&tl.per_iteration.loads, d, n, false, sm, program, tile);
+                let st = self.traffic(&tl.per_iteration.stores, 0, n, true, sm, program, tile);
+                let trips = f64::from(n - d) / f64::from(d.max(1));
+                (&tl.per_iteration, n, ld, st, trips, d == 0)
+            }
+            Phase::Epilogue => {
+                let ld = self.traffic(&tl.epilogue.loads, 0, 1, false, sm, program, tile);
+                let st = self.traffic(&tl.epilogue.stores, 0, 1, true, sm, program, tile);
+                (&tl.epilogue, 1, ld, st, 1.0, false)
+            }
         };
-        let (mut hits, mut misses, mut stores) = (0.0, 0.0, 0.0);
-        for a in &work.loads {
-            let (h, m) = self.l2.split(sm, program, tile, a, 0, steps, false, self.t);
-            hits += h;
-            misses += m;
-        }
-        for a in &work.stores {
-            let (h, m) = self.l2.split(sm, program, tile, a, 0, steps, true, self.t);
-            stores += h + m;
-        }
-        let loads = hits + misses;
-        self.load_bytes += loads;
+        let (hits, misses) = loads;
+        let stores = stores.0 + stores.1;
+        let load_bytes = hits + misses;
+        self.load_bytes += load_bytes;
         self.l2_hit_bytes += hits;
         self.dram_bytes += misses + stores;
-        // Round trips not hidden by the pipeline: one per prologue, and one per
-        // `prefetch_distance` iterations in the steady state.
-        let round_trips = match phase {
-            Phase::Main => f64::from(steps) / f64::from(tl.prefetch_distance.max(1)),
-            _ => 1.0,
-        };
-        let latency = if loads > 0.0 {
-            round_trips * (hits * self.m.l2_latency_ns + misses * self.m.dram_latency_ns) / loads
+        let latency = if load_bytes > 0.0 {
+            round_trips * (hits * self.m.l2_latency_ns + misses * self.m.dram_latency_ns)
+                / load_bytes
         } else {
             0.0
         };
-        let n = f64::from(steps);
+        let steps = f64::from(steps);
         Demand {
-            flops: work.mma_flops * n,
-            warp_insts: work.alu_insts_per_warp * f64::from(self.k.num_warps) * n,
-            smem_bytes: work.smem_bytes * n,
-            bytes: loads + stores,
+            flops: compute.mma_flops * steps,
+            warp_insts: compute.alu_insts_per_warp * f64::from(k.num_warps) * steps,
+            smem_bytes: compute.smem_bytes * steps,
+            bytes: load_bytes + stores,
             dram_bytes: misses + stores,
             latency_ns: latency,
             serial,

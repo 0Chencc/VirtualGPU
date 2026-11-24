@@ -99,24 +99,6 @@ pub fn kernel_from_ir(ir: &KernelIR) -> Result<Kernel, ModelError> {
     })
 }
 
-pub fn l2_profile(p: &Profile) -> L2Profile {
-    let s = &p.specs;
-    let spill_threshold = p
-        .measured
-        .spill
-        .get("l1_to_l2_spill_threshold_bytes_per_sm")
-        .and_then(Option::as_ref)
-        .map_or(s.l1_size_bytes as f64, |v| v.value);
-    L2Profile {
-        l2_size_bytes: s.l2_size_bytes,
-        l2_effective_capacity_bytes: p.measured.memory.l2_effective_capacity_bytes.value as u64,
-        l2_line_bytes: s.l2_line_bytes,
-        l2_sector_bytes: s.l2_sector_bytes,
-        l1_size_bytes: s.l1_size_bytes,
-        l1_to_l2_spill_threshold_bytes_per_sm: spill_threshold as u64,
-    }
-}
-
 /// The L2 reuse model behind the core's `L2` interface.
 pub struct IrL2<'a> {
     model: L2Model<'a>,
@@ -149,7 +131,7 @@ impl<'a> IrL2<'a> {
             })
             .collect();
         IrL2 {
-            model: L2Model::new(ir, l2_profile(p), initial, options),
+            model: L2Model::new(ir, L2Profile::from(p), initial, options),
             policy,
         }
     }
