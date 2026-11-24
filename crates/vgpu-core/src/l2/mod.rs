@@ -593,17 +593,31 @@ mod tests {
     use super::*;
     use crate::ir::TripCounts;
 
-    fn rtx4070_l2_profile() -> L2Profile {
-        let profile_json = include_str!("../../../../profiles/rtx4070.json");
-        let gpu_profile = Profile::from_json(profile_json).unwrap();
-        L2Profile::from(&gpu_profile)
+    /// Deterministic synthetic L2 profile for mechanism tests (never depends on re-measured files).
+    fn synthetic_l2_profile() -> L2Profile {
+        let mib = 1024.0 * 1024.0;
+        L2Profile {
+            l2_size_bytes: 36 * 1024 * 1024,
+            l2_effective_capacity_bytes: 36 * 1024 * 1024,
+            nominal_l2_effective_capacity_bytes: 36 * 1024 * 1024,
+            l2_line_bytes: 128,
+            l2_sector_bytes: 32,
+            l1_size_bytes: 128 * 1024,
+            l1_to_l2_spill_threshold_bytes_per_sm: 64 * 1024,
+            rescan_hit_curve: vec![
+                (18.0 * mib, 1.0),
+                (36.0 * mib, 1.0),
+                (39.6 * mib, 0.5),
+                (46.8 * mib, 0.0),
+            ],
+        }
     }
 
     #[test]
     fn swizzled_resident_ctas_share_a_and_b_in_l2() {
         let json = include_str!("../../../../schemas/examples/gemm_sm89.json");
         let ir = KernelIR::from_json_str(json).unwrap();
-        let mut l2 = L2Model::new(&ir, rtx4070_l2_profile(), L2InitState::Cold, L2Options::default());
+        let mut l2 = L2Model::new(&ir, synthetic_l2_profile(), L2InitState::Cold, L2Options::default());
 
         // First 16 CTAs in GROUP_SIZE_M=8 cover pid_m in 0..8, pid_n in 0..2:
         // each A row-slice is shared by 2 CTAs; each B col-slice is shared by 8 CTAs.
@@ -633,7 +647,7 @@ mod tests {
     fn cross_wave_history_accounts_for_full_k_stream_and_evicts_on_4096_gemm() {
         let json = include_str!("../../../../schemas/examples/gemm_sm89.json");
         let ir = KernelIR::from_json_str(json).unwrap();
-        let prof = rtx4070_l2_profile();
+        let prof = synthetic_l2_profile();
         let mut l2 = L2Model::new(&ir, prof, L2InitState::Cold, L2Options::default());
 
         // 4096^3 f16 GEMM has 32 MiB A + 32 MiB B = 64 MiB total read footprint.
@@ -680,17 +694,15 @@ mod tests {
     fn warm_state_follows_empirical_rescan_curve() {
         let json = include_str!("../../../../schemas/examples/gemm_sm89.json");
         let ir_large = KernelIR::from_json_str(json).unwrap();
-        let prof = rtx4070_l2_profile();
-        assert!(!prof.rescan_hit_curve.is_empty(), "rtx4070.json must populate rescan_hit_curve");
+        let prof = synthetic_l2_profile();
 
-        // 1. Large 4096^3 GEMM (64 MiB > 45 MiB cliff on RTX 4070): warm hit must be near 0,
-        //    far below the naive C_eff/F = 0.5625 ratio.
+        // 1. Large 4096^3 GEMM (64 MiB > 46.8 MiB cliff): warm hit must be 0.0.
         let mut l2_large = L2Model::new(&ir_large, prof.clone(), L2InitState::Warm, L2Options::default());
         l2_large.begin_tile(0, 0, 0, 0.0);
         let large_res = l2_large.split(0, 0, 0, "load_A", 0, 128, false, CachePolicy::Default, 0.0);
         assert!(
-            large_res.hit_ratio < 0.05,
-            "64 MiB warm scan exceeds 45 MiB cliff; expected near-zero hit, got {}",
+            large_res.hit_ratio.abs() < 1e-6,
+            "64 MiB warm scan exceeds 46.8 MiB cliff; expected 0.0, got {}",
             large_res.hit_ratio
         );
 
@@ -707,15 +719,18 @@ mod tests {
             small_res.hit_ratio
         );
 
-        // 3. Transition knee (~39 MiB, K=78 -> 39 MiB = 1.083x L2): partial hit between 0.1 and 0.6.
+        // 3. Transition knee (K=78 -> 39 MiB, between 36 MiB -> 1.0 and 39.6 MiB -> 0.5):
+        //    linear interpolation gives 1.0 - (3.0 / 3.6) * 0.5 = 7/12 ~= 0.583333.
         let mut ir_knee = ir_large.clone();
         ir_knee.body.pipeline_loop.trip_counts = TripCounts::Uniform(78);
         let mut l2_knee = L2Model::new(&ir_knee, prof, L2InitState::Warm, L2Options::default());
         l2_knee.begin_tile(0, 0, 0, 0.0);
         let knee_res = l2_knee.split(0, 0, 0, "load_A", 0, 78, false, CachePolicy::Default, 0.0);
+        let expected_knee = 1.0 - (3.0 / 3.6) * 0.5;
         assert!(
-            knee_res.hit_ratio > 0.1 && knee_res.hit_ratio < 0.6,
-            "39 MiB warm scan should land on the measured transition knee, got {}",
+            (knee_res.hit_ratio - expected_knee).abs() < 1e-6,
+            "39 MiB warm scan should interpolate to {}, got {}",
+            expected_knee,
             knee_res.hit_ratio
         );
     }
@@ -726,7 +741,7 @@ mod tests {
         let ir = KernelIR::from_json_str(json).unwrap();
 
         // 16 CTAs hold 8 unique A tiles (8*8KB = 64KB) + 2 unique B tiles (2*8KB = 16KB) = 80KB.
-        let mut prof = rtx4070_l2_profile();
+        let mut prof = synthetic_l2_profile();
         prof.l2_effective_capacity_bytes = 80 * 1024; // right at the cliff (1.0 * C_eff)
 
         let mut l2 = L2Model::new(&ir, prof, L2InitState::Cold, L2Options::default());
@@ -744,7 +759,7 @@ mod tests {
     fn spill_overflow_transitions_from_l1_to_l2_dram() {
         let json = include_str!("../../../../schemas/examples/gemm_sm89.json");
         let ir = KernelIR::from_json_str(json).unwrap();
-        let mut l2 = L2Model::new(&ir, rtx4070_l2_profile(), L2InitState::Cold, L2Options::default());
+        let mut l2 = L2Model::new(&ir, synthetic_l2_profile(), L2InitState::Cold, L2Options::default());
 
         // 256 active threads * 128B stack = 32KB <= 64KB threshold -> fits in L1.
         let small = l2.account_spill(0, 256, 128, 32, 32);
@@ -779,6 +794,18 @@ mod tests {
             measured("/measured/spill/l1_to_l2_spill_threshold_bytes_per_sm/value")
         );
         assert!(!prof.rescan_hit_curve.is_empty());
+        for w in prof.rescan_hit_curve.windows(2) {
+            assert!(w[0].0 <= w[1].0, "rescan curve x-axis must be sorted");
+            assert!(
+                w[0].1 >= w[1].1,
+                "rescan curve must be monotone non-increasing: {} < {}",
+                w[0].1,
+                w[1].1
+            );
+        }
+        for &(_, h) in &prof.rescan_hit_curve {
+            assert!((0.0..=1.0).contains(&h), "hit rate {} out of [0, 1]", h);
+        }
 
         // Verify L2Model consumes the profile's empirical rescan curve in absolute bytes.
         let ir_json = include_str!("../../../../schemas/examples/gemm_sm89.json");
@@ -786,6 +813,7 @@ mod tests {
         let mut l2 = L2Model::new(&ir, prof.clone(), L2InitState::Warm, L2Options::default());
         l2.begin_tile(0, 0, 0, 0.0);
         let res = l2.split(0, 0, 0, "load_A", 0, 128, false, CachePolicy::Default, 0.0);
+        assert!((0.0..=1.0).contains(&res.hit_ratio));
         let expected = interpolate(&prof.rescan_hit_curve, 64.0 * 1024.0 * 1024.0);
         assert!(
             (res.hit_ratio - expected).abs() < 1e-6,
