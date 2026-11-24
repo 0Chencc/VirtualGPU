@@ -30,6 +30,24 @@ static __device__ __forceinline__ uint64_t read_globaltimer() {
   return t;
 }
 
+__global__ void l2_flush_clean_kernel(const uint4* __restrict__ buf,
+                                      uint4* __restrict__ sink,
+                                      size_t n) {
+  size_t idx = static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  size_t stride = static_cast<size_t>(gridDim.x) * blockDim.x;
+  uint32_t acc = 0;
+  for (size_t i = idx; i < n; i += stride) {
+    uint4 v;
+    asm volatile("ld.global.cg.v4.u32 {%0,%1,%2,%3}, [%4];"
+                 : "=r"(v.x), "=r"(v.y), "=r"(v.z), "=r"(v.w)
+                 : "l"(buf + i));
+    acc ^= (v.x + v.y + v.z + v.w);
+  }
+  if (acc == 0xdeadbeefu) {
+    sink[idx & 1023u] = make_uint4(acc, acc, acc, acc);
+  }
+}
+
 __global__ void l2_flush_kernel(uint4* __restrict__ buf, size_t n, uint32_t seed) {
   size_t idx = static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   size_t stride = static_cast<size_t>(gridDim.x) * blockDim.x;
@@ -48,36 +66,42 @@ __global__ void dram_read_kernel(const float4* __restrict__ src,
   }
   size_t tid = static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   size_t stride = static_cast<size_t>(gridDim.x) * blockDim.x;
+  const uint4* src_u4 = reinterpret_cast<const uint4*>(src);
 
-  float4 acc0 = make_float4(0.f, 0.f, 0.f, 0.f);
-  float4 acc1 = make_float4(0.f, 0.f, 0.f, 0.f);
+  // 4 independent 128-bit .cg loads in flight per thread to saturate DRAM MSHRs.
+  uint32_t acc0 = 0, acc1 = 0, acc2 = 0, acc3 = 0;
   size_t i = tid;
-  for (; i + stride < n_vec4; i += 2 * stride) {
-    float4 v0 = src[i];
-    float4 v1 = src[i + stride];
-    acc0.x += v0.x;
-    acc0.y += v0.y;
-    acc0.z += v0.z;
-    acc0.w += v0.w;
-    acc1.x += v1.x;
-    acc1.y += v1.y;
-    acc1.z += v1.z;
-    acc1.w += v1.w;
+  const size_t stride4 = 4 * stride;
+  for (; i + 3 * stride < n_vec4; i += stride4) {
+    uint4 v0, v1, v2, v3;
+    asm volatile("ld.global.cg.v4.u32 {%0,%1,%2,%3}, [%4];"
+                 : "=r"(v0.x), "=r"(v0.y), "=r"(v0.z), "=r"(v0.w)
+                 : "l"(src_u4 + i));
+    asm volatile("ld.global.cg.v4.u32 {%0,%1,%2,%3}, [%4];"
+                 : "=r"(v1.x), "=r"(v1.y), "=r"(v1.z), "=r"(v1.w)
+                 : "l"(src_u4 + i + stride));
+    asm volatile("ld.global.cg.v4.u32 {%0,%1,%2,%3}, [%4];"
+                 : "=r"(v2.x), "=r"(v2.y), "=r"(v2.z), "=r"(v2.w)
+                 : "l"(src_u4 + i + 2 * stride));
+    asm volatile("ld.global.cg.v4.u32 {%0,%1,%2,%3}, [%4];"
+                 : "=r"(v3.x), "=r"(v3.y), "=r"(v3.z), "=r"(v3.w)
+                 : "l"(src_u4 + i + 3 * stride));
+    acc0 ^= v0.x ^ v1.y ^ v2.z ^ v3.w;
+    acc1 ^= v0.y ^ v1.z ^ v2.w ^ v3.x;
+    acc2 ^= v0.z ^ v1.w ^ v2.x ^ v3.y;
+    acc3 ^= v0.w ^ v1.x ^ v2.y ^ v3.z;
   }
-  if (i < n_vec4) {
-    float4 v0 = src[i];
-    acc0.x += v0.x;
-    acc0.y += v0.y;
-    acc0.z += v0.z;
-    acc0.w += v0.w;
+  for (; i < n_vec4; i += stride) {
+    uint4 v0;
+    asm volatile("ld.global.cg.v4.u32 {%0,%1,%2,%3}, [%4];"
+                 : "=r"(v0.x), "=r"(v0.y), "=r"(v0.z), "=r"(v0.w)
+                 : "l"(src_u4 + i));
+    acc0 ^= v0.x ^ v0.y ^ v0.z ^ v0.w;
   }
-  acc0.x += acc1.x;
-  acc0.y += acc1.y;
-  acc0.z += acc1.z;
-  acc0.w += acc1.w;
 
-  if (acc0.x == -123456.75f && acc0.y == -123456.75f) {
-    sink[tid & 1023u] = acc0;
+  if ((acc0 ^ acc1 ^ acc2 ^ acc3) == 0xdeadbeefu) {
+    sink[tid & 1023u] = make_float4(static_cast<float>(acc0), static_cast<float>(acc1),
+                                    static_cast<float>(acc2), static_cast<float>(acc3));
   }
 }
 
@@ -241,7 +265,7 @@ static int run_dram_bw(int device, int samples, int warmup, size_t buffer_mb) {
       int grid = (target_sms == sm_count) ? (sm_count * 4) : target_sms;
 
       for (int w = 0; w < warmup; ++w) {
-        l2_flush_kernel<<<flush_blocks, 256>>>(d_flush, flush_vec4, static_cast<uint32_t>(w));
+        l2_flush_clean_kernel<<<flush_blocks, 256>>>(d_flush, reinterpret_cast<uint4*>(d_sink), flush_vec4);
         if (is_write) {
           dram_write_kernel<<<grid, threads>>>(d_buf, n_vec4, 1.0f + w, d_sm_seen);
         } else {
@@ -255,7 +279,7 @@ static int run_dram_bw(int device, int samples, int warmup, size_t buffer_mb) {
       int observed_sms = 0;
 
       for (int s = 0; s < samples; ++s) {
-        l2_flush_kernel<<<flush_blocks, 256>>>(d_flush, flush_vec4, static_cast<uint32_t>(s + 100));
+        l2_flush_clean_kernel<<<flush_blocks, 256>>>(d_flush, reinterpret_cast<uint4*>(d_sink), flush_vec4);
         CUDA_CHECK(cudaMemset(d_sm_seen, 0, static_cast<size_t>(sm_count) * sizeof(uint32_t)));
         CUDA_CHECK(cudaEventRecord(ev_start));
         if (is_write) {
@@ -484,6 +508,9 @@ int main(int argc, char** argv) {
   }
   if (mode == "l2-rescan") {
     return run_l2_rescan(device, samples);
+  }
+  if (mode == "mlp") {
+    return run_mlp(device, samples, warmup);
   }
   std::fprintf(stderr, "Unknown mode: %s\n", mode.c_str());
   return 2;

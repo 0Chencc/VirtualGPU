@@ -873,11 +873,22 @@ static int run_launch(int device, int samples, int warmup) {
 // 6. Latency vs achieved bandwidth curves (DRAM & L2) for Little's Law model
 // ---------------------------------------------------------------------------
 
+static __device__ __forceinline__ int ld_acq_s32(const volatile int* ptr) {
+  int v;
+  asm volatile("ld.acquire.gpu.global.s32 %0, [%1];" : "=r"(v) : "l"(ptr) : "memory");
+  return v;
+}
+
+struct BgCtaStats {
+  uint64_t bytes;
+  uint64_t t_start_ns;
+  uint64_t t_end_ns;
+};
+
 __global__ void pchase_bw_curve_kernel(const uint64_t* __restrict__ chain,
                                        uint64_t* __restrict__ sink,
                                        double* __restrict__ out_latency_ns,
-                                       uint64_t* __restrict__ out_window_ns,
-                                       unsigned long long* __restrict__ out_bg_bytes,
+                                       BgCtaStats* __restrict__ out_bg_stats,
                                        int steps,
                                        const uint4* __restrict__ bg_buf,
                                        size_t bg_vec4,
@@ -887,7 +898,7 @@ __global__ void pchase_bw_curve_kernel(const uint64_t* __restrict__ chain,
   if (blockIdx.x == 0) {
     if (threadIdx.x == 0) {
       uint64_t idx = 0;
-      // Short warmup so background CTAs reach steady-state traffic before timing starts.
+      // Warmup so background CTAs reach steady-state traffic before timing starts.
       for (int w = 0; w < 256; ++w) {
         idx = ld_cg_u64(chain + idx);
       }
@@ -903,7 +914,6 @@ __global__ void pchase_bw_curve_kernel(const uint64_t* __restrict__ chain,
         atomicExch(const_cast<int*>(done_flag), 1);
       }
       *out_latency_ns = static_cast<double>(t1 - t0) / static_cast<double>(steps);
-      *out_window_ns = (t1 - t0);
       *sink = idx;
     }
   } else if (bg_buf != nullptr && done_flag != nullptr) {
@@ -912,20 +922,32 @@ __global__ void pchase_bw_curve_kernel(const uint64_t* __restrict__ chain,
     size_t stride = static_cast<size_t>(gridDim.x - 1) * static_cast<size_t>(bg_active_threads);
     uint32_t acc = 0;
     size_t i = tid % bg_vec4;
-    unsigned long long counted_loads = 0;
-    while (*done_flag == 0) {
-      int counting = (start_flag != nullptr) ? (*start_flag) : 1;
-      for (int k = 0; k < 8; ++k) {
+
+    while (ld_acq_s32(start_flag) == 0 && ld_acq_s32(done_flag) == 0) {
+      for (int k = 0; k < 32; ++k) {
         uint4 v = ld_cg_u4(bg_buf + i);
         acc ^= v.x;
         i += stride;
         if (i >= bg_vec4) i -= bg_vec4;
       }
-      if (counting) {
-        counted_loads += 8ULL;
-      }
     }
-    atomicAdd(out_bg_bytes, counted_loads * 16ULL);
+
+    uint64_t bg_t0 = (threadIdx.x == 0) ? read_globaltimer() : 0;
+    unsigned long long loops = 0;
+    while (ld_acq_s32(done_flag) == 0) {
+      for (int k = 0; k < 32; ++k) {
+        uint4 v = ld_cg_u4(bg_buf + i);
+        acc ^= v.x;
+        i += stride;
+        if (i >= bg_vec4) i -= bg_vec4;
+      }
+      ++loops;
+    }
+    if (threadIdx.x == 0) {
+      uint64_t bg_t1 = read_globaltimer();
+      uint64_t cta_bytes = static_cast<uint64_t>(loops) * 32ULL * 16ULL * static_cast<uint64_t>(bg_active_threads);
+      out_bg_stats[blockIdx.x - 1] = BgCtaStats{cta_bytes, bg_t0, bg_t1};
+    }
     if (acc == 0xdeadbeefu) *sink = acc;
   }
 }
@@ -939,7 +961,8 @@ static int run_latency_curve(int device, int samples) {
   const size_t l2_chain_bytes = 4ULL * 1024ULL * 1024ULL;
   const size_t dram_chain_bytes = std::max<size_t>(128ULL * 1024ULL * 1024ULL, l2_bytes * 3ULL);
   const size_t bg_l2_bytes = 8ULL * 1024ULL * 1024ULL;
-  const size_t bg_dram_bytes = std::max<size_t>(128ULL * 1024ULL * 1024ULL, l2_bytes * 3ULL);
+  // Use >= 256 MiB (> 7x L2 on RTX 4070) so background DRAM traffic has zero L2 reuse.
+  const size_t bg_dram_bytes = std::max<size_t>(256ULL * 1024ULL * 1024ULL, l2_bytes * 6ULL);
 
   auto h_l2_chain = build_random_chain(l2_chain_bytes, 256, 303);
   auto h_dram_chain = build_random_chain(dram_chain_bytes, 256, 404);
@@ -947,20 +970,21 @@ static int run_latency_curve(int device, int samples) {
   uint64_t* d_l2_chain = nullptr;
   uint64_t* d_dram_chain = nullptr;
   uint4* d_bg_buf = nullptr;
+  uint4* d_sink_vec = nullptr;
   uint64_t* d_sink = nullptr;
   double* d_lat_ns = nullptr;
-  uint64_t* d_win_ns = nullptr;
-  unsigned long long* d_bg_bytes = nullptr;
+  BgCtaStats* d_bg_stats = nullptr;
   int* d_start = nullptr;
   int* d_done = nullptr;
 
+  int max_bg = std::max(1, sm_count - 1);
   CUDA_CHECK(cudaMalloc(&d_l2_chain, l2_chain_bytes));
   CUDA_CHECK(cudaMalloc(&d_dram_chain, dram_chain_bytes));
   CUDA_CHECK(cudaMalloc(&d_bg_buf, bg_dram_bytes));
+  CUDA_CHECK(cudaMalloc(&d_sink_vec, 1024 * sizeof(uint4)));
   CUDA_CHECK(cudaMalloc(&d_sink, sizeof(uint64_t)));
   CUDA_CHECK(cudaMalloc(&d_lat_ns, sizeof(double)));
-  CUDA_CHECK(cudaMalloc(&d_win_ns, sizeof(uint64_t)));
-  CUDA_CHECK(cudaMalloc(&d_bg_bytes, sizeof(unsigned long long)));
+  CUDA_CHECK(cudaMalloc(&d_bg_stats, static_cast<size_t>(max_bg) * sizeof(BgCtaStats)));
   CUDA_CHECK(cudaMalloc(&d_start, sizeof(int)));
   CUDA_CHECK(cudaMalloc(&d_done, sizeof(int)));
 
@@ -972,7 +996,6 @@ static int run_latency_curve(int device, int samples) {
     int bg_blocks;
     int bg_threads;
   };
-  int max_bg = std::max(1, sm_count - 1);
   std::vector<LoadLevel> levels = {
       {0, 0},
       {1, 64},
@@ -983,17 +1006,17 @@ static int run_latency_curve(int device, int samples) {
       {std::min(16, max_bg), 256},
       {max_bg, 256},
   };
+  std::vector<BgCtaStats> h_bg_stats(static_cast<size_t>(max_bg));
 
   auto measure_levels = [&](const char* key, bool is_dram, bool comma) {
     const uint64_t* chain = is_dram ? d_dram_chain : d_l2_chain;
     const size_t bg_vec4 = (is_dram ? bg_dram_bytes : bg_l2_bytes) / sizeof(uint4);
     const int steps = is_dram ? 4096 : 8192;
 
-    // Warm L2 chain once for L2 curve.
     if (!is_dram) {
       CUDA_CHECK(cudaMemset(d_start, 0, sizeof(int)));
       CUDA_CHECK(cudaMemset(d_done, 0, sizeof(int)));
-      pchase_bw_curve_kernel<<<1, 32>>>(chain, d_sink, d_lat_ns, d_win_ns, d_bg_bytes,
+      pchase_bw_curve_kernel<<<1, 32>>>(chain, d_sink, d_lat_ns, d_bg_stats,
                                         4096, nullptr, 0, 0, d_start, d_done);
       CUDA_CHECK(cudaDeviceSynchronize());
     }
@@ -1012,28 +1035,44 @@ static int run_latency_curve(int device, int samples) {
 
       for (int s = 0; s < samples; ++s) {
         if (is_dram) {
-          l2_flush_kernel<<<sm_count * 4, 256>>>(d_bg_buf, bg_dram_bytes / sizeof(uint4),
-                                                 static_cast<uint32_t>(s + li * 31));
+          // Clean read-only L2 flush avoids dirty write-backs during measurement.
+          l2_read_cg_kernel<<<sm_count * 4, 512>>>(d_bg_buf, d_sink_vec, bg_dram_bytes / sizeof(uint4), 1);
         }
         CUDA_CHECK(cudaMemset(d_start, 0, sizeof(int)));
         CUDA_CHECK(cudaMemset(d_done, 0, sizeof(int)));
-        CUDA_CHECK(cudaMemset(d_bg_bytes, 0, sizeof(unsigned long long)));
+        if (bg_b > 0) {
+          CUDA_CHECK(cudaMemset(d_bg_stats, 0, static_cast<size_t>(bg_b) * sizeof(BgCtaStats)));
+        }
 
         pchase_bw_curve_kernel<<<grid, threads>>>(
-            chain, d_sink, d_lat_ns, d_win_ns, d_bg_bytes, steps,
+            chain, d_sink, d_lat_ns, d_bg_stats, steps,
             (bg_b > 0) ? d_bg_buf : nullptr, bg_vec4, bg_t, d_start, d_done);
         CUDA_CHECK(cudaDeviceSynchronize());
 
         double lat_ns = 0.0;
-        uint64_t win_ns = 1;
-        unsigned long long bg_bytes = 0;
         CUDA_CHECK(cudaMemcpy(&lat_ns, d_lat_ns, sizeof(double), cudaMemcpyDeviceToHost));
-        CUDA_CHECK(cudaMemcpy(&win_ns, d_win_ns, sizeof(uint64_t), cudaMemcpyDeviceToHost));
-        CUDA_CHECK(cudaMemcpy(&bg_bytes, d_bg_bytes, sizeof(unsigned long long), cudaMemcpyDeviceToHost));
-
-        double bw_gbps = (bg_b > 0 && win_ns > 0)
-                             ? (static_cast<double>(bg_bytes) / static_cast<double>(win_ns))
-                             : 0.0;
+        double bw_gbps = 0.0;
+        if (bg_b > 0) {
+          CUDA_CHECK(cudaMemcpy(h_bg_stats.data(), d_bg_stats,
+                                static_cast<size_t>(bg_b) * sizeof(BgCtaStats),
+                                cudaMemcpyDeviceToHost));
+          // Total background bytes divided by global wall span [min(t_start), max(t_end)].
+          uint64_t total_bytes = 0;
+          uint64_t min_t0 = UINT64_MAX;
+          uint64_t max_t1 = 0;
+          for (int b = 0; b < bg_b; ++b) {
+            total_bytes += h_bg_stats[b].bytes;
+            if (h_bg_stats[b].t_start_ns > 0 && h_bg_stats[b].t_start_ns < min_t0) {
+              min_t0 = h_bg_stats[b].t_start_ns;
+            }
+            if (h_bg_stats[b].t_end_ns > max_t1) {
+              max_t1 = h_bg_stats[b].t_end_ns;
+            }
+          }
+          if (max_t1 > min_t0) {
+            bw_gbps = static_cast<double>(total_bytes) / static_cast<double>(max_t1 - min_t0);
+          }
+        }
         bw_samples.push_back(bw_gbps);
         lat_samples.push_back(lat_ns);
       }
@@ -1063,10 +1102,10 @@ static int run_latency_curve(int device, int samples) {
   CUDA_CHECK(cudaFree(d_l2_chain));
   CUDA_CHECK(cudaFree(d_dram_chain));
   CUDA_CHECK(cudaFree(d_bg_buf));
+  CUDA_CHECK(cudaFree(d_sink_vec));
   CUDA_CHECK(cudaFree(d_sink));
   CUDA_CHECK(cudaFree(d_lat_ns));
-  CUDA_CHECK(cudaFree(d_win_ns));
-  CUDA_CHECK(cudaFree(d_bg_bytes));
+  CUDA_CHECK(cudaFree(d_bg_stats));
   CUDA_CHECK(cudaFree(d_start));
   CUDA_CHECK(cudaFree(d_done));
   return 0;
@@ -1082,7 +1121,9 @@ static int run_l2_rescan(int device, int samples) {
   const int sm_count = prop.multiProcessorCount;
   const size_t l2_bytes = std::max<size_t>(prop.l2CacheSize, 4ULL * 1024ULL * 1024ULL);
 
-  std::vector<double> ratios = {0.25, 0.50, 0.75, 0.90, 1.00, 1.10, 1.25, 1.50, 2.00, 3.00, 4.00};
+  // Dense sampling around the L2 thrashing cliff (0.96x - 1.25x L2).
+  std::vector<double> ratios = {
+      0.25, 0.50, 0.75, 0.90, 0.96, 1.00, 1.04, 1.08, 1.12, 1.16, 1.25, 1.50, 2.00, 3.00, 4.00};
   std::vector<size_t> ws_list;
   for (double r : ratios) {
     size_t sz = static_cast<size_t>((l2_bytes * r) / (1024ULL * 1024ULL)) * (1024ULL * 1024ULL);
@@ -1166,6 +1207,226 @@ static int run_l2_rescan(int device, int samples) {
   CUDA_CHECK(cudaEventDestroy(ev2));
   CUDA_CHECK(cudaFree(d_buf));
   CUDA_CHECK(cudaFree(d_flush));
+  CUDA_CHECK(cudaFree(d_sink));
+  return 0;
+}
+
+// ---------------------------------------------------------------------------
+// 8. MLP curves: delivered BW vs bytes in flight (cp.async & ld.global.v4)
+// ---------------------------------------------------------------------------
+
+template <int STAGES>
+__global__ void mlp_cp_async_kernel(const uint4* __restrict__ src,
+                                    uint4* __restrict__ sink,
+                                    size_t n_vec4_mask,
+                                    int steps) {
+  __shared__ uint4 smem[STAGES * 256];
+  uint32_t tid = threadIdx.x;
+  size_t idx = (static_cast<size_t>(blockIdx.x) * 256ULL + tid) & n_vec4_mask;
+  size_t stride = static_cast<size_t>(gridDim.x) * 256ULL;
+
+  // Prefill STAGES groups in flight (each group = 256 * 16B = 4096 B per CTA).
+  #pragma unroll
+  for (int s = 0; s < STAGES; ++s) {
+    uint32_t smem_addr = static_cast<uint32_t>(__cvta_generic_to_shared(&smem[s * 256 + tid]));
+    const void* gptr = src + idx;
+    asm volatile("cp.async.cg.shared.global [%0], [%1], 16;\n" :: "r"(smem_addr), "l"(gptr));
+    asm volatile("cp.async.commit_group;\n" ::);
+    idx = (idx + stride) & n_vec4_mask;
+  }
+
+  for (int step = STAGES; step < steps; ++step) {
+    if constexpr (STAGES == 1) {
+      asm volatile("cp.async.wait_group 0;\n" ::);
+    } else if constexpr (STAGES == 2) {
+      asm volatile("cp.async.wait_group 1;\n" ::);
+    } else if constexpr (STAGES == 4) {
+      asm volatile("cp.async.wait_group 3;\n" ::);
+    }
+    int slot = step % STAGES;
+    uint32_t smem_addr = static_cast<uint32_t>(__cvta_generic_to_shared(&smem[slot * 256 + tid]));
+    const void* gptr = src + idx;
+    asm volatile("cp.async.cg.shared.global [%0], [%1], 16;\n" :: "r"(smem_addr), "l"(gptr));
+    asm volatile("cp.async.commit_group;\n" ::);
+    idx = (idx + stride) & n_vec4_mask;
+  }
+  asm volatile("cp.async.wait_all;\n" ::);
+  __syncthreads();
+  uint4 v = smem[tid];
+  if (v.x == 0xdeadbeefu && v.y == 0xdeadbeefu) {
+    sink[tid] = v;
+  }
+}
+
+template <int UNROLL>
+__global__ void mlp_ld_v4_kernel(const uint4* __restrict__ src,
+                                 uint4* __restrict__ sink,
+                                 size_t n_vec4_mask,
+                                 int outer_iters) {
+  uint32_t tid = threadIdx.x;
+  size_t idx = (static_cast<size_t>(blockIdx.x) * 256ULL + tid) & n_vec4_mask;
+  size_t stride = static_cast<size_t>(gridDim.x) * 256ULL;
+  uint32_t acc = 0;
+
+  for (int it = 0; it < outer_iters; ++it) {
+    uint32_t round_xor = 0;
+    #pragma unroll
+    for (int u = 0; u < UNROLL; ++u) {
+      uint4 v = ld_cg_u4(src + ((idx + static_cast<size_t>(u) * stride) & n_vec4_mask));
+      round_xor ^= (v.x ^ v.y ^ v.z ^ v.w);
+    }
+    acc ^= round_xor;
+    // Data dependency forces all UNROLL loads to return before issuing the next batch,
+    // holding exactly UNROLL * 256 * 16 B in flight per CTA.
+    size_t dep = (round_xor == 0xdeadbeefu) ? 1ULL : 0ULL;
+    idx = (idx + static_cast<size_t>(UNROLL) * stride + dep) & n_vec4_mask;
+  }
+  if (acc == 0xdeadbeefu) {
+    sink[tid] = make_uint4(acc, acc, acc, acc);
+  }
+}
+
+static int run_mlp(int device, int samples, int warmup) {
+  cudaDeviceProp prop{};
+  CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
+  const int sm_count = prop.multiProcessorCount;
+
+  // Power-of-two buffers for cheap bitmask wrap:
+  // DRAM = 256 MiB (> 7x L2 on RTX 4070), L2 = 8 MiB (< 0.25x L2).
+  const size_t dram_bytes = 256ULL * 1024ULL * 1024ULL;
+  const size_t l2_bytes = 8ULL * 1024ULL * 1024ULL;
+  const size_t dram_mask = (dram_bytes / sizeof(uint4)) - 1ULL;
+  const size_t l2_mask = (l2_bytes / sizeof(uint4)) - 1ULL;
+
+  uint4* d_dram = nullptr;
+  uint4* d_flush = nullptr;
+  uint4* d_l2 = nullptr;
+  uint4* d_sink = nullptr;
+  CUDA_CHECK(cudaMalloc(&d_dram, dram_bytes));
+  CUDA_CHECK(cudaMalloc(&d_flush, dram_bytes));
+  CUDA_CHECK(cudaMalloc(&d_l2, l2_bytes));
+  CUDA_CHECK(cudaMalloc(&d_sink, 1024 * sizeof(uint4)));
+  CUDA_CHECK(cudaMemset(d_dram, 13, dram_bytes));
+  CUDA_CHECK(cudaMemset(d_flush, 14, dram_bytes));
+  CUDA_CHECK(cudaMemset(d_l2, 15, l2_bytes));
+
+  cudaEvent_t ev_start, ev_stop;
+  CUDA_CHECK(cudaEventCreate(&ev_start));
+  CUDA_CHECK(cudaEventCreate(&ev_stop));
+
+  struct MlpPoint {
+    int ctas;
+    int mult;  // STAGES for cp_async, UNROLL for ld_global_v4 (each = 4096 B/CTA)
+  };
+  std::vector<MlpPoint> raw_pts = {
+      {1, 1},
+      {2, 1},
+      {4, 1},
+      {8, 1},
+      {16, 1},
+      {std::min(32, sm_count), 1},
+      {std::min(32, sm_count), 2},
+      {sm_count, 2},
+      {std::min(32, sm_count), 4},
+      {sm_count, 4},
+      {sm_count * 2, 4},
+      {sm_count * 3, 4},
+  };
+  // Deduplicate and sort strictly by bytes_in_flight = ctas * mult * 4096.
+  std::sort(raw_pts.begin(), raw_pts.end(), [](const MlpPoint& a, const MlpPoint& b) {
+    return (a.ctas * a.mult) < (b.ctas * b.mult);
+  });
+  std::vector<MlpPoint> pts;
+  for (const auto& p : raw_pts) {
+    if (pts.empty() || (p.ctas * p.mult) > (pts.back().ctas * pts.back().mult)) {
+      pts.push_back(p);
+    }
+  }
+
+  auto run_suite = [&](const char* key, bool is_dram, bool comma) {
+    const uint4* buf = is_dram ? d_dram : d_l2;
+    const size_t mask = is_dram ? dram_mask : l2_mask;
+    const size_t flush_vec4 = dram_bytes / sizeof(uint4);
+
+    std::printf("  \"%s\": [", key);
+    bool first_out = true;
+    for (const char* mode_name : {"cp_async", "ld_global_v4"}) {
+      bool is_cp = (std::strcmp(mode_name, "cp_async") == 0);
+      for (const auto& pt : pts) {
+        int ctas = pt.ctas;
+        int mult = pt.mult;
+        size_t bytes_per_cta = static_cast<size_t>(mult) * 4096ULL;
+        size_t bif = static_cast<size_t>(ctas) * bytes_per_cta;
+
+        // Pick total bytes transferred so each launch takes ~0.4-2.0 ms.
+        size_t target_bytes = is_dram
+                                  ? std::min(dram_bytes, std::max<size_t>(16ULL * 1024ULL * 1024ULL, bif * 128ULL))
+                                  : std::max<size_t>(64ULL * 1024ULL * 1024ULL, bif * 256ULL);
+        int cp_steps = std::max(mult * 4, static_cast<int>(target_bytes / (static_cast<size_t>(ctas) * 4096ULL)));
+        int ld_iters = std::max(4, cp_steps / mult);
+        double actual_bytes = is_cp
+                                  ? (static_cast<double>(ctas) * 4096.0 * cp_steps)
+                                  : (static_cast<double>(ctas) * 4096.0 * mult * ld_iters);
+
+        auto launch_once = [&]() {
+          if (is_cp) {
+            if (mult == 1) mlp_cp_async_kernel<1><<<ctas, 256>>>(buf, d_sink, mask, cp_steps);
+            else if (mult == 2) mlp_cp_async_kernel<2><<<ctas, 256>>>(buf, d_sink, mask, cp_steps);
+            else mlp_cp_async_kernel<4><<<ctas, 256>>>(buf, d_sink, mask, cp_steps);
+          } else {
+            if (mult == 1) mlp_ld_v4_kernel<1><<<ctas, 256>>>(buf, d_sink, mask, ld_iters);
+            else if (mult == 2) mlp_ld_v4_kernel<2><<<ctas, 256>>>(buf, d_sink, mask, ld_iters);
+            else mlp_ld_v4_kernel<4><<<ctas, 256>>>(buf, d_sink, mask, ld_iters);
+          }
+        };
+
+        for (int w = 0; w < warmup; ++w) {
+          if (is_dram) {
+            l2_read_cg_kernel<<<sm_count * 4, 512>>>(d_flush, d_sink, flush_vec4, 1);
+          }
+          launch_once();
+        }
+        CUDA_CHECK(cudaDeviceSynchronize());
+
+        std::vector<double> gbps;
+        gbps.reserve(samples);
+        for (int s = 0; s < samples; ++s) {
+          if (is_dram) {
+            l2_read_cg_kernel<<<sm_count * 4, 512>>>(d_flush, d_sink, flush_vec4, 1);
+          }
+          CUDA_CHECK(cudaEventRecord(ev_start));
+          launch_once();
+          CUDA_CHECK(cudaEventRecord(ev_stop));
+          CUDA_CHECK(cudaEventSynchronize(ev_stop));
+          float ms = 0.0f;
+          CUDA_CHECK(cudaEventElapsedTime(&ms, ev_start, ev_stop));
+          gbps.push_back((actual_bytes / 1e9) / (static_cast<double>(ms) / 1e3));
+        }
+
+        if (!first_out) std::printf(",");
+        first_out = false;
+        std::printf("\n    {\"issue_mode\": \"%s\", \"bytes_in_flight\": %zu, \"active_ctas\": %d, \"bytes_per_cta\": %zu, \"gbps_samples\": [",
+                    mode_name, bif, ctas, bytes_per_cta);
+        for (size_t k = 0; k < gbps.size(); ++k) {
+          if (k > 0) std::printf(", ");
+          std::printf("%.3f", gbps[k]);
+        }
+        std::printf("]}");
+      }
+    }
+    std::printf("\n  ]%s\n", comma ? "," : "");
+  };
+
+  std::printf("{\n  \"samples\": %d,\n", samples);
+  run_suite("dram_bw_by_bytes_in_flight", true, true);
+  run_suite("l2_bw_by_bytes_in_flight", false, false);
+  std::printf("}\n");
+
+  CUDA_CHECK(cudaEventDestroy(ev_start));
+  CUDA_CHECK(cudaEventDestroy(ev_stop));
+  CUDA_CHECK(cudaFree(d_dram));
+  CUDA_CHECK(cudaFree(d_flush));
+  CUDA_CHECK(cudaFree(d_l2));
   CUDA_CHECK(cudaFree(d_sink));
   return 0;
 }

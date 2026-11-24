@@ -21,8 +21,8 @@ sys.path.insert(0, str(REPO_ROOT / "python"))
 from virtualgpu.profile import validate_profile  # noqa: E402
 
 DEFAULT_BIN = Path(__file__).resolve().parent / "build" / "vgpu_bench"
-SUITE_VERSION = "0.3.0"
-PROFILE_REVISION = "0.3.0-m2"
+SUITE_VERSION = "0.4.0"
+PROFILE_REVISION = "0.4.0-m2"
 
 
 def find_nvidia_smi() -> str | None:
@@ -275,6 +275,7 @@ def build_profile(
     launch_raw: dict[str, Any],
     lat_curve_raw: dict[str, Any],
     l2_rescan_raw: dict[str, Any],
+    mlp_raw: dict[str, Any],
     smi_samples: list[dict[str, Any]],
 ) -> dict[str, Any]:
     major = int(query["major"])
@@ -568,6 +569,41 @@ def build_profile(
             "estimated_hit_rate": hr_mv,
         })
 
+    # Build MLP curves: delivered BW vs bytes in flight (cp_async & ld_global_v4).
+    def build_mlp_curve(
+        raw_points: list[dict[str, Any]],
+        method_prefix: str,
+        perturb_group: str,
+        clk_rng: list[float] | None,
+    ) -> list[dict[str, Any]]:
+        pts: list[dict[str, Any]] = []
+        for pt in raw_points:
+            mode = pt["issue_mode"]
+            mv = make_measured(
+                pt["gbps_samples"],
+                unit="GB/s",
+                method=f"{method_prefix}_{mode}",
+                perturb_group=perturb_group,
+                clock_range=clk_rng,
+                locked=False,
+                throttle_events=throttle_events,
+            )
+            pts.append({
+                "issue_mode": mode,
+                "bytes_in_flight": int(pt["bytes_in_flight"]),
+                "active_ctas": int(pt["active_ctas"]),
+                "bytes_per_cta": int(pt["bytes_per_cta"]),
+                "bw_gbps": mv,
+            })
+        return pts
+
+    dram_mlp_curve = build_mlp_curve(
+        mlp_raw["dram_bw_by_bytes_in_flight"], "cuda_mlp_dram_clean", "dram_bw", mem_range
+    )
+    l2_mlp_curve = build_mlp_curve(
+        mlp_raw["l2_bw_by_bytes_in_flight"], "cuda_mlp_l2_warm", "l2_bw", sm_range
+    )
+
     sm_clock_ghz = (
         (statistics.median(sm_clocks) / 1000.0)
         if sm_clocks
@@ -651,9 +687,11 @@ def build_profile(
                 "dram_bw_read_gbps": full_read_mv,
                 "dram_bw_write_gbps": full_write_mv,
                 "dram_bw_by_active_sms": read_curve_points,
+                "dram_bw_by_bytes_in_flight": dram_mlp_curve,
                 "l2_bw_read_gbps": full_l2_read_mv,
                 "l2_bw_write_gbps": full_l2_write_mv,
                 "l2_bw_by_active_sms": l2_curve_points,
+                "l2_bw_by_bytes_in_flight": l2_mlp_curve,
                 "l2_effective_capacity_bytes": l2_eff_mv,
                 "smem_bw_per_sm_gbps": smem_bw_mv,
                 "dram_latency_ns": dram_lat_mv,
@@ -731,16 +769,19 @@ def main() -> int:
         args.binary, "latency-curve", args.device, ["--samples", "11"]
     )
     l2_rescan_raw, smi_rs = run_bench_with_clock_polling(
-        args.binary, "l2-rescan", args.device, ["--samples", "11"]
+        args.binary, "l2-rescan", args.device, ["--samples", str(args.samples)]
+    )
+    mlp_raw, smi_mlp = run_bench_with_clock_polling(
+        args.binary, "mlp", args.device, ["--samples", "11"]
     )
     dispatch_raw, smi_disp = run_bench_with_clock_polling(
         args.binary, "cta-dispatch", args.device, ["--repeats", str(args.repeats)]
     )
-    smi_samples = smi_dram + smi_mma + smi_l2 + smi_cp + smi_lat + smi_launch + smi_lc + smi_rs + smi_disp
+    smi_samples = smi_dram + smi_mma + smi_l2 + smi_cp + smi_lat + smi_launch + smi_lc + smi_rs + smi_mlp + smi_disp
 
     profile = build_profile(
         query, dram_raw, dispatch_raw, mma_raw, l2_raw, cp_async_raw,
-        latency_raw, launch_raw, lat_curve_raw, l2_rescan_raw, smi_samples
+        latency_raw, launch_raw, lat_curve_raw, l2_rescan_raw, mlp_raw, smi_samples
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("w", encoding="utf-8") as fh:

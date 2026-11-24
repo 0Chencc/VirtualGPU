@@ -232,12 +232,22 @@
               "minItems": 1,
               "items": { "$ref": "#/$defs/ActiveSmBwPoint" }
             },
+            "dram_bw_by_bytes_in_flight": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/BytesInFlightBwPoint" }
+            },
             "l2_bw_read_gbps": { "$ref": "#/$defs/MeasuredValue" },
             "l2_bw_write_gbps": { "$ref": "#/$defs/MeasuredValue" },
             "l2_bw_by_active_sms": {
               "type": "array",
               "minItems": 1,
               "items": { "$ref": "#/$defs/ActiveSmBwPoint" }
+            },
+            "l2_bw_by_bytes_in_flight": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/BytesInFlightBwPoint" }
             },
             "l2_effective_capacity_bytes": { "$ref": "#/$defs/MeasuredValue" },
             "smem_bw_per_sm_gbps": { "$ref": "#/$defs/MeasuredValue" },
@@ -466,6 +476,21 @@
       "required": ["active_sms", "bw_gbps"],
       "properties": {
         "active_sms": { "type": "integer", "minimum": 1 },
+        "bw_gbps": { "$ref": "#/$defs/MeasuredValue" }
+      }
+    },
+    "BytesInFlightBwPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["issue_mode", "bytes_in_flight", "active_ctas", "bytes_per_cta", "bw_gbps"],
+      "properties": {
+        "issue_mode": {
+          "type": "string",
+          "enum": ["cp_async", "ld_global_v4"]
+        },
+        "bytes_in_flight": { "type": "integer", "minimum": 1 },
+        "active_ctas": { "type": "integer", "minimum": 1 },
+        "bytes_per_cta": { "type": "integer", "minimum": 1 },
         "bw_gbps": { "$ref": "#/$defs/MeasuredValue" }
       }
     },

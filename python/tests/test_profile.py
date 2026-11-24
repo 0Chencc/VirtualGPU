@@ -40,7 +40,9 @@ def test_rtx4070_profile_is_valid() -> None:
     assert mem["dram_latency_loaded_ns"]["source"] == "measured"
     assert len(mem["dram_latency_by_bw"]) >= 5
     assert len(mem["l2_latency_by_bw"]) >= 5
-    assert len(mem["l2_rescan_hit_rate_by_working_set"]) >= 8
+    assert len(mem["dram_bw_by_bytes_in_flight"]) >= 16
+    assert len(mem["l2_bw_by_bytes_in_flight"]) >= 16
+    assert len(mem["l2_rescan_hit_rate_by_working_set"]) >= 12
     assert profile["measured"]["async_pipeline"]["cp_async_bw_per_sm_gbps"]["source"] == "measured"
     assert profile["measured"]["overhead"]["launch_overhead_us"]["source"] == "measured"
     mma_f16 = profile["measured"]["compute"]["mma_tflops_per_sm_by_warps"]["mma.sync:f16:f16:f32:16x8x16"]
@@ -92,4 +94,16 @@ def test_rejects_dispatch_policy_not_in_candidates() -> None:
     profile["measured"]["cta_dispatch"]["observed_policy"] = "grouped"
     profile["measured"]["cta_dispatch"]["candidate_policies"] = ["round_robin"]
     with pytest.raises(ProfileValidationError, match="candidate_policies"):
+        validate_profile(profile)
+
+
+def test_rejects_latency_curve_bw_exceeding_peak() -> None:
+    profile = copy.deepcopy(load_profile(EXAMPLE_PROFILE))
+    peak_mv = profile["measured"]["memory"]["dram_bw_read_gbps"]
+    max_allowed = peak_mv["value"] * (1.0 + peak_mv["rel_uncertainty"])
+    profile["measured"]["memory"]["dram_latency_by_bw"] = [
+        {"achieved_bw_gbps": 0.0, "latency_ns": profile["measured"]["memory"]["dram_latency_ns"]},
+        {"achieved_bw_gbps": max_allowed + 1.0, "latency_ns": profile["measured"]["memory"]["dram_latency_ns"]},
+    ]
+    with pytest.raises(ProfileValidationError, match="dram_bw_read_gbps"):
         validate_profile(profile)

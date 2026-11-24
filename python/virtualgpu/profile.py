@@ -92,7 +92,39 @@ def _semantic_checks(profile: dict[str, Any]) -> list[str]:
         mem["l2_bw_by_active_sms"], "active_sms", sm_count, "measured.memory.l2_bw_by_active_sms", errors
     )
 
-    for lat_key in ("dram_latency_by_bw", "l2_latency_by_bw"):
+    for mlp_key, peak_key in (
+        ("dram_bw_by_bytes_in_flight", "dram_bw_read_gbps"),
+        ("l2_bw_by_bytes_in_flight", "l2_bw_read_gbps"),
+    ):
+        if mlp_key in mem:
+            peak_mv = mem[peak_key]
+            max_allowed = peak_mv["value"] * (1.0 + peak_mv["rel_uncertainty"])
+            by_mode: dict[str, int] = {}
+            for idx, pt in enumerate(mem[mlp_key]):
+                mode = pt["issue_mode"]
+                bif = pt["bytes_in_flight"]
+                if bif != pt["active_ctas"] * pt["bytes_per_cta"]:
+                    errors.append(
+                        f"measured.memory.{mlp_key}[{idx}].bytes_in_flight ({bif}) != active_ctas * bytes_per_cta"
+                    )
+                prev = by_mode.get(mode, 0)
+                if bif <= prev:
+                    errors.append(
+                        f"measured.memory.{mlp_key}[{idx}].bytes_in_flight ({bif}) must be strictly increasing "
+                        f"within issue_mode={mode!r} (prev={prev})"
+                    )
+                by_mode[mode] = bif
+                bw = pt["bw_gbps"]["value"]
+                if bw > max_allowed:
+                    errors.append(
+                        f"measured.memory.{mlp_key}[{idx}].bw_gbps ({bw:.1f}) "
+                        f"exceeds {peak_key} * (1 + rel_uncertainty) ({max_allowed:.1f})"
+                    )
+
+    for lat_key, peak_key in (
+        ("dram_latency_by_bw", "dram_bw_read_gbps"),
+        ("l2_latency_by_bw", "l2_bw_read_gbps"),
+    ):
         if lat_key in mem:
             prev_bw = -1.0
             for idx, pt in enumerate(mem[lat_key]):
@@ -102,6 +134,14 @@ def _semantic_checks(profile: dict[str, Any]) -> list[str]:
                         f"measured.memory.{lat_key}[{idx}].achieved_bw_gbps ({bw}) must be non-decreasing (prev={prev_bw})"
                     )
                 prev_bw = bw
+            peak_mv = mem[peak_key]
+            peak_bw = peak_mv["value"]
+            max_allowed = peak_bw * (1.0 + peak_mv["rel_uncertainty"])
+            if prev_bw > max_allowed:
+                errors.append(
+                    f"measured.memory.{lat_key} max achieved_bw_gbps ({prev_bw:.1f}) "
+                    f"exceeds {peak_key} * (1 + rel_uncertainty) ({max_allowed:.1f})"
+                )
 
     if "l2_rescan_hit_rate_by_working_set" in mem:
         prev_ws = 0
