@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/ZacharyZcR/VirtualGPU/schemas/gpu_profile.schema.json",
+  "$id": "https://github.com/VirtualGPU/VirtualGPU/schemas/gpu_profile.schema.json",
   "title": "VirtualGPU Hardware Profile",
   "description": "Versioned GPU hardware specification and microbenchmark calibration profile (v0.1).",
   "type": "object",
