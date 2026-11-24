@@ -6,6 +6,7 @@ import math
 from typing import Any
 
 from virtualgpu.frontend.compiler import (
+    ARTIFACT_HASH_VERSION,
     MockTensor,
     compile_triton_aot,
     specialize_triton_call,
@@ -160,9 +161,9 @@ def extract_gemm_kernel_ir(
     """Compile a Triton GEMM kernel offline using Triton's runtime JIT binder
     and emit a KernelIR v0.1 dictionary.
     """
-    block_m = int(config.get("BLOCK_SIZE_M", config.get("BLOCK_M", 128)))
-    block_n = int(config.get("BLOCK_SIZE_N", config.get("BLOCK_N", 128)))
-    block_k = int(config.get("BLOCK_SIZE_K", config.get("BLOCK_K", 32)))
+    block_m = int(config.get("BLOCK_SIZE_M", config.get("BLOCK_M", config.get("BM", 128))))
+    block_n = int(config.get("BLOCK_SIZE_N", config.get("BLOCK_N", config.get("BN", 128))))
+    block_k = int(config.get("BLOCK_SIZE_K", config.get("BLOCK_K", config.get("BK", 32))))
     num_warps = int(config.get("num_warps", 4))
     num_stages = int(config.get("num_stages", 3))
 
@@ -369,6 +370,7 @@ def extract_gemm_kernel_ir(
                 "assembler": artifacts.ptxas.assembler,
                 "assembler_version": artifacts.ptxas.assembler_version,
                 "target_sm_compiled": artifacts.ptxas.target_sm,
+                "artifact_hash_version": ARTIFACT_HASH_VERSION,
                 "ptx_sha256": artifacts.ptx_sha256,
                 "ttgir_sha256": artifacts.ttgir_sha256,
             },

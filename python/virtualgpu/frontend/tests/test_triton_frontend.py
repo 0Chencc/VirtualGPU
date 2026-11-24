@@ -11,7 +11,9 @@ import triton
 import triton.language as tl
 
 from virtualgpu.frontend import (
+    ARTIFACT_HASH_VERSION,
     MockTensor,
+    artifact_hashes,
     extract_gemm_kernel_ir,
     hash_ptx,
     hash_ttgir,
@@ -92,6 +94,31 @@ def _matmul_tma_kernel(
         c_ptr, shape=[M, N], strides=[N, 1], block_shape=[BLOCK_SIZE_M, BLOCK_SIZE_N]
     )
     c_desc.store([pid_m * BLOCK_SIZE_M, pid_n * BLOCK_SIZE_N], acc.to(tl.float16))
+
+
+@triton.jit
+def _nonstandard_gemm(
+    lhs, rhs, out,
+    rows, cols, inner,
+    l_s0, l_s1,
+    r_s0, r_s1,
+    o_s0, o_s1,
+    BM: tl.constexpr,
+    BN: tl.constexpr,
+    BK: tl.constexpr,
+):
+    pm = tl.program_id(0)
+    pn = tl.program_id(1)
+    rm = pm * BM + tl.arange(0, BM)
+    rn = pn * BN + tl.arange(0, BN)
+    rk = tl.arange(0, BK)
+    acc = tl.zeros((BM, BN), dtype=tl.float32)
+    for k in range(0, tl.cdiv(inner, BK)):
+        kk = k * BK + rk
+        a = tl.load(lhs + rm[:, None] * l_s0 + kk[None, :] * l_s1, (rm[:, None] < rows) & (kk[None, :] < inner), other=0.0)
+        b = tl.load(rhs + kk[:, None] * r_s0 + rn[None, :] * r_s1, (kk[:, None] < inner) & (rn[None, :] < cols), other=0.0)
+        acc = tl.dot(a, b, acc)
+    tl.store(out + rm[:, None] * o_s0 + rn[None, :] * o_s1, acc.to(tl.float16), (rm[:, None] < rows) & (rn[None, :] < cols))
 
 
 def _load_schema() -> dict:
@@ -237,6 +264,46 @@ def test_runtime_specialization_parity_and_artifact_hashing() -> None:
     ptx2 = "// different path\n.loc 2 99 0\n  mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32   d, a, b, c; // trailing\n"
     assert hash_ptx(ptx1) == hash_ptx(ptx2)
 
-    ttgir1 = '#loc1 = loc("/a/b.py":1:1)\n%0 = tt.dot %a, %b, %c : tensor<128x32xf16> loc(#loc1)\n'
-    ttgir2 = '#loc1 = loc("/x/y.py":99:5)\n%0 = tt.dot %a, %b, %c : tensor<128x32xf16> loc(#loc1)\n'
+    ttgir1 = (
+        '#loc = loc("/a/b.py":1:1)\n'
+        '#loc1 = loc(callsite(#loc at #loc))\n'
+        'tt.func public @k(%a: !tt.ptr<f16> loc("a"(#loc))) {\n'
+        '  %0 = tt.dot %a, %b, %c : tensor<128x32xf16> loc(callsite(#loc1 at #loc))\n'
+        '}\n'
+    )
+    ttgir2 = (
+        '#loc = loc("/other/path.py":99:5)\n'
+        '#loc1 = loc(callsite(#loc at #loc))\n'
+        'tt.func public @k(%a: !tt.ptr<f16> loc("a"(#loc))) {\n'
+        '  %0 = tt.dot %a, %b, %c : tensor<128x32xf16> loc(#loc1)\n'
+        '}\n'
+    )
     assert hash_ttgir(ttgir1) == hash_ttgir(ttgir2)
+    bundle = artifact_hashes(ptx1, ttgir1)
+    assert bundle["artifact_hash_version"] == ARTIFACT_HASH_VERSION
+    assert bundle["ptx_sha256"] == hash_ptx(ptx1)
+    assert bundle["ttgir_sha256"] == hash_ttgir(ttgir1)
+
+
+def test_nonstandard_param_names_use_triton_binder() -> None:
+    schema = _load_schema()
+    call_args = (
+        MockTensor("f16", ptr=0x10000),
+        MockTensor("f16", ptr=0x200000),
+        MockTensor("f16", ptr=0x400000),
+        1024, 1024, 512,
+        512, 1, 1024, 1, 1024, 1,
+    )
+    ir = extract_gemm_kernel_ir(
+        _nonstandard_gemm,
+        M=1024,
+        N=1024,
+        K=512,
+        config={"BM": 128, "BN": 128, "BK": 32, "num_warps": 4, "num_stages": 3},
+        target_arch="sm_89",
+        call_args=call_args,
+    )
+    jsonschema.validate(instance=ir, schema=schema)
+    assert ir["body"]["pipeline_loop"]["async_copy"] == "async_element"
+    assert ir["body"]["pipeline_loop"]["num_stages"] == 3
+    assert ir["metadata"]["toolchain"]["artifact_hash_version"] == ARTIFACT_HASH_VERSION

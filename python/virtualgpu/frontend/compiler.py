@@ -89,7 +89,36 @@ _RE_USED_LINE = re.compile(
 _RE_VERSION = re.compile(r"release\s+([0-9.]+),\s*V([0-9.]+)")
 _RE_PTX_LOCAL_LDST = re.compile(r"\b(?:ld|st)\.local\b")
 _RE_TTGIR_LOC_DEF = re.compile(r"^#loc\d*\s*=.*$")
-_RE_TTGIR_LOC_REF = re.compile(r"\s+loc\([^)]*\)\s*$")
+
+ARTIFACT_HASH_VERSION = "1"
+
+
+def _strip_ttgir_locs(line: str) -> str:
+    """Strip all loc(...) annotations from a TTGIR line, handling nested parens."""
+    out: list[str] = []
+    i = 0
+    n = len(line)
+    while i < n:
+        if line.startswith("loc(", i) and (i == 0 or not (line[i - 1].isalnum() or line[i - 1] == "_")):
+            depth = 0
+            j = i + 3
+            while j < n:
+                if line[j] == "(":
+                    depth += 1
+                elif line[j] == ")":
+                    depth -= 1
+                    if depth == 0:
+                        j += 1
+                        break
+                j += 1
+            # Remove a single preceding space if we stripped a loc(...)
+            if out and out[-1] == " ":
+                out.pop()
+            i = j
+        else:
+            out.append(line[i])
+            i += 1
+    return "".join(out).strip()
 
 
 def hash_ptx(ptx: str) -> str:
@@ -111,16 +140,26 @@ def hash_ptx(ptx: str) -> str:
 
 
 def hash_ttgir(ttgir: str) -> str:
-    """Compute a normalized SHA-256 over TTGIR, stripping source location metadata."""
+    """Compute a normalized SHA-256 over TTGIR, stripping all source location metadata."""
     norm_lines: list[str] = []
     for raw in ttgir.splitlines():
         stripped = raw.strip()
         if not stripped or _RE_TTGIR_LOC_DEF.match(stripped):
             continue
-        cleaned = _RE_TTGIR_LOC_REF.sub("", stripped)
-        norm_lines.append(cleaned)
+        cleaned = _strip_ttgir_locs(stripped)
+        if cleaned:
+            norm_lines.append(cleaned)
     payload = "\n".join(norm_lines).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
+
+
+def artifact_hashes(ptx: str, ttgir: str) -> dict[str, str]:
+    """Return the versioned AOT/JIT artifact consistency hash bundle."""
+    return {
+        "artifact_hash_version": ARTIFACT_HASH_VERSION,
+        "ptx_sha256": hash_ptx(ptx),
+        "ttgir_sha256": hash_ttgir(ttgir),
+    }
 
 
 def specialize_triton_call(
@@ -255,11 +294,25 @@ def parse_ptxas_verbose(
     )
 
 
-def run_ptxas_verbose(ptx: str, arch_num: int) -> PtxasReport:
-    """Assemble PTX with ptxas -v on CPU and parse resource statistics."""
+def run_ptxas_verbose(
+    ptx: str,
+    arch_num: int,
+    options: dict[str, Any] | None = None,
+) -> PtxasReport:
+    """Assemble PTX with ptxas -v on CPU using the same flags as Triton's CUDABackend."""
     assembler_name, ptxas_path = find_bundled_ptxas(arch_num)
     target_sm = detect_ptx_target(ptx, arch_num)
     version = get_ptxas_version(ptxas_path)
+
+    opts = options or {}
+    flags: list[str] = ["-lineinfo"]
+    if opts.get("enable_fp_fusion") is False:
+        flags.append("--fmad=false")
+    flags.extend(["-v", "--regAllocOptLevel=2"])
+    ptx_extra = opts.get("ptx_options")
+    if ptx_extra:
+        flags.extend(str(ptx_extra).split())
+    flags.append(f"--gpu-name={target_sm}")
 
     with tempfile.TemporaryDirectory(prefix="vgpu_ptxas_") as tmpdir:
         ptx_file = os.path.join(tmpdir, "kernel.ptx")
@@ -267,7 +320,7 @@ def run_ptxas_verbose(ptx: str, arch_num: int) -> PtxasReport:
         with open(ptx_file, "w", encoding="utf-8") as f:
             f.write(ptx)
         proc = subprocess.run(
-            [ptxas_path, f"--gpu-name={target_sm}", "-v", ptx_file, "-o", cubin_file],
+            [ptxas_path, *flags, ptx_file, "-o", cubin_file],
             capture_output=True,
             text=True,
             check=False,
@@ -320,7 +373,8 @@ def compile_triton_aot(
     compiled = triton.compile(src, target=target, options=compile_options)
     ttgir = compiled.asm["ttgir"]
     ptx = compiled.asm["ptx"]
-    ptxas_report = run_ptxas_verbose(ptx, arch_num)
+    ptxas_report = run_ptxas_verbose(ptx, arch_num, options=compile_options)
+    hashes = artifact_hashes(ptx, ttgir)
 
     return CompiledArtifacts(
         kernel_name=getattr(compiled.metadata, "name", fn.__name__),
@@ -328,8 +382,8 @@ def compile_triton_aot(
         triton_version=triton.__version__,
         ttgir=ttgir,
         ptx=ptx,
-        ttgir_sha256=hash_ttgir(ttgir),
-        ptx_sha256=hash_ptx(ptx),
+        ttgir_sha256=hashes["ttgir_sha256"],
+        ptx_sha256=hashes["ptx_sha256"],
         static_smem_bytes=int(getattr(compiled.metadata, "shared", 0) or 0),
         requested_num_warps=num_warps,
         requested_num_stages=num_stages,
