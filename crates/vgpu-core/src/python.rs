@@ -69,6 +69,7 @@ fn predict<'py>(
     let nominal = &all[0].profile;
 
     let d = PyDict::new(py);
+    d.set_item("build", build_info(py)?)?;
     d.set_item("l2_state", l2_state)?;
     d.set_item("dispatch_policy", "round_robin")?;
     let one = |k: &Kernel, draw: &Draw| {
@@ -148,6 +149,25 @@ fn pair_verdict(a: Vec<f64>, b: Vec<f64>) -> PyResult<&'static str> {
     })
 }
 
+/// The build that produces predictions: `{"commit": sha, "dirty": bool,
+/// "result_class": "formal" | "diagnostic"}`. A build with uncommitted
+/// changes to compiled code only produces diagnostic results.
+#[pyfunction]
+fn build_info(py: Python<'_>) -> PyResult<Bound<'_, PyDict>> {
+    let d = PyDict::new(py);
+    d.set_item("commit", crate::BUILD_COMMIT)?;
+    d.set_item("dirty", crate::BUILD_DIRTY)?;
+    d.set_item(
+        "result_class",
+        if crate::BUILD_DIRTY {
+            "diagnostic"
+        } else {
+            "formal"
+        },
+    )?;
+    Ok(d)
+}
+
 /// The JSON Schema contracts, embedded at build time so installed wheels have them.
 #[pyfunction]
 fn schema(name: &str) -> PyResult<&'static str> {
@@ -166,5 +186,6 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(predict, m)?)?;
     m.add_function(wrap_pyfunction!(schema, m)?)?;
     m.add_function(wrap_pyfunction!(pair_verdict, m)?)?;
+    m.add_function(wrap_pyfunction!(build_info, m)?)?;
     Ok(())
 }

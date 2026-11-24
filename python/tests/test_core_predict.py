@@ -54,3 +54,10 @@ def test_pair_verdict_uses_the_five_percent_band():
     assert _core.pair_verdict([90.0, 96.0], [100.0, 100.0]) == "indistinguishable"
     with pytest.raises(ValueError):
         _core.pair_verdict([1.0], [1.0, 2.0])
+
+
+def test_predictions_carry_the_build():
+    info = _core.build_info()
+    assert set(info) == {"commit", "dirty", "result_class"}
+    assert info["result_class"] == ("diagnostic" if info["dirty"] else "formal")
+    assert _core.predict(IR, PROFILE, draws=0)["build"] == info
