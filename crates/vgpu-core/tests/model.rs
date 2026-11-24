@@ -1,7 +1,7 @@
 use vgpu_core::kernel::{Access, Kernel, Spill, SpillScope, Tile, TripCounts, Work};
 use vgpu_core::occupancy::{occupancy, Limiter, OccupancyError};
 use vgpu_core::profile::Profile;
-use vgpu_core::sim::{simulate, ConstantHitRatio, Machine, Prediction};
+use vgpu_core::sim::{simulate, ConstantHitRatio, Machine, Prediction, Traffic, L2};
 
 const MMA: &str = "mma.sync:f16:f16:f32:16x8x16";
 
@@ -458,4 +458,61 @@ fn stage_buffers_share_round_trip_and_compute() {
         "{} vs {expected}",
         p.makespan_ns
     );
+}
+
+/// Loads split by fixed fractions between resident hits, merged requests,
+/// and DRAM fetches.
+struct Split(f64, f64);
+
+impl L2 for Split {
+    fn split(
+        &mut self,
+        _: u32,
+        _: u32,
+        _: u32,
+        a: &Access,
+        k0: u32,
+        k1: u32,
+        is_write: bool,
+        _: f64,
+    ) -> Traffic {
+        let bytes = a.nominal_bytes * f64::from(k1 - k0);
+        if is_write {
+            return Traffic {
+                resident: 0.0,
+                merged: 0.0,
+                dram: bytes,
+            };
+        }
+        Traffic {
+            resident: bytes * self.0,
+            merged: bytes * self.1,
+            dram: bytes * (1.0 - self.0 - self.1),
+        }
+    }
+}
+
+#[test]
+fn merged_requests_wait_for_dram_but_use_no_dram_bandwidth() {
+    // Latency bound, one stage in flight per CTA: L2 latency 100 ns, DRAM
+    // 1000 ns. Half the bytes merged into fills of the other half.
+    let (k, mut m) = latency_bound(1);
+    m.l2_latency_ns = 100.0;
+    m.l2_latency_loaded_ns = 100.0;
+    let p = |l2: &mut Split| simulate(&k, &profile(), &m, l2).unwrap();
+    let resident = p(&mut Split(0.5, 0.0));
+    let merged = p(&mut Split(0.0, 0.5));
+    let trips = 1.0 + 63.0 / 2.0;
+    assert!(
+        close(resident.makespan_ns, trips * 550.0),
+        "{}",
+        resident.makespan_ns
+    );
+    assert!(
+        close(merged.makespan_ns, trips * 1000.0),
+        "{}",
+        merged.makespan_ns
+    );
+    assert!(close(merged.dram_bytes, resident.dram_bytes));
+    assert!(close(merged.merged_bytes, merged.l2_hit_bytes));
 }

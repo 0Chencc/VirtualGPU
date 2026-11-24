@@ -6,7 +6,7 @@ use crate::kernel::{Access, Kernel, Spill, SpillScope, Tile, TripCounts, Work};
 use crate::l2::SpillTraffic;
 use crate::l2::{L2InitState, L2Model, L2Options, L2Profile};
 use crate::profile::Profile;
-use crate::sim::{ModelError, L2};
+use crate::sim::{ModelError, Traffic, L2};
 use std::collections::HashMap;
 
 fn unsupported(what: impl Into<String>) -> ModelError {
@@ -170,7 +170,7 @@ impl L2 for IrL2<'_> {
         k1: u32,
         is_write: bool,
         t_ns: f64,
-    ) -> (f64, f64) {
+    ) -> Traffic {
         let policy = self
             .policy
             .get(&a.op_id)
@@ -187,7 +187,11 @@ impl L2 for IrL2<'_> {
             policy,
             t_ns,
         );
-        (r.l2_bytes, r.dram_bytes)
+        Traffic {
+            resident: r.resident_hit_bytes,
+            merged: r.merged_bytes,
+            dram: r.dram_bytes,
+        }
     }
 
     fn spill(&mut self, sm: u32, active_threads_in_sm: u32, s: &Spill) -> (f64, f64, f64) {

@@ -15,12 +15,40 @@ use crate::kernel::{Access, Kernel, Spill, SpillScope, Work};
 use crate::occupancy::{occupancy, Occupancy, OccupancyError};
 use crate::profile::{interpolate, MlpPoint, Profile};
 
+/// Where the bytes of an access are served from.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct Traffic {
+    /// Already in L2 when requested: L2 bandwidth, L2 latency.
+    pub resident: f64,
+    /// Merged into a DRAM fill another resident CTA has in flight: L2
+    /// bandwidth only, but the request waits for the fill (DRAM latency).
+    pub merged: f64,
+    /// Fetched from DRAM.
+    pub dram: f64,
+}
+
+impl Traffic {
+    pub fn total(&self) -> f64 {
+        self.resident + self.merged + self.dram
+    }
+}
+
+impl std::ops::Add for Traffic {
+    type Output = Traffic;
+    fn add(self, o: Traffic) -> Traffic {
+        Traffic {
+            resident: self.resident + o.resident,
+            merged: self.merged + o.merged,
+            dram: self.dram + o.dram,
+        }
+    }
+}
+
 /// The core's view of the L2 model.
 pub trait L2 {
     fn begin_tile(&mut self, _sm: u32, _program: u32, _tile: u32, _t_ns: f64) {}
     fn end_tile(&mut self, _sm: u32, _program: u32, _tile: u32, _t_ns: f64) {}
-    /// Traffic of one access over steps `[k_begin, k_end)` of a phase, as
-    /// `(bytes served by L2, bytes served by DRAM)`.
+    /// Traffic of one access over steps `[k_begin, k_end)` of a phase.
     #[allow(clippy::too_many_arguments)]
     fn split(
         &mut self,
@@ -32,7 +60,7 @@ pub trait L2 {
         k_end: u32,
         is_write: bool,
         t_ns: f64,
-    ) -> (f64, f64);
+    ) -> Traffic;
 
     /// Spill traffic of all resident threads of one SM per execution of the
     /// spill scope, as `(L1 bytes, L2 bytes, DRAM bytes)`.
@@ -45,7 +73,8 @@ pub trait L2 {
     }
 }
 
-/// Fixed hit ratio for loads, nominal bytes, stores go to DRAM. For tests.
+/// Fixed resident hit ratio for loads, nominal bytes, stores go to DRAM. For
+/// tests.
 pub struct ConstantHitRatio(pub f64);
 
 impl L2 for ConstantHitRatio {
@@ -59,10 +88,14 @@ impl L2 for ConstantHitRatio {
         k1: u32,
         is_write: bool,
         _: f64,
-    ) -> (f64, f64) {
+    ) -> Traffic {
         let bytes = a.nominal_bytes * f64::from(k1 - k0);
         let hit = if is_write { 0.0 } else { self.0 };
-        (bytes * hit, bytes * (1.0 - hit))
+        Traffic {
+            resident: bytes * hit,
+            merged: 0.0,
+            dram: bytes * (1.0 - hit),
+        }
     }
 }
 
@@ -236,6 +269,8 @@ pub struct Prediction {
     pub tail_efficiency: f64,
     pub load_bytes: f64,
     pub l2_hit_bytes: f64,
+    /// Part of `l2_hit_bytes` merged into in-flight DRAM fills.
+    pub merged_bytes: f64,
     pub dram_bytes: f64,
     pub events: u64,
     /// Fraction of CTA-time during which each resource of `RESOURCES` was the
@@ -274,15 +309,20 @@ struct Demand {
     /// Fraction of the phase's compute, at the rate the CTA would get alone
     /// on its SM, that adds to the round trips instead of overlapping them.
     exposed_compute: f64,
-    /// Fraction of loaded bytes served by L2.
-    hit_fraction: f64,
+    /// Fraction of loaded bytes already resident in L2: they wait L2
+    /// latency. The rest, merged or fetched, waits DRAM latency.
+    resident_fraction: f64,
+    /// Fraction of loaded bytes fetched from DRAM: only these occupy DRAM
+    /// in flight, merged requests ride on their fills.
+    dram_fraction: f64,
 }
 
 impl Demand {
     /// Exposed latency given the current DRAM and L2 load latencies.
     fn latency(&self, lat: Latency) -> f64 {
         self.fixed_latency_ns
-            + self.round_trips * (self.hit_fraction * lat.l2 + (1.0 - self.hit_fraction) * lat.dram)
+            + self.round_trips
+                * (self.resident_fraction * lat.l2 + (1.0 - self.resident_fraction) * lat.dram)
     }
 }
 
@@ -339,6 +379,7 @@ struct Sim<'a, L: L2> {
     t: f64,
     load_bytes: f64,
     l2_hit_bytes: f64,
+    merged_bytes: f64,
     dram_bytes: f64,
     /// Spill traffic of one CTA per execution of the spill scope, as
     /// `(L1 bytes, L2 bytes, DRAM bytes)`.
@@ -357,18 +398,17 @@ impl<'a, L: L2> Sim<'a, L> {
         sm: u32,
         program: u32,
         tile: u32,
-    ) -> (f64, f64) {
-        let (mut hits, mut misses) = (0.0, 0.0);
+    ) -> Traffic {
+        let mut sum = Traffic::default();
         if k1 > k0 {
             for a in accesses {
-                let (h, m) = self
-                    .l2
-                    .split(sm, program, tile, a, k0, k1, is_write, self.t);
-                hits += h;
-                misses += m;
+                sum = sum
+                    + self
+                        .l2
+                        .split(sm, program, tile, a, k0, k1, is_write, self.t);
             }
         }
-        (hits, misses)
+        sum
     }
 
     /// Phase demands under the KernelIR convention: the pipeline's first
@@ -389,11 +429,10 @@ impl<'a, L: L2> Sim<'a, L> {
                 }
             }
             Phase::Prologue => {
-                let (h0, m0) = self.traffic(&tl.prologue.loads, 0, 1, false, sm, program, tile);
-                let (h1, m1) =
-                    self.traffic(&tl.per_iteration.loads, 0, d, false, sm, program, tile);
+                let own = self.traffic(&tl.prologue.loads, 0, 1, false, sm, program, tile);
+                let prefill = self.traffic(&tl.per_iteration.loads, 0, d, false, sm, program, tile);
                 let st = self.traffic(&tl.prologue.stores, 0, 1, true, sm, program, tile);
-                (&tl.prologue, 1, (h0 + h1, m0 + m1), st, 1.0)
+                (&tl.prologue, 1, own + prefill, st, 1.0)
             }
             Phase::Main => {
                 let ld = self.traffic(&tl.per_iteration.loads, d, n, false, sm, program, tile);
@@ -412,8 +451,9 @@ impl<'a, L: L2> Sim<'a, L> {
                 (&tl.epilogue, 1, ld, st, 1.0)
             }
         };
-        let (hits, misses) = loads;
-        let stores = stores.0 + stores.1;
+        let (hits, misses) = (loads.resident + loads.merged, loads.dram);
+        let stores = stores.total();
+        self.merged_bytes += loads.merged;
         let load_bytes = hits + misses;
         self.load_bytes += load_bytes;
         self.l2_hit_bytes += hits;
@@ -449,8 +489,13 @@ impl<'a, L: L2> Sim<'a, L> {
             } else {
                 0.0
             },
-            hit_fraction: if load_bytes > 0.0 {
-                hits / load_bytes
+            resident_fraction: if load_bytes > 0.0 {
+                loads.resident / load_bytes
+            } else {
+                0.0
+            },
+            dram_fraction: if load_bytes > 0.0 {
+                misses / load_bytes
             } else {
                 0.0
             },
@@ -753,6 +798,7 @@ pub fn simulate<L: L2>(
         t: 0.0,
         load_bytes: 0.0,
         l2_hit_bytes: 0.0,
+        merged_bytes: 0.0,
         dram_bytes: 0.0,
         spill,
     };
@@ -825,8 +871,8 @@ pub fn simulate<L: L2>(
                         .fold((0.0, 0.0), |(d, l), (c, &r)| {
                             let x = r * c.demand.load_bytes;
                             (
-                                d + x * (1.0 - c.demand.hit_fraction),
-                                l + x * c.demand.hit_fraction,
+                                d + x * c.demand.dram_fraction,
+                                l + x * c.demand.resident_fraction,
                             )
                         });
                 let implied = m.mlp_latency(mode, dram_bw * mid, l2_bw * l2_lat);
@@ -927,6 +973,7 @@ pub fn simulate<L: L2>(
         occupancy: occ,
         load_bytes: sim.load_bytes,
         l2_hit_bytes: sim.l2_hit_bytes,
+        merged_bytes: sim.merged_bytes,
         dram_bytes: sim.dram_bytes,
         events,
         bound_fraction: {

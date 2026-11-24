@@ -112,6 +112,7 @@ fn predict<'py>(
     d.set_item("tail_efficiency", r.tail_efficiency)?;
     d.set_item("load_bytes", r.load_bytes)?;
     d.set_item("l2_hit_bytes", r.l2_hit_bytes)?;
+    d.set_item("merged_bytes", r.merged_bytes)?;
     d.set_item("dram_bytes", r.dram_bytes)?;
     let bound = PyDict::new(py);
     for (name, f) in RESOURCES.iter().zip(r.bound_fraction) {
