@@ -639,16 +639,25 @@ fn rates(ctas: &[Cta], m: &Machine, mma_per_cta: &[f64], lat: Latency, s: &mut S
         } else {
             0.0
         };
-        let latency = d.latency(lat);
+        let t_sm = t_mma.max(t_issue).max(t_smem).max(t_local);
+        // Synchronous loads: the CTA waits a loaded round trip, then
+        // computes. While it waits, the other CTAs on the SM use the pipes it
+        // leaves idle, so its own compute after the wait runs at the rate it
+        // would get alone, and the shared rate only bounds the average. The
+        // wait-then-compute sequence is reported as latency.
+        let latency = if d.serial {
+            let alone = (d.flops / mma_per_cta[1])
+                .max(d.warp_insts / m.issue_rate)
+                .max(d.smem_bytes / m.smem_bw)
+                .max(d.local_bytes / m.local_bw);
+            d.latency(lat) + alone
+        } else {
+            d.latency(lat)
+        };
         s.terms
             .push([latency, t_mma, t_issue, t_smem, t_local, 0.0, 0.0]);
-        let t_sm = t_mma.max(t_issue).max(t_smem).max(t_local);
         // Time without memory bandwidth limits: caps the bandwidth demand.
-        s.t_compute.push(if d.serial {
-            latency + t_sm
-        } else {
-            latency.max(t_sm)
-        });
+        s.t_compute.push(latency.max(t_sm));
     }
 
     let n = ctas.len();
@@ -699,16 +708,11 @@ fn rates(ctas: &[Cta], m: &Machine, mma_per_cta: &[f64], lat: Latency, s: &mut S
         let t_mem = t_l2.max(t_dram);
         let [latency, t_mma, t_issue, t_smem, t_local, ..] = s.terms[i];
         let t_sm = t_mma.max(t_issue).max(t_smem).max(t_local);
-        // Synchronous loads: the CTA waits a loaded round trip, then
-        // computes. The loaded latency already contains queueing and transfer
-        // under the current load, and DRAM and L2 serve whichever CTAs have
-        // requests outstanding, so the bandwidth share only bounds the
-        // average rate instead of adding to every iteration.
-        let t = if d.serial {
-            (latency + t_sm).max(t_mem)
-        } else {
-            latency.max(t_sm).max(t_mem)
-        };
+        // The loaded latency already contains queueing and transfer under
+        // the current load, and DRAM and L2 serve whichever CTAs have requests
+        // outstanding, so the bandwidth share only bounds the average rate,
+        // for synchronous loads too.
+        let t = latency.max(t_sm).max(t_mem);
         // A phase with no demand finishes at once.
         s.rate.push(1.0 / t.max(1e-9));
     }

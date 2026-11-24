@@ -188,10 +188,21 @@ fn memory_bound_time_matches_dram_bandwidth() {
 
 #[test]
 fn pipelining_hides_latency() {
-    let sync = gemm(46 * 8, 128, 0);
+    // Same residency for both and a round trip longer than the compute of
+    // an iteration, so only the pipeline differs and latency matters.
+    let mut sync = gemm(46 * 8, 128, 0);
     let piped = gemm(46 * 8, 128, 2);
-    let a = run(&sync, machine(&sync));
-    let b = run(&piped, machine(&piped));
+    sync.smem_per_cta_bytes = piped.smem_per_cta_bytes;
+    let slow = |k: &Kernel| {
+        let mut m = machine(k);
+        m.dram_latency_ns = 20000.0;
+        m.dram_latency_loaded_ns = 20000.0;
+        m.l2_latency_ns = 20000.0;
+        m.l2_latency_loaded_ns = 20000.0;
+        m
+    };
+    let a = run(&sync, slow(&sync));
+    let b = run(&piped, slow(&piped));
     assert!(
         b.makespan_ns < a.makespan_ns,
         "{} vs {}",
@@ -370,4 +381,40 @@ fn mlp_curve_sets_latency_from_bytes_in_flight() {
     m.launch_overhead_ns = 0.0;
     let p = simulate(&k, &profile(), &m, &mut ConstantHitRatio(0.0)).unwrap();
     assert!(close(p.makespan_ns, 64.0 * f / 368.0), "{}", p.makespan_ns);
+}
+
+#[test]
+fn other_ctas_compute_while_a_synchronous_cta_waits() {
+    // Compute per iteration equals the round trip. One CTA per SM pays both
+    // in turn; two CTAs per SM overlap one's wait with the other's compute.
+    let mut k = compute_only(46);
+    k.smem_per_cta_bytes = 40 * 1024;
+    k.tile.prefetch_distance = 0;
+    k.tile.per_iteration.loads = vec![access("load", 64.0)];
+    let mut m = machine(&k);
+    m.dram_bw = vec![(1.0, 1e9)];
+    m.l2_bw = vec![(1.0, 1e9)];
+    let compute = k.tile.per_iteration.mma_flops / (0.60 * 1e3); // 4 warps alone
+    m.dram_latency_ns = compute;
+    m.dram_latency_loaded_ns = compute;
+    m.l2_latency_ns = compute;
+    m.l2_latency_loaded_ns = compute;
+    let two_per_sm = run(&k, m.clone());
+    assert_eq!(two_per_sm.occupancy.ctas_per_sm, 2);
+    k.smem_per_cta_bytes = 90 * 1024;
+    let one_per_sm = run(&k, m);
+    // Same work per SM: one CTA takes 2 * 64 * compute alone; two CTAs take
+    // twice as long each but share the wait, so the SM finishes in the same
+    // time instead of twice it.
+    let per_sm_one = 2.0 * 64.0 * compute;
+    assert!(
+        close(one_per_sm.makespan_ns, per_sm_one),
+        "{}",
+        one_per_sm.makespan_ns
+    );
+    assert!(
+        two_per_sm.makespan_ns < 1.1 * per_sm_one,
+        "{}",
+        two_per_sm.makespan_ns
+    );
 }
