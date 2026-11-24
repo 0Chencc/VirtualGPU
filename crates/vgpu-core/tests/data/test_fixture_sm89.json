@@ -1,0 +1,229 @@
+{
+  "schema_version": "0.1",
+  "identity": {
+    "vendor": "nvidia",
+    "arch": "sm_89",
+    "sku": "test fixture shaped like an RTX 4070",
+    "memory_type": "discrete"
+  },
+  "provenance": {
+    "source": "test_fixture",
+    "note": "Illustrative numbers for unit tests only. Not a measured profile."
+  },
+  "specs": {
+    "sm_count": 46,
+    "warp_size": 32,
+    "max_threads_per_sm": 1536,
+    "max_warps_per_sm": 48,
+    "max_blocks_per_sm": 24,
+    "max_threads_per_block": 1024,
+    "registers_per_sm": 65536,
+    "max_registers_per_thread": 255,
+    "register_alloc_granularity": "warp",
+    "register_alloc_unit_regs": 256,
+    "shared_mem_per_sm_bytes": 102400,
+    "max_shared_mem_per_block_bytes": 101376,
+    "reserved_shared_mem_per_cta_bytes": 1024,
+    "shared_mem_alloc_granularity_bytes": 128,
+    "shared_mem_carveout_options_bytes": [
+      0,
+      8192,
+      16384,
+      32768,
+      65536,
+      102400
+    ],
+    "l2_size_bytes": 37748736,
+    "l2_line_bytes": 128,
+    "l2_sector_bytes": 32,
+    "capabilities": {
+      "cp_async": true,
+      "tma": false,
+      "wgmma": false,
+      "tcgen05_tmem": false,
+      "cluster": false
+    }
+  },
+  "measured": {
+    "memory": {
+      "dram_bw_by_active_sms": [
+        {
+          "active_sms": 1,
+          "bw_gbps": {
+            "value": 30,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "test_fixture"
+          }
+        },
+        {
+          "active_sms": 4,
+          "bw_gbps": {
+            "value": 110,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "test_fixture"
+          }
+        },
+        {
+          "active_sms": 12,
+          "bw_gbps": {
+            "value": 300,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "test_fixture"
+          }
+        },
+        {
+          "active_sms": 23,
+          "bw_gbps": {
+            "value": 420,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "test_fixture"
+          }
+        },
+        {
+          "active_sms": 46,
+          "bw_gbps": {
+            "value": 450,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "test_fixture"
+          }
+        }
+      ],
+      "l2_bw_by_active_sms": [
+        {
+          "active_sms": 1,
+          "bw_gbps": {
+            "value": 60,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "test_fixture"
+          }
+        },
+        {
+          "active_sms": 12,
+          "bw_gbps": {
+            "value": 700,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "test_fixture"
+          }
+        },
+        {
+          "active_sms": 46,
+          "bw_gbps": {
+            "value": 2400,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "test_fixture"
+          }
+        }
+      ],
+      "l2_effective_capacity_bytes": {
+        "value": 33554432,
+        "rel_uncertainty": 0.1,
+        "unit": "B",
+        "method": "test_fixture"
+      },
+      "smem_bw_per_sm_gbps": {
+        "value": 120,
+        "rel_uncertainty": 0.1,
+        "unit": "GB/s",
+        "method": "test_fixture"
+      },
+      "dram_latency_ns": {
+        "value": 500,
+        "rel_uncertainty": 0.1,
+        "unit": "ns",
+        "method": "test_fixture"
+      },
+      "l2_latency_ns": {
+        "value": 250,
+        "rel_uncertainty": 0.1,
+        "unit": "ns",
+        "method": "test_fixture"
+      }
+    },
+    "compute": {
+      "mma_tflops_per_sm_by_warps": {
+        "mma.sync:f16:f16:f32:16x8x16": [
+          {
+            "mma_warps_per_sm": 1,
+            "tflops_per_sm": {
+              "value": 0.16,
+              "rel_uncertainty": 0.1,
+              "unit": "TFLOP/s",
+              "method": "test_fixture"
+            }
+          },
+          {
+            "mma_warps_per_sm": 2,
+            "tflops_per_sm": {
+              "value": 0.32,
+              "rel_uncertainty": 0.1,
+              "unit": "TFLOP/s",
+              "method": "test_fixture"
+            }
+          },
+          {
+            "mma_warps_per_sm": 4,
+            "tflops_per_sm": {
+              "value": 0.6,
+              "rel_uncertainty": 0.1,
+              "unit": "TFLOP/s",
+              "method": "test_fixture"
+            }
+          },
+          {
+            "mma_warps_per_sm": 8,
+            "tflops_per_sm": {
+              "value": 0.63,
+              "rel_uncertainty": 0.1,
+              "unit": "TFLOP/s",
+              "method": "test_fixture"
+            }
+          },
+          {
+            "mma_warps_per_sm": 16,
+            "tflops_per_sm": {
+              "value": 0.63,
+              "rel_uncertainty": 0.1,
+              "unit": "TFLOP/s",
+              "method": "test_fixture"
+            }
+          }
+        ]
+      },
+      "non_mma_issue_rate_per_sm_gips": {
+        "value": 7.6,
+        "rel_uncertainty": 0.1,
+        "unit": "Ginst/s",
+        "method": "test_fixture"
+      }
+    },
+    "overhead": {
+      "launch_overhead_us": {
+        "value": 3.0,
+        "rel_uncertainty": 0.1,
+        "unit": "us",
+        "method": "test_fixture"
+      },
+      "per_cta_launch_latency_ns": {
+        "value": 50,
+        "rel_uncertainty": 0.1,
+        "unit": "ns",
+        "method": "test_fixture"
+      }
+    },
+    "cta_dispatch": {
+      "observed_policy": "round_robin",
+      "candidate_policies": [
+        "round_robin"
+      ],
+      "confidence": "low"
+    }
+  }
+}
