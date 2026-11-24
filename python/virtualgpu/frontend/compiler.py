@@ -2,12 +2,47 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 import re
 import subprocess
 import tempfile
 from dataclasses import dataclass
 from typing import Any
+
+
+_CANONICAL_TO_TORCH_DTYPE: dict[str, str] = {
+    "f16": "float16",
+    "fp16": "float16",
+    "bf16": "bfloat16",
+    "f32": "float32",
+    "fp32": "float32",
+    "f64": "float64",
+    "i8": "int8",
+    "u8": "uint8",
+    "i16": "int16",
+    "i32": "int32",
+    "i64": "int64",
+    "f8E4M3FN": "float8_e4m3fn",
+    "f8E5M2": "float8_e5m2",
+}
+
+
+class MockTensor:
+    """Minimal tensor stand-in for CPU-only Triton JIT argument specialization.
+
+    Exposes the same ``data_ptr()`` and ``dtype`` interface that Triton's
+    runtime binder inspects, without requiring PyTorch or a physical GPU.
+    """
+
+    def __init__(self, dtype: str, ptr: int = 0x10000) -> None:
+        torch_dt = _CANONICAL_TO_TORCH_DTYPE.get(dtype, dtype)
+        self._ptr = int(ptr)
+        self._torch_dtype = torch_dt
+        self.dtype = type("_MockDType", (), {"__str__": lambda _s: f"torch.{torch_dt}"})()
+
+    def data_ptr(self) -> int:
+        return self._ptr
 
 
 @dataclass(frozen=True)
@@ -36,6 +71,8 @@ class CompiledArtifacts:
     triton_version: str
     ttgir: str
     ptx: str
+    ttgir_sha256: str
+    ptx_sha256: str
     static_smem_bytes: int
     requested_num_warps: int
     requested_num_stages: int
@@ -51,6 +88,66 @@ _RE_USED_LINE = re.compile(
 )
 _RE_VERSION = re.compile(r"release\s+([0-9.]+),\s*V([0-9.]+)")
 _RE_PTX_LOCAL_LDST = re.compile(r"\b(?:ld|st)\.local\b")
+_RE_TTGIR_LOC_DEF = re.compile(r"^#loc\d*\s*=.*$")
+_RE_TTGIR_LOC_REF = re.compile(r"\s+loc\([^)]*\)\s*$")
+
+
+def hash_ptx(ptx: str) -> str:
+    """Compute a normalized SHA-256 over PTX, stripping comments and debug locs.
+
+    Shared between offline AOT compilation and on-GPU runtime validation to
+    verify that both paths compiled the exact same kernel.
+    """
+    norm_lines: list[str] = []
+    for raw in ptx.splitlines():
+        line = raw.split("//", 1)[0].strip()
+        if not line:
+            continue
+        if line.startswith((".loc ", ".file ", ".section .debug")):
+            continue
+        norm_lines.append(" ".join(line.split()))
+    payload = "\n".join(norm_lines).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def hash_ttgir(ttgir: str) -> str:
+    """Compute a normalized SHA-256 over TTGIR, stripping source location metadata."""
+    norm_lines: list[str] = []
+    for raw in ttgir.splitlines():
+        stripped = raw.strip()
+        if not stripped or _RE_TTGIR_LOC_DEF.match(stripped):
+            continue
+        cleaned = _RE_TTGIR_LOC_REF.sub("", stripped)
+        norm_lines.append(cleaned)
+    payload = "\n".join(norm_lines).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def specialize_triton_call(
+    fn: Any,
+    target_arch: str,
+    args: tuple[Any, ...],
+    kwargs: dict[str, Any],
+    warp_size: int = 32,
+) -> tuple[dict[str, Any], dict[str, str], dict[Any, Any], dict[Any, Any]]:
+    """Derive (options, signature, constexprs, attrs) using Triton's own runtime binder.
+
+    Guarantees AOT specialization (16B divisibility, equal-to-1 constexprs,
+    do_not_specialize, integer bit widths) matches runtime JIT identically.
+    """
+    from triton.backends.compiler import GPUTarget
+    from triton.compiler import make_backend
+    from triton.runtime.jit import create_function_from_signature
+
+    arch_num = parse_arch_number(target_arch)
+    target = GPUTarget("cuda", arch_num, warp_size)
+    backend = make_backend(target)
+    binder = create_function_from_signature(fn.signature, fn.params, backend)
+    bound_args, specialization, options = binder(*args, **kwargs)
+    options_obj, signature, constexprs, attrs = fn._pack_args(
+        backend, kwargs, bound_args, specialization, options
+    )
+    return dict(options_obj.__dict__), signature, constexprs, attrs
 
 
 def find_bundled_ptxas(arch_num: int) -> tuple[str, str]:
@@ -200,11 +297,12 @@ def parse_arch_number(target_arch: str) -> int:
 def compile_triton_aot(
     fn: Any,
     signature: dict[str, str],
-    constexprs: dict[str, Any],
+    constexprs: dict[Any, Any],
     target_arch: str,
     num_warps: int,
     num_stages: int,
-    attrs: dict[tuple[int, ...], list[list[Any]]] | None = None,
+    attrs: dict[Any, Any] | None = None,
+    options: dict[str, Any] | None = None,
     warp_size: int = 32,
 ) -> CompiledArtifacts:
     """Compile a @triton.jit kernel ahead-of-time on CPU without a physical GPU."""
@@ -215,9 +313,11 @@ def compile_triton_aot(
     arch_num = parse_arch_number(target_arch)
     target = GPUTarget("cuda", arch_num, warp_size)
     src = ASTSource(fn=fn, signature=signature, constexprs=constexprs, attrs=attrs)
-    options = {"num_warps": num_warps, "num_stages": num_stages}
+    compile_options = dict(options) if options is not None else {}
+    compile_options.setdefault("num_warps", num_warps)
+    compile_options.setdefault("num_stages", num_stages)
 
-    compiled = triton.compile(src, target=target, options=options)
+    compiled = triton.compile(src, target=target, options=compile_options)
     ttgir = compiled.asm["ttgir"]
     ptx = compiled.asm["ptx"]
     ptxas_report = run_ptxas_verbose(ptx, arch_num)
@@ -228,6 +328,8 @@ def compile_triton_aot(
         triton_version=triton.__version__,
         ttgir=ttgir,
         ptx=ptx,
+        ttgir_sha256=hash_ttgir(ttgir),
+        ptx_sha256=hash_ptx(ptx),
         static_smem_bytes=int(getattr(compiled.metadata, "shared", 0) or 0),
         requested_num_warps=num_warps,
         requested_num_stages=num_stages,

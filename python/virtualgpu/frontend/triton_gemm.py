@@ -5,7 +5,11 @@ from __future__ import annotations
 import math
 from typing import Any
 
-from virtualgpu.frontend.compiler import compile_triton_aot
+from virtualgpu.frontend.compiler import (
+    MockTensor,
+    compile_triton_aot,
+    specialize_triton_call,
+)
 from virtualgpu.frontend.ttgir import dtype_bits, parse_ttgir_summary
 
 
@@ -13,41 +17,45 @@ def _align_up(value: int, alignment: int = 256) -> int:
     return ((value + alignment - 1) // alignment) * alignment
 
 
-def _default_gemm_signature_and_attrs(
+def _build_gemm_call_args(
     fn: Any,
+    *,
     dtype: str,
     M: int,
     N: int,
     K: int,
-) -> tuple[dict[str, str], dict[tuple[int, ...], list[list[Any]]], dict[str, Any]]:
-    """Build ASTSource signature, 16B divisibility attrs, and stride constexprs."""
-    ptr_ty = f"*{dtype}" if dtype != "f16" else "*fp16"
-    if dtype == "bf16":
-        ptr_ty = "*bf16"
-    elif dtype == "f32":
-        ptr_ty = "*fp32"
+    base_a: int,
+    base_b: int,
+    base_c: int,
+    strides_a: tuple[int, int] | None = None,
+    strides_b: tuple[int, int] | None = None,
+    strides_c: tuple[int, int] | None = None,
+) -> tuple[Any, ...]:
+    """Construct positional runtime arguments matching a real GEMM launch."""
+    sa = strides_a if strides_a is not None else (K, 1)
+    sb = strides_b if strides_b is not None else (N, 1)
+    sc = strides_c if strides_c is not None else (N, 1)
 
-    arg_names = list(fn.arg_names)
-    signature: dict[str, str] = {}
-    extra_constexprs: dict[str, Any] = {}
-    attrs: dict[tuple[int, ...], list[list[Any]]] = {}
+    value_by_name: dict[str, Any] = {
+        "a_ptr": MockTensor(dtype, ptr=base_a),
+        "b_ptr": MockTensor(dtype, ptr=base_b),
+        "c_ptr": MockTensor(dtype, ptr=base_c),
+        "M": M,
+        "N": N,
+        "K": K,
+        "stride_am": sa[0],
+        "stride_ak": sa[1],
+        "stride_bk": sb[0],
+        "stride_bn": sb[1],
+        "stride_cm": sc[0],
+        "stride_cn": sc[1],
+    }
 
-    for idx, name in enumerate(arg_names):
-        if name.endswith("_ptr"):
-            signature[name] = ptr_ty
-            attrs[(idx,)] = [["tt.divisibility", 16]]
-        elif name in ("stride_ak", "stride_bn", "stride_cn"):
-            signature[name] = "constexpr"
-            extra_constexprs[name] = 1
-        elif name in ("M", "N", "K", "stride_am", "stride_bk", "stride_cm"):
-            signature[name] = "i32"
-            dim_val = {"M": M, "N": N, "K": K, "stride_am": K, "stride_bk": N, "stride_cm": N}[name]
-            if dim_val % 16 == 0:
-                attrs[(idx,)] = [["tt.divisibility", 16]]
-        elif name.startswith(("BLOCK_", "GROUP_")):
-            continue
-
-    return signature, attrs, extra_constexprs
+    positional: list[Any] = []
+    for name in fn.arg_names:
+        if name in value_by_name:
+            positional.append(value_by_name[name])
+    return tuple(positional)
 
 
 def _build_linear_access_maps(
@@ -141,32 +149,60 @@ def extract_gemm_kernel_ir(
     target_arch: str,
     dtype: str = "f16",
     acc_dtype: str = "f32",
-    signature: dict[str, str] | None = None,
-    attrs: dict[tuple[int, ...], list[list[Any]]] | None = None,
-    extra_constexprs: dict[str, Any] | None = None,
+    call_args: tuple[Any, ...] | None = None,
+    strides_a: tuple[int, int] | None = None,
+    strides_b: tuple[int, int] | None = None,
+    strides_c: tuple[int, int] | None = None,
+    ptr_offset_a: int = 0x10000,
+    ptr_offset_b: int | None = None,
+    ptr_offset_c: int | None = None,
 ) -> dict[str, Any]:
-    """Compile a Triton GEMM kernel offline and emit a KernelIR v0.1 dictionary."""
+    """Compile a Triton GEMM kernel offline using Triton's runtime JIT binder
+    and emit a KernelIR v0.1 dictionary.
+    """
     block_m = int(config.get("BLOCK_SIZE_M", config.get("BLOCK_M", 128)))
     block_n = int(config.get("BLOCK_SIZE_N", config.get("BLOCK_N", 128)))
     block_k = int(config.get("BLOCK_SIZE_K", config.get("BLOCK_K", 32)))
     num_warps = int(config.get("num_warps", 4))
     num_stages = int(config.get("num_stages", 3))
 
-    if signature is None:
-        signature, auto_attrs, auto_consts = _default_gemm_signature_and_attrs(fn, dtype, M, N, K)
-        if attrs is None:
-            attrs = auto_attrs
-        if extra_constexprs is None:
-            extra_constexprs = auto_consts
+    elem_bits = dtype_bits(dtype)
+    elem_bytes = elem_bits // 8
+    size_a = M * K * elem_bytes
+    size_b = K * N * elem_bytes
 
-    constexprs: dict[str, Any] = {}
-    for k, v in config.items():
-        if k in fn.arg_names:
-            constexprs[k] = v
-    if extra_constexprs:
-        for k, v in extra_constexprs.items():
-            if k in fn.arg_names:
-                constexprs[k] = v
+    # Virtual aligned addresses for L2 modeling (base_addr in KernelIR tensors)
+    base_a = 0
+    base_b = _align_up(size_a)
+    base_c = _align_up(base_b + size_b)
+
+    # Pointer addresses passed to Triton's runtime specialization binder
+    sim_ptr_a = ptr_offset_a
+    sim_ptr_b = ptr_offset_b if ptr_offset_b is not None else _align_up(sim_ptr_a + size_a)
+    sim_ptr_c = ptr_offset_c if ptr_offset_c is not None else _align_up(sim_ptr_b + size_b)
+
+    if call_args is None:
+        call_args = _build_gemm_call_args(
+            fn,
+            dtype=dtype,
+            M=M,
+            N=N,
+            K=K,
+            base_a=sim_ptr_a,
+            base_b=sim_ptr_b,
+            base_c=sim_ptr_c,
+            strides_a=strides_a,
+            strides_b=strides_b,
+            strides_c=strides_c,
+        )
+
+    call_kwargs = dict(config)
+    options_dict, signature, constexprs, attrs = specialize_triton_call(
+        fn=fn,
+        target_arch=target_arch,
+        args=call_args,
+        kwargs=call_kwargs,
+    )
 
     artifacts = compile_triton_aot(
         fn=fn,
@@ -176,10 +212,9 @@ def extract_gemm_kernel_ir(
         num_warps=num_warps,
         num_stages=num_stages,
         attrs=attrs,
+        options=options_dict,
     )
 
-    elem_bits = dtype_bits(dtype)
-    elem_bytes = elem_bits // 8
     summary = parse_ttgir_summary(
         ttgir=artifacts.ttgir,
         ptx=artifacts.ptx,
@@ -195,12 +230,6 @@ def extract_gemm_kernel_ir(
     num_pid_n = math.ceil(N / block_n)
     grid_x = num_pid_m * num_pid_n
     k_trips = math.ceil(K / block_k)
-
-    size_a = M * K * elem_bytes
-    size_b = K * N * elem_bytes
-    base_a = 0
-    base_b = _align_up(size_a)
-    base_c = _align_up(base_b + size_b)
 
     tile_bytes_a = block_m * block_k * elem_bytes
     tile_bytes_b = block_k * block_n * elem_bytes
@@ -340,6 +369,8 @@ def extract_gemm_kernel_ir(
                 "assembler": artifacts.ptxas.assembler,
                 "assembler_version": artifacts.ptxas.assembler_version,
                 "target_sm_compiled": artifacts.ptxas.target_sm,
+                "ptx_sha256": artifacts.ptx_sha256,
+                "ttgir_sha256": artifacts.ttgir_sha256,
             },
             "config": dict(config),
         },

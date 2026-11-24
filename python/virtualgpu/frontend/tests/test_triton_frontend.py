@@ -10,7 +10,14 @@ import pytest
 import triton
 import triton.language as tl
 
-from virtualgpu.frontend import extract_gemm_kernel_ir, parse_ptxas_verbose
+from virtualgpu.frontend import (
+    MockTensor,
+    extract_gemm_kernel_ir,
+    hash_ptx,
+    hash_ttgir,
+    parse_ptxas_verbose,
+    specialize_triton_call,
+)
 
 
 SCHEMA_PATH = Path(__file__).resolve().parents[4] / "schemas" / "kernel_ir.schema.json"
@@ -143,6 +150,8 @@ def test_extract_gemm_validates_against_schema(target_arch: str) -> None:
     assert ir["body"]["pipeline_loop"]["num_stages"] == 3
     assert ir["body"]["pipeline_loop"]["prefetch_distance"] == 2
     assert ir["unsupported_features"] == []
+    assert len(ir["metadata"]["toolchain"]["ptx_sha256"]) == 64
+    assert len(ir["metadata"]["toolchain"]["ttgir_sha256"]) == 64
 
     mma_ops = [op for op in ir["body"]["pipeline_loop"]["ops"] if op["kind"] == "mma"]
     assert len(mma_ops) == 1
@@ -182,8 +191,10 @@ def test_unaligned_shape_and_unpipelined_fallback_diagnostic() -> None:
             "num_stages": 3,
         },
         target_arch="sm_89",
-        # Explicitly drop alignment attrs to force unpipelined fallback.
-        attrs={},
+        # Misaligned pointer (not 16B aligned) causes Triton's runtime binder to
+        # omit tt.divisibility=16, matching real runtime JIT fallback behavior.
+        ptr_offset_a=0x10002,
+        ptr_offset_b=0x20002,
     )
     jsonschema.validate(instance=ir, schema=schema)
     assert ir["body"]["pipeline_loop"]["async_copy"] == "none"
@@ -193,3 +204,39 @@ def test_unaligned_shape_and_unpipelined_fallback_diagnostic() -> None:
     last_a = ir["access_map"]["acc_A"]["entries"][-1]
     assert last_a[3] == 44  # 300 - 2*128
     assert last_a[7] is True
+
+
+def test_runtime_specialization_parity_and_artifact_hashing() -> None:
+    # Aligned pointers & 16-divisible dims vs misaligned pointer & non-unit stride
+    args_aligned = (
+        MockTensor("f16", ptr=0x10000),
+        MockTensor("f16", ptr=0x20000),
+        MockTensor("f16", ptr=0x30000),
+        1024, 1024, 512, 512, 1, 1024, 1, 1024, 1,
+    )
+    kwargs = {"BLOCK_SIZE_M": 128, "BLOCK_SIZE_N": 128, "BLOCK_SIZE_K": 32, "GROUP_SIZE_M": 8, "num_warps": 4, "num_stages": 3}
+    _, sig_a, consts_a, attrs_a = specialize_triton_call(_matmul_kernel, "sm_89", args_aligned, kwargs)
+    assert sig_a["stride_ak"] == "constexpr"
+    assert consts_a[(7,)] == 1
+    assert ["tt.divisibility", 16] in attrs_a[(0,)]
+    assert ["tt.divisibility", 16] in attrs_a[(3,)]
+
+    args_unaligned = (
+        MockTensor("f16", ptr=0x10002),
+        MockTensor("f16", ptr=0x20000),
+        MockTensor("f16", ptr=0x30000),
+        300, 300, 100, 100, 2, 300, 1, 300, 1,
+    )
+    _, sig_u, _, attrs_u = specialize_triton_call(_matmul_kernel, "sm_89", args_unaligned, kwargs)
+    assert sig_u["stride_ak"] == "i32"
+    assert attrs_u[(0,)] == []
+    assert attrs_u[(3,)] == []
+
+    # Normalized hashes ignore comments and debug locations
+    ptx1 = "// comment a\n.loc 1 10 0\nmma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 d, a, b, c;\n"
+    ptx2 = "// different path\n.loc 2 99 0\n  mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32   d, a, b, c; // trailing\n"
+    assert hash_ptx(ptx1) == hash_ptx(ptx2)
+
+    ttgir1 = '#loc1 = loc("/a/b.py":1:1)\n%0 = tt.dot %a, %b, %c : tensor<128x32xf16> loc(#loc1)\n'
+    ttgir2 = '#loc1 = loc("/x/y.py":99:5)\n%0 = tt.dot %a, %b, %c : tensor<128x32xf16> loc(#loc1)\n'
+    assert hash_ttgir(ttgir1) == hash_ttgir(ttgir2)
