@@ -70,6 +70,6 @@ RTX 4070 labels.
 
 ## Open decisions
 
-- Confirm target workload mix, primary cache regime, shortlist budget, pass thresholds, reporting weights, and whether device-event or end-to-end latency is the primary target.
+- Confirm target workload mix, primary cache regime, reporting weights, and whether device-event or end-to-end latency is the primary target.
 - Confirm development GPU order, number of held-out cases and independent sessions, stability thresholds, and feasible clock controls on each system. Check timer floor, L2 preparation, and device output correctness in a pilot.
 - Confirm which compiled paths each installed toolchain actually emits and which dispatch, spill, and traffic counters are reproducible on each host. Finalize frontend field names and prediction serialization with their owners.

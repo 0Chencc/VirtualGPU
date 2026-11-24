@@ -47,5 +47,10 @@ sealed.
 
 `results/m2/scores.json` and `results/m2/scores-5pct.json` used core
 `5c4863e` before the same-timestamp CTA ordering fix. They are provisional
-development scores. The formal rerun uses the fixed core with the same
-frozen labels and predeclared scoring rules.
+development scores. The intermediate run on `03265c3` is also provisional.
+Commit `4d5fa6c` applies tile boundaries before issuing demands within a
+timestamp. The formal rerun uses that core, profile `0.3.0-m2`, draw 0 and
+32 shared perturbations with seed 17, and the same frozen labels and rules.
+Its artifacts are `results/m2/scores-formal.json` and
+`results/m2/report-formal.md`. All methods scored all 255 configurations in
+both cache regimes.
