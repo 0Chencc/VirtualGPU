@@ -55,6 +55,11 @@ Its artifacts are `results/m2/scores-formal.json` and
 `results/m2/report-formal.md`. All methods scored all 255 configurations in
 both cache regimes.
 
+The original cold pass was contingent on the write-versus-read eviction
+control. That control confirmed the bias documented below. The cold rows
+in the original report are marked superseded, and the original warm rows
+are preserved.
+
 ## Cold label protocol correction
 
 On 2026-11-25, the validation team compared cold eviction protocols in 30
