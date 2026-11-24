@@ -136,6 +136,8 @@ pub struct Machine {
     pub cta_launch_ns: f64,
     /// Multiplier on per-iteration spill traffic whose loop placement is assumed.
     pub assumed_spill_scale: f64,
+    /// (warps, stage buffers, ns): per-stage synchronization cost.
+    pub fixed_sync: Vec<(u32, u32, f64)>,
 }
 
 fn curve<T>(
@@ -200,6 +202,15 @@ impl Machine {
         }
     }
 
+    /// Per-stage synchronization cost for the measured warp count and buffer
+    /// count nearest the kernel's, or zero if the profile has none.
+    fn sync_ns(&self, warps: u32, buffers: u32) -> f64 {
+        self.fixed_sync
+            .iter()
+            .min_by_key(|&&(w, t, _)| (w.abs_diff(warps), t.abs_diff(buffers)))
+            .map_or(0.0, |&(_, _, ns)| ns)
+    }
+
     fn peak(curve: &[(f64, f64)]) -> f64 {
         curve[curve.len() - 1].1
     }
@@ -253,6 +264,12 @@ impl Machine {
             launch_overhead_ns: m.overhead.launch_overhead_us.value * 1e3,
             cta_launch_ns: m.overhead.per_cta_launch_latency_ns.value,
             assumed_spill_scale: 1.0,
+            fixed_sync: m
+                .pipeline
+                .fixed_sync_ns
+                .iter()
+                .map(|q| (q.num_warps, q.tokens, q.overhead_ns.value))
+                .collect(),
         })
     }
 }
@@ -309,6 +326,9 @@ struct Demand {
     /// Fraction of the phase's compute, at the rate the CTA would get alone
     /// on its SM, that adds to the round trips instead of overlapping them.
     exposed_compute: f64,
+    /// Per-stage synchronization over the phase. It stalls the SM's pipes,
+    /// so the other resident CTAs cannot fill it.
+    sync_ns: f64,
     /// Fraction of loaded bytes already resident in L2: they wait L2
     /// latency. The rest, merged or fetched, waits DRAM latency.
     resident_fraction: f64,
@@ -484,6 +504,10 @@ impl<'a, L: L2> Sim<'a, L> {
             fixed_latency_ns: 0.0,
             load_bytes,
             round_trips: if load_bytes > 0.0 { round_trips } else { 0.0 },
+            sync_ns: match phase {
+                Phase::Main => self.m.sync_ns(k.num_warps, d + 1) * steps,
+                _ => 0.0,
+            },
             exposed_compute: if load_bytes > 0.0 {
                 round_trips / steps
             } else {
@@ -688,7 +712,9 @@ fn rates(ctas: &[Cta], m: &Machine, mma_per_cta: &[f64], lat: Latency, s: &mut S
         } else {
             0.0
         };
-        let t_sm = t_mma.max(t_issue).max(t_smem).max(t_local);
+        // Synchronization stalls the SM for every resident CTA in turn.
+        let t_sm =
+            t_mma.max(t_issue).max(t_smem).max(t_local) + d.sync_ns * f64::from(s.resident[i]);
         // Round trips plus the compute that cannot overlap them. While a CTA
         // waits, the other CTAs on its SM use the pipes it leaves idle, so
         // that compute runs at the rate the CTA would get alone, and the
@@ -751,7 +777,8 @@ fn rates(ctas: &[Cta], m: &Machine, mma_per_cta: &[f64], lat: Latency, s: &mut S
         s.terms[i][6] = t_dram;
         let t_mem = t_l2.max(t_dram);
         let [latency, t_mma, t_issue, t_smem, t_local, ..] = s.terms[i];
-        let t_sm = t_mma.max(t_issue).max(t_smem).max(t_local);
+        let t_sm = t_mma.max(t_issue).max(t_smem).max(t_local)
+            + d.sync_ns * f64::from(s.resident[c.sm as usize]);
         // The loaded latency already contains queueing and transfer under
         // the current load, and DRAM and L2 serve whichever CTAs have requests
         // outstanding, so the bandwidth share only bounds the average rate,

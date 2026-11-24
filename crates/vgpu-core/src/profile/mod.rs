@@ -76,6 +76,24 @@ pub struct Measured {
     pub spill: BTreeMap<String, Option<MeasuredValue>>,
     pub overhead: Overhead,
     pub cta_dispatch: CtaDispatch,
+    #[serde(default)]
+    pub pipeline: Pipeline,
+}
+
+/// Software pipeline costs.
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct Pipeline {
+    /// Per-stage commit, wait, and barrier cost with no data moved.
+    #[serde(default)]
+    pub fixed_sync_ns: Vec<SyncPoint>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct SyncPoint {
+    pub num_warps: u32,
+    /// Stage buffers in the loop.
+    pub tokens: u32,
+    pub overhead_ns: MeasuredValue,
 }
 
 #[derive(Debug, Clone, Deserialize)]

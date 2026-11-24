@@ -516,3 +516,31 @@ fn merged_requests_wait_for_dram_but_use_no_dram_bandwidth() {
     assert!(close(merged.dram_bytes, resident.dram_bytes));
     assert!(close(merged.merged_bytes, merged.l2_hit_bytes));
 }
+
+#[test]
+fn stage_synchronization_stalls_the_sm_for_every_cta() {
+    // Compute-only steady state with two stage buffers and 100 ns of
+    // synchronization per stage. One CTA per SM pays it once per iteration;
+    // two CTAs per SM share the pipes and each stalls them.
+    let mut k = compute_only(46);
+    let mut m = machine(&k);
+    m.fixed_sync = vec![(4, 2, 100.0), (4, 4, 1.0), (8, 2, 1.0)];
+    let compute = 64.0 * k.tile.per_iteration.mma_flops / (0.60 * 1e3);
+    let one = run(&k, m.clone());
+    assert!(
+        close(one.makespan_ns, compute + 64.0 * 100.0),
+        "{}",
+        one.makespan_ns
+    );
+    k.grid = 92;
+    k.smem_per_cta_bytes = 40 * 1024;
+    let two = run(&k, m);
+    assert_eq!(two.occupancy.ctas_per_sm, 2);
+    // Eight warps per SM reach 0.63 TFLOP/s on the fixture curve.
+    let shared = 2.0 * 64.0 * k.tile.per_iteration.mma_flops / (0.63 * 1e3);
+    assert!(
+        close(two.makespan_ns, shared + 2.0 * 64.0 * 100.0),
+        "{}",
+        two.makespan_ns
+    );
+}
