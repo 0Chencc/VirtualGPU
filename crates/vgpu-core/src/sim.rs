@@ -605,6 +605,12 @@ fn rates(ctas: &[Cta], m: &Machine, mma_per_cta: &[f64], lat: Latency, s: &mut S
     }
 }
 
+/// A phase whose remaining fraction is below this after an event is treated
+/// as finished in that event. Merging nearly simultaneous completions cuts the
+/// event count about fourfold on desynchronized grids, for a time error of at
+/// most this fraction of one phase.
+const COMPLETION_TOLERANCE: f64 = 1e-3;
+
 /// Simulate one kernel variant at one profile draw.
 pub fn simulate<L: L2>(
     k: &Kernel,
@@ -692,7 +698,7 @@ pub fn simulate<L: L2>(
         freed.clear();
         let mut i = 0;
         while i < ctas.len() {
-            if ctas[i].remaining > 1e-9 {
+            if ctas[i].remaining > COMPLETION_TOLERANCE {
                 i += 1;
                 continue;
             }
