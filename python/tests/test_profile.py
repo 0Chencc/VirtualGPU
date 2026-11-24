@@ -38,6 +38,9 @@ def test_rtx4070_profile_is_valid() -> None:
     assert mem["l2_effective_capacity_bytes"]["source"] == "measured"
     assert mem["l2_effective_capacity_bytes"]["value"] <= profile["specs"]["l2_size_bytes"]
     assert mem["dram_latency_loaded_ns"]["source"] == "measured"
+    assert len(mem["dram_latency_by_bw"]) >= 5
+    assert len(mem["l2_latency_by_bw"]) >= 5
+    assert len(mem["l2_rescan_hit_rate_by_working_set"]) >= 8
     assert profile["measured"]["async_pipeline"]["cp_async_bw_per_sm_gbps"]["source"] == "measured"
     assert profile["measured"]["overhead"]["launch_overhead_us"]["source"] == "measured"
     mma_f16 = profile["measured"]["compute"]["mma_tflops_per_sm_by_warps"]["mma.sync:f16:f16:f32:16x8x16"]

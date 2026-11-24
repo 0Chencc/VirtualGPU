@@ -245,9 +245,24 @@
             "dram_latency_loaded_ns": {
               "oneOf": [{ "$ref": "#/$defs/MeasuredValue" }, { "type": "null" }]
             },
+            "dram_latency_by_bw": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/LatencyByBwPoint" }
+            },
             "l2_latency_ns": { "$ref": "#/$defs/MeasuredValue" },
             "l2_latency_loaded_ns": {
               "oneOf": [{ "$ref": "#/$defs/MeasuredValue" }, { "type": "null" }]
+            },
+            "l2_latency_by_bw": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/LatencyByBwPoint" }
+            },
+            "l2_rescan_hit_rate_by_working_set": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/L2RescanPoint" }
             },
             "smem_latency_ns": { "$ref": "#/$defs/MeasuredValue" }
           }
@@ -452,6 +467,31 @@
       "properties": {
         "active_sms": { "type": "integer", "minimum": 1 },
         "bw_gbps": { "$ref": "#/$defs/MeasuredValue" }
+      }
+    },
+    "LatencyByBwPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["achieved_bw_gbps", "latency_ns"],
+      "properties": {
+        "achieved_bw_gbps": { "type": "number", "minimum": 0 },
+        "latency_ns": { "$ref": "#/$defs/MeasuredValue" }
+      }
+    },
+    "L2RescanPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "working_set_bytes",
+        "working_set_ratio_to_l2",
+        "pass2_bw_gbps",
+        "estimated_hit_rate"
+      ],
+      "properties": {
+        "working_set_bytes": { "type": "integer", "minimum": 1 },
+        "working_set_ratio_to_l2": { "type": "number", "exclusiveMinimum": 0 },
+        "pass2_bw_gbps": { "$ref": "#/$defs/MeasuredValue" },
+        "estimated_hit_rate": { "$ref": "#/$defs/MeasuredValue" }
       }
     }
   }

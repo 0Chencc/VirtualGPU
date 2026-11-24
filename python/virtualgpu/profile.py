@@ -23,7 +23,14 @@ class ProfileValidationError(ValueError):
         super().__init__(f"GPU profile validation failed ({len(errors)} error(s)):\n{summary}")
 
 
-def load_schema(schema_path: Path | str = DEFAULT_SCHEMA_PATH) -> dict[str, Any]:
+def load_schema(schema_path: Path | str | None = None) -> dict[str, Any]:
+    if schema_path is None:
+        try:
+            from virtualgpu import _core
+
+            return json.loads(_core.schema("gpu_profile"))
+        except Exception:
+            schema_path = DEFAULT_SCHEMA_PATH
     path = Path(schema_path)
     with path.open("r", encoding="utf-8") as fh:
         return json.load(fh)
@@ -85,6 +92,34 @@ def _semantic_checks(profile: dict[str, Any]) -> list[str]:
         mem["l2_bw_by_active_sms"], "active_sms", sm_count, "measured.memory.l2_bw_by_active_sms", errors
     )
 
+    for lat_key in ("dram_latency_by_bw", "l2_latency_by_bw"):
+        if lat_key in mem:
+            prev_bw = -1.0
+            for idx, pt in enumerate(mem[lat_key]):
+                bw = pt["achieved_bw_gbps"]
+                if bw < prev_bw:
+                    errors.append(
+                        f"measured.memory.{lat_key}[{idx}].achieved_bw_gbps ({bw}) must be non-decreasing (prev={prev_bw})"
+                    )
+                prev_bw = bw
+
+    if "l2_rescan_hit_rate_by_working_set" in mem:
+        prev_ws = 0
+        for idx, pt in enumerate(mem["l2_rescan_hit_rate_by_working_set"]):
+            ws = pt["working_set_bytes"]
+            if ws <= prev_ws:
+                errors.append(
+                    f"measured.memory.l2_rescan_hit_rate_by_working_set[{idx}].working_set_bytes ({ws}) "
+                    f"must be strictly increasing (prev={prev_ws})"
+                )
+            hr = pt["estimated_hit_rate"]["value"]
+            if not (0.0 <= hr <= 1.0):
+                errors.append(
+                    f"measured.memory.l2_rescan_hit_rate_by_working_set[{idx}].estimated_hit_rate.value ({hr}) "
+                    f"must be within [0, 1]"
+                )
+            prev_ws = ws
+
     max_warps = specs["max_warps_per_sm"]
     for key, curve in measured["compute"]["mma_tflops_per_sm_by_warps"].items():
         _check_monotonic_curve(
@@ -113,7 +148,7 @@ def _semantic_checks(profile: dict[str, Any]) -> list[str]:
 
 def validate_profile(
     profile: dict[str, Any],
-    schema_path: Path | str = DEFAULT_SCHEMA_PATH,
+    schema_path: Path | str | None = None,
 ) -> None:
     """Validate a GPU profile dict against the JSON Schema and semantic invariants."""
     schema = load_schema(schema_path)
@@ -133,7 +168,7 @@ def validate_profile(
 
 def load_profile(
     path: Path | str,
-    schema_path: Path | str = DEFAULT_SCHEMA_PATH,
+    schema_path: Path | str | None = None,
 ) -> dict[str, Any]:
     """Load and validate a GPU profile JSON file."""
     profile_path = Path(path)
