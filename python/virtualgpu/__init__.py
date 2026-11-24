@@ -11,9 +11,19 @@ from virtualgpu.api import (
     predict_ir_dir,
     predict_kernel_ir,
 )
+from virtualgpu.autotune import (
+    AutotuneReport,
+    autotune,
+    autotune_offline,
+    prune_configs_by,
+)
 
 __all__ = [
     "__version__",
+    "AutotuneReport",
+    "autotune",
+    "autotune_offline",
+    "prune_configs_by",
     "extract_gemm_configs",
     "predict_gemm_configs",
     "predict_ir_dir",

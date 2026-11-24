@@ -10,6 +10,7 @@ import sys
 from typing import Any, Sequence
 
 from virtualgpu.api import extract_gemm_configs, predict_gemm_configs, predict_ir_dir
+from virtualgpu.autotune import autotune_offline
 
 
 def _load_kernel(spec: str) -> Any:
@@ -122,6 +123,34 @@ def _cmd_predict(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_autotune(args: argparse.Namespace) -> int:
+    kernel = _load_kernel(args.kernel)
+    configs = None
+    if args.configs_json is not None:
+        configs = json.loads(args.configs_json.read_text(encoding="utf-8"))
+    report = autotune_offline(
+        kernel,
+        shape=(args.shape[0], args.shape[1], args.shape[2]),
+        profile=args.profile,
+        configs=configs,
+        dtype=args.dtype,
+        l2_state=args.cache,
+        draws=args.draws,
+        seed=args.seed,
+        top_k=args.top_k,
+        cache_dir=args.cache_dir,
+        use_cache=not args.no_cache,
+        strict=args.strict,
+    )
+    if args.out is not None:
+        args.out.parent.mkdir(parents=True, exist_ok=True)
+        args.out.write_text(report.to_json(indent=2), encoding="utf-8")
+        print(report.summary())
+    else:
+        print(report.to_json(indent=2))
+    return 0 if report.status == "ok" else 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="virtualgpu",
@@ -160,6 +189,25 @@ def build_parser() -> argparse.ArgumentParser:
     p_pred.add_argument("--no-cache", action="store_true", help="Disable AOT compilation cache")
     p_pred.add_argument("--out", type=Path, help="Output JSON path (prints to stdout if omitted)")
     p_pred.set_defaults(func=_cmd_predict)
+
+    p_auto = sub.add_parser(
+        "autotune",
+        help="Rank a @triton.autotune kernel offline on CPU and emit an AutotuneReport.",
+    )
+    p_auto.add_argument("--kernel", required=True, help="Import spec 'module:kernel' (Autotuner or JITFunction)")
+    p_auto.add_argument("--shape", type=int, nargs=3, required=True, metavar=("M", "N", "K"), help="GEMM shape")
+    p_auto.add_argument("--configs-json", type=Path, help="Optional JSON list of configs (required for bare JITFunction)")
+    p_auto.add_argument("--profile", type=Path, required=True, help="Path to GPU profile JSON")
+    p_auto.add_argument("--cache", choices=("cold", "warm"), default="cold", help="Initial L2 cache state")
+    p_auto.add_argument("--dtype", default="f16", help="Input tensor dtype (default: f16)")
+    p_auto.add_argument("--draws", type=int, default=32, help="Number of perturbation draws (default: 32)")
+    p_auto.add_argument("--seed", type=int, default=17, help="RNG seed for perturbation draws (default: 17)")
+    p_auto.add_argument("--top-k", type=int, default=5, help="Shortlist size recommended for hardware verification (default: 5)")
+    p_auto.add_argument("--cache-dir", type=Path, help="AOT compilation cache directory")
+    p_auto.add_argument("--no-cache", action="store_true", help="Disable AOT compilation cache")
+    p_auto.add_argument("--strict", action="store_true", help="Exit with error if no config can be modeled")
+    p_auto.add_argument("--out", type=Path, help="Write AutotuneReport JSON to file (and print summary to stdout)")
+    p_auto.set_defaults(func=_cmd_autotune)
 
     return parser
 
