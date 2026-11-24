@@ -1,9 +1,8 @@
 //! Online, phase-segment-level L2 cache reuse model (v1).
 
 use crate::ir::{AccessEntry, CachePolicy, KernelIR, Op, Strided2dEntry};
-use serde::Deserialize;
+use crate::profile::Profile;
 use std::collections::{HashMap, HashSet, VecDeque};
-use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum L2InitState {
@@ -43,89 +42,29 @@ pub struct L2Profile {
     pub l1_to_l2_spill_threshold_bytes_per_sm: u64,
 }
 
-#[derive(Debug)]
-pub struct L2ProfileError {
-    pub message: String,
-}
-
-impl fmt::Display for L2ProfileError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "L2Profile error: {}", self.message)
-    }
-}
-
-impl std::error::Error for L2ProfileError {}
-
-#[derive(Deserialize)]
-struct RawGpuProfileForL2 {
-    specs: RawL2Specs,
-    measured: RawL2Measured,
-}
-
-#[derive(Deserialize)]
-struct RawL2Specs {
-    l2_size_bytes: u64,
-    l2_line_bytes: u64,
-    #[serde(default = "default_sector_bytes")]
-    l2_sector_bytes: u64,
-    l1_size_bytes: u64,
-}
-
-fn default_sector_bytes() -> u64 {
-    32
-}
-
-#[derive(Deserialize)]
-struct RawL2Measured {
-    memory: RawL2MemoryMeasured,
-    spill: RawL2SpillMeasured,
-}
-
-#[derive(Deserialize)]
-struct RawL2MemoryMeasured {
-    l2_effective_capacity_bytes: RawMeasuredScalar,
-}
-
-#[derive(Deserialize)]
-struct RawL2SpillMeasured {
-    l1_to_l2_spill_threshold_bytes_per_sm: RawMeasuredScalar,
-}
-
-#[derive(Deserialize)]
-struct RawMeasuredScalar {
-    value: f64,
-}
-
-impl L2Profile {
-    /// Constructs an `L2Profile` directly from a GPU profile JSON document (schema v0.1).
-    pub fn from_gpu_profile_json(json: &str) -> Result<Self, L2ProfileError> {
-        let raw: RawGpuProfileForL2 =
-            serde_json::from_str(json).map_err(|e| L2ProfileError {
-                message: format!("failed to parse GPU profile JSON: {}", e),
-            })?;
-        let eff_val = raw.measured.memory.l2_effective_capacity_bytes.value;
-        if !eff_val.is_finite() || eff_val <= 0.0 {
-            return Err(L2ProfileError {
-                message: format!("invalid l2_effective_capacity_bytes: {}", eff_val),
-            });
+impl From<&Profile> for L2Profile {
+    fn from(p: &Profile) -> Self {
+        let s = &p.specs;
+        let spill_threshold = p
+            .measured
+            .spill
+            .get("l1_to_l2_spill_threshold_bytes_per_sm")
+            .and_then(Option::as_ref)
+            .map_or(s.l1_size_bytes, |v| v.value.max(0.0).round() as u64);
+        Self {
+            l2_size_bytes: s.l2_size_bytes,
+            l2_effective_capacity_bytes: p
+                .measured
+                .memory
+                .l2_effective_capacity_bytes
+                .value
+                .max(0.0)
+                .round() as u64,
+            l2_line_bytes: s.l2_line_bytes,
+            l2_sector_bytes: s.l2_sector_bytes,
+            l1_size_bytes: s.l1_size_bytes,
+            l1_to_l2_spill_threshold_bytes_per_sm: spill_threshold,
         }
-        let spill_val = raw.measured.spill.l1_to_l2_spill_threshold_bytes_per_sm.value;
-        if !spill_val.is_finite() || spill_val < 0.0 {
-            return Err(L2ProfileError {
-                message: format!(
-                    "invalid l1_to_l2_spill_threshold_bytes_per_sm: {}",
-                    spill_val
-                ),
-            });
-        }
-        Ok(Self {
-            l2_size_bytes: raw.specs.l2_size_bytes,
-            l2_effective_capacity_bytes: eff_val.round() as u64,
-            l2_line_bytes: raw.specs.l2_line_bytes,
-            l2_sector_bytes: raw.specs.l2_sector_bytes,
-            l1_size_bytes: raw.specs.l1_size_bytes,
-            l1_to_l2_spill_threshold_bytes_per_sm: spill_val.round() as u64,
-        })
     }
 }
 
@@ -774,8 +713,9 @@ mod tests {
     #[test]
     fn construct_l2_profile_from_rtx4070_json() {
         let profile_json = include_str!("../../../../profiles/rtx4070.json");
-        let prof = L2Profile::from_gpu_profile_json(profile_json)
-            .expect("profiles/rtx4070.json should parse into L2Profile");
+        let gpu_profile = Profile::from_json(profile_json)
+            .expect("profiles/rtx4070.json should deserialize into Profile");
+        let prof = L2Profile::from(&gpu_profile);
 
         // Measured values change whenever the profile is re-measured, so read them from the file.
         let raw: serde_json::Value = serde_json::from_str(profile_json).unwrap();

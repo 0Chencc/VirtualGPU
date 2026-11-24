@@ -260,10 +260,12 @@
           }
         },
         "prologue": {
+          "description": "Standalone pre-loop operations (e.g., loading Q before a FlashAttention loop). Must NOT include software-pipeline prefill loads; pipeline prefill and drain are accounted from pipeline_loop.prefetch_distance so total loads equal pipeline_loop.trip_counts.",
           "$ref": "#/$defs/op_block"
         },
         "pipeline_loop": {
           "type": "object",
+          "description": "Main software-pipelined loop. trip_counts is the total logical iteration count (including steady-state and drain); total loads and computes each occur trip_counts times, with the first prefetch_distance loads issued during prefill.",
           "additionalProperties": false,
           "required": [
             "trip_count_mode",

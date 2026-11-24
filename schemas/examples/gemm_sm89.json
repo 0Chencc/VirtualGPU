@@ -105,28 +105,7 @@
       "trip_counts": 1
     },
     "prologue": {
-      "ops": [
-        {
-          "op_id": "prefill_A",
-          "kind": "gmem_load",
-          "warp_group_id": 0,
-          "stage_offset": 0,
-          "tensor_id": "A",
-          "nominal_bytes_per_cta": 8192,
-          "transfer_width_bytes": 16,
-          "access_ref": "acc_A"
-        },
-        {
-          "op_id": "prefill_B",
-          "kind": "gmem_load",
-          "warp_group_id": 0,
-          "stage_offset": 0,
-          "tensor_id": "B",
-          "nominal_bytes_per_cta": 8192,
-          "transfer_width_bytes": 16,
-          "access_ref": "acc_B"
-        }
-      ]
+      "ops": []
     },
     "pipeline_loop": {
       "trip_count_mode": "uniform",
