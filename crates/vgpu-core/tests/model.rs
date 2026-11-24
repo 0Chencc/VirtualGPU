@@ -260,12 +260,14 @@ fn latency_bound(prefetch_distance: u32) -> (Kernel, Machine) {
 
 #[test]
 fn latency_bound_time_follows_littles_law() {
-    // One round trip per `prefetch_distance` iterations, including the prefill.
+    // One round trip for the prefill, then d + 1 stage buffers share each
+    // round trip of the remaining 64 - d iterations.
     for d in [1, 2, 4] {
         let (k, m) = latency_bound(d);
         let p = run(&k, m);
+        let trips = 1.0 + f64::from(64 - d) / f64::from(d + 1);
         assert!(
-            close(p.makespan_ns, 64.0 / f64::from(d) * 1000.0),
+            close(p.makespan_ns, trips * 1000.0),
             "d={d}: {}",
             p.makespan_ns
         );
@@ -347,10 +349,15 @@ fn steep_load_latency_settles_at_the_littles_law_equilibrium() {
     m.dram_latency_ns = l0;
     m.dram_latency_loaded_ns = l1;
     m.launch_overhead_ns = 0.0;
+    // The prefill holds one stage per CTA in flight, the steady state two
+    // (prefetch distance 1, two buffers), sharing each round trip.
     let f = 46.0 * 16384.0;
     let a = (l1 - l0) / peak;
-    let x = (-l0 + (l0 * l0 + 4.0 * a * f).sqrt()) / (2.0 * a);
-    let expected = 256.0 * (l0 + a * x);
+    let latency = |in_flight: f64| {
+        let x = (-l0 + (l0 * l0 + 4.0 * a * in_flight).sqrt()) / (2.0 * a);
+        l0 + a * x
+    };
+    let expected = latency(f) + 255.0 / 2.0 * latency(2.0 * f);
     let p = simulate(&k, &profile(), &m, &mut ConstantHitRatio(0.0)).unwrap();
     assert!(
         (p.makespan_ns / expected - 1.0).abs() < 2e-3,
@@ -362,8 +369,9 @@ fn steep_load_latency_settles_at_the_littles_law_equilibrium() {
 
 #[test]
 fn mlp_curve_sets_latency_from_bytes_in_flight() {
-    // 46 CTAs x 16 KiB in flight = 736 KiB. An MLP curve that delivers at
-    // most 368 B/ns gives an effective latency of 2048 ns at that depth.
+    // 46 CTAs with two 16 KiB stage buffers each and no compute: the loads
+    // in flight reach where the MLP curve has saturated at 368 B/ns, so the
+    // loop delivers 368 B/ns.
     let mut k = compute_only(46);
     k.tile.per_iteration = Work {
         loads: vec![access("load", 16384.0)],
@@ -380,7 +388,13 @@ fn mlp_curve_sets_latency_from_bytes_in_flight() {
     m.l2_mlp = [curve.clone(), curve];
     m.launch_overhead_ns = 0.0;
     let p = simulate(&k, &profile(), &m, &mut ConstantHitRatio(0.0)).unwrap();
-    assert!(close(p.makespan_ns, 64.0 * f / 368.0), "{}", p.makespan_ns);
+    // The equilibrium is found by bisection to 0.2%.
+    let expected = 64.0 * f / 368.0;
+    assert!(
+        (p.makespan_ns / expected - 1.0).abs() < 2e-3,
+        "{} vs {expected}",
+        p.makespan_ns
+    );
 }
 
 #[test]
@@ -416,5 +430,32 @@ fn other_ctas_compute_while_a_synchronous_cta_waits() {
         two_per_sm.makespan_ns < 1.1 * per_sm_one,
         "{}",
         two_per_sm.makespan_ns
+    );
+}
+
+#[test]
+fn stage_buffers_share_round_trip_and_compute() {
+    // Closed loop with three buffers (prefetch distance 2), a fixed 1000 ns
+    // round trip and 400 ns of compute alone per iteration: the prefill pays
+    // one round trip, then each round trip plus compute serves three of the
+    // remaining 62 iterations, which is slower than the 64 x 400 ns of compute.
+    let mut k = compute_only(46);
+    k.tile.per_iteration.loads = vec![access("load", 64.0)];
+    k.tile.prefetch_distance = 2;
+    let compute = k.tile.per_iteration.mma_flops / (0.60 * 1e3);
+    k.tile.per_iteration.mma_flops *= 400.0 / compute;
+    let mut m = machine(&k);
+    m.dram_bw = vec![(1.0, 1e9)];
+    m.l2_bw = vec![(1.0, 1e9)];
+    m.dram_latency_ns = 1000.0;
+    m.dram_latency_loaded_ns = 1000.0;
+    m.l2_latency_ns = 1000.0;
+    m.l2_latency_loaded_ns = 1000.0;
+    let p = run(&k, m);
+    let expected = 1000.0 + 62.0 / 3.0 * (1000.0 + 400.0);
+    assert!(
+        close(p.makespan_ns, expected),
+        "{} vs {expected}",
+        p.makespan_ns
     );
 }

@@ -267,14 +267,15 @@ struct Demand {
     dram_bytes: f64,
     /// Latency that does not depend on memory load (CTA launch).
     fixed_latency_ns: f64,
+    /// Load bytes of the phase.
+    load_bytes: f64,
     /// Memory round trips not hidden by the pipeline.
     round_trips: f64,
-    /// Load bytes this CTA keeps in flight during the phase.
-    in_flight_bytes: f64,
+    /// Fraction of the phase's compute, at the rate the CTA would get alone
+    /// on its SM, that adds to the round trips instead of overlapping them.
+    exposed_compute: f64,
     /// Fraction of loaded bytes served by L2.
     hit_fraction: f64,
-    /// No overlap of memory and compute within the CTA.
-    serial: bool,
 }
 
 impl Demand {
@@ -380,7 +381,7 @@ impl<'a, L: L2> Sim<'a, L> {
         let tl = &k.tile;
         let n = tl.iterations;
         let d = tl.prefetch_distance.min(n);
-        let (compute, steps, loads, stores, round_trips, serial) = match phase {
+        let (compute, steps, loads, stores, round_trips) = match phase {
             Phase::Launch => {
                 return Demand {
                     fixed_latency_ns: self.m.cta_launch_ns,
@@ -392,18 +393,23 @@ impl<'a, L: L2> Sim<'a, L> {
                 let (h1, m1) =
                     self.traffic(&tl.per_iteration.loads, 0, d, false, sm, program, tile);
                 let st = self.traffic(&tl.prologue.stores, 0, 1, true, sm, program, tile);
-                (&tl.prologue, 1, (h0 + h1, m0 + m1), st, 1.0, false)
+                (&tl.prologue, 1, (h0 + h1, m0 + m1), st, 1.0)
             }
             Phase::Main => {
                 let ld = self.traffic(&tl.per_iteration.loads, d, n, false, sm, program, tile);
                 let st = self.traffic(&tl.per_iteration.stores, 0, n, true, sm, program, tile);
-                let trips = f64::from(n - d) / f64::from(d.max(1));
-                (&tl.per_iteration, n, ld, st, trips, d == 0)
+                // A closed loop of d + 1 stage buffers: a stage arrives a round
+                // trip after it was issued, the CTA computes on it and only
+                // then reissues the buffer. So d + 1 stages share each round
+                // trip plus compute, and synchronous loads (d = 0) pay both
+                // every iteration.
+                let trips = f64::from(n - d) / f64::from(d + 1);
+                (&tl.per_iteration, n, ld, st, trips)
             }
             Phase::Epilogue => {
                 let ld = self.traffic(&tl.epilogue.loads, 0, 1, false, sm, program, tile);
                 let st = self.traffic(&tl.epilogue.stores, 0, 1, true, sm, program, tile);
-                (&tl.epilogue, 1, ld, st, 1.0, false)
+                (&tl.epilogue, 1, ld, st, 1.0)
             }
         };
         let (hits, misses) = loads;
@@ -436,20 +442,18 @@ impl<'a, L: L2> Sim<'a, L> {
             bytes: load_bytes + stores + spill_l2 + spill_dram,
             dram_bytes: misses + stores + spill_dram,
             fixed_latency_ns: 0.0,
+            load_bytes,
             round_trips: if load_bytes > 0.0 { round_trips } else { 0.0 },
-            // The steady state keeps `prefetch_distance` iterations of loads
-            // in flight, synchronous loads one; other phases issue theirs at once.
-            in_flight_bytes: match phase {
-                Phase::Main if n > d => load_bytes / f64::from(n - d) * f64::from(d.max(1)),
-                Phase::Main => 0.0,
-                _ => load_bytes,
+            exposed_compute: if load_bytes > 0.0 {
+                round_trips / steps
+            } else {
+                0.0
             },
             hit_fraction: if load_bytes > 0.0 {
                 hits / load_bytes
             } else {
                 0.0
             },
-            serial,
         }
     }
 
@@ -640,20 +644,15 @@ fn rates(ctas: &[Cta], m: &Machine, mma_per_cta: &[f64], lat: Latency, s: &mut S
             0.0
         };
         let t_sm = t_mma.max(t_issue).max(t_smem).max(t_local);
-        // Synchronous loads: the CTA waits a loaded round trip, then
-        // computes. While it waits, the other CTAs on the SM use the pipes it
-        // leaves idle, so its own compute after the wait runs at the rate it
-        // would get alone, and the shared rate only bounds the average. The
-        // wait-then-compute sequence is reported as latency.
-        let latency = if d.serial {
-            let alone = (d.flops / mma_per_cta[1])
-                .max(d.warp_insts / m.issue_rate)
-                .max(d.smem_bytes / m.smem_bw)
-                .max(d.local_bytes / m.local_bw);
-            d.latency(lat) + alone
-        } else {
-            d.latency(lat)
-        };
+        // Round trips plus the compute that cannot overlap them. While a CTA
+        // waits, the other CTAs on its SM use the pipes it leaves idle, so
+        // that compute runs at the rate the CTA would get alone, and the
+        // shared rate only bounds the average. Reported as latency.
+        let alone = (d.flops / mma_per_cta[1])
+            .max(d.warp_insts / m.issue_rate)
+            .max(d.smem_bytes / m.smem_bw)
+            .max(d.local_bytes / m.local_bw);
+        let latency = d.latency(lat) + d.exposed_compute * alone;
         s.terms
             .push([latency, t_mma, t_issue, t_smem, t_local, 0.0, 0.0]);
         // Time without memory bandwidth limits: caps the bandwidth demand.
@@ -725,7 +724,8 @@ fn rates(ctas: &[Cta], m: &Machine, mma_per_cta: &[f64], lat: Latency, s: &mut S
 const COMPLETION_TOLERANCE: f64 = 1e-3;
 
 /// Bisection steps for the latency and bandwidth equilibrium of an event:
-/// DRAM utilization is resolved to 1/4096.
+/// DRAM utilization is resolved to 1/4096, or, with MLP curves, DRAM latency
+/// to 0.2% over its range.
 const EQUILIBRIUM_STEPS: u32 = 12;
 
 /// Simulate one kernel variant at one profile draw.
@@ -799,20 +799,52 @@ pub fn simulate<L: L2>(
     let mlp = !m.dram_mlp[mode].is_empty() && !m.l2_mlp[mode].is_empty();
     while !ctas.is_empty() {
         if mlp {
-            // Little's law with the measured MLP curves: the latency each
-            // level imposes depends only on the bytes all CTAs keep in flight.
-            let (dram_f, l2_f) = ctas.iter().fold((0.0, 0.0), |(d, l), c| {
-                let f = c.demand.in_flight_bytes;
-                (
-                    d + f * (1.0 - c.demand.hit_fraction),
-                    l + f * c.demand.hit_fraction,
-                )
-            });
+            // Little's law on the measured MLP curves. The load bytes a level
+            // holds in flight are its delivered load bandwidth times its
+            // latency, and the curve turns them into that latency. Bytes in
+            // flight grow with the latency assumed, so the DRAM latency that
+            // reproduces itself is found by bisection; L2 latency, secondary,
+            // follows the last pass.
+            let (mut lo, mut hi) = (m.mlp_latency(mode, 0.0, 0.0).dram, 1e6f64);
+            let mut l2_lat = m.mlp_latency(mode, 0.0, 0.0).l2;
+            for _ in 0..EQUILIBRIUM_STEPS {
+                let mid = (lo * hi).sqrt();
+                rates(
+                    &ctas,
+                    m,
+                    &mma_per_cta,
+                    Latency {
+                        dram: mid,
+                        l2: l2_lat,
+                    },
+                    &mut s,
+                );
+                let (dram_bw, l2_bw) =
+                    ctas.iter()
+                        .zip(&s.rate)
+                        .fold((0.0, 0.0), |(d, l), (c, &r)| {
+                            let x = r * c.demand.load_bytes;
+                            (
+                                d + x * (1.0 - c.demand.hit_fraction),
+                                l + x * c.demand.hit_fraction,
+                            )
+                        });
+                let implied = m.mlp_latency(mode, dram_bw * mid, l2_bw * l2_lat);
+                l2_lat = implied.l2;
+                if implied.dram > mid {
+                    lo = mid;
+                } else {
+                    hi = mid;
+                }
+            }
             rates(
                 &ctas,
                 m,
                 &mma_per_cta,
-                m.mlp_latency(mode, dram_f, l2_f),
+                Latency {
+                    dram: (lo * hi).sqrt(),
+                    l2: l2_lat,
+                },
                 &mut s,
             );
         } else {
