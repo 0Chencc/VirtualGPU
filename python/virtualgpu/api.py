@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import inspect
 import json
 from pathlib import Path
 from typing import Any, Mapping, Sequence
@@ -83,17 +82,6 @@ def _build_kernel_call_args(
     return tuple(positional)
 
 
-def _format_draws(raw_draws: Any, nominal_ns: float) -> dict[str, float]:
-    """Format perturbation draw latencies as string-keyed dict {'0': nominal, ...}."""
-    if isinstance(raw_draws, Mapping) and raw_draws:
-        out = {str(k): float(v) for k, v in raw_draws.items()}
-        out.setdefault("0", float(nominal_ns))
-        return out
-    if isinstance(raw_draws, (list, tuple)) and raw_draws:
-        return {str(i): float(v) for i, v in enumerate(raw_draws)}
-    return {"0": float(nominal_ns)}
-
-
 def predict_kernel_ir(
     ir: Mapping[str, Any] | str,
     profile: str | Path | Mapping[str, Any],
@@ -101,11 +89,17 @@ def predict_kernel_ir(
     case_id: str,
     config_id: str,
     l2_state: str = "cold",
-    draws: int = 1,
+    draws: int = 0,
     seed: int = 0,
     core_module: Any = None,
 ) -> dict[str, Any]:
     """Run virtualgpu._core.predict on a single KernelIR and format a validation record."""
+    if draws < 0:
+        raise ValueError(f"draws must be >= 0, got {draws}")
+    if draws > 0:
+        raise NotImplementedError("perturbation draws are not implemented in the core yet")
+    del seed  # Reserved until core perturbation sampling is wired in.
+
     if core_module is None:
         from virtualgpu import _core as core_module  # type: ignore[no-redef]
 
@@ -113,18 +107,7 @@ def predict_kernel_ir(
     revision = profile_data["provenance"]["profile_revision"]
     ir_text = ir if isinstance(ir, str) else json.dumps(ir)
 
-    predict_fn = core_module.predict
-    call_kwargs: dict[str, Any] = {"l2_state": l2_state}
-    try:
-        sig = inspect.signature(predict_fn)
-        if "draws" in sig.parameters:
-            call_kwargs["draws"] = draws
-        if "seed" in sig.parameters:
-            call_kwargs["seed"] = seed
-    except (TypeError, ValueError):
-        pass
-
-    raw = dict(predict_fn(ir_text, profile_text, **call_kwargs))
+    raw = dict(core_module.predict(ir_text, profile_text, l2_state=l2_state))
     status = raw.pop("status")
     rec: dict[str, Any] = {
         "case_id": case_id,
@@ -137,10 +120,7 @@ def predict_kernel_ir(
         },
     }
     if status == "ok":
-        nominal_ns = float(raw.pop("time_ns"))
-        raw_draws = raw.pop("draws", None)
-        rec["nominal_latency_ns"] = nominal_ns
-        rec["draws"] = _format_draws(raw_draws, nominal_ns)
+        rec["nominal_latency_ns"] = float(raw.pop("time_ns"))
         rec["diagnostics"] = raw
     else:
         rec["reason"] = raw.pop("reason", "unsupported")
@@ -201,7 +181,7 @@ def predict_gemm_configs(
     profile: str | Path | Mapping[str, Any],
     l2_state: str = "cold",
     dtype: str = "f16",
-    draws: int = 1,
+    draws: int = 0,
     seed: int = 0,
     cache_dir: str | Path | None = None,
     use_cache: bool = True,
@@ -212,6 +192,10 @@ def predict_gemm_configs(
 
     Returns a list of prediction records matching validation/score.py's schema.
     """
+    if draws < 0:
+        raise ValueError(f"draws must be >= 0, got {draws}")
+    if draws > 0:
+        raise NotImplementedError("perturbation draws are not implemented in the core yet")
     profile_text, profile_data = _load_profile(profile)
     target_arch = profile_data["identity"]["arch"]
     revision = profile_data["provenance"]["profile_revision"]
@@ -260,11 +244,15 @@ def predict_ir_dir(
     case_id: str,
     profile: str | Path | Mapping[str, Any],
     l2_state: str = "cold",
-    draws: int = 1,
+    draws: int = 0,
     seed: int = 0,
     core_module: Any = None,
 ) -> list[dict[str, Any]]:
     """Predict every KernelIR JSON file in a directory and return validation records."""
+    if draws < 0:
+        raise ValueError(f"draws must be >= 0, got {draws}")
+    if draws > 0:
+        raise NotImplementedError("perturbation draws are not implemented in the core yet")
     profile_text, _ = _load_profile(profile)
     records: list[dict[str, Any]] = []
     for ir_file in sorted(Path(ir_dir).glob("*.json")):

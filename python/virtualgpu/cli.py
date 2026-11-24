@@ -154,7 +154,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_pred.add_argument("--profile", type=Path, required=True, help="Path to GPU profile JSON")
     p_pred.add_argument("--cache", choices=("cold", "warm"), default="cold", help="Initial L2 cache state")
     p_pred.add_argument("--dtype", default="f16", help="Input tensor dtype (default: f16)")
-    p_pred.add_argument("--draws", type=int, default=1, help="Number of perturbation draws (1 = nominal only)")
+    p_pred.add_argument("--draws", type=int, default=0, help="Number of perturbation draws (0 = nominal only)")
     p_pred.add_argument("--seed", type=int, default=0, help="RNG seed for perturbation draws")
     p_pred.add_argument("--cache-dir", type=Path, help="AOT compilation cache directory")
     p_pred.add_argument("--no-cache", action="store_true", help="Disable AOT compilation cache")

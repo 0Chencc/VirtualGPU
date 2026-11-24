@@ -55,28 +55,6 @@ class _DummyNominalCore:
         }
 
 
-class _DummyPerturbedCore:
-    """Mimics M2 virtualgpu._core with perturbation draws support."""
-
-    @staticmethod
-    def predict(
-        kernel_ir_json: str,
-        profile_json: str,
-        l2_state: str = "cold",
-        draws: int = 1,
-        seed: int = 0,
-    ) -> dict[str, Any]:
-        base = 10000.0 + seed
-        return {
-            "status": "ok",
-            "l2_state": l2_state,
-            "dispatch_policy": "round_robin",
-            "time_ns": base,
-            "draws": [base + 100.0 * i for i in range(draws)],
-            "waves": 1,
-        }
-
-
 def test_aot_disk_cache_hits_and_skips_recompilation(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     cache_dir = tmp_path / "aot_cache"
     cfg = {
@@ -124,7 +102,7 @@ def test_aot_disk_cache_hits_and_skips_recompilation(tmp_path: Path, monkeypatch
     )
 
 
-def test_predict_api_formats_nominal_perturbed_and_unsupported_records(tmp_path: Path) -> None:
+def test_predict_api_formats_nominal_and_rejects_unimplemented_draws(tmp_path: Path) -> None:
     cache_dir = tmp_path / "cache"
     ir_dir = tmp_path / "irs"
     configs = [
@@ -162,25 +140,33 @@ def test_predict_api_formats_nominal_perturbed_and_unsupported_records(tmp_path:
     by_id = {r["config_id"]: r for r in records}
     assert by_id["c_ok"]["status"] == "ok"
     assert by_id["c_ok"]["nominal_latency_ns"] == 12345.0
-    assert by_id["c_ok"]["draws"] == {"0": 12345.0}
+    assert "draws" not in by_id["c_ok"]
     assert by_id["c_ok"]["assumptions"]["l2_state"] == "cold"
     assert by_id["c_big_smem"]["status"] == "unsupported"
     assert by_id["c_big_smem"]["reason"] == "SmemExceedsLimit"
 
-    # Perturbed core populates string-keyed draws {"0": ..., "1": ..., "2": ...}
+    # Requesting perturbation draws must fail loudly rather than silently returning nominal only.
     ir_ok = json.loads((ir_dir / "c_ok.json").read_text(encoding="utf-8"))
-    rec_pert = predict_kernel_ir(
-        ir_ok,
-        PROFILE_EXAMPLE_PATH,
-        case_id="test-case",
-        config_id="c_ok",
-        l2_state="warm",
-        draws=3,
-        seed=7,
-        core_module=_DummyPerturbedCore,
-    )
-    assert rec_pert["status"] == "ok"
-    assert rec_pert["draws"] == {"0": 10007.0, "1": 10107.0, "2": 10207.0}
+    with pytest.raises(NotImplementedError, match="perturbation draws are not implemented"):
+        predict_kernel_ir(
+            ir_ok,
+            PROFILE_EXAMPLE_PATH,
+            case_id="test-case",
+            config_id="c_ok",
+            l2_state="warm",
+            draws=32,
+            seed=7,
+            core_module=_DummyNominalCore,
+        )
+    with pytest.raises(ValueError, match="draws must be >= 0"):
+        predict_kernel_ir(
+            ir_ok,
+            PROFILE_EXAMPLE_PATH,
+            case_id="test-case",
+            config_id="c_ok",
+            draws=-1,
+            core_module=_DummyNominalCore,
+        )
 
     # Directory prediction helper produces matching records.
     dir_records = predict_ir_dir(
@@ -245,4 +231,5 @@ def test_cli_extract_and_predict_ir_dir(tmp_path: Path, monkeypatch: pytest.Monk
     assert preds[0]["case_id"] == "smoke-case"
     assert preds[0]["config_id"] == "c01"
     assert preds[0]["status"] == "ok"
-    assert preds[0]["draws"] == {"0": 12345.0}
+    assert preds[0]["nominal_latency_ns"] == 12345.0
+    assert "draws" not in preds[0]
