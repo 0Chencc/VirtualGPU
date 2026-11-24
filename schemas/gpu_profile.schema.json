@@ -1,0 +1,455 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ZacharyZcR/VirtualGPU/schemas/gpu_profile.schema.json",
+  "title": "VirtualGPU Hardware Profile",
+  "description": "Versioned GPU hardware specification and microbenchmark calibration profile (v0.1).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "identity",
+    "provenance",
+    "specs",
+    "measured"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "0.1"
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["vendor", "arch", "sku", "memory_type"],
+      "properties": {
+        "vendor": {
+          "type": "string",
+          "enum": ["nvidia", "amd"]
+        },
+        "arch": {
+          "type": "string",
+          "minLength": 2,
+          "description": "Architecture target string, e.g. sm_89, sm_121, gfx942."
+        },
+        "sku": {
+          "type": "string",
+          "minLength": 1
+        },
+        "memory_type": {
+          "type": "string",
+          "enum": ["discrete", "unified"]
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile_revision",
+        "calibration_run_id",
+        "source",
+        "driver_version",
+        "toolkit_version",
+        "suite_version",
+        "host_os",
+        "is_wsl",
+        "timestamp_utc",
+        "clock_policy"
+      ],
+      "properties": {
+        "profile_revision": { "type": "string", "minLength": 1 },
+        "calibration_run_id": { "type": "string", "minLength": 1 },
+        "calibration_manifest_digest": { "type": ["string", "null"] },
+        "source": {
+          "type": "string",
+          "enum": ["measured", "partial", "spec_derived"]
+        },
+        "driver_version": { "type": "string" },
+        "toolkit_version": { "type": "string" },
+        "suite_version": { "type": "string" },
+        "host_os": { "type": "string" },
+        "is_wsl": { "type": "boolean" },
+        "power_limit_w": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "timestamp_utc": { "type": "string", "minLength": 1 },
+        "clock_policy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "locked",
+            "sm_clock_locked",
+            "mem_clock_locked",
+            "sm_clock_mhz",
+            "mem_clock_mhz",
+            "observed_sm_clock_range_mhz",
+            "observed_mem_clock_range_mhz",
+            "throttle_events"
+          ],
+          "properties": {
+            "locked": { "type": "boolean" },
+            "sm_clock_locked": { "type": "boolean" },
+            "mem_clock_locked": { "type": "boolean" },
+            "sm_clock_mhz": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+            "mem_clock_mhz": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+            "observed_sm_clock_range_mhz": {
+              "type": ["array", "null"],
+              "minItems": 2,
+              "maxItems": 2,
+              "items": { "type": "number", "exclusiveMinimum": 0 }
+            },
+            "observed_mem_clock_range_mhz": {
+              "type": ["array", "null"],
+              "minItems": 2,
+              "maxItems": 2,
+              "items": { "type": "number", "exclusiveMinimum": 0 }
+            },
+            "throttle_events": { "type": ["integer", "null"], "minimum": 0 }
+          }
+        }
+      }
+    },
+    "specs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sm_count",
+        "warp_size",
+        "max_threads_per_sm",
+        "max_warps_per_sm",
+        "max_blocks_per_sm",
+        "max_threads_per_block",
+        "registers_per_sm",
+        "max_registers_per_thread",
+        "register_alloc_granularity",
+        "register_alloc_unit_regs",
+        "l1_smem_unified_bytes",
+        "l1_size_bytes",
+        "shared_mem_per_sm_bytes",
+        "max_shared_mem_per_block_bytes",
+        "reserved_shared_mem_per_cta_bytes",
+        "shared_mem_alloc_granularity_bytes",
+        "shared_mem_carveout_options_bytes",
+        "l2_size_bytes",
+        "l2_line_bytes",
+        "l2_sector_bytes",
+        "l2_partitions",
+        "l1_line_bytes",
+        "capabilities",
+        "mma_shapes"
+      ],
+      "properties": {
+        "sm_count": { "type": "integer", "minimum": 1 },
+        "warp_size": { "type": "integer", "enum": [32, 64] },
+        "max_threads_per_sm": { "type": "integer", "minimum": 32 },
+        "max_warps_per_sm": { "type": "integer", "minimum": 1 },
+        "max_blocks_per_sm": { "type": "integer", "minimum": 1 },
+        "max_threads_per_block": { "type": "integer", "minimum": 32 },
+        "registers_per_sm": { "type": "integer", "minimum": 1024 },
+        "max_registers_per_thread": { "type": "integer", "minimum": 1 },
+        "register_alloc_granularity": { "type": "string", "enum": ["warp", "block"] },
+        "register_alloc_unit_regs": { "type": "integer", "minimum": 1 },
+        "l1_smem_unified_bytes": { "type": "integer", "minimum": 0 },
+        "l1_size_bytes": { "type": "integer", "minimum": 0 },
+        "shared_mem_per_sm_bytes": { "type": "integer", "minimum": 0 },
+        "max_shared_mem_per_block_bytes": { "type": "integer", "minimum": 0 },
+        "reserved_shared_mem_per_cta_bytes": { "type": "integer", "minimum": 0 },
+        "shared_mem_alloc_granularity_bytes": { "type": "integer", "minimum": 1 },
+        "shared_mem_carveout_options_bytes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "integer", "minimum": 0 }
+        },
+        "l2_size_bytes": { "type": "integer", "minimum": 0 },
+        "l2_line_bytes": { "type": "integer", "minimum": 1 },
+        "l2_sector_bytes": { "type": "integer", "minimum": 1 },
+        "l2_partitions": { "type": "integer", "minimum": 1 },
+        "l1_line_bytes": { "type": "integer", "minimum": 1 },
+        "capabilities": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["cp_async", "tma", "wgmma", "tcgen05_tmem", "cluster"],
+          "properties": {
+            "cp_async": { "type": "boolean" },
+            "tma": { "type": "boolean" },
+            "wgmma": { "type": "boolean" },
+            "tcgen05_tmem": { "type": "boolean" },
+            "cluster": { "type": "boolean" }
+          }
+        },
+        "mma_shapes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["op_class", "a_dtype", "b_dtype", "acc_dtype", "m", "n", "k"],
+            "properties": {
+              "op_class": { "type": "string", "minLength": 1 },
+              "a_dtype": { "type": "string", "minLength": 1 },
+              "b_dtype": { "type": "string", "minLength": 1 },
+              "acc_dtype": { "type": "string", "minLength": 1 },
+              "m": { "type": "integer", "minimum": 1 },
+              "n": { "type": "integer", "minimum": 1 },
+              "k": { "type": "integer", "minimum": 1 }
+            }
+          }
+        }
+      }
+    },
+    "measured": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "memory",
+        "compute",
+        "occupancy",
+        "async_pipeline",
+        "spill",
+        "overhead",
+        "cta_dispatch"
+      ],
+      "properties": {
+        "memory": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "dram_bw_read_gbps",
+            "dram_bw_write_gbps",
+            "dram_bw_by_active_sms",
+            "l2_bw_read_gbps",
+            "l2_bw_write_gbps",
+            "l2_bw_by_active_sms",
+            "l2_effective_capacity_bytes",
+            "smem_bw_per_sm_gbps",
+            "dram_latency_ns",
+            "l2_latency_ns",
+            "smem_latency_ns"
+          ],
+          "properties": {
+            "dram_bw_read_gbps": { "$ref": "#/$defs/MeasuredValue" },
+            "dram_bw_write_gbps": { "$ref": "#/$defs/MeasuredValue" },
+            "dram_bw_by_active_sms": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/ActiveSmBwPoint" }
+            },
+            "l2_bw_read_gbps": { "$ref": "#/$defs/MeasuredValue" },
+            "l2_bw_write_gbps": { "$ref": "#/$defs/MeasuredValue" },
+            "l2_bw_by_active_sms": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/ActiveSmBwPoint" }
+            },
+            "l2_effective_capacity_bytes": { "$ref": "#/$defs/MeasuredValue" },
+            "smem_bw_per_sm_gbps": { "$ref": "#/$defs/MeasuredValue" },
+            "dram_latency_ns": { "$ref": "#/$defs/MeasuredValue" },
+            "dram_latency_loaded_ns": {
+              "oneOf": [{ "$ref": "#/$defs/MeasuredValue" }, { "type": "null" }]
+            },
+            "l2_latency_ns": { "$ref": "#/$defs/MeasuredValue" },
+            "l2_latency_loaded_ns": {
+              "oneOf": [{ "$ref": "#/$defs/MeasuredValue" }, { "type": "null" }]
+            },
+            "smem_latency_ns": { "$ref": "#/$defs/MeasuredValue" }
+          }
+        },
+        "compute": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "mma_tflops_per_sm_by_warps",
+            "non_mma_issue_rate_per_sm_gips",
+            "fp32_fma_tflops",
+            "sfu_tflops"
+          ],
+          "properties": {
+            "mma_tflops_per_sm_by_warps": {
+              "type": "object",
+              "minProperties": 1,
+              "additionalProperties": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["mma_warps_per_sm", "tflops_per_sm"],
+                  "properties": {
+                    "mma_warps_per_sm": { "type": "integer", "minimum": 1 },
+                    "tflops_per_sm": { "$ref": "#/$defs/MeasuredValue" }
+                  }
+                }
+              }
+            },
+            "non_mma_issue_rate_per_sm_gips": { "$ref": "#/$defs/MeasuredValue" },
+            "fp32_fma_tflops": { "$ref": "#/$defs/MeasuredValue" },
+            "sfu_tflops": { "$ref": "#/$defs/MeasuredValue" }
+          }
+        },
+        "occupancy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["smem_carveout_observed"],
+          "properties": {
+            "smem_carveout_observed": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "requested_smem_per_cta_bytes",
+                  "chosen_carveout_bytes",
+                  "max_active_ctas_per_sm"
+                ],
+                "properties": {
+                  "requested_smem_per_cta_bytes": { "type": "integer", "minimum": 0 },
+                  "chosen_carveout_bytes": { "type": "integer", "minimum": 0 },
+                  "max_active_ctas_per_sm": { "type": "integer", "minimum": 1 }
+                }
+              }
+            }
+          }
+        },
+        "async_pipeline": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "cp_async_bw_per_sm_gbps": {
+              "oneOf": [{ "$ref": "#/$defs/MeasuredValue" }, { "type": "null" }]
+            },
+            "tma_bw_per_sm_gbps": {
+              "oneOf": [{ "$ref": "#/$defs/MeasuredValue" }, { "type": "null" }]
+            },
+            "tma_setup_ns": {
+              "oneOf": [{ "$ref": "#/$defs/MeasuredValue" }, { "type": "null" }]
+            }
+          }
+        },
+        "spill": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "local_mem_l1_hit_bw_per_sm_gbps",
+            "local_mem_l1_miss_bw_per_sm_gbps",
+            "local_mem_l1_hit_latency_ns",
+            "local_mem_l1_miss_latency_ns",
+            "l1_to_l2_spill_threshold_bytes_per_sm"
+          ],
+          "properties": {
+            "local_mem_l1_hit_bw_per_sm_gbps": { "$ref": "#/$defs/MeasuredValue" },
+            "local_mem_l1_miss_bw_per_sm_gbps": { "$ref": "#/$defs/MeasuredValue" },
+            "local_mem_l1_hit_latency_ns": { "$ref": "#/$defs/MeasuredValue" },
+            "local_mem_l1_miss_latency_ns": { "$ref": "#/$defs/MeasuredValue" },
+            "l1_to_l2_spill_threshold_bytes_per_sm": { "$ref": "#/$defs/MeasuredValue" }
+          }
+        },
+        "overhead": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["launch_overhead_us", "per_cta_launch_latency_ns"],
+          "properties": {
+            "launch_overhead_us": { "$ref": "#/$defs/MeasuredValue" },
+            "per_cta_launch_latency_ns": { "$ref": "#/$defs/MeasuredValue" }
+          }
+        },
+        "cta_dispatch": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "observed_policy",
+            "candidate_policies",
+            "policy_params",
+            "confidence",
+            "probes"
+          ],
+          "properties": {
+            "observed_policy": {
+              "type": "string",
+              "enum": ["round_robin", "grouped", "measured_table", "unknown"]
+            },
+            "candidate_policies": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "enum": ["round_robin", "grouped", "measured_table", "unknown"]
+              }
+            },
+            "policy_params": {
+              "type": "object"
+            },
+            "confidence": {
+              "type": "string",
+              "enum": ["high", "medium", "low"]
+            },
+            "probes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "grid_dims",
+                  "ctas_per_sm",
+                  "waves_approx",
+                  "order_consistency",
+                  "first_wave_trace"
+                ],
+                "properties": {
+                  "grid_dims": {
+                    "type": "array",
+                    "minItems": 3,
+                    "maxItems": 3,
+                    "items": { "type": "integer", "minimum": 1 }
+                  },
+                  "ctas_per_sm": { "type": "integer", "minimum": 1 },
+                  "waves_approx": { "type": "number", "exclusiveMinimum": 0 },
+                  "order_consistency": { "type": "number", "minimum": 0, "maximum": 1 },
+                  "first_wave_trace": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["cta_id", "sm_id", "start_ns"],
+                      "properties": {
+                        "cta_id": { "type": "integer", "minimum": 0 },
+                        "sm_id": { "type": "integer", "minimum": 0 },
+                        "start_ns": { "type": "number", "minimum": 0 }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "MeasuredValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "rel_uncertainty", "unit", "method"],
+      "properties": {
+        "value": { "type": "number", "minimum": 0 },
+        "ci95_low": { "type": ["number", "null"], "minimum": 0 },
+        "ci95_high": { "type": ["number", "null"], "minimum": 0 },
+        "rel_uncertainty": { "type": "number", "minimum": 0, "maximum": 1 },
+        "unit": { "type": "string", "minLength": 1 },
+        "method": { "type": "string", "minLength": 1 },
+        "source": {
+          "type": "string",
+          "enum": ["measured", "estimated", "spec_derived"]
+        },
+        "perturb_group": { "type": ["string", "null"] }
+      }
+    },
+    "ActiveSmBwPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["active_sms", "bw_gbps"],
+      "properties": {
+        "active_sms": { "type": "integer", "minimum": 1 },
+        "bw_gbps": { "$ref": "#/$defs/MeasuredValue" }
+      }
+    }
+  }
+}
