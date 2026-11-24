@@ -82,3 +82,16 @@ disjoint allocation of at least 128 MiB and three times L2 capacity. The
 write-based cold scores are superseded. Replacement cold sessions are
 stored separately from the original warm measurements. The holdout remained
 sealed.
+
+The replacement completed all 27 cold-only sessions and 7,650 cold samples.
+All 765 replacement AOT/JIT comparisons matched both PTX and TTGIR. The 27
+original report checksums remained identical, preserving all 7,650 warm
+samples. The verification record is `results/m2/clean-cold-audit.json`.
+
+The measurement-only comparison in `results/m2/scores-clean-cold.json`
+reuses the frozen predictions from core `4d5fa6c` and profile `0.3.0-m2`.
+Warm core and roofline scores are identical to the prior run. The learned
+baseline was refit on the corrected development labels for both cache
+regimes using the same folds and ridge penalty. Core cold median tau-b is
+0.468 and mean top-5 regret is 0.10%. The shortlist checks pass, and the cold
+ranking threshold against the learned baseline fails.
