@@ -304,7 +304,7 @@
             "prefetch_distance": {
               "type": "integer",
               "minimum": 0,
-              "description": "Number of loop iterations prefetched ahead in flight (typically S - 1 for a frontend request of S stages)."
+              "description": "Number of pipeline stages remaining in flight while the current iteration computes, derived from the post-pipelining async wait instruction (e.g., cp.async.wait_group N or ttg.async_wait num divided by commit groups per stage; for Triton, num_stages=2 yields 0 and num_stages=3 yields 1)."
             },
             "async_copy": {
               "type": "string",
