@@ -12,28 +12,26 @@ The goal is **relative speed**, not cycle-exact timing. Ranking variants correct
 
 ## Principles
 
-- **Built from public information and measurement.** Functional semantics follow public ISA specifications (NVIDIA PTX, AMD CDNA ISA manuals). Timing models use generic architectural structure (pipelines, queues, caches, bandwidth) with parameters fitted from our own microbenchmarks and official profiler counters. No disassembly of vendor drivers, firmware or toolchains.
-- **Model what differentiates variants.** If an optimization changes a mechanism (occupancy, pipeline overlap, coalescing, bank conflicts), the model must contain that mechanism; everything else can stay coarse.
-- **One model per architecture, one config per SKU.** H100, H800, H200 and H20 share one sm_90 model with different parameter files.
+- **Built from public information and measurement.** The model uses public specifications, generic architectural structure (pipelines, caches, bandwidth), and parameters measured with our own microbenchmarks. No reverse engineering of vendor drivers, firmware or toolchains.
+- **Model what differentiates variants.** If an optimization changes a mechanism (occupancy, wave quantization, pipeline overlap, L2 reuse), the model must contain that mechanism; everything else can stay coarse.
+- **One model per architecture, one profile per SKU.** H100, H800, H200 and H20 share one sm_90 model with different JSON profiles.
 
-## Architecture
+## How it works
 
 ```
-CUDA / HIP program
+Triton kernel + autotuning configs
       │
- runtime shim (driver API replacement)
+ compile ahead of time for the target (no GPU needed)
+      │  tile structure from Triton IR + resource usage
+ tile-level, event-driven performance model
+      │  + GPU profile (JSON: public specs + measured parameters)
       │
- functional model   — PTX / AMDGPU ISA interpreter, bit-exact results
-      │  instruction stream + synchronization events
- timing model       — pluggable fidelity: analytical / tile-level / cycle-level
-   ├─ compute units: warp scheduling, issue, tensor cores
-   ├─ async engines: TMA, async copy, barriers
-   └─ memory: L1/shared, L2, HBM
-      │
- output: cycles, profiler-style counters, per-warp timeline
+ output: ranking, indistinguishable groups, bounding resource per variant
 ```
 
-Synchronization (barriers, async-copy completion) is timing-driven: modern kernels are asynchronous pipelines, so the timing model decides when the functional model may proceed.
+Triton comes first: tile shapes, layouts, `num_warps` and `num_stages` are explicit in its IR, the same frontend serves NVIDIA and AMD, and autotuning already lives there. The first application is GPU-free autotuning.
+
+See [docs/design.md](docs/design.md) for the full design.
 
 ## Target architectures
 
@@ -50,11 +48,11 @@ Synchronization (barriers, async-copy completion) is timing-driven: modern kerne
 
 ## Roadmap
 
-1. **GEMM, tile-level, one architecture** — predict the ranking of GEMM variants, calibrated on a real card. Proves the approach.
-2. **Attention and MoE kernels** on the same model.
-3. **Functional simulation** — runtime shim + PTX interpreter; unmodified programs run and match real hardware bit for bit.
-4. **Cycle-level SM and memory models** with async engines.
-5. **More architectures**, AMD support, sampling and parallel simulation for speed.
+1. **First experiment** — rank the autotuning configs of a Triton GEMM and compare against a real GPU. Proves or kills the approach.
+2. **Cross-GPU prediction** — the same experiment on a GPU whose data was not used to build the model.
+3. **Microbenchmark suite and community profiles** — anyone with a GPU can contribute a profile.
+4. **Attention and MoE kernels**, then bottleneck finding across a full model.
+5. **More architectures**, including AMD.
 
 ## Validation
 
@@ -62,6 +60,7 @@ Accuracy is measured by what tuning needs:
 
 - **Rank correlation** (Kendall τ) between simulated and measured times across variants.
 - **Top-k hit rate** — does the simulator's top-k contain the truly fastest variant?
+- **Indistinguishable accuracy** — variants within a few percent on hardware should be reported as indistinguishable, not ordered.
 - Absolute error (MAPE) is tracked but secondary.
 
 Every calibration and validation dataset records the GPU, driver, clocks and kernel source it came from.
