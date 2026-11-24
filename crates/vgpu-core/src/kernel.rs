@@ -82,6 +82,9 @@ pub struct Kernel {
     pub mma_key: String,
     pub tile: Tile,
     pub spill: Spill,
+    /// Pipeline loads are asynchronous copies (`cp.async`, TMA) rather than
+    /// loads into registers.
+    pub async_loads: bool,
 }
 
 impl Kernel {

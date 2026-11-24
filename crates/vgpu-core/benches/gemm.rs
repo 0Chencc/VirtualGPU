@@ -29,6 +29,7 @@ fn main() {
         tiles_per_program: TripCounts::Uniform(1),
         mma_key: "mma.sync:f16:f16:f32:16x8x16".to_string(),
         spill: Spill::default(),
+        async_loads: true,
         tile: Tile {
             prologue: Work::default(),
             iterations: 128,

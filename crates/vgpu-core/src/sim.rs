@@ -13,7 +13,7 @@
 
 use crate::kernel::{Access, Kernel, Spill, SpillScope, Work};
 use crate::occupancy::{occupancy, Occupancy, OccupancyError};
-use crate::profile::{interpolate, Profile};
+use crate::profile::{interpolate, MlpPoint, Profile};
 
 /// The core's view of the L2 model.
 pub trait L2 {
@@ -86,6 +86,11 @@ pub struct Machine {
     pub dram_latency_loaded_ns: f64,
     pub l2_latency_ns: f64,
     pub l2_latency_loaded_ns: f64,
+    /// (bytes in flight, delivered bytes per ns) of each level, indexed by
+    /// issue mode: `[asynchronous copies, loads into registers]`. Empty if
+    /// the profile has no MLP curves.
+    pub dram_mlp: [Vec<(f64, f64)>; 2],
+    pub l2_mlp: [Vec<(f64, f64)>; 2],
     /// (MMA-issuing warps on the SM, FLOP per ns for the whole SM).
     pub mma: Vec<(f64, f64)>,
     /// Warp instructions per ns per SM.
@@ -113,7 +118,45 @@ fn curve<T>(
     Ok(v)
 }
 
+/// MLP curves per issue mode, `[cp_async, ld_global_v4]`. A missing mode
+/// borrows the other's curve.
+fn mlp_curves(points: &[MlpPoint]) -> [Vec<(f64, f64)>; 2] {
+    let pick = |mode: &str| {
+        let mut v: Vec<(f64, f64)> = points
+            .iter()
+            .filter(|q| q.issue_mode == mode)
+            .map(|q| (q.bytes_in_flight as f64, q.bw_gbps.value))
+            .collect();
+        v.sort_by(|a, b| a.0.total_cmp(&b.0));
+        v
+    };
+    let (a, b) = (pick("cp_async"), pick("ld_global_v4"));
+    match (a.is_empty(), b.is_empty()) {
+        (false, true) => [a.clone(), a],
+        (true, false) => [b.clone(), b],
+        _ => [a, b],
+    }
+}
+
 impl Machine {
+    /// Little's law latencies with the given bytes in flight at each level:
+    /// bytes in flight over the bandwidth the MLP curve delivers for them.
+    /// Below the first measured point the latency is that point's.
+    fn mlp_latency(&self, mode: usize, dram_in_flight: f64, l2_in_flight: f64) -> Latency {
+        let little = |curve: &[(f64, f64)], f: f64| {
+            let (f0, x0) = curve[0];
+            if f <= f0 {
+                f0 / x0
+            } else {
+                f / interpolate(curve, f)
+            }
+        };
+        Latency {
+            dram: little(&self.dram_mlp[mode], dram_in_flight),
+            l2: little(&self.l2_mlp[mode], l2_in_flight),
+        }
+    }
+
     /// Latencies when DRAM and L2 deliver the given fractions of their peak
     /// bandwidth: linear between the idle and the saturated measurement.
     fn latency(&self, dram_util: f64, l2_util: f64) -> Latency {
@@ -160,6 +203,8 @@ impl Machine {
                 .l2_latency_loaded_ns
                 .as_ref()
                 .map_or(m.memory.l2_latency_ns.value, |v| v.value),
+            dram_mlp: mlp_curves(&m.memory.dram_bw_by_bytes_in_flight),
+            l2_mlp: mlp_curves(&m.memory.l2_bw_by_bytes_in_flight),
             mma: curve(
                 mma_points,
                 |q| (q.mma_warps_per_sm.into(), q.tflops_per_sm.value * 1e3),
@@ -224,6 +269,8 @@ struct Demand {
     fixed_latency_ns: f64,
     /// Memory round trips not hidden by the pipeline.
     round_trips: f64,
+    /// Load bytes this CTA keeps in flight during the phase.
+    in_flight_bytes: f64,
     /// Fraction of loaded bytes served by L2.
     hit_fraction: f64,
     /// No overlap of memory and compute within the CTA.
@@ -390,6 +437,13 @@ impl<'a, L: L2> Sim<'a, L> {
             dram_bytes: misses + stores + spill_dram,
             fixed_latency_ns: 0.0,
             round_trips: if load_bytes > 0.0 { round_trips } else { 0.0 },
+            // The steady state keeps `prefetch_distance` iterations of loads
+            // in flight, synchronous loads one; other phases issue theirs at once.
+            in_flight_bytes: match phase {
+                Phase::Main if n > d => load_bytes / f64::from(n - d) * f64::from(d.max(1)),
+                Phase::Main => 0.0,
+                _ => load_bytes,
+            },
             hit_fraction: if load_bytes > 0.0 {
                 hits / load_bytes
             } else {
@@ -737,26 +791,47 @@ pub fn simulate<L: L2>(
             (d + r * c.demand.dram_bytes, l + r * c.demand.bytes)
         })
     };
+    let mode = usize::from(!k.async_loads);
+    let mlp = !m.dram_mlp[mode].is_empty() && !m.l2_mlp[mode].is_empty();
     while !ctas.is_empty() {
-        let (mut lo, mut hi) = (0.0, 1.0);
-        for _ in 0..EQUILIBRIUM_STEPS {
-            let mid = 0.5 * (lo + hi);
-            rates(&ctas, m, &mma_per_cta, m.latency(mid, l2_util), &mut s);
-            let (d, l) = achieved(&ctas, &s.rate);
-            l2_util = l / l2_peak;
-            if d / dram_peak > mid {
-                lo = mid;
-            } else {
-                hi = mid;
+        if mlp {
+            // Little's law with the measured MLP curves: the latency each
+            // level imposes depends only on the bytes all CTAs keep in flight.
+            let (dram_f, l2_f) = ctas.iter().fold((0.0, 0.0), |(d, l), c| {
+                let f = c.demand.in_flight_bytes;
+                (
+                    d + f * (1.0 - c.demand.hit_fraction),
+                    l + f * c.demand.hit_fraction,
+                )
+            });
+            rates(
+                &ctas,
+                m,
+                &mma_per_cta,
+                m.mlp_latency(mode, dram_f, l2_f),
+                &mut s,
+            );
+        } else {
+            let (mut lo, mut hi) = (0.0, 1.0);
+            for _ in 0..EQUILIBRIUM_STEPS {
+                let mid = 0.5 * (lo + hi);
+                rates(&ctas, m, &mma_per_cta, m.latency(mid, l2_util), &mut s);
+                let (d, l) = achieved(&ctas, &s.rate);
+                l2_util = l / l2_peak;
+                if d / dram_peak > mid {
+                    lo = mid;
+                } else {
+                    hi = mid;
+                }
             }
+            rates(
+                &ctas,
+                m,
+                &mma_per_cta,
+                m.latency(0.5 * (lo + hi), l2_util),
+                &mut s,
+            );
         }
-        rates(
-            &ctas,
-            m,
-            &mma_per_cta,
-            m.latency(0.5 * (lo + hi), l2_util),
-            &mut s,
-        );
         let dt = ctas
             .iter()
             .zip(&s.rate)

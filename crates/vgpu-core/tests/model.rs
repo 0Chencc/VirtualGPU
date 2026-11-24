@@ -26,6 +26,7 @@ fn gemm(grid: u32, iterations: u32, prefetch_distance: u32) -> Kernel {
         tiles_per_program: TripCounts::Uniform(1),
         mma_key: MMA.to_string(),
         spill: Spill::default(),
+        async_loads: true,
         tile: Tile {
             prologue: Work::default(),
             iterations,
@@ -346,4 +347,27 @@ fn steep_load_latency_settles_at_the_littles_law_equilibrium() {
         p.makespan_ns,
         expected
     );
+}
+
+#[test]
+fn mlp_curve_sets_latency_from_bytes_in_flight() {
+    // 46 CTAs x 16 KiB in flight = 736 KiB. An MLP curve that delivers at
+    // most 368 B/ns gives an effective latency of 2048 ns at that depth.
+    let mut k = compute_only(46);
+    k.tile.per_iteration = Work {
+        loads: vec![access("load", 16384.0)],
+        ..Work::default()
+    };
+    k.tile.iterations = 64;
+    k.tile.prefetch_distance = 1;
+    let mut m = machine(&k);
+    m.dram_bw = vec![(1.0, 1e9)];
+    m.l2_bw = vec![(1.0, 1e9)];
+    let f = 46.0 * 16384.0;
+    let curve = vec![(4096.0, 4096.0 / 500.0), (f / 4.0, 368.0), (2.0 * f, 368.0)];
+    m.dram_mlp = [curve.clone(), curve.clone()];
+    m.l2_mlp = [curve.clone(), curve];
+    m.launch_overhead_ns = 0.0;
+    let p = simulate(&k, &profile(), &m, &mut ConstantHitRatio(0.0)).unwrap();
+    assert!(close(p.makespan_ns, 64.0 * f / 368.0), "{}", p.makespan_ns);
 }

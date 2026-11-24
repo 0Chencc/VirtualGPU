@@ -84,6 +84,17 @@ pub struct BwPoint {
     pub bw_gbps: MeasuredValue,
 }
 
+/// Delivered bandwidth with a given number of load bytes in flight.
+#[derive(Debug, Clone, Deserialize)]
+pub struct MlpPoint {
+    /// `cp_async` or `ld_global_v4`.
+    pub issue_mode: String,
+    pub bytes_in_flight: u64,
+    pub active_ctas: u32,
+    pub bytes_per_cta: u64,
+    pub bw_gbps: MeasuredValue,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct L2RescanPoint {
     pub working_set_bytes: u64,
@@ -102,6 +113,11 @@ pub struct Memory {
     pub smem_bw_per_sm_gbps: MeasuredValue,
     pub dram_latency_ns: MeasuredValue,
     pub l2_latency_ns: MeasuredValue,
+    /// Memory-level parallelism: delivered bandwidth against bytes in flight.
+    #[serde(default)]
+    pub dram_bw_by_bytes_in_flight: Vec<MlpPoint>,
+    #[serde(default)]
+    pub l2_bw_by_bytes_in_flight: Vec<MlpPoint>,
     #[serde(default)]
     pub dram_latency_loaded_ns: Option<MeasuredValue>,
     #[serde(default)]

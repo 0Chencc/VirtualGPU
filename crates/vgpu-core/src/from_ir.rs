@@ -109,6 +109,7 @@ pub fn kernel_from_ir(ir: &KernelIR) -> Result<Kernel, ModelError> {
         mma_key: mma_key.ok_or_else(|| unsupported("kernel without MMA"))?,
         tile,
         spill,
+        async_loads: ir.body.pipeline_loop.async_copy != ir::AsyncCopyKind::None,
     })
 }
 
