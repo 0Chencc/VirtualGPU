@@ -1,6 +1,7 @@
 """CPU-only checks for the manifest, baseline, and scoring."""
 
 import json
+import math
 from pathlib import Path
 import unittest
 
@@ -154,6 +155,8 @@ class ScoreTest(unittest.TestCase):
         self.assertEqual(predicted_pair({"0": 4, "1": 4}, {"0": 3}), "unavailable")
         self.assertEqual(predicted_pair({"0": 100, "1": 100}, {"0": 106, "1": 104}), "indistinguishable")
         self.assertEqual(predicted_pair({"0": 100, "1": 100}, {"0": 105, "1": 110}), "a_faster")
+        self.assertEqual(predicted_pair({"0": 100}, {"0": 106}, math.log(1.10)), "indistinguishable")
+        self.assertEqual(predicted_pair({"0": 100}, {"0": 100}, 0), "indistinguishable")
 
     def test_shortlist_oracle_includes_abstentions(self):
         block = ("session", 0)

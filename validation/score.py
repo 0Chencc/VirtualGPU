@@ -11,6 +11,7 @@ import statistics
 from virtualgpu.frontend.compiler import ARTIFACT_HASH_VERSION
 
 PRACTICAL_MARGIN = 0.05
+PRACTICAL_LOG_MARGIN = math.log(1 + PRACTICAL_MARGIN)
 
 
 def sign(value):
@@ -49,7 +50,7 @@ def observed_pair(a, b, samples, seed):
     if sum(map(len, by_session.values())) < 2:
         return "unavailable", None
     low, high = median_ci95(list(by_session.values()), samples, seed)
-    margin = math.log1p(PRACTICAL_MARGIN)
+    margin = PRACTICAL_LOG_MARGIN
     if high < -margin:
         return "a_faster", (low, high)
     if low > margin:
@@ -59,14 +60,14 @@ def observed_pair(a, b, samples, seed):
     return "unresolved", (low, high)
 
 
-def predicted_pair(a, b):
+def predicted_pair(a, b, log_margin=PRACTICAL_LOG_MARGIN):
     # JSON uses string keys for the draw IDs.
     if a.keys() != b.keys() or "0" not in a:
         return "unavailable"
-    ratio = 1 + PRACTICAL_MARGIN
-    if all(a[draw] * ratio <= b[draw] for draw in a):
+    margin_ratio = math.exp(log_margin)
+    if all(a[draw] < b[draw] and a[draw] * margin_ratio <= b[draw] for draw in a):
         return "a_faster"
-    if all(b[draw] * ratio <= a[draw] for draw in a):
+    if all(b[draw] < a[draw] and b[draw] * margin_ratio <= a[draw] for draw in a):
         return "b_faster"
     return "indistinguishable"
 
