@@ -175,6 +175,7 @@ def test_extract_gemm_validates_against_schema(target_arch: str) -> None:
     assert ir["launch"]["grid"] == [64, 1, 1]
     assert ir["resources"]["registers_per_thread"] > 0
     assert ir["resources"]["static_smem_bytes"] == 32768
+    assert ir["body"]["prologue"]["ops"] == []
     assert ir["body"]["pipeline_loop"]["async_copy"] == "async_element"
     assert ir["body"]["pipeline_loop"]["num_stages"] == 3
     assert ir["body"]["pipeline_loop"]["prefetch_distance"] == 2

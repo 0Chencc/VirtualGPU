@@ -324,31 +324,10 @@ def extract_gemm_kernel_ir(
     tile_bytes_b = block_k * block_n * elem_bytes
     tile_bytes_c = block_m * block_n * elem_bytes
 
-    # Prologue prefills the pipeline buffers when software pipelining is active.
+    # Keep prologue.ops empty for standard GEMM: software-pipeline prefill and
+    # drain are accounted for by pipeline_loop.prefetch_distance in the model core
+    # to avoid double-counting global loads.
     prologue_ops: list[dict[str, Any]] = []
-    if summary.prefetch_distance > 0:
-        prologue_ops.extend([
-            {
-                "op_id": "prefill_A",
-                "kind": "gmem_load",
-                "warp_group_id": 0,
-                "stage_offset": 0,
-                "tensor_id": "A",
-                "nominal_bytes_per_cta": tile_bytes_a,
-                "transfer_width_bytes": summary.transfer_width_bytes,
-                "access_ref": "acc_A",
-            },
-            {
-                "op_id": "prefill_B",
-                "kind": "gmem_load",
-                "warp_group_id": 0,
-                "stage_offset": 0,
-                "tensor_id": "B",
-                "nominal_bytes_per_cta": tile_bytes_b,
-                "transfer_width_bytes": summary.transfer_width_bytes,
-                "access_ref": "acc_B",
-            },
-        ])
 
     # Steady-state pipeline loop ops.
     smem_load_bytes = summary.smem_load_bytes_per_iter or (tile_bytes_a + tile_bytes_b)
