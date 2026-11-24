@@ -296,11 +296,13 @@
             },
             "num_stages": {
               "type": "integer",
-              "minimum": 1
+              "minimum": 1,
+              "description": "Actual number of materialized multi-buffered SMEM pipeline buffers emitted by the compiler (post-pipelining IR), NOT the raw frontend hint."
             },
             "prefetch_distance": {
               "type": "integer",
-              "minimum": 0
+              "minimum": 0,
+              "description": "Number of loop iterations prefetched ahead in flight (typically S - 1 for a frontend request of S stages)."
             },
             "async_copy": {
               "type": "string",
@@ -406,7 +408,11 @@
         "warp_group_id": { "type": "integer", "minimum": 0 },
         "stage_offset": { "type": "integer", "minimum": 0 },
         "tensor_id": { "type": "string", "minLength": 1 },
-        "nominal_bytes_per_cta": { "type": "integer", "minimum": 0 },
+        "nominal_bytes_per_cta": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Unmasked upper-bound logical bytes per CTA per loop iteration (or per phase execution in prologue/epilogue). Named nominal because actual per-tile valid bytes are derived from access_map (rows * row_bytes) after boundary masking."
+        },
         "transfer_width_bytes": { "type": "integer", "minimum": 1 },
         "access_ref": { "type": "string", "minLength": 1 }
       }
@@ -426,7 +432,11 @@
         "kind": { "type": "string", "enum": ["smem_load", "smem_store"] },
         "warp_group_id": { "type": "integer", "minimum": 0 },
         "stage_offset": { "type": "integer", "minimum": 0 },
-        "bytes_per_cta": { "type": "integer", "minimum": 0 }
+        "bytes_per_cta": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Exact shared-memory bytes transferred per CTA per loop iteration (or per phase execution in prologue/epilogue). Unlike gmem_op.nominal_bytes_per_cta, SMEM transfers are fixed per CTA and not clamped by global boundary masks."
+        }
       }
     },
     "mma_op": {
@@ -456,7 +466,11 @@
         "a_dtype": { "type": "string", "minLength": 1 },
         "b_dtype": { "type": "string", "minLength": 1 },
         "acc_dtype": { "type": "string", "minLength": 1 },
-        "count": { "type": "integer", "minimum": 1 }
+        "count": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Total hardware matrix instructions of shape inst_mnk issued per CTA per loop iteration (across all warps in the warp group; note scalar_op.count is per warp). Independent ground-truth count emitted by the frontend, not derived from tile_mnk / inst_mnk (which can differ under padding, split-K, or multiple dots)."
+        }
       }
     },
     "scalar_op": {
@@ -492,7 +506,11 @@
         "kind": { "type": "string", "const": "barrier" },
         "warp_group_id": { "type": "integer", "minimum": 0 },
         "stage_offset": { "type": "integer", "minimum": 0 },
-        "count": { "type": "integer", "minimum": 1 }
+        "count": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of CTA or warp-group synchronization barriers executed per loop iteration (or per phase execution in prologue/epilogue)."
+        }
       }
     },
     "sidecar_ref": {

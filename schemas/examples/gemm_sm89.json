@@ -45,7 +45,7 @@
   "resources": {
     "source": "assembler_report",
     "registers_per_thread": 96,
-    "static_smem_bytes": 49152,
+    "static_smem_bytes": 32768,
     "stack_frame_bytes": 0,
     "spill_stores_bytes": 0,
     "spill_loads_bytes": 0,
@@ -131,7 +131,7 @@
     "pipeline_loop": {
       "trip_count_mode": "uniform",
       "trip_counts": 128,
-      "num_stages": 3,
+      "num_stages": 2,
       "prefetch_distance": 2,
       "async_copy": "async_element",
       "ops": [

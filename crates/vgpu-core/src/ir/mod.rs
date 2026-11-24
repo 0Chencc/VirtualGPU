@@ -646,7 +646,7 @@ mod tests {
         ir.validate().expect("gemm_sm89.json should validate");
         assert_eq!(ir.total_ctas(), 1024);
         assert_eq!(ir.total_outer_tiles(), 1024);
-        assert_eq!(ir.total_smem_bytes(), 49152);
+        assert_eq!(ir.total_smem_bytes(), 32768);
 
         let mma = ir
             .body
