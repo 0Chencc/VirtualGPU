@@ -72,6 +72,8 @@ _RE_LOCAL_LOAD = re.compile(
 _RE_TTGIR_WAIT_NUM = re.compile(r"ttg\.async_wait\b[^{]*\{\s*num\s*=\s*(\d+)")
 _RE_PTX_WAIT_GROUP = re.compile(r"\bcp\.async\.wait_group\s+(\d+)\s*;")
 _RE_PTX_COMMIT_GROUP = re.compile(r"\bcp\.async\.commit_group\s*;")
+_RE_PTX_MBAR_TRY_WAIT = re.compile(r"\bmbarrier\.try_wait\b")
+_RE_PTX_MBAR_ARRIVE_TX = re.compile(r"\bmbarrier\.arrive\.expect_tx\b")
 _RE_PTX_LABEL = re.compile(r"^\s*(\$[A-Za-z0-9_]+):")
 _RE_PTX_BRA = re.compile(r"\bbra(?:\.uni)?\s+(\$[A-Za-z0-9_]+)")
 
@@ -143,16 +145,18 @@ def _extract_ptx_loop_body(ptx: str) -> str:
 def _derive_cp_async_prefetch_distance(
     ptx: str,
     ttgir_loop_body: str,
-) -> tuple[int, list[str]]:
+) -> tuple[int, list[str], list[str]]:
     """Derive effective in-flight stage overlap from loop wait_group / async_wait.
 
     Per the public PTX ISA specification, `cp.async.wait_group N` waits until at
     most N most-recent committed async groups remain pending. Dividing N by the
     number of commit groups per stage gives the number of stages still in flight
     during compute. Cross-checks PTX against post-pipelining TTGIR when both are
-    present, and emits diagnostics rather than guessing if derivation fails.
+    present; if neither can resolve it, marks `prefetch_distance_unresolved` in
+    `unsupported_features` so the model core refuses to guess.
     """
     diags: list[str] = []
+    unsupported: list[str] = []
 
     ptx_dist: int | None = None
     ptx_loop = _extract_ptx_loop_body(ptx)
@@ -171,38 +175,67 @@ def _derive_cp_async_prefetch_distance(
     if ptx_dist is not None and ttgir_dist is not None:
         if ptx_dist != ttgir_dist:
             diags.append("prefetch_distance_mismatch")
-        return ptx_dist, diags
+        return ptx_dist, diags, unsupported
     if ptx_dist is not None:
-        return ptx_dist, diags
+        return ptx_dist, diags, unsupported
     if ttgir_dist is not None:
-        return ttgir_dist, diags
+        return ttgir_dist, diags, unsupported
 
-    diags.append("prefetch_distance_unverified")
-    return 0, diags
+    unsupported.append("prefetch_distance_unresolved")
+    return 0, diags, unsupported
 
 
 def _derive_tma_prefetch_distance(
+    ptx: str,
     ttgir: str,
     ttgir_loop_body: str,
-) -> tuple[int, list[str]]:
-    """Derive in-flight stage overlap for TMA mbarrier pipelines from TTGIR.
+) -> tuple[int, list[str], list[str]]:
+    """Derive in-flight stage overlap for TMA mbarrier pipelines from PTX and TTGIR.
 
-    Counts TMA global-to-local copies issued in the prologue before `scf.for`
-    versus copies issued per steady-state loop iteration. After `ttng.wait_barrier`
-    retires the oldest stage before compute, `(prologue_copies // loop_copies) - 1`
-    stages remain in flight. Emits a diagnostic rather than guessing if the
-    mbarrier/copy structure cannot be resolved cleanly.
+    Per public PTX ISA mbarrier semantics:
+    - In PTX, count `mbarrier.arrive.expect_tx` before the loop's first
+      `mbarrier.try_wait` (prologue prefills) versus inside the loop body
+      (steady-state refills). After `try_wait` retires the oldest barrier before
+      compute, `(prologue_arrives // loop_arrives) - 1` stages remain in flight.
+    - In TTGIR, cross-check using `ttng.async_tma_copy_global_to_local` counts
+      before vs. inside `scf.for` alongside `ttng.wait_barrier`.
+    If neither can resolve it cleanly, emit `tma_prefetch_unresolved` in
+    `unsupported_features` rather than guessing.
     """
+    diags: list[str] = []
+    unsupported: list[str] = []
+
+    ptx_dist: int | None = None
+    m_wait = _RE_PTX_MBAR_TRY_WAIT.search(ptx)
+    if m_wait:
+        before_wait = ptx[: m_wait.start()]
+        after_wait = ptx[m_wait.end() :]
+        pro_arrives = len(_RE_PTX_MBAR_ARRIVE_TX.findall(before_wait))
+        loop_arrives = len(_RE_PTX_MBAR_ARRIVE_TX.findall(after_wait))
+        if loop_arrives > 0 and pro_arrives >= loop_arrives and (pro_arrives % loop_arrives) == 0:
+            ptx_dist = (pro_arrives // loop_arrives) - 1
+
+    ttgir_dist: int | None = None
     for_pos = ttgir.find("scf.for ")
-    if for_pos == -1:
-        return 0, ["tma_prefetch_unverified"]
-    prologue = ttgir[:for_pos]
-    prologue_tma = prologue.count("ttng.async_tma_copy_global_to_local")
-    loop_tma = ttgir_loop_body.count("ttng.async_tma_copy_global_to_local")
-    has_wait = "ttng.wait_barrier" in ttgir_loop_body
-    if not has_wait or loop_tma <= 0 or prologue_tma < loop_tma or (prologue_tma % loop_tma) != 0:
-        return 0, ["tma_prefetch_unverified"]
-    return (prologue_tma // loop_tma) - 1, []
+    if for_pos != -1:
+        prologue = ttgir[:for_pos]
+        prologue_tma = prologue.count("ttng.async_tma_copy_global_to_local")
+        loop_tma = ttgir_loop_body.count("ttng.async_tma_copy_global_to_local")
+        has_wait = "ttng.wait_barrier" in ttgir_loop_body
+        if has_wait and loop_tma > 0 and prologue_tma >= loop_tma and (prologue_tma % loop_tma) == 0:
+            ttgir_dist = (prologue_tma // loop_tma) - 1
+
+    if ptx_dist is not None and ttgir_dist is not None:
+        if ptx_dist != ttgir_dist:
+            diags.append("prefetch_distance_mismatch")
+        return ptx_dist, diags, unsupported
+    if ptx_dist is not None:
+        return ptx_dist, diags, unsupported
+    if ttgir_dist is not None:
+        return ttgir_dist, diags, unsupported
+
+    unsupported.append("tma_prefetch_unresolved")
+    return 0, diags, unsupported
 
 
 def _extract_mma(ttgir: str, ptx: str) -> MmaInfo | None:
@@ -299,14 +332,18 @@ def parse_ttgir_summary(
         if not (int(m.group(2)) == 1 and m.group(4) == "i64")
     ]
     if async_copy != "none" and buf_depths:
+        # Per KernelIR schema, pipeline_loop.num_stages is the actual number of
+        # materialized multi-buffered SMEM pipeline buffers (not the Triton hint).
         buf_depth = max(buf_depths)
-        num_stages = buf_depth + 1
+        num_stages = buf_depth
         if async_copy == "async_element":
-            prefetch_distance, pf_diags = _derive_cp_async_prefetch_distance(ptx, loop_body)
+            prefetch_distance, pf_diags, pf_unsup = _derive_cp_async_prefetch_distance(ptx, loop_body)
             diagnostics.extend(pf_diags)
+            unsupported.extend(pf_unsup)
         else:
-            prefetch_distance, pf_diags = _derive_tma_prefetch_distance(ttgir, loop_body)
+            prefetch_distance, pf_diags, pf_unsup = _derive_tma_prefetch_distance(ptx, ttgir, loop_body)
             diagnostics.extend(pf_diags)
+            unsupported.extend(pf_unsup)
     else:
         prefetch_distance = 0
         num_stages = 1

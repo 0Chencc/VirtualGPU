@@ -179,7 +179,7 @@ def test_extract_gemm_validates_against_schema(target_arch: str) -> None:
     assert ir["resources"]["static_smem_bytes"] == 32768
     assert ir["body"]["prologue"]["ops"] == []
     assert ir["body"]["pipeline_loop"]["async_copy"] == "async_element"
-    assert ir["body"]["pipeline_loop"]["num_stages"] == 3
+    assert ir["body"]["pipeline_loop"]["num_stages"] == 2
     assert ir["body"]["pipeline_loop"]["prefetch_distance"] == 1
     assert ir["unsupported_features"] == []
     assert len(ir["metadata"]["toolchain"]["ptx_sha256"]) == 64
@@ -204,23 +204,24 @@ def test_extract_tma_gemm_sm121_uses_async_tensor() -> None:
     )
     jsonschema.validate(instance=ir, schema=schema)
     assert ir["body"]["pipeline_loop"]["async_copy"] == "async_tensor"
-    assert ir["body"]["pipeline_loop"]["num_stages"] == 3
+    assert ir["body"]["pipeline_loop"]["num_stages"] == 2
     assert ir["body"]["pipeline_loop"]["prefetch_distance"] == 1
+    assert ir["unsupported_features"] == []
 
 
 @pytest.mark.parametrize(
-    ("req_stages", "expected_async", "expected_stages", "expected_prefetch"),
+    ("req_stages", "expected_async", "expected_buffers", "expected_prefetch"),
     [
         (1, "none", 1, 0),
-        (2, "async_element", 2, 0),
-        (3, "async_element", 3, 1),
-        (4, "async_element", 4, 2),
+        (2, "async_element", 1, 0),
+        (3, "async_element", 2, 1),
+        (4, "async_element", 3, 2),
     ],
 )
 def test_cp_async_prefetch_distance_from_ptx_wait_group(
     req_stages: int,
     expected_async: str,
-    expected_stages: int,
+    expected_buffers: int,
     expected_prefetch: int,
 ) -> None:
     schema = _load_schema()
@@ -242,8 +243,9 @@ def test_cp_async_prefetch_distance_from_ptx_wait_group(
     jsonschema.validate(instance=ir, schema=schema)
     pl = ir["body"]["pipeline_loop"]
     assert pl["async_copy"] == expected_async
-    assert pl["num_stages"] == expected_stages
+    assert pl["num_stages"] == expected_buffers
     assert pl["prefetch_distance"] == expected_prefetch
+    assert ir["unsupported_features"] == []
 
 
 def test_unaligned_shape_and_unpipelined_fallback_diagnostic() -> None:
@@ -362,7 +364,7 @@ def test_nonstandard_param_names_use_triton_binder() -> None:
     )
     jsonschema.validate(instance=ir, schema=schema)
     assert ir["body"]["pipeline_loop"]["async_copy"] == "async_element"
-    assert ir["body"]["pipeline_loop"]["num_stages"] == 3
+    assert ir["body"]["pipeline_loop"]["num_stages"] == 2
     assert ir["metadata"]["toolchain"]["artifact_hash_version"] == ARTIFACT_HASH_VERSION
     assert "linear_access_fallback" not in ir["diagnostics"]
     assert ir["launch"]["grid"] == [8, 8, 1]
@@ -562,13 +564,13 @@ def test_three_input_kernel_derives_prefetch_by_commit_group_count() -> None:
         assert loop_body.count("ttg.async_commit_group") == 3
         summary = parse_ttgir_summary(art.ttgir, art.ptx, requested_num_stages=req_stages, element_bytes=2)
         assert summary.async_copy == "async_element"
-        assert summary.num_stages == req_stages
+        assert summary.num_stages == req_stages - 1
         assert summary.prefetch_distance == expected_prefetch
         assert "prefetch_distance_mismatch" not in summary.diagnostics
-        assert "prefetch_distance_unverified" not in summary.diagnostics
+        assert summary.unsupported_features == []
 
 
-def test_prefetch_derivation_diagnostics_on_mismatch_and_unverified_tma() -> None:
+def test_prefetch_derivation_diagnostics_and_unsupported_on_unresolved() -> None:
     # Synthetic mismatch between PTX wait_group and TTGIR async_wait
     fake_ttgir = (
         'module attributes {"ttg.num-warps" = 4 : i32, "ttg.threads-per-warp" = 32 : i32} {\n'
@@ -592,7 +594,19 @@ def test_prefetch_derivation_diagnostics_on_mismatch_and_unverified_tma() -> Non
     assert s_mis.prefetch_distance == 1
     assert "prefetch_distance_mismatch" in s_mis.diagnostics
 
-    # TMA IR missing wait_barrier must emit tma_prefetch_unverified rather than guessing
+    # Unresolvable cp.async wait/commit must mark unsupported_features rather than guessing
+    unresolved_cp = (
+        'module attributes {"ttg.num-warps" = 4 : i32, "ttg.threads-per-warp" = 32 : i32} {\n'
+        '  %a = ttg.local_alloc : () -> !ttg.memdesc<2x64x32xf16, #shared, #smem, mutable>\n'
+        '  scf.for %i = %c0 to %c10 step %c1 {\n'
+        '    %c = ttg.async_copy_global_to_local %p, %a : tensor<64x32x!tt.ptr<f16>>\n'
+        '  }\n'
+        '}\n'
+    )
+    s_unres = parse_ttgir_summary(unresolved_cp, "", requested_num_stages=3, element_bytes=2)
+    assert "prefetch_distance_unresolved" in s_unres.unsupported_features
+
+    # TMA IR missing wait_barrier and PTX try_wait must mark unsupported_features
     fake_tma = (
         'module attributes {"ttg.num-warps" = 4 : i32, "ttg.threads-per-warp" = 32 : i32} {\n'
         '  %a = ttg.local_alloc : () -> !ttg.memdesc<2x64x32xf16, #shared, #smem, mutable>\n'
@@ -603,7 +617,7 @@ def test_prefetch_derivation_diagnostics_on_mismatch_and_unverified_tma() -> Non
     )
     s_tma = parse_ttgir_summary(fake_tma, "", requested_num_stages=3, element_bytes=2)
     assert s_tma.prefetch_distance == 0
-    assert "tma_prefetch_unverified" in s_tma.diagnostics
+    assert "tma_prefetch_unresolved" in s_tma.unsupported_features
 
 
 def test_persistent_kernel_emits_explicit_diagnostic() -> None:
