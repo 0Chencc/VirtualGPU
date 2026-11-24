@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
+from pathlib import Path
 import re
 import subprocess
 import tempfile
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Any
 
 
@@ -360,6 +362,105 @@ def parse_arch_number(target_arch: str) -> int:
     return int(m.group(1))
 
 
+_MEMORY_CACHE: dict[str, CompiledArtifacts] = {}
+
+
+def default_aot_cache_dir() -> Path:
+    """Return the default on-disk cache directory for AOT compilation artifacts."""
+    env = os.environ.get("VIRTUALGPU_CACHE_DIR")
+    if env:
+        return Path(env)
+    return Path.home() / ".cache" / "virtualgpu" / "aot"
+
+
+def _canonical_json(obj: Any) -> Any:
+    if isinstance(obj, dict):
+        return {str(k): _canonical_json(v) for k, v in sorted(obj.items(), key=lambda kv: str(kv[0]))}
+    if isinstance(obj, (list, tuple)):
+        return [_canonical_json(x) for x in obj]
+    if isinstance(obj, (str, int, float, bool)) or obj is None:
+        return obj
+    return repr(obj)
+
+
+def _compute_aot_cache_key(
+    *,
+    fn: Any,
+    signature: dict[str, str],
+    constexprs: dict[Any, Any],
+    attrs: dict[Any, Any] | None,
+    options: dict[str, Any],
+    target_arch: str,
+    warp_size: int,
+    triton_version: str,
+    assembler_version: str,
+) -> str:
+    """Compute a deterministic cache key from source, signature, config, target, and versions."""
+    src_text = getattr(fn, "src", None) or getattr(fn, "__name__", repr(fn))
+    source_sha = hashlib.sha256(src_text.encode("utf-8")).hexdigest()
+    # Keep only codegen-relevant options so transient paths/objects do not bust cache.
+    opt_keys = (
+        "num_warps",
+        "num_stages",
+        "num_ctas",
+        "warp_size",
+        "maxnreg",
+        "enable_fp_fusion",
+        "ptx_options",
+        "default_dot_input_precision",
+        "sanitize_overflow",
+        "debug",
+    )
+    filtered_opts = {k: options.get(k) for k in opt_keys if k in options}
+    payload = {
+        "cache_format": "1",
+        "artifact_hash_version": ARTIFACT_HASH_VERSION,
+        "source_sha256": source_sha,
+        "signature": _canonical_json(signature),
+        "constexprs": _canonical_json(constexprs),
+        "attrs": _canonical_json(attrs or {}),
+        "options": _canonical_json(filtered_opts),
+        "target_arch": target_arch,
+        "warp_size": warp_size,
+        "triton_version": triton_version,
+        "assembler_version": assembler_version,
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _artifacts_to_dict(art: CompiledArtifacts) -> dict[str, Any]:
+    return {
+        "kernel_name": art.kernel_name,
+        "target_arch": art.target_arch,
+        "triton_version": art.triton_version,
+        "ttgir": art.ttgir,
+        "ptx": art.ptx,
+        "ttgir_sha256": art.ttgir_sha256,
+        "ptx_sha256": art.ptx_sha256,
+        "static_smem_bytes": art.static_smem_bytes,
+        "requested_num_warps": art.requested_num_warps,
+        "requested_num_stages": art.requested_num_stages,
+        "ptxas": asdict(art.ptxas),
+    }
+
+
+def _artifacts_from_dict(data: dict[str, Any]) -> CompiledArtifacts:
+    return CompiledArtifacts(
+        kernel_name=data["kernel_name"],
+        target_arch=data["target_arch"],
+        triton_version=data["triton_version"],
+        ttgir=data["ttgir"],
+        ptx=data["ptx"],
+        ttgir_sha256=data["ttgir_sha256"],
+        ptx_sha256=data["ptx_sha256"],
+        static_smem_bytes=int(data["static_smem_bytes"]),
+        requested_num_warps=int(data["requested_num_warps"]),
+        requested_num_stages=int(data["requested_num_stages"]),
+        ptxas=PtxasReport(**data["ptxas"]),
+    )
+
+
 def compile_triton_aot(
     fn: Any,
     signature: dict[str, str],
@@ -370,6 +471,8 @@ def compile_triton_aot(
     attrs: dict[Any, Any] | None = None,
     options: dict[str, Any] | None = None,
     warp_size: int = 32,
+    cache_dir: str | Path | None = None,
+    use_cache: bool = True,
 ) -> CompiledArtifacts:
     """Compile a @triton.jit kernel ahead-of-time on CPU without a physical GPU."""
     import triton
@@ -377,19 +480,47 @@ def compile_triton_aot(
     from triton.compiler import ASTSource
 
     arch_num = parse_arch_number(target_arch)
-    target = GPUTarget("cuda", arch_num, warp_size)
-    src = ASTSource(fn=fn, signature=signature, constexprs=constexprs, attrs=attrs)
     compile_options = dict(options) if options is not None else {}
     compile_options.setdefault("num_warps", num_warps)
     compile_options.setdefault("num_stages", num_stages)
 
+    cache_key: str | None = None
+    disk_path: Path | None = None
+    if use_cache:
+        _, ptxas_path = find_bundled_ptxas(arch_num)
+        assembler_ver = get_ptxas_version(ptxas_path)
+        cache_key = _compute_aot_cache_key(
+            fn=fn,
+            signature=signature,
+            constexprs=constexprs,
+            attrs=attrs,
+            options=compile_options,
+            target_arch=f"sm_{arch_num}",
+            warp_size=warp_size,
+            triton_version=triton.__version__,
+            assembler_version=assembler_ver,
+        )
+        if cache_key in _MEMORY_CACHE:
+            return _MEMORY_CACHE[cache_key]
+        resolved_dir = Path(cache_dir) if cache_dir is not None else default_aot_cache_dir()
+        disk_path = resolved_dir / f"{cache_key}.json"
+        if disk_path.is_file():
+            try:
+                art = _artifacts_from_dict(json.loads(disk_path.read_text(encoding="utf-8")))
+                _MEMORY_CACHE[cache_key] = art
+                return art
+            except (OSError, KeyError, ValueError, TypeError):
+                pass
+
+    target = GPUTarget("cuda", arch_num, warp_size)
+    src = ASTSource(fn=fn, signature=signature, constexprs=constexprs, attrs=attrs)
     compiled = triton.compile(src, target=target, options=compile_options)
     ttgir = compiled.asm["ttgir"]
     ptx = compiled.asm["ptx"]
     ptxas_report = run_ptxas_verbose(ptx, arch_num, options=compile_options)
     hashes = artifact_hashes(ptx, ttgir)
 
-    return CompiledArtifacts(
+    artifacts = CompiledArtifacts(
         kernel_name=getattr(compiled.metadata, "name", fn.__name__),
         target_arch=f"sm_{arch_num}",
         triton_version=triton.__version__,
@@ -402,3 +533,21 @@ def compile_triton_aot(
         requested_num_stages=num_stages,
         ptxas=ptxas_report,
     )
+
+    if use_cache and cache_key is not None:
+        _MEMORY_CACHE[cache_key] = artifacts
+        if disk_path is not None:
+            try:
+                disk_path.parent.mkdir(parents=True, exist_ok=True)
+                tmp_fd, tmp_name = tempfile.mkstemp(prefix=".aot_", suffix=".tmp", dir=str(disk_path.parent))
+                try:
+                    with os.fdopen(tmp_fd, "w", encoding="utf-8") as f:
+                        json.dump(_artifacts_to_dict(artifacts), f)
+                    os.replace(tmp_name, disk_path)
+                except OSError:
+                    if os.path.exists(tmp_name):
+                        os.unlink(tmp_name)
+            except OSError:
+                pass
+
+    return artifacts

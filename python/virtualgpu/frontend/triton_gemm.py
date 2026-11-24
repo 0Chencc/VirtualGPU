@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from pathlib import Path
 from typing import Any
 
 from virtualgpu.frontend.compiler import (
@@ -219,6 +220,8 @@ def extract_gemm_kernel_ir(
     ptr_offset_a: int = 0x10000,
     ptr_offset_b: int | None = None,
     ptr_offset_c: int | None = None,
+    cache_dir: str | Path | None = None,
+    use_cache: bool = True,
 ) -> dict[str, Any]:
     """Compile a Triton GEMM kernel offline using Triton's runtime JIT binder
     and emit a KernelIR v0.1 dictionary.
@@ -276,6 +279,8 @@ def extract_gemm_kernel_ir(
         num_stages=num_stages,
         attrs=attrs,
         options=options_dict,
+        cache_dir=cache_dir,
+        use_cache=use_cache,
     )
 
     summary = parse_ttgir_summary(
