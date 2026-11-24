@@ -1,4 +1,4 @@
-use vgpu_core::kernel::{Kernel, Tile, TripCounts, Work};
+use vgpu_core::kernel::{Access, Kernel, Tile, TripCounts, Work};
 use vgpu_core::occupancy::{occupancy, Limiter, OccupancyError};
 use vgpu_core::profile::Profile;
 use vgpu_core::sim::{simulate, ConstantHitRatio, Machine, Prediction};
@@ -7,6 +7,13 @@ const MMA: &str = "mma.sync:f16:f16:f32:16x8x16";
 
 fn profile() -> Profile {
     Profile::from_json(include_str!("data/test_fixture_sm89.json")).unwrap()
+}
+
+fn access(op: &str, bytes: f64) -> Access {
+    Access {
+        op_id: op.to_string(),
+        nominal_bytes: bytes,
+    }
 }
 
 /// A 128x128x32 GEMM tile over `iterations` K steps.
@@ -24,12 +31,12 @@ fn gemm(grid: u32, iterations: u32, prefetch_distance: u32) -> Kernel {
             per_iteration: Work {
                 mma_flops: 2.0 * 128.0 * 128.0 * 32.0,
                 alu_insts_per_warp: 16.0,
-                load_bytes: 16384.0,
-                store_bytes: 0.0,
+                loads: vec![access("load_A", 8192.0), access("load_B", 8192.0)],
+                ..Work::default()
             },
             prefetch_distance,
             epilogue: Work {
-                store_bytes: 32768.0,
+                stores: vec![access("store_C", 32768.0)],
                 alu_insts_per_warp: 64.0,
                 ..Work::default()
             },
@@ -41,7 +48,7 @@ fn gemm(grid: u32, iterations: u32, prefetch_distance: u32) -> Kernel {
 fn compute_only(grid: u32) -> Kernel {
     let mut k = gemm(grid, 64, 1);
     k.smem_per_cta_bytes = 90 * 1024;
-    k.tile.per_iteration.load_bytes = 0.0;
+    k.tile.per_iteration.loads.clear();
     k.tile.per_iteration.alu_insts_per_warp = 0.0;
     k.tile.epilogue = Work::default();
     k
@@ -159,7 +166,7 @@ fn persistent_program_runs_its_tiles_in_sequence() {
 fn memory_bound_time_matches_dram_bandwidth() {
     let mut k = compute_only(46 * 4);
     k.tile.per_iteration = Work {
-        load_bytes: 1048576.0,
+        loads: vec![access("load", 1048576.0)],
         ..Work::default()
     };
     k.tile.iterations = 8;

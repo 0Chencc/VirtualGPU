@@ -11,24 +11,48 @@
 //!
 //! See `docs/proposals/model-core.md`, sections 3.1 to 3.5.
 
-use crate::kernel::{Kernel, Work};
+use crate::kernel::{Access, Kernel};
 use crate::occupancy::{occupancy, Occupancy, OccupancyError};
 use crate::profile::{interpolate, Profile};
 
-/// The core's view of the L2 model: how many bytes of a load are L2 hits.
+/// The core's view of the L2 model.
 pub trait L2 {
     fn begin_tile(&mut self, _sm: u32, _program: u32, _tile: u32, _t_ns: f64) {}
     fn end_tile(&mut self, _sm: u32, _program: u32, _tile: u32, _t_ns: f64) {}
-    /// Bytes served by L2 out of `bytes` loaded.
-    fn hit_bytes(&mut self, sm: u32, program: u32, tile: u32, bytes: f64, t_ns: f64) -> f64;
+    /// Traffic of one access over steps `[k_begin, k_end)` of a phase, as
+    /// `(bytes served by L2, bytes served by DRAM)`.
+    #[allow(clippy::too_many_arguments)]
+    fn split(
+        &mut self,
+        sm: u32,
+        program: u32,
+        tile: u32,
+        access: &Access,
+        k_begin: u32,
+        k_end: u32,
+        is_write: bool,
+        t_ns: f64,
+    ) -> (f64, f64);
 }
 
-/// Placeholder until the real L2 model lands: a fixed hit ratio for loads.
+/// Fixed hit ratio for loads, nominal bytes, stores go to DRAM. For tests.
 pub struct ConstantHitRatio(pub f64);
 
 impl L2 for ConstantHitRatio {
-    fn hit_bytes(&mut self, _: u32, _: u32, _: u32, bytes: f64, _: f64) -> f64 {
-        bytes * self.0
+    fn split(
+        &mut self,
+        _: u32,
+        _: u32,
+        _: u32,
+        a: &Access,
+        k0: u32,
+        k1: u32,
+        is_write: bool,
+        _: f64,
+    ) -> (f64, f64) {
+        let bytes = a.nominal_bytes * f64::from(k1 - k0);
+        let hit = if is_write { 0.0 } else { self.0 };
+        (bytes * hit, bytes * (1.0 - hit))
     }
 }
 
@@ -37,6 +61,7 @@ pub enum ModelError {
     Occupancy(OccupancyError),
     MissingMma(String),
     EmptyCurve(&'static str),
+    Unsupported(String),
 }
 
 /// Profile values at one draw, in ns, bytes and FLOP units.
@@ -52,6 +77,8 @@ pub struct Machine {
     pub mma: Vec<(f64, f64)>,
     /// Warp instructions per ns per SM.
     pub issue_rate: f64,
+    /// Shared memory bytes per ns per SM.
+    pub smem_bw: f64,
     pub launch_overhead_ns: f64,
     pub cta_launch_ns: f64,
 }
@@ -98,6 +125,7 @@ impl Machine {
                 "mma_tflops_per_sm_by_warps",
             )?,
             issue_rate: m.compute.non_mma_issue_rate_per_sm_gips.value,
+            smem_bw: m.memory.smem_bw_per_sm_gbps.value,
             launch_overhead_ns: m.overhead.launch_overhead_us.value * 1e3,
             cta_launch_ns: m.overhead.per_cta_launch_latency_ns.value,
         })
@@ -133,6 +161,7 @@ enum Phase {
 struct Demand {
     flops: f64,
     warp_insts: f64,
+    smem_bytes: f64,
     /// All bytes through L2 (loads and stores).
     bytes: f64,
     dram_bytes: f64,
@@ -143,7 +172,11 @@ struct Demand {
 
 impl Demand {
     fn is_empty(&self) -> bool {
-        self.flops == 0.0 && self.warp_insts == 0.0 && self.bytes == 0.0 && self.latency_ns == 0.0
+        self.flops == 0.0
+            && self.warp_insts == 0.0
+            && self.smem_bytes == 0.0
+            && self.bytes == 0.0
+            && self.latency_ns == 0.0
     }
 }
 
@@ -158,15 +191,31 @@ struct Cta {
 }
 
 /// Max-min fair split of `capacity` among flows with the given caps.
-fn waterfill(caps: &[f64], capacity: f64, order: &mut Vec<usize>, out: &mut [f64]) {
-    order.clear();
-    order.extend(0..caps.len());
-    order.sort_by(|&a, &b| caps[a].total_cmp(&caps[b]));
+///
+/// Flows whose cap is below the fair share are frozen at their cap and the
+/// rest is shared again; the fair share only grows, so one pass per freezing
+/// round is enough, and rounds are few in practice.
+fn waterfill(caps: &[f64], capacity: f64, out: &mut [f64]) {
+    const OPEN: f64 = -1.0;
+    out.fill(OPEN);
     let mut left = capacity;
-    for (done, &i) in order.iter().enumerate() {
-        let fair = left / (caps.len() - done) as f64;
-        out[i] = caps[i].min(fair);
-        left -= out[i];
+    let mut open = caps.len();
+    while open > 0 {
+        let fair = left / open as f64;
+        let before = open;
+        for (o, &cap) in out.iter_mut().zip(caps) {
+            if *o == OPEN && cap <= fair {
+                *o = cap;
+                left -= cap;
+                open -= 1;
+            }
+        }
+        if open == before {
+            out.iter_mut()
+                .filter(|o| **o == OPEN)
+                .for_each(|o| *o = fair);
+            return;
+        }
     }
 }
 
@@ -183,54 +232,50 @@ struct Sim<'a, L: L2> {
 impl<'a, L: L2> Sim<'a, L> {
     fn demand(&mut self, phase: Phase, sm: u32, program: u32, tile: u32) -> Demand {
         let tl = &self.k.tile;
-        let warps = f64::from(self.k.num_warps);
-        let d = tl.prefetch_distance.min(tl.iterations);
-        let (work, load_iters, serial) = match phase {
+        let (work, steps, serial) = match phase {
             Phase::Launch => {
                 return Demand {
                     latency_ns: self.m.cta_launch_ns,
                     ..Demand::default()
                 }
             }
-            Phase::Prologue => {
-                let w = Work {
-                    load_bytes: tl.prologue.load_bytes + tl.per_iteration.load_bytes * f64::from(d),
-                    ..tl.prologue.clone()
-                };
-                (w, 1.0, false)
-            }
-            Phase::Main => {
-                let n = f64::from(tl.iterations);
-                let loads = f64::from(tl.iterations - d);
-                let w = Work {
-                    load_bytes: tl.per_iteration.load_bytes * loads,
-                    ..tl.per_iteration.scaled(n)
-                };
-                (w, loads / f64::from(d.max(1)), d == 0)
-            }
-            Phase::Epilogue => (tl.epilogue.clone(), 0.0, false),
+            Phase::Prologue => (&tl.prologue, 1, false),
+            Phase::Main => (&tl.per_iteration, tl.iterations, tl.prefetch_distance == 0),
+            Phase::Epilogue => (&tl.epilogue, 1, false),
         };
-        let hits = if work.load_bytes > 0.0 {
-            self.l2
-                .hit_bytes(sm, program, tile, work.load_bytes, self.t)
-        } else {
-            0.0
-        };
-        let misses = work.load_bytes - hits;
-        self.load_bytes += work.load_bytes;
+        let (mut hits, mut misses, mut stores) = (0.0, 0.0, 0.0);
+        for a in &work.loads {
+            let (h, m) = self.l2.split(sm, program, tile, a, 0, steps, false, self.t);
+            hits += h;
+            misses += m;
+        }
+        for a in &work.stores {
+            let (h, m) = self.l2.split(sm, program, tile, a, 0, steps, true, self.t);
+            stores += h + m;
+        }
+        let loads = hits + misses;
+        self.load_bytes += loads;
         self.l2_hit_bytes += hits;
-        self.dram_bytes += misses + work.store_bytes;
-        let latency = if work.load_bytes > 0.0 {
-            (hits * self.m.l2_latency_ns + misses * self.m.dram_latency_ns) / work.load_bytes
+        self.dram_bytes += misses + stores;
+        // Round trips not hidden by the pipeline: one per prologue, and one per
+        // `prefetch_distance` iterations in the steady state.
+        let round_trips = match phase {
+            Phase::Main => f64::from(steps) / f64::from(tl.prefetch_distance.max(1)),
+            _ => 1.0,
+        };
+        let latency = if loads > 0.0 {
+            round_trips * (hits * self.m.l2_latency_ns + misses * self.m.dram_latency_ns) / loads
         } else {
             0.0
         };
+        let n = f64::from(steps);
         Demand {
-            flops: work.mma_flops,
-            warp_insts: work.alu_insts_per_warp * warps,
-            bytes: work.load_bytes + work.store_bytes,
-            dram_bytes: misses + work.store_bytes,
-            latency_ns: latency * load_iters,
+            flops: work.mma_flops * n,
+            warp_insts: work.alu_insts_per_warp * f64::from(self.k.num_warps) * n,
+            smem_bytes: work.smem_bytes * n,
+            bytes: loads + stores,
+            dram_bytes: misses + stores,
+            latency_ns: latency,
             serial,
         }
     }
@@ -300,21 +345,24 @@ impl<'a, L: L2> Sim<'a, L> {
 struct Scratch {
     mma_users: Vec<u32>,
     issue_users: Vec<u32>,
+    smem_users: Vec<u32>,
     resident: Vec<u32>,
     t_compute: Vec<f64>,
     caps: Vec<f64>,
     l2_share: Vec<f64>,
     dram_share: Vec<f64>,
-    order: Vec<usize>,
     rate: Vec<f64>,
 }
 
-fn rates(ctas: &[Cta], m: &Machine, warps: f64, s: &mut Scratch) {
+/// `mma_per_cta[u]` is the tensor throughput of each of `u` MMA-issuing CTAs on one SM.
+fn rates(ctas: &[Cta], m: &Machine, mma_per_cta: &[f64], s: &mut Scratch) {
     let n_sm = m.sm_count as usize;
     s.mma_users.clear();
     s.mma_users.resize(n_sm, 0);
     s.issue_users.clear();
     s.issue_users.resize(n_sm, 0);
+    s.smem_users.clear();
+    s.smem_users.resize(n_sm, 0);
     s.resident.clear();
     s.resident.resize(n_sm, 0);
     for c in ctas {
@@ -322,6 +370,7 @@ fn rates(ctas: &[Cta], m: &Machine, warps: f64, s: &mut Scratch) {
         s.resident[i] += 1;
         s.mma_users[i] += u32::from(c.demand.flops > 0.0);
         s.issue_users[i] += u32::from(c.demand.warp_insts > 0.0);
+        s.smem_users[i] += u32::from(c.demand.smem_bytes > 0.0);
     }
     let active_sms = s.resident.iter().filter(|&&r| r > 0).count() as f64;
 
@@ -330,8 +379,7 @@ fn rates(ctas: &[Cta], m: &Machine, warps: f64, s: &mut Scratch) {
         let d = &c.demand;
         let i = c.sm as usize;
         let t_mma = if d.flops > 0.0 {
-            let users = f64::from(s.mma_users[i]);
-            d.flops * users / interpolate(&m.mma, users * warps)
+            d.flops / mma_per_cta[s.mma_users[i] as usize]
         } else {
             0.0
         };
@@ -340,10 +388,16 @@ fn rates(ctas: &[Cta], m: &Machine, warps: f64, s: &mut Scratch) {
         } else {
             0.0
         };
-        s.t_compute.push(if d.serial {
-            d.latency_ns + t_mma + t_issue
+        let t_smem = if d.smem_bytes > 0.0 {
+            d.smem_bytes * f64::from(s.smem_users[i]) / m.smem_bw
         } else {
-            d.latency_ns.max(t_mma).max(t_issue)
+            0.0
+        };
+        let t_sm = t_mma.max(t_issue).max(t_smem);
+        s.t_compute.push(if d.serial {
+            d.latency_ns + t_sm
+        } else {
+            d.latency_ns.max(t_sm)
         });
     }
 
@@ -356,12 +410,7 @@ fn rates(ctas: &[Cta], m: &Machine, warps: f64, s: &mut Scratch) {
             .zip(&s.t_compute)
             .map(|(c, &t)| c.demand.bytes / t),
     );
-    waterfill(
-        &s.caps,
-        interpolate(&m.l2_bw, active_sms),
-        &mut s.order,
-        &mut s.l2_share,
-    );
+    waterfill(&s.caps, interpolate(&m.l2_bw, active_sms), &mut s.l2_share);
     s.caps.clear();
     s.caps.extend(
         ctas.iter()
@@ -379,7 +428,6 @@ fn rates(ctas: &[Cta], m: &Machine, warps: f64, s: &mut Scratch) {
     waterfill(
         &s.caps,
         interpolate(&m.dram_bw, active_sms),
-        &mut s.order,
         &mut s.dram_share,
     );
 
@@ -438,13 +486,19 @@ pub fn simulate<L: L2>(
     }
 
     let warps = f64::from(k.num_warps);
+    let mma_per_cta: Vec<f64> = (0..=occ.ctas_per_sm)
+        .map(|u| {
+            let users = f64::from(u.max(1));
+            interpolate(&m.mma, users * warps) / users
+        })
+        .collect();
     let mut s = Scratch::default();
     let mut freed: Vec<u32> = Vec::new();
     let mut advanced: Vec<Cta> = Vec::new();
     let mut busy_sm_ns = 0.0;
     let mut events = 0u64;
     while !ctas.is_empty() {
-        rates(&ctas, m, warps, &mut s);
+        rates(&ctas, m, &mma_per_cta, &mut s);
         let dt = ctas
             .iter()
             .zip(&s.rate)

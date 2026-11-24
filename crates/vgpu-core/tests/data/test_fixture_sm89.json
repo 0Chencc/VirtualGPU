@@ -36,6 +36,7 @@
     "l2_size_bytes": 37748736,
     "l2_line_bytes": 128,
     "l2_sector_bytes": 32,
+    "l1_size_bytes": 131072,
     "capabilities": {
       "cp_async": true,
       "tma": false,

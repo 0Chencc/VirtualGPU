@@ -4,9 +4,19 @@
 //! Run with `cargo bench -p vgpu-core --bench gemm`.
 
 use std::time::Instant;
-use vgpu_core::kernel::{Kernel, Tile, TripCounts, Work};
+use vgpu_core::from_ir::{kernel_from_ir, IrL2};
+use vgpu_core::ir::KernelIR;
+use vgpu_core::kernel::{Access, Kernel, Tile, TripCounts, Work};
+use vgpu_core::l2::{L2InitState, L2Options};
 use vgpu_core::profile::Profile;
 use vgpu_core::sim::{simulate, ConstantHitRatio, Machine};
+
+fn access(op: &str, bytes: f64) -> Access {
+    Access {
+        op_id: op.to_string(),
+        nominal_bytes: bytes,
+    }
+}
 
 fn main() {
     let p = Profile::from_json(include_str!("../tests/data/test_fixture_sm89.json")).unwrap();
@@ -24,12 +34,13 @@ fn main() {
             per_iteration: Work {
                 mma_flops: 2.0 * 128.0 * 128.0 * 32.0,
                 alu_insts_per_warp: 16.0,
-                load_bytes: 16384.0,
-                store_bytes: 0.0,
+                smem_bytes: 16384.0,
+                loads: vec![access("load_A", 8192.0), access("load_B", 8192.0)],
+                ..Work::default()
             },
             prefetch_distance: 2,
             epilogue: Work {
-                store_bytes: 32768.0,
+                stores: vec![access("store_C", 32768.0)],
                 alu_insts_per_warp: 64.0,
                 ..Work::default()
             },
@@ -44,9 +55,44 @@ fn main() {
         last = Some(simulate(&k, &p, &m, &mut ConstantHitRatio(0.5)).unwrap());
     }
     let per_run = start.elapsed().as_secs_f64() / f64::from(runs);
-    let r = last.unwrap();
+    let r = last.take().unwrap();
     println!(
         "tiles: {}, events: {}, predicted: {:.1} us",
+        k.grid,
+        r.events,
+        r.time_ns / 1e3
+    );
+    println!("per simulation: {:.3} ms", per_run * 1e3);
+
+    // The same budget with the KernelIR adapter and the real L2 model.
+    let ir =
+        KernelIR::from_json_str(include_str!("../../../schemas/examples/gemm_sm89.json")).unwrap();
+    let k = kernel_from_ir(&ir).unwrap();
+    let m = Machine::nominal(&p, &k.mma_key).unwrap();
+    let start = Instant::now();
+    for _ in 0..runs {
+        let mut l2 = IrL2::new(&ir, &p, L2InitState::Cold, L2Options::default());
+        last = Some(simulate(&k, &p, &m, &mut l2).unwrap());
+    }
+    let per_run = start.elapsed().as_secs_f64() / f64::from(runs);
+    let start = Instant::now();
+    for _ in 0..runs {
+        std::hint::black_box(IrL2::new(&ir, &p, L2InitState::Cold, L2Options::default()));
+    }
+    let per_new = start.elapsed().as_secs_f64() / f64::from(runs);
+    println!("L2 model construction: {:.3} ms", per_new * 1e3);
+    let start = Instant::now();
+    for _ in 0..runs {
+        std::hint::black_box(simulate(&k, &p, &m, &mut ConstantHitRatio(0.5)).unwrap());
+    }
+    let per_const = start.elapsed().as_secs_f64() / f64::from(runs);
+    println!(
+        "example IR with a constant hit ratio: {:.3} ms",
+        per_const * 1e3
+    );
+    let r = last.unwrap();
+    println!(
+        "example IR with L2 model: tiles: {}, events: {}, predicted: {:.1} us",
         k.grid,
         r.events,
         r.time_ns / 1e3

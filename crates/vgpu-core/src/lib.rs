@@ -1,5 +1,6 @@
 //! VirtualGPU model core.
 
+pub mod from_ir;
 pub mod ir;
 pub mod kernel;
 pub mod l2;

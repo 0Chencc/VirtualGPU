@@ -59,6 +59,9 @@ pub struct Specs {
     #[serde(default)]
     pub shared_mem_carveout_options_bytes: Vec<u64>,
     pub l2_size_bytes: u64,
+    pub l2_line_bytes: u64,
+    pub l2_sector_bytes: u64,
+    pub l1_size_bytes: u64,
     #[serde(default)]
     pub capabilities: BTreeMap<String, bool>,
 }
@@ -68,9 +71,9 @@ pub struct Measured {
     pub memory: Memory,
     pub compute: Compute,
     #[serde(default)]
-    pub async_pipeline: BTreeMap<String, MeasuredValue>,
+    pub async_pipeline: BTreeMap<String, Option<MeasuredValue>>,
     #[serde(default)]
-    pub spill: BTreeMap<String, MeasuredValue>,
+    pub spill: BTreeMap<String, Option<MeasuredValue>>,
     pub overhead: Overhead,
     pub cta_dispatch: CtaDispatch,
 }
