@@ -1,0 +1,2149 @@
+{
+  "schema_version": "0.1",
+  "identity": {
+    "vendor": "nvidia",
+    "arch": "sm_89",
+    "sku": "NVIDIA GeForce RTX 4070",
+    "memory_type": "discrete"
+  },
+  "provenance": {
+    "profile_revision": "0.1.0-m1",
+    "calibration_run_id": "cal-20261124T202737Z-sm_89",
+    "calibration_manifest_digest": null,
+    "source": "partial",
+    "driver_version": "610.88",
+    "toolkit_version": "13.5",
+    "suite_version": "0.1.0",
+    "host_os": "linux",
+    "is_wsl": true,
+    "power_limit_w": 200.0,
+    "timestamp_utc": "2026-11-24T20:27:37Z",
+    "clock_policy": {
+      "locked": false,
+      "sm_clock_locked": false,
+      "mem_clock_locked": false,
+      "sm_clock_mhz": 2550.0,
+      "mem_clock_mhz": 10251.0,
+      "observed_sm_clock_range_mhz": [
+        2550.0,
+        2865.0
+      ],
+      "observed_mem_clock_range_mhz": [
+        10251.0,
+        10251.0
+      ],
+      "throttle_events": 0
+    }
+  },
+  "specs": {
+    "sm_count": 46,
+    "warp_size": 32,
+    "max_threads_per_sm": 1536,
+    "max_warps_per_sm": 48,
+    "max_blocks_per_sm": 24,
+    "max_threads_per_block": 1024,
+    "registers_per_sm": 65536,
+    "max_registers_per_thread": 255,
+    "register_alloc_granularity": "warp",
+    "register_alloc_unit_regs": 256,
+    "l1_smem_unified_bytes": 131072,
+    "l1_size_bytes": 131072,
+    "shared_mem_per_sm_bytes": 102400,
+    "max_shared_mem_per_block_bytes": 101376,
+    "reserved_shared_mem_per_cta_bytes": 1024,
+    "shared_mem_alloc_granularity_bytes": 128,
+    "shared_mem_carveout_options_bytes": [
+      0,
+      8192,
+      16384,
+      32768,
+      65536,
+      102400
+    ],
+    "l2_size_bytes": 37748736,
+    "l2_line_bytes": 128,
+    "l2_sector_bytes": 32,
+    "l2_partitions": 1,
+    "l1_line_bytes": 128,
+    "capabilities": {
+      "cp_async": true,
+      "tma": false,
+      "wgmma": false,
+      "tcgen05_tmem": false,
+      "cluster": false
+    },
+    "mma_shapes": [
+      {
+        "op_class": "mma.sync",
+        "a_dtype": "f16",
+        "b_dtype": "f16",
+        "acc_dtype": "f32",
+        "m": 16,
+        "n": 8,
+        "k": 16
+      },
+      {
+        "op_class": "mma.sync",
+        "a_dtype": "bf16",
+        "b_dtype": "bf16",
+        "acc_dtype": "f32",
+        "m": 16,
+        "n": 8,
+        "k": 16
+      }
+    ]
+  },
+  "measured": {
+    "memory": {
+      "dram_bw_read_gbps": {
+        "value": 431.868,
+        "ci95_low": 426.945,
+        "ci95_high": 434.013,
+        "rel_uncertainty": 0.1,
+        "unit": "GB/s",
+        "method": "cuda_stream_read_cold_l2",
+        "source": "measured",
+        "perturb_group": "dram_bw"
+      },
+      "dram_bw_write_gbps": {
+        "value": 431.868,
+        "ci95_low": 420.103,
+        "ci95_high": 436.18,
+        "rel_uncertainty": 0.1,
+        "unit": "GB/s",
+        "method": "cuda_stream_write_cold_l2",
+        "source": "measured",
+        "perturb_group": "dram_bw"
+      },
+      "dram_bw_by_active_sms": [
+        {
+          "active_sms": 1,
+          "bw_gbps": {
+            "value": 53.152,
+            "ci95_low": 52.99,
+            "ci95_high": 56.074,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_stream_read_cold_l2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "active_sms": 2,
+          "bw_gbps": {
+            "value": 113.188,
+            "ci95_low": 102.041,
+            "ci95_high": 113.433,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_stream_read_cold_l2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "active_sms": 4,
+          "bw_gbps": {
+            "value": 209.046,
+            "ci95_low": 208.547,
+            "ci95_high": 209.715,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_stream_read_cold_l2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "active_sms": 11,
+          "bw_gbps": {
+            "value": 403.298,
+            "ci95_low": 400.832,
+            "ci95_high": 404.543,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_stream_read_cold_l2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "active_sms": 23,
+          "bw_gbps": {
+            "value": 431.868,
+            "ci95_low": 429.744,
+            "ci95_high": 432.581,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_stream_read_cold_l2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "active_sms": 46,
+          "bw_gbps": {
+            "value": 431.868,
+            "ci95_low": 426.945,
+            "ci95_high": 434.013,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_stream_read_cold_l2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        }
+      ],
+      "l2_bw_read_gbps": {
+        "value": 1943.406,
+        "ci95_low": null,
+        "ci95_high": null,
+        "rel_uncertainty": 0.3,
+        "unit": "GB/s",
+        "method": "m1_estimated",
+        "source": "estimated",
+        "perturb_group": "l2_bw"
+      },
+      "l2_bw_write_gbps": {
+        "value": 1651.8951,
+        "ci95_low": null,
+        "ci95_high": null,
+        "rel_uncertainty": 0.3,
+        "unit": "GB/s",
+        "method": "m1_estimated",
+        "source": "estimated",
+        "perturb_group": "l2_bw"
+      },
+      "l2_bw_by_active_sms": [
+        {
+          "active_sms": 1,
+          "bw_gbps": {
+            "value": 126.7439,
+            "ci95_low": null,
+            "ci95_high": null,
+            "rel_uncertainty": 0.3,
+            "unit": "GB/s",
+            "method": "m1_estimated",
+            "source": "estimated",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_sms": 46,
+          "bw_gbps": {
+            "value": 1943.406,
+            "ci95_low": null,
+            "ci95_high": null,
+            "rel_uncertainty": 0.3,
+            "unit": "GB/s",
+            "method": "m1_estimated",
+            "source": "estimated",
+            "perturb_group": "l2_bw"
+          }
+        }
+      ],
+      "l2_effective_capacity_bytes": {
+        "value": 32086425.6,
+        "ci95_low": null,
+        "ci95_high": null,
+        "rel_uncertainty": 0.3,
+        "unit": "bytes",
+        "method": "m1_estimated",
+        "source": "estimated",
+        "perturb_group": null
+      },
+      "smem_bw_per_sm_gbps": {
+        "value": 326.4,
+        "ci95_low": null,
+        "ci95_high": null,
+        "rel_uncertainty": 0.3,
+        "unit": "GB/s",
+        "method": "m1_estimated",
+        "source": "estimated",
+        "perturb_group": null
+      },
+      "dram_latency_ns": {
+        "value": 350.0,
+        "ci95_low": null,
+        "ci95_high": null,
+        "rel_uncertainty": 0.3,
+        "unit": "ns",
+        "method": "m1_estimated",
+        "source": "estimated",
+        "perturb_group": null
+      },
+      "dram_latency_loaded_ns": null,
+      "l2_latency_ns": {
+        "value": 120.0,
+        "ci95_low": null,
+        "ci95_high": null,
+        "rel_uncertainty": 0.3,
+        "unit": "ns",
+        "method": "m1_estimated",
+        "source": "estimated",
+        "perturb_group": null
+      },
+      "l2_latency_loaded_ns": null,
+      "smem_latency_ns": {
+        "value": 15.0,
+        "ci95_low": null,
+        "ci95_high": null,
+        "rel_uncertainty": 0.3,
+        "unit": "ns",
+        "method": "m1_estimated",
+        "source": "estimated",
+        "perturb_group": null
+      }
+    },
+    "compute": {
+      "mma_tflops_per_sm_by_warps": {
+        "mma.sync:f16:f16:f32:16x8x16": [
+          {
+            "mma_warps_per_sm": 1,
+            "tflops_per_sm": {
+              "value": 0.6375,
+              "ci95_low": null,
+              "ci95_high": null,
+              "rel_uncertainty": 0.3,
+              "unit": "TFLOP/s",
+              "method": "m1_estimated",
+              "source": "estimated",
+              "perturb_group": "mma_dense"
+            }
+          },
+          {
+            "mma_warps_per_sm": 4,
+            "tflops_per_sm": {
+              "value": 2.4225,
+              "ci95_low": null,
+              "ci95_high": null,
+              "rel_uncertainty": 0.3,
+              "unit": "TFLOP/s",
+              "method": "m1_estimated",
+              "source": "estimated",
+              "perturb_group": "mma_dense"
+            }
+          },
+          {
+            "mma_warps_per_sm": 8,
+            "tflops_per_sm": {
+              "value": 2.55,
+              "ci95_low": null,
+              "ci95_high": null,
+              "rel_uncertainty": 0.3,
+              "unit": "TFLOP/s",
+              "method": "m1_estimated",
+              "source": "estimated",
+              "perturb_group": "mma_dense"
+            }
+          }
+        ]
+      },
+      "non_mma_issue_rate_per_sm_gips": {
+        "value": 10.2,
+        "ci95_low": null,
+        "ci95_high": null,
+        "rel_uncertainty": 0.3,
+        "unit": "Ginst/s",
+        "method": "m1_estimated",
+        "source": "estimated",
+        "perturb_group": null
+      },
+      "fp32_fma_tflops": {
+        "value": 30.0288,
+        "ci95_low": null,
+        "ci95_high": null,
+        "rel_uncertainty": 0.3,
+        "unit": "TFLOP/s",
+        "method": "m1_estimated",
+        "source": "estimated",
+        "perturb_group": null
+      },
+      "sfu_tflops": {
+        "value": 1.8768,
+        "ci95_low": null,
+        "ci95_high": null,
+        "rel_uncertainty": 0.3,
+        "unit": "TFLOP/s",
+        "method": "m1_estimated",
+        "source": "estimated",
+        "perturb_group": null
+      }
+    },
+    "occupancy": {
+      "smem_carveout_observed": []
+    },
+    "async_pipeline": {
+      "cp_async_bw_per_sm_gbps": {
+        "value": 100.0,
+        "ci95_low": null,
+        "ci95_high": null,
+        "rel_uncertainty": 0.3,
+        "unit": "GB/s",
+        "method": "m1_estimated",
+        "source": "estimated",
+        "perturb_group": "async_cp"
+      },
+      "tma_bw_per_sm_gbps": null,
+      "tma_setup_ns": null
+    },
+    "spill": {
+      "local_mem_l1_hit_bw_per_sm_gbps": {
+        "value": 150.0,
+        "ci95_low": null,
+        "ci95_high": null,
+        "rel_uncertainty": 0.3,
+        "unit": "GB/s",
+        "method": "m1_estimated",
+        "source": "estimated",
+        "perturb_group": "spill_l1"
+      },
+      "local_mem_l1_miss_bw_per_sm_gbps": {
+        "value": 40.0,
+        "ci95_low": null,
+        "ci95_high": null,
+        "rel_uncertainty": 0.3,
+        "unit": "GB/s",
+        "method": "m1_estimated",
+        "source": "estimated",
+        "perturb_group": "spill_l2"
+      },
+      "local_mem_l1_hit_latency_ns": {
+        "value": 25.0,
+        "ci95_low": null,
+        "ci95_high": null,
+        "rel_uncertainty": 0.3,
+        "unit": "ns",
+        "method": "m1_estimated",
+        "source": "estimated",
+        "perturb_group": "spill_l1"
+      },
+      "local_mem_l1_miss_latency_ns": {
+        "value": 160.0,
+        "ci95_low": null,
+        "ci95_high": null,
+        "rel_uncertainty": 0.3,
+        "unit": "ns",
+        "method": "m1_estimated",
+        "source": "estimated",
+        "perturb_group": "spill_l2"
+      },
+      "l1_to_l2_spill_threshold_bytes_per_sm": {
+        "value": 65536.0,
+        "ci95_low": null,
+        "ci95_high": null,
+        "rel_uncertainty": 0.3,
+        "unit": "bytes",
+        "method": "m1_estimated",
+        "source": "estimated",
+        "perturb_group": null
+      }
+    },
+    "overhead": {
+      "launch_overhead_us": {
+        "value": 5.0,
+        "ci95_low": null,
+        "ci95_high": null,
+        "rel_uncertainty": 0.3,
+        "unit": "us",
+        "method": "m1_estimated",
+        "source": "estimated",
+        "perturb_group": null
+      },
+      "per_cta_launch_latency_ns": {
+        "value": 15.0,
+        "ci95_low": null,
+        "ci95_high": null,
+        "rel_uncertainty": 0.3,
+        "unit": "ns",
+        "method": "m1_estimated",
+        "source": "estimated",
+        "perturb_group": null
+      }
+    },
+    "cta_dispatch": {
+      "observed_policy": "measured_table",
+      "candidate_policies": [
+        "measured_table",
+        "round_robin"
+      ],
+      "policy_params": {
+        "rr_exact_match_ratio": 0.0435
+      },
+      "confidence": "medium",
+      "probes": [
+        {
+          "grid_dims": [
+            46,
+            1,
+            1
+          ],
+          "ctas_per_sm": 1,
+          "waves_approx": 1.0,
+          "order_consistency": 1.0,
+          "first_wave_trace": [
+            {
+              "cta_id": 0,
+              "sm_id": 0,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 1,
+              "sm_id": 2,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 2,
+              "sm_id": 4,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 3,
+              "sm_id": 6,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 4,
+              "sm_id": 8,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 5,
+              "sm_id": 10,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 6,
+              "sm_id": 12,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 7,
+              "sm_id": 14,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 8,
+              "sm_id": 16,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 9,
+              "sm_id": 18,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 10,
+              "sm_id": 20,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 11,
+              "sm_id": 22,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 12,
+              "sm_id": 24,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 13,
+              "sm_id": 26,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 14,
+              "sm_id": 28,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 15,
+              "sm_id": 30,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 16,
+              "sm_id": 32,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 17,
+              "sm_id": 34,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 18,
+              "sm_id": 36,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 19,
+              "sm_id": 38,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 20,
+              "sm_id": 40,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 21,
+              "sm_id": 42,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 22,
+              "sm_id": 44,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 23,
+              "sm_id": 1,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 24,
+              "sm_id": 3,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 25,
+              "sm_id": 5,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 26,
+              "sm_id": 7,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 27,
+              "sm_id": 9,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 28,
+              "sm_id": 11,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 29,
+              "sm_id": 13,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 30,
+              "sm_id": 15,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 31,
+              "sm_id": 17,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 32,
+              "sm_id": 19,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 33,
+              "sm_id": 21,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 34,
+              "sm_id": 23,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 35,
+              "sm_id": 25,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 36,
+              "sm_id": 27,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 37,
+              "sm_id": 29,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 38,
+              "sm_id": 31,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 39,
+              "sm_id": 33,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 40,
+              "sm_id": 35,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 41,
+              "sm_id": 37,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 42,
+              "sm_id": 39,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 43,
+              "sm_id": 41,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 44,
+              "sm_id": 43,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 45,
+              "sm_id": 45,
+              "start_ns": 0
+            }
+          ]
+        },
+        {
+          "grid_dims": [
+            92,
+            1,
+            1
+          ],
+          "ctas_per_sm": 1,
+          "waves_approx": 2.0,
+          "order_consistency": 1.0,
+          "first_wave_trace": [
+            {
+              "cta_id": 0,
+              "sm_id": 0,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 1,
+              "sm_id": 2,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 2,
+              "sm_id": 4,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 3,
+              "sm_id": 6,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 4,
+              "sm_id": 8,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 5,
+              "sm_id": 10,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 6,
+              "sm_id": 12,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 7,
+              "sm_id": 14,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 8,
+              "sm_id": 16,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 9,
+              "sm_id": 18,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 10,
+              "sm_id": 20,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 11,
+              "sm_id": 22,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 12,
+              "sm_id": 24,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 13,
+              "sm_id": 26,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 14,
+              "sm_id": 28,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 15,
+              "sm_id": 30,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 16,
+              "sm_id": 32,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 17,
+              "sm_id": 34,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 18,
+              "sm_id": 36,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 19,
+              "sm_id": 38,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 20,
+              "sm_id": 40,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 21,
+              "sm_id": 42,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 22,
+              "sm_id": 44,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 23,
+              "sm_id": 1,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 24,
+              "sm_id": 3,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 25,
+              "sm_id": 5,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 26,
+              "sm_id": 7,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 27,
+              "sm_id": 9,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 28,
+              "sm_id": 11,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 29,
+              "sm_id": 13,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 30,
+              "sm_id": 15,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 31,
+              "sm_id": 17,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 32,
+              "sm_id": 19,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 33,
+              "sm_id": 21,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 34,
+              "sm_id": 23,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 35,
+              "sm_id": 25,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 36,
+              "sm_id": 27,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 37,
+              "sm_id": 29,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 38,
+              "sm_id": 31,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 39,
+              "sm_id": 33,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 40,
+              "sm_id": 35,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 41,
+              "sm_id": 37,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 42,
+              "sm_id": 39,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 43,
+              "sm_id": 41,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 44,
+              "sm_id": 43,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 45,
+              "sm_id": 45,
+              "start_ns": 0
+            }
+          ]
+        },
+        {
+          "grid_dims": [
+            184,
+            1,
+            1
+          ],
+          "ctas_per_sm": 1,
+          "waves_approx": 4.0,
+          "order_consistency": 1.0,
+          "first_wave_trace": [
+            {
+              "cta_id": 0,
+              "sm_id": 0,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 1,
+              "sm_id": 2,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 2,
+              "sm_id": 4,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 3,
+              "sm_id": 6,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 4,
+              "sm_id": 8,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 5,
+              "sm_id": 10,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 6,
+              "sm_id": 12,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 7,
+              "sm_id": 14,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 8,
+              "sm_id": 16,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 9,
+              "sm_id": 18,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 10,
+              "sm_id": 20,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 11,
+              "sm_id": 22,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 12,
+              "sm_id": 24,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 13,
+              "sm_id": 26,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 14,
+              "sm_id": 28,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 15,
+              "sm_id": 30,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 16,
+              "sm_id": 32,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 17,
+              "sm_id": 34,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 18,
+              "sm_id": 36,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 19,
+              "sm_id": 38,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 20,
+              "sm_id": 40,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 21,
+              "sm_id": 42,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 22,
+              "sm_id": 44,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 23,
+              "sm_id": 1,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 24,
+              "sm_id": 3,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 25,
+              "sm_id": 5,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 26,
+              "sm_id": 7,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 27,
+              "sm_id": 9,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 28,
+              "sm_id": 11,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 29,
+              "sm_id": 13,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 30,
+              "sm_id": 15,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 31,
+              "sm_id": 17,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 32,
+              "sm_id": 19,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 33,
+              "sm_id": 21,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 34,
+              "sm_id": 23,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 35,
+              "sm_id": 25,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 36,
+              "sm_id": 27,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 37,
+              "sm_id": 29,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 38,
+              "sm_id": 31,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 39,
+              "sm_id": 33,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 40,
+              "sm_id": 35,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 41,
+              "sm_id": 37,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 42,
+              "sm_id": 39,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 43,
+              "sm_id": 41,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 44,
+              "sm_id": 43,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 45,
+              "sm_id": 45,
+              "start_ns": 0
+            }
+          ]
+        },
+        {
+          "grid_dims": [
+            92,
+            1,
+            1
+          ],
+          "ctas_per_sm": 2,
+          "waves_approx": 1.0,
+          "order_consistency": 1.0,
+          "first_wave_trace": [
+            {
+              "cta_id": 0,
+              "sm_id": 0,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 1,
+              "sm_id": 2,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 2,
+              "sm_id": 4,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 3,
+              "sm_id": 6,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 4,
+              "sm_id": 8,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 5,
+              "sm_id": 10,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 6,
+              "sm_id": 12,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 7,
+              "sm_id": 14,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 8,
+              "sm_id": 16,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 9,
+              "sm_id": 18,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 10,
+              "sm_id": 20,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 11,
+              "sm_id": 22,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 12,
+              "sm_id": 24,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 13,
+              "sm_id": 26,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 14,
+              "sm_id": 28,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 15,
+              "sm_id": 30,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 16,
+              "sm_id": 32,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 17,
+              "sm_id": 34,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 18,
+              "sm_id": 36,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 19,
+              "sm_id": 38,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 20,
+              "sm_id": 40,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 21,
+              "sm_id": 42,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 22,
+              "sm_id": 44,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 23,
+              "sm_id": 1,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 24,
+              "sm_id": 3,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 25,
+              "sm_id": 5,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 26,
+              "sm_id": 7,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 27,
+              "sm_id": 9,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 28,
+              "sm_id": 11,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 29,
+              "sm_id": 13,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 30,
+              "sm_id": 15,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 31,
+              "sm_id": 17,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 32,
+              "sm_id": 19,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 33,
+              "sm_id": 21,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 34,
+              "sm_id": 23,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 35,
+              "sm_id": 25,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 36,
+              "sm_id": 27,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 37,
+              "sm_id": 29,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 38,
+              "sm_id": 31,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 39,
+              "sm_id": 33,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 40,
+              "sm_id": 35,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 41,
+              "sm_id": 37,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 42,
+              "sm_id": 39,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 43,
+              "sm_id": 41,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 44,
+              "sm_id": 43,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 45,
+              "sm_id": 45,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 46,
+              "sm_id": 0,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 47,
+              "sm_id": 2,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 48,
+              "sm_id": 4,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 49,
+              "sm_id": 6,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 50,
+              "sm_id": 8,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 51,
+              "sm_id": 10,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 52,
+              "sm_id": 12,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 53,
+              "sm_id": 14,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 54,
+              "sm_id": 16,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 55,
+              "sm_id": 18,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 56,
+              "sm_id": 20,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 57,
+              "sm_id": 22,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 58,
+              "sm_id": 24,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 59,
+              "sm_id": 26,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 60,
+              "sm_id": 28,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 61,
+              "sm_id": 30,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 62,
+              "sm_id": 32,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 63,
+              "sm_id": 34,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 64,
+              "sm_id": 36,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 65,
+              "sm_id": 38,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 66,
+              "sm_id": 40,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 67,
+              "sm_id": 42,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 68,
+              "sm_id": 44,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 69,
+              "sm_id": 1,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 70,
+              "sm_id": 3,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 71,
+              "sm_id": 5,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 72,
+              "sm_id": 7,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 73,
+              "sm_id": 9,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 74,
+              "sm_id": 11,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 75,
+              "sm_id": 13,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 76,
+              "sm_id": 15,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 77,
+              "sm_id": 17,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 78,
+              "sm_id": 19,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 79,
+              "sm_id": 21,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 80,
+              "sm_id": 23,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 81,
+              "sm_id": 25,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 82,
+              "sm_id": 27,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 83,
+              "sm_id": 29,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 84,
+              "sm_id": 31,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 85,
+              "sm_id": 33,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 86,
+              "sm_id": 35,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 87,
+              "sm_id": 37,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 88,
+              "sm_id": 39,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 89,
+              "sm_id": 41,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 90,
+              "sm_id": 43,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 91,
+              "sm_id": 45,
+              "start_ns": 0
+            }
+          ]
+        },
+        {
+          "grid_dims": [
+            184,
+            1,
+            1
+          ],
+          "ctas_per_sm": 2,
+          "waves_approx": 2.0,
+          "order_consistency": 1.0,
+          "first_wave_trace": [
+            {
+              "cta_id": 0,
+              "sm_id": 0,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 1,
+              "sm_id": 0,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 2,
+              "sm_id": 2,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 3,
+              "sm_id": 2,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 4,
+              "sm_id": 4,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 5,
+              "sm_id": 4,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 6,
+              "sm_id": 6,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 7,
+              "sm_id": 6,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 8,
+              "sm_id": 8,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 9,
+              "sm_id": 8,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 10,
+              "sm_id": 10,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 11,
+              "sm_id": 10,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 12,
+              "sm_id": 12,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 13,
+              "sm_id": 12,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 14,
+              "sm_id": 14,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 15,
+              "sm_id": 14,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 16,
+              "sm_id": 16,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 17,
+              "sm_id": 16,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 18,
+              "sm_id": 18,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 19,
+              "sm_id": 18,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 20,
+              "sm_id": 20,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 21,
+              "sm_id": 20,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 22,
+              "sm_id": 22,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 23,
+              "sm_id": 22,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 24,
+              "sm_id": 24,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 25,
+              "sm_id": 24,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 26,
+              "sm_id": 26,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 27,
+              "sm_id": 26,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 28,
+              "sm_id": 28,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 29,
+              "sm_id": 28,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 30,
+              "sm_id": 30,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 31,
+              "sm_id": 30,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 32,
+              "sm_id": 32,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 33,
+              "sm_id": 32,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 34,
+              "sm_id": 34,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 35,
+              "sm_id": 34,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 36,
+              "sm_id": 36,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 37,
+              "sm_id": 36,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 38,
+              "sm_id": 38,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 39,
+              "sm_id": 38,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 40,
+              "sm_id": 40,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 41,
+              "sm_id": 40,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 42,
+              "sm_id": 42,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 43,
+              "sm_id": 42,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 44,
+              "sm_id": 44,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 45,
+              "sm_id": 44,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 46,
+              "sm_id": 1,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 47,
+              "sm_id": 1,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 48,
+              "sm_id": 3,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 49,
+              "sm_id": 3,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 50,
+              "sm_id": 5,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 51,
+              "sm_id": 5,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 52,
+              "sm_id": 7,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 53,
+              "sm_id": 7,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 54,
+              "sm_id": 9,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 55,
+              "sm_id": 9,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 56,
+              "sm_id": 11,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 57,
+              "sm_id": 11,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 58,
+              "sm_id": 13,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 59,
+              "sm_id": 13,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 60,
+              "sm_id": 15,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 61,
+              "sm_id": 15,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 62,
+              "sm_id": 17,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 63,
+              "sm_id": 17,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 64,
+              "sm_id": 19,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 65,
+              "sm_id": 19,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 66,
+              "sm_id": 21,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 67,
+              "sm_id": 21,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 68,
+              "sm_id": 23,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 69,
+              "sm_id": 23,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 70,
+              "sm_id": 25,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 71,
+              "sm_id": 25,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 72,
+              "sm_id": 27,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 73,
+              "sm_id": 27,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 74,
+              "sm_id": 29,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 75,
+              "sm_id": 29,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 76,
+              "sm_id": 31,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 77,
+              "sm_id": 31,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 78,
+              "sm_id": 33,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 79,
+              "sm_id": 33,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 80,
+              "sm_id": 35,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 81,
+              "sm_id": 35,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 82,
+              "sm_id": 37,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 83,
+              "sm_id": 37,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 84,
+              "sm_id": 39,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 85,
+              "sm_id": 39,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 86,
+              "sm_id": 41,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 87,
+              "sm_id": 41,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 88,
+              "sm_id": 43,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 89,
+              "sm_id": 43,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 90,
+              "sm_id": 45,
+              "start_ns": 0
+            },
+            {
+              "cta_id": 91,
+              "sm_id": 45,
+              "start_ns": 0
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -16,6 +16,7 @@ from virtualgpu.profile import (
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 EXAMPLE_PROFILE = REPO_ROOT / "schemas" / "examples" / "profile_example.json"
+RTX4070_PROFILE = REPO_ROOT / "profiles" / "rtx4070.json"
 
 
 def test_example_profile_is_valid() -> None:
@@ -23,6 +24,15 @@ def test_example_profile_is_valid() -> None:
     assert profile["schema_version"] == "0.1"
     assert profile["identity"]["arch"] == "sm_89"
     assert DEFAULT_SCHEMA_PATH.is_file()
+
+
+def test_rtx4070_profile_is_valid() -> None:
+    if not RTX4070_PROFILE.is_file():
+        pytest.skip("profiles/rtx4070.json not present")
+    profile = load_profile(RTX4070_PROFILE)
+    assert profile["identity"]["arch"] == "sm_89"
+    assert profile["specs"]["sm_count"] == 46
+    assert profile["measured"]["memory"]["dram_bw_read_gbps"]["source"] == "measured"
 
 
 def test_rejects_missing_required_field() -> None:
