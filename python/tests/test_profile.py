@@ -32,7 +32,17 @@ def test_rtx4070_profile_is_valid() -> None:
     profile = load_profile(RTX4070_PROFILE)
     assert profile["identity"]["arch"] == "sm_89"
     assert profile["specs"]["sm_count"] == 46
-    assert profile["measured"]["memory"]["dram_bw_read_gbps"]["source"] == "measured"
+    mem = profile["measured"]["memory"]
+    assert mem["dram_bw_read_gbps"]["source"] == "measured"
+    assert mem["l2_bw_read_gbps"]["source"] == "measured"
+    assert mem["l2_effective_capacity_bytes"]["source"] == "measured"
+    assert mem["l2_effective_capacity_bytes"]["value"] <= profile["specs"]["l2_size_bytes"]
+    assert mem["dram_latency_loaded_ns"]["source"] == "measured"
+    assert profile["measured"]["async_pipeline"]["cp_async_bw_per_sm_gbps"]["source"] == "measured"
+    assert profile["measured"]["overhead"]["launch_overhead_us"]["source"] == "measured"
+    mma_f16 = profile["measured"]["compute"]["mma_tflops_per_sm_by_warps"]["mma.sync:f16:f16:f32:16x8x16"]
+    assert len(mma_f16) >= 4
+    assert all(pt["tflops_per_sm"]["source"] == "measured" for pt in mma_f16)
 
 
 def test_rejects_missing_required_field() -> None:
