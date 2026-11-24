@@ -347,6 +347,9 @@
           "required": ["launch_overhead_us", "per_cta_launch_latency_ns"],
           "properties": {
             "launch_overhead_us": { "$ref": "#/$defs/MeasuredValue" },
+            "host_launch_overhead_us": {
+              "oneOf": [{ "$ref": "#/$defs/MeasuredValue" }, { "type": "null" }]
+            },
             "per_cta_launch_latency_ns": { "$ref": "#/$defs/MeasuredValue" }
           }
         },

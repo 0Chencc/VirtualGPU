@@ -21,8 +21,8 @@ sys.path.insert(0, str(REPO_ROOT / "python"))
 from virtualgpu.profile import validate_profile  # noqa: E402
 
 DEFAULT_BIN = Path(__file__).resolve().parent / "build" / "vgpu_bench"
-SUITE_VERSION = "0.2.0"
-PROFILE_REVISION = "0.2.0-m2"
+SUITE_VERSION = "0.2.1"
+PROFILE_REVISION = "0.2.1-m2"
 
 
 def find_nvidia_smi() -> str | None:
@@ -400,11 +400,11 @@ def build_profile(
         throttle_events=throttle_events,
     )
 
-    # Measured cp.async, smem BW, latency hierarchy, and launch overhead.
+    # Measured cp.async (from L2), smem BW (128-bit read-only), latency hierarchy, and launch overhead.
     cp_async_mv = make_measured(
         cp_async_raw["cp_async_bw_per_sm_gbps_samples"],
         unit="GB/s",
-        method="cuda_ptx_cp_async_cg_16b",
+        method="cuda_ptx_cp_async_cg_16b_from_l2",
         perturb_group="async_cp",
         clock_range=sm_range,
         locked=False,
@@ -413,7 +413,7 @@ def build_profile(
     smem_bw_mv = make_measured(
         cp_async_raw["smem_bw_per_sm_gbps_samples"],
         unit="GB/s",
-        method="cuda_smem_128b_stream",
+        method="cuda_smem_128b_readonly_16warps",
         perturb_group=None,
         clock_range=sm_range,
         locked=False,
@@ -465,9 +465,18 @@ def build_profile(
         throttle_events=throttle_events,
     )
     launch_oh_mv = make_measured(
-        launch_raw["launch_overhead_us_samples"],
+        launch_raw["device_launch_overhead_us_samples"],
         unit="us",
-        method="cuda_empty_kernel_batch",
+        method="cuda_graph_empty_kernel_device_overhead",
+        perturb_group=None,
+        clock_range=sm_range,
+        locked=False,
+        throttle_events=throttle_events,
+    )
+    host_launch_oh_mv = make_measured(
+        launch_raw["host_launch_overhead_us_samples"],
+        unit="us",
+        method="cuda_stream_empty_kernel_host_batch",
         perturb_group=None,
         clock_range=sm_range,
         locked=False,
@@ -476,7 +485,7 @@ def build_profile(
     per_cta_lat_mv = make_measured(
         launch_raw["per_cta_launch_latency_ns_samples"],
         unit="ns",
-        method="cuda_empty_kernel_grid_slope",
+        method="cuda_graph_empty_kernel_grid_slope",
         perturb_group=None,
         clock_range=sm_range,
         locked=False,
@@ -600,6 +609,7 @@ def build_profile(
             },
             "overhead": {
                 "launch_overhead_us": launch_oh_mv,
+                "host_launch_overhead_us": host_launch_oh_mv,
                 "per_cta_launch_latency_ns": per_cta_lat_mv,
             },
             "cta_dispatch": classify_dispatch(dispatch_raw),

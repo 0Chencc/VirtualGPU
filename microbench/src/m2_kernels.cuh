@@ -437,27 +437,51 @@ __global__ void cp_async_bw_kernel(const uint4* __restrict__ src,
   }
 }
 
-__global__ void smem_bw_kernel(uint4* __restrict__ sink, int iters) {
-  __shared__ volatile uint32_t smem[256 * 4];  // 4 KB, bank-conflict-free 32-bit/thread stride
+__global__ void smem_bw_kernel(uint4* __restrict__ sink, int iters, uint32_t seed) {
+  // 512 threads (16 warps/SM) x 4 independent 128-bit loads per iter, 32 KB smem, read-only loop.
+  // Rotate the byte offset across 4 distinct slots per iteration so ptxas cannot hoist loads out of the loop.
+  __shared__ uint4 smem[512 * 4];
   uint32_t tid = threadIdx.x;
-  smem[tid] = tid;
-  smem[tid + 256] = tid + 1u;
-  smem[tid + 512] = tid + 2u;
-  smem[tid + 768] = tid + 3u;
+  smem[tid] = make_uint4(tid + seed, tid + 1u, tid + 2u, tid + 3u);
+  smem[tid + 512] = make_uint4(tid + 4u + seed, tid + 5u, tid + 6u, tid + 7u);
+  smem[tid + 1024] = make_uint4(tid + 8u + seed, tid + 9u, tid + 10u, tid + 11u);
+  smem[tid + 1536] = make_uint4(tid + 12u + seed, tid + 13u, tid + 14u, tid + 15u);
   __syncthreads();
 
-  uint32_t acc = 0;
+  uint32_t smem_base = static_cast<uint32_t>(__cvta_generic_to_shared(&smem[0]));
+  uint32_t acc0 = 0, acc1 = 0, acc2 = 0, acc3 = 0;
+
   for (int i = 0; i < iters; ++i) {
-    uint32_t off = (tid + static_cast<uint32_t>(i)) & 255u;
-    uint32_t v0 = smem[off];
-    uint32_t v1 = smem[off + 256];
-    uint32_t v2 = smem[off + 512];
-    uint32_t v3 = smem[off + 768];
-    acc ^= (v0 + v1 + v2 + v3);
-    smem[off + 768] = acc;
+    uint32_t idx0 = (tid + static_cast<uint32_t>(i)) & 511u;
+    uint32_t a0 = smem_base + (idx0 << 4);
+    uint32_t a1 = a0 + 8192u;
+    uint32_t a2 = a0 + 16384u;
+    uint32_t a3 = a0 + 24576u;
+
+    uint4 v0, v1, v2, v3;
+    asm volatile("ld.shared.v4.u32 {%0,%1,%2,%3}, [%4];"
+                 : "=r"(v0.x), "=r"(v0.y), "=r"(v0.z), "=r"(v0.w)
+                 : "r"(a0)
+                 : "memory");
+    asm volatile("ld.shared.v4.u32 {%0,%1,%2,%3}, [%4];"
+                 : "=r"(v1.x), "=r"(v1.y), "=r"(v1.z), "=r"(v1.w)
+                 : "r"(a1)
+                 : "memory");
+    asm volatile("ld.shared.v4.u32 {%0,%1,%2,%3}, [%4];"
+                 : "=r"(v2.x), "=r"(v2.y), "=r"(v2.z), "=r"(v2.w)
+                 : "r"(a2)
+                 : "memory");
+    asm volatile("ld.shared.v4.u32 {%0,%1,%2,%3}, [%4];"
+                 : "=r"(v3.x), "=r"(v3.y), "=r"(v3.z), "=r"(v3.w)
+                 : "r"(a3)
+                 : "memory");
+    acc0 += v0.x + v1.y + v2.z + v3.w;
+    acc1 += v0.y + v1.z + v2.w + v3.x;
+    acc2 += v0.z + v1.w + v2.x + v3.y;
+    acc3 += v0.w + v1.x + v2.y + v3.z;
   }
-  if (acc == 0xdeadbeefu) {
-    sink[blockIdx.x * blockDim.x + tid] = make_uint4(acc, acc, acc, acc);
+  if ((acc0 + acc1 + acc2 + acc3) == 0xdeadbeefu) {
+    sink[blockIdx.x * blockDim.x + tid] = make_uint4(acc0, acc1, acc2, acc3);
   }
 }
 
@@ -472,7 +496,7 @@ static int run_cp_async(int device, int samples, int warmup) {
   uint4* d_src = nullptr;
   uint4* d_sink = nullptr;
   CUDA_CHECK(cudaMalloc(&d_src, n_vec4 * sizeof(uint4)));
-  CUDA_CHECK(cudaMalloc(&d_sink, static_cast<size_t>(sm_count) * 256 * sizeof(uint4)));
+  CUDA_CHECK(cudaMalloc(&d_sink, static_cast<size_t>(sm_count) * 512 * sizeof(uint4)));
   CUDA_CHECK(cudaMemset(d_src, 5, n_vec4 * sizeof(uint4)));
 
   cudaEvent_t ev_start, ev_stop;
@@ -499,11 +523,11 @@ static int run_cp_async(int device, int samples, int warmup) {
     cp_samples.push_back((cp_bytes_per_sm / 1e9) / (static_cast<double>(ms) / 1e3));
   }
 
-  // 2) Shared memory per-SM BW (4 reads + 1 write = 20 B/thread/iter).
-  const int sm_iters = 32768;
-  const double sm_bytes_per_sm = static_cast<double>(256) * 20.0 * sm_iters;
+  // 2) Shared memory per-SM BW (512 threads = 16 warps/SM, 4 x 16B = 64 B/thread/iter, read-only).
+  const int sm_iters = 16384;
+  const double sm_bytes_per_sm = static_cast<double>(512) * 64.0 * sm_iters;
   for (int w = 0; w < warmup; ++w) {
-    smem_bw_kernel<<<sm_count, 256>>>(d_sink, 1024);
+    smem_bw_kernel<<<sm_count, 512>>>(d_sink, 1024, static_cast<uint32_t>(w));
   }
   CUDA_CHECK(cudaDeviceSynchronize());
 
@@ -511,7 +535,7 @@ static int run_cp_async(int device, int samples, int warmup) {
   smem_samples.reserve(samples);
   for (int s = 0; s < samples; ++s) {
     CUDA_CHECK(cudaEventRecord(ev_start));
-    smem_bw_kernel<<<sm_count, 256>>>(d_sink, sm_iters);
+    smem_bw_kernel<<<sm_count, 512>>>(d_sink, sm_iters, static_cast<uint32_t>(s + 1));
     CUDA_CHECK(cudaEventRecord(ev_stop));
     CUDA_CHECK(cudaEventSynchronize(ev_stop));
     float ms = 0.0f;
@@ -752,6 +776,8 @@ __global__ void empty_kernel() {}
 
 static int run_launch(int device, int samples, int warmup) {
   (void)device;
+  cudaStream_t stream;
+  CUDA_CHECK(cudaStreamCreate(&stream));
   cudaEvent_t ev_start, ev_stop;
   CUDA_CHECK(cudaEventCreate(&ev_start));
   CUDA_CHECK(cudaEventCreate(&ev_stop));
@@ -759,52 +785,86 @@ static int run_launch(int device, int samples, int warmup) {
   const int batch = 500;
   const int large_grid = 4096;
 
-  for (int w = 0; w < warmup; ++w) {
-    for (int i = 0; i < 50; ++i) empty_kernel<<<1, 1>>>();
-    for (int i = 0; i < 50; ++i) empty_kernel<<<large_grid, 1>>>();
-  }
-  CUDA_CHECK(cudaDeviceSynchronize());
+  // Capture two CUDA Graphs (1-CTA and large-grid) to measure device-side launch overhead
+  // matching Agent 5's graph + event timing convention.
+  cudaGraph_t graph_small = nullptr, graph_large = nullptr;
+  cudaGraphExec_t exec_small = nullptr, exec_large = nullptr;
 
-  std::vector<double> launch_us;
+  CUDA_CHECK(cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal));
+  for (int i = 0; i < batch; ++i) empty_kernel<<<1, 1, 0, stream>>>();
+  CUDA_CHECK(cudaStreamEndCapture(stream, &graph_small));
+  CUDA_CHECK(cudaGraphInstantiate(&exec_small, graph_small, nullptr, nullptr, 0));
+
+  CUDA_CHECK(cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal));
+  for (int i = 0; i < batch; ++i) empty_kernel<<<large_grid, 1, 0, stream>>>();
+  CUDA_CHECK(cudaStreamEndCapture(stream, &graph_large));
+  CUDA_CHECK(cudaGraphInstantiate(&exec_large, graph_large, nullptr, nullptr, 0));
+
+  for (int w = 0; w < warmup; ++w) {
+    CUDA_CHECK(cudaGraphLaunch(exec_small, stream));
+    CUDA_CHECK(cudaGraphLaunch(exec_large, stream));
+    for (int i = 0; i < 50; ++i) empty_kernel<<<1, 1, 0, stream>>>();
+  }
+  CUDA_CHECK(cudaStreamSynchronize(stream));
+
+  std::vector<double> device_launch_us;
+  std::vector<double> host_launch_us;
   std::vector<double> per_cta_ns;
-  launch_us.reserve(samples);
+  device_launch_us.reserve(samples);
+  host_launch_us.reserve(samples);
   per_cta_ns.reserve(samples);
 
   for (int s = 0; s < samples; ++s) {
-    CUDA_CHECK(cudaEventRecord(ev_start));
-    for (int i = 0; i < batch; ++i) empty_kernel<<<1, 1>>>();
-    CUDA_CHECK(cudaEventRecord(ev_stop));
+    // 1) Device-side CUDA Graph launch overhead (1 CTA).
+    CUDA_CHECK(cudaEventRecord(ev_start, stream));
+    CUDA_CHECK(cudaGraphLaunch(exec_small, stream));
+    CUDA_CHECK(cudaEventRecord(ev_stop, stream));
     CUDA_CHECK(cudaEventSynchronize(ev_stop));
-    float ms_small = 0.0f;
-    CUDA_CHECK(cudaEventElapsedTime(&ms_small, ev_start, ev_stop));
-    double us_per_launch = (static_cast<double>(ms_small) * 1e3) / batch;
-    launch_us.push_back(us_per_launch);
+    float ms_dev_small = 0.0f;
+    CUDA_CHECK(cudaEventElapsedTime(&ms_dev_small, ev_start, ev_stop));
+    device_launch_us.push_back((static_cast<double>(ms_dev_small) * 1e3) / batch);
 
-    CUDA_CHECK(cudaEventRecord(ev_start));
-    for (int i = 0; i < batch; ++i) empty_kernel<<<large_grid, 1>>>();
-    CUDA_CHECK(cudaEventRecord(ev_stop));
+    // 2) Device-side CUDA Graph per-CTA launch slope (4096 CTAs vs 1 CTA).
+    CUDA_CHECK(cudaEventRecord(ev_start, stream));
+    CUDA_CHECK(cudaGraphLaunch(exec_large, stream));
+    CUDA_CHECK(cudaEventRecord(ev_stop, stream));
     CUDA_CHECK(cudaEventSynchronize(ev_stop));
-    float ms_large = 0.0f;
-    CUDA_CHECK(cudaEventElapsedTime(&ms_large, ev_start, ev_stop));
-    double diff_ns = ((static_cast<double>(ms_large) - static_cast<double>(ms_small)) * 1e6) / batch;
-    double ns_per_cta = std::max(0.1, diff_ns / static_cast<double>(large_grid - 1));
-    per_cta_ns.push_back(ns_per_cta);
+    float ms_dev_large = 0.0f;
+    CUDA_CHECK(cudaEventElapsedTime(&ms_dev_large, ev_start, ev_stop));
+    double diff_ns = ((static_cast<double>(ms_dev_large) - static_cast<double>(ms_dev_small)) * 1e6) / batch;
+    per_cta_ns.push_back(std::max(0.05, diff_ns / static_cast<double>(large_grid - 1)));
+
+    // 3) Host-submitted stream batch launch overhead (includes WSL/driver submission).
+    CUDA_CHECK(cudaEventRecord(ev_start, stream));
+    for (int i = 0; i < batch; ++i) empty_kernel<<<1, 1, 0, stream>>>();
+    CUDA_CHECK(cudaEventRecord(ev_stop, stream));
+    CUDA_CHECK(cudaEventSynchronize(ev_stop));
+    float ms_host = 0.0f;
+    CUDA_CHECK(cudaEventElapsedTime(&ms_host, ev_start, ev_stop));
+    host_launch_us.push_back((static_cast<double>(ms_host) * 1e3) / batch);
   }
 
-  std::printf("{\n  \"batch\": %d,\n  \"large_grid\": %d,\n  \"launch_overhead_us_samples\": [",
-              batch, large_grid);
-  for (size_t i = 0; i < launch_us.size(); ++i) {
-    if (i > 0) std::printf(", ");
-    std::printf("%.3f", launch_us[i]);
-  }
-  std::printf("],\n  \"per_cta_launch_latency_ns_samples\": [");
-  for (size_t i = 0; i < per_cta_ns.size(); ++i) {
-    if (i > 0) std::printf(", ");
-    std::printf("%.3f", per_cta_ns[i]);
-  }
-  std::printf("]\n}\n");
+  auto print_vec = [](const char* key, const std::vector<double>& v, bool comma) {
+    std::printf("  \"%s\": [", key);
+    for (size_t i = 0; i < v.size(); ++i) {
+      if (i > 0) std::printf(", ");
+      std::printf("%.3f", v[i]);
+    }
+    std::printf("]%s\n", comma ? "," : "");
+  };
 
+  std::printf("{\n  \"batch\": %d,\n  \"large_grid\": %d,\n", batch, large_grid);
+  print_vec("device_launch_overhead_us_samples", device_launch_us, true);
+  print_vec("host_launch_overhead_us_samples", host_launch_us, true);
+  print_vec("per_cta_launch_latency_ns_samples", per_cta_ns, false);
+  std::printf("}\n");
+
+  CUDA_CHECK(cudaGraphExecDestroy(exec_small));
+  CUDA_CHECK(cudaGraphExecDestroy(exec_large));
+  CUDA_CHECK(cudaGraphDestroy(graph_small));
+  CUDA_CHECK(cudaGraphDestroy(graph_large));
   CUDA_CHECK(cudaEventDestroy(ev_start));
   CUDA_CHECK(cudaEventDestroy(ev_stop));
+  CUDA_CHECK(cudaStreamDestroy(stream));
   return 0;
 }

@@ -7,17 +7,17 @@
     "memory_type": "discrete"
   },
   "provenance": {
-    "profile_revision": "0.2.0-m2",
-    "calibration_run_id": "cal-20261124T203421Z-sm_89",
+    "profile_revision": "0.2.1-m2",
+    "calibration_run_id": "cal-20261124T203840Z-sm_89",
     "calibration_manifest_digest": null,
     "source": "partial",
     "driver_version": "610.88",
     "toolkit_version": "13.5",
-    "suite_version": "0.2.0",
+    "suite_version": "0.2.1",
     "host_os": "linux",
     "is_wsl": true,
     "power_limit_w": 200.0,
-    "timestamp_utc": "2026-11-24T20:34:21Z",
+    "timestamp_utc": "2026-11-24T20:38:40Z",
     "clock_policy": {
       "locked": false,
       "sm_clock_locked": false,
@@ -25,7 +25,7 @@
       "sm_clock_mhz": 2865.0,
       "mem_clock_mhz": 10251.0,
       "observed_sm_clock_range_mhz": [
-        2865.0,
+        2550.0,
         2865.0
       ],
       "observed_mem_clock_range_mhz": [
@@ -96,8 +96,8 @@
   "measured": {
     "memory": {
       "dram_bw_read_gbps": {
-        "value": 433.296,
-        "ci95_low": 426.945,
+        "value": 434.013,
+        "ci95_low": 433.296,
         "ci95_high": 434.013,
         "rel_uncertainty": 0.1,
         "unit": "GB/s",
@@ -106,9 +106,9 @@
         "perturb_group": "dram_bw"
       },
       "dram_bw_write_gbps": {
-        "value": 429.744,
-        "ci95_low": 419.43,
-        "ci95_high": 443.56,
+        "value": 433.296,
+        "ci95_low": 426.945,
+        "ci95_high": 436.18,
         "rel_uncertainty": 0.1,
         "unit": "GB/s",
         "method": "cuda_stream_write_cold_l2",
@@ -119,9 +119,9 @@
         {
           "active_sms": 1,
           "bw_gbps": {
-            "value": 56.704,
-            "ci95_low": 56.158,
-            "ci95_high": 60.042,
+            "value": 53.012,
+            "ci95_low": 52.629,
+            "ci95_high": 56.302,
             "rel_uncertainty": 0.1,
             "unit": "GB/s",
             "method": "cuda_stream_read_cold_l2",
@@ -132,9 +132,9 @@
         {
           "active_sms": 2,
           "bw_gbps": {
-            "value": 113.286,
-            "ci95_low": 102.041,
-            "ci95_high": 113.63,
+            "value": 106.693,
+            "ci95_low": 95.464,
+            "ci95_high": 106.823,
             "rel_uncertainty": 0.1,
             "unit": "GB/s",
             "method": "cuda_stream_read_cold_l2",
@@ -145,9 +145,9 @@
         {
           "active_sms": 4,
           "bw_gbps": {
-            "value": 208.713,
-            "ci95_low": 208.216,
-            "ci95_high": 209.213,
+            "value": 197.845,
+            "ci95_low": 197.845,
+            "ci95_high": 198.293,
             "rel_uncertainty": 0.1,
             "unit": "GB/s",
             "method": "cuda_stream_read_cold_l2",
@@ -158,9 +158,9 @@
         {
           "active_sms": 11,
           "bw_gbps": {
-            "value": 402.679,
-            "ci95_low": 399.61,
-            "ci95_high": 404.543,
+            "value": 398.395,
+            "ci95_low": 394.202,
+            "ci95_high": 399.002,
             "rel_uncertainty": 0.1,
             "unit": "GB/s",
             "method": "cuda_stream_read_cold_l2",
@@ -172,8 +172,8 @@
           "active_sms": 23,
           "bw_gbps": {
             "value": 431.868,
-            "ci95_low": 426.25,
-            "ci95_high": 433.296,
+            "ci95_low": 430.45,
+            "ci95_high": 432.581,
             "rel_uncertainty": 0.1,
             "unit": "GB/s",
             "method": "cuda_stream_read_cold_l2",
@@ -184,8 +184,8 @@
         {
           "active_sms": 46,
           "bw_gbps": {
-            "value": 433.296,
-            "ci95_low": 426.945,
+            "value": 434.013,
+            "ci95_low": 433.296,
             "ci95_high": 434.013,
             "rel_uncertainty": 0.1,
             "unit": "GB/s",
@@ -196,20 +196,20 @@
         }
       ],
       "l2_bw_read_gbps": {
-        "value": 1489.455,
-        "ci95_low": 1456.356,
-        "ci95_high": 1513.097,
-        "rel_uncertainty": 0.1,
+        "value": 1500.824,
+        "ci95_low": 1474.56,
+        "ci95_high": 1516.257,
+        "rel_uncertainty": 0.1082,
         "unit": "GB/s",
         "method": "cuda_l2_cg_read_warm",
         "source": "measured",
         "perturb_group": "l2_bw"
       },
       "l2_bw_write_gbps": {
-        "value": 1260.308,
-        "ci95_low": 1246.985,
-        "ci95_high": 1260.729,
-        "rel_uncertainty": 0.1,
+        "value": 1257.62,
+        "ci95_low": 1239.126,
+        "ci95_high": 1263.006,
+        "rel_uncertainty": 0.1082,
         "unit": "GB/s",
         "method": "cuda_l2_cg_write_warm",
         "source": "measured",
@@ -219,10 +219,10 @@
         {
           "active_sms": 1,
           "bw_gbps": {
-            "value": 70.722,
-            "ci95_low": 63.668,
-            "ci95_high": 71.615,
-            "rel_uncertainty": 0.1,
+            "value": 71.582,
+            "ci95_low": 63.944,
+            "ci95_high": 71.825,
+            "rel_uncertainty": 0.1082,
             "unit": "GB/s",
             "method": "cuda_l2_cg_read_warm",
             "source": "measured",
@@ -232,10 +232,10 @@
         {
           "active_sms": 2,
           "bw_gbps": {
-            "value": 132.485,
-            "ci95_low": 130.839,
+            "value": 136.533,
+            "ci95_low": 135.157,
             "ci95_high": 137.168,
-            "rel_uncertainty": 0.1,
+            "rel_uncertainty": 0.1082,
             "unit": "GB/s",
             "method": "cuda_l2_cg_read_warm",
             "source": "measured",
@@ -245,10 +245,10 @@
         {
           "active_sms": 4,
           "bw_gbps": {
-            "value": 264.822,
-            "ci95_low": 264.777,
+            "value": 265.209,
+            "ci95_low": 264.732,
             "ci95_high": 265.209,
-            "rel_uncertainty": 0.1,
+            "rel_uncertainty": 0.1082,
             "unit": "GB/s",
             "method": "cuda_l2_cg_read_warm",
             "source": "measured",
@@ -258,10 +258,10 @@
         {
           "active_sms": 11,
           "bw_gbps": {
-            "value": 713.209,
-            "ci95_low": 689.047,
-            "ci95_high": 717.547,
-            "rel_uncertainty": 0.1,
+            "value": 718.421,
+            "ci95_low": 714.073,
+            "ci95_high": 718.421,
+            "rel_uncertainty": 0.1082,
             "unit": "GB/s",
             "method": "cuda_l2_cg_read_warm",
             "source": "measured",
@@ -271,10 +271,10 @@
         {
           "active_sms": 23,
           "bw_gbps": {
-            "value": 1404.343,
-            "ci95_low": 1391.094,
-            "ci95_high": 1404.447,
-            "rel_uncertainty": 0.1,
+            "value": 1401.007,
+            "ci95_low": 1346.822,
+            "ci95_high": 1404.343,
+            "rel_uncertainty": 0.1082,
             "unit": "GB/s",
             "method": "cuda_l2_cg_read_warm",
             "source": "measured",
@@ -284,10 +284,10 @@
         {
           "active_sms": 46,
           "bw_gbps": {
-            "value": 1489.455,
-            "ci95_low": 1456.356,
-            "ci95_high": 1513.097,
-            "rel_uncertainty": 0.1,
+            "value": 1500.824,
+            "ci95_low": 1474.56,
+            "ci95_high": 1516.257,
+            "rel_uncertainty": 0.1082,
             "unit": "GB/s",
             "method": "cuda_l2_cg_read_warm",
             "source": "measured",
@@ -306,19 +306,19 @@
         "perturb_group": null
       },
       "smem_bw_per_sm_gbps": {
-        "value": 179.256,
-        "ci95_low": 174.298,
-        "ci95_high": 179.465,
-        "rel_uncertainty": 0.1,
+        "value": 360.335,
+        "ci95_low": 359.594,
+        "ci95_high": 361.08,
+        "rel_uncertainty": 0.1082,
         "unit": "GB/s",
-        "method": "cuda_smem_128b_stream",
+        "method": "cuda_smem_128b_readonly_16warps",
         "source": "measured",
         "perturb_group": null
       },
       "dram_latency_ns": {
-        "value": 226.5,
-        "ci95_low": 226.25,
-        "ci95_high": 227.75,
+        "value": 226.62,
+        "ci95_low": 226.12,
+        "ci95_high": 259.0,
         "rel_uncertainty": 0.1,
         "unit": "ns",
         "method": "cuda_dram_cg_pchase_unloaded",
@@ -326,9 +326,9 @@
         "perturb_group": null
       },
       "dram_latency_loaded_ns": {
-        "value": 2173.5,
-        "ci95_low": 2126.0,
-        "ci95_high": 2189.5,
+        "value": 2136.0,
+        "ci95_low": 2106.0,
+        "ci95_high": 2238.0,
         "rel_uncertainty": 0.1,
         "unit": "ns",
         "method": "cuda_dram_cg_pchase_loaded",
@@ -336,20 +336,20 @@
         "perturb_group": null
       },
       "l2_latency_ns": {
-        "value": 93.5,
+        "value": 102.25,
         "ci95_low": 93.44,
-        "ci95_high": 93.81,
-        "rel_uncertainty": 0.1,
+        "ci95_high": 129.62,
+        "rel_uncertainty": 0.1769,
         "unit": "ns",
         "method": "cuda_l2_cg_pchase_unloaded",
         "source": "measured",
         "perturb_group": null
       },
       "l2_latency_loaded_ns": {
-        "value": 425.38,
-        "ci95_low": 423.0,
-        "ci95_high": 457.75,
-        "rel_uncertainty": 0.1,
+        "value": 442.25,
+        "ci95_low": 423.5,
+        "ci95_high": 456.0,
+        "rel_uncertainty": 0.1082,
         "unit": "ns",
         "method": "cuda_l2_cg_pchase_loaded",
         "source": "measured",
@@ -359,7 +359,7 @@
         "value": 8.38,
         "ci95_low": 8.38,
         "ci95_high": 8.38,
-        "rel_uncertainty": 0.1,
+        "rel_uncertainty": 0.1082,
         "unit": "ns",
         "method": "cuda_smem_pchase",
         "source": "measured",
@@ -372,10 +372,10 @@
           {
             "mma_warps_per_sm": 1,
             "tflops_per_sm": {
-              "value": 0.3639,
-              "ci95_low": 0.3466,
-              "ci95_high": 0.3644,
-              "rel_uncertainty": 0.1,
+              "value": 0.3631,
+              "ci95_low": 0.3247,
+              "ci95_high": 0.3649,
+              "rel_uncertainty": 0.1082,
               "unit": "TFLOP/s",
               "method": "cuda_ptx_mma_sync_unrolled",
               "source": "measured",
@@ -386,9 +386,9 @@
             "mma_warps_per_sm": 2,
             "tflops_per_sm": {
               "value": 0.7232,
-              "ci95_low": 0.7222,
-              "ci95_high": 0.7262,
-              "rel_uncertainty": 0.1,
+              "ci95_low": 0.7221,
+              "ci95_high": 0.7242,
+              "rel_uncertainty": 0.1082,
               "unit": "TFLOP/s",
               "method": "cuda_ptx_mma_sync_unrolled",
               "source": "measured",
@@ -398,10 +398,10 @@
           {
             "mma_warps_per_sm": 4,
             "tflops_per_sm": {
-              "value": 1.4342,
-              "ci95_low": 1.4342,
-              "ci95_high": 1.4382,
-              "rel_uncertainty": 0.1,
+              "value": 1.4382,
+              "ci95_low": 1.3951,
+              "ci95_high": 1.4423,
+              "rel_uncertainty": 0.1082,
               "unit": "TFLOP/s",
               "method": "cuda_ptx_mma_sync_unrolled",
               "source": "measured",
@@ -411,10 +411,10 @@
           {
             "mma_warps_per_sm": 8,
             "tflops_per_sm": {
-              "value": 1.4423,
-              "ci95_low": 1.4423,
-              "ci95_high": 1.4437,
-              "rel_uncertainty": 0.1,
+              "value": 1.4425,
+              "ci95_low": 1.4382,
+              "ci95_high": 1.443,
+              "rel_uncertainty": 0.1082,
               "unit": "TFLOP/s",
               "method": "cuda_ptx_mma_sync_unrolled",
               "source": "measured",
@@ -424,10 +424,10 @@
           {
             "mma_warps_per_sm": 16,
             "tflops_per_sm": {
-              "value": 1.4504,
-              "ci95_low": 1.4423,
-              "ci95_high": 1.4511,
-              "rel_uncertainty": 0.1,
+              "value": 1.4525,
+              "ci95_low": 1.4425,
+              "ci95_high": 1.4525,
+              "rel_uncertainty": 0.1082,
               "unit": "TFLOP/s",
               "method": "cuda_ptx_mma_sync_unrolled",
               "source": "measured",
@@ -438,9 +438,9 @@
             "mma_warps_per_sm": 32,
             "tflops_per_sm": {
               "value": 1.4566,
-              "ci95_low": 1.2162,
-              "ci95_high": 1.4566,
-              "rel_uncertainty": 0.1,
+              "ci95_low": 1.4242,
+              "ci95_high": 1.4577,
+              "rel_uncertainty": 0.1082,
               "unit": "TFLOP/s",
               "method": "cuda_ptx_mma_sync_unrolled",
               "source": "measured",
@@ -452,10 +452,10 @@
           {
             "mma_warps_per_sm": 1,
             "tflops_per_sm": {
-              "value": 0.3634,
-              "ci95_low": 0.3616,
-              "ci95_high": 0.3649,
-              "rel_uncertainty": 0.1,
+              "value": 0.3636,
+              "ci95_low": 0.3601,
+              "ci95_high": 0.3639,
+              "rel_uncertainty": 0.1082,
               "unit": "TFLOP/s",
               "method": "cuda_ptx_mma_sync_unrolled",
               "source": "measured",
@@ -465,10 +465,10 @@
           {
             "mma_warps_per_sm": 2,
             "tflops_per_sm": {
-              "value": 0.7242,
-              "ci95_low": 0.7232,
-              "ci95_high": 0.7273,
-              "rel_uncertainty": 0.1,
+              "value": 0.7252,
+              "ci95_low": 0.7171,
+              "ci95_high": 0.7266,
+              "rel_uncertainty": 0.1082,
               "unit": "TFLOP/s",
               "method": "cuda_ptx_mma_sync_unrolled",
               "source": "measured",
@@ -478,10 +478,10 @@
           {
             "mma_warps_per_sm": 4,
             "tflops_per_sm": {
-              "value": 1.4342,
-              "ci95_low": 1.4342,
-              "ci95_high": 1.4347,
-              "rel_uncertainty": 0.1,
+              "value": 1.4382,
+              "ci95_low": 1.4382,
+              "ci95_high": 1.4386,
+              "rel_uncertainty": 0.1082,
               "unit": "TFLOP/s",
               "method": "cuda_ptx_mma_sync_unrolled",
               "source": "measured",
@@ -491,10 +491,10 @@
           {
             "mma_warps_per_sm": 8,
             "tflops_per_sm": {
-              "value": 1.4423,
-              "ci95_low": 1.4262,
+              "value": 1.4463,
+              "ci95_low": 1.4424,
               "ci95_high": 1.4463,
-              "rel_uncertainty": 0.1,
+              "rel_uncertainty": 0.1082,
               "unit": "TFLOP/s",
               "method": "cuda_ptx_mma_sync_unrolled",
               "source": "measured",
@@ -505,9 +505,9 @@
             "mma_warps_per_sm": 16,
             "tflops_per_sm": {
               "value": 1.4525,
-              "ci95_low": 1.4504,
+              "ci95_low": 1.4443,
               "ci95_high": 1.4525,
-              "rel_uncertainty": 0.1,
+              "rel_uncertainty": 0.1082,
               "unit": "TFLOP/s",
               "method": "cuda_ptx_mma_sync_unrolled",
               "source": "measured",
@@ -517,10 +517,10 @@
           {
             "mma_warps_per_sm": 32,
             "tflops_per_sm": {
-              "value": 1.4556,
-              "ci95_low": 1.4494,
-              "ci95_high": 1.4566,
-              "rel_uncertainty": 0.1,
+              "value": 1.4566,
+              "ci95_low": 1.4515,
+              "ci95_high": 1.4568,
+              "rel_uncertainty": 0.1082,
               "unit": "TFLOP/s",
               "method": "cuda_ptx_mma_sync_unrolled",
               "source": "measured",
@@ -540,10 +540,10 @@
         "perturb_group": null
       },
       "fp32_fma_tflops": {
-        "value": 29.3941,
-        "ci95_low": 29.1485,
-        "ci95_high": 29.499,
-        "rel_uncertainty": 0.1,
+        "value": 29.3227,
+        "ci95_low": 29.2644,
+        "ci95_high": 29.3996,
+        "rel_uncertainty": 0.1082,
         "unit": "TFLOP/s",
         "method": "cuda_fp32_fma_unrolled",
         "source": "measured",
@@ -565,12 +565,12 @@
     },
     "async_pipeline": {
       "cp_async_bw_per_sm_gbps": {
-        "value": 36.271,
-        "ci95_low": 36.168,
+        "value": 36.293,
+        "ci95_low": 31.691,
         "ci95_high": 36.409,
-        "rel_uncertainty": 0.1,
+        "rel_uncertainty": 0.1082,
         "unit": "GB/s",
-        "method": "cuda_ptx_cp_async_cg_16b",
+        "method": "cuda_ptx_cp_async_cg_16b_from_l2",
         "source": "measured",
         "perturb_group": "async_cp"
       },
@@ -631,22 +631,32 @@
     },
     "overhead": {
       "launch_overhead_us": {
-        "value": 6.353,
-        "ci95_low": 5.134,
-        "ci95_high": 9.265,
-        "rel_uncertainty": 0.3251,
+        "value": 0.688,
+        "ci95_low": 0.565,
+        "ci95_high": 0.793,
+        "rel_uncertainty": 0.1657,
         "unit": "us",
-        "method": "cuda_empty_kernel_batch",
+        "method": "cuda_graph_empty_kernel_device_overhead",
+        "source": "measured",
+        "perturb_group": null
+      },
+      "host_launch_overhead_us": {
+        "value": 9.028,
+        "ci95_low": 5.321,
+        "ci95_high": 16.06,
+        "rel_uncertainty": 0.5948,
+        "unit": "us",
+        "method": "cuda_stream_empty_kernel_host_batch",
         "source": "measured",
         "perturb_group": null
       },
       "per_cta_launch_latency_ns": {
-        "value": 0.349,
-        "ci95_low": 0.1,
-        "ci95_high": 0.527,
-        "rel_uncertainty": 0.6117,
+        "value": 0.619,
+        "ci95_low": 0.574,
+        "ci95_high": 0.642,
+        "rel_uncertainty": 0.1082,
         "unit": "ns",
-        "method": "cuda_empty_kernel_grid_slope",
+        "method": "cuda_graph_empty_kernel_grid_slope",
         "source": "measured",
         "perturb_group": null
       }
