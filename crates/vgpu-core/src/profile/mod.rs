@@ -85,10 +85,20 @@ pub struct BwPoint {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub struct L2RescanPoint {
+    pub working_set_bytes: u64,
+    pub working_set_ratio_to_l2: f64,
+    pub pass2_bw_gbps: MeasuredValue,
+    pub estimated_hit_rate: MeasuredValue,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct Memory {
     pub dram_bw_by_active_sms: Vec<BwPoint>,
     pub l2_bw_by_active_sms: Vec<BwPoint>,
     pub l2_effective_capacity_bytes: MeasuredValue,
+    #[serde(default)]
+    pub l2_rescan_hit_rate_by_working_set: Vec<L2RescanPoint>,
     pub smem_bw_per_sm_gbps: MeasuredValue,
     pub dram_latency_ns: MeasuredValue,
     pub l2_latency_ns: MeasuredValue,

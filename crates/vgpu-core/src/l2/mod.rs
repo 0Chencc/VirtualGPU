@@ -1,8 +1,8 @@
-//! Online, phase-segment-level L2 cache reuse model (v1).
+//! Online, phase-segment-level L2 cache reuse model (v2: empirical rescan curve + O(1) reuse distance).
 
 use crate::ir::{AccessEntry, CachePolicy, KernelIR, Op, Strided2dEntry};
-use crate::profile::Profile;
-use std::collections::{HashMap, HashSet, VecDeque};
+use crate::profile::{interpolate, Profile};
+use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum L2InitState {
@@ -32,7 +32,7 @@ impl Default for L2Options {
 }
 
 /// Perturbable hardware L2/L1 parameters extracted from a GPU profile sample.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct L2Profile {
     pub l2_size_bytes: u64,
     pub l2_effective_capacity_bytes: u64,
@@ -40,6 +40,27 @@ pub struct L2Profile {
     pub l2_sector_bytes: u64,
     pub l1_size_bytes: u64,
     pub l1_to_l2_spill_threshold_bytes_per_sm: u64,
+    /// Monotone non-increasing `(reuse_distance / L2_capacity, hit_rate)` curve derived from
+    /// `measured.memory.l2_rescan_hit_rate_by_working_set`. Empty falls back to a step at 1.0x.
+    pub rescan_hit_curve: Vec<(f64, f64)>,
+}
+
+/// Builds a sorted, monotone non-increasing `(ratio, hit_rate)` curve from measured rescan points.
+/// Enforcing a suffix-max envelope removes small-buffer ramp-up artifacts (e.g., 0.25x L2 under-utilizing
+/// peak L2 BW) while preserving the measured eviction cliff above 1.0x L2.
+fn build_monotone_rescan_curve(points: &[(f64, f64)]) -> Vec<(f64, f64)> {
+    let mut curve: Vec<(f64, f64)> = points
+        .iter()
+        .filter(|&&(r, h)| r.is_finite() && r > 0.0 && h.is_finite())
+        .map(|&(r, h)| (r, h.clamp(0.0, 1.0)))
+        .collect();
+    curve.sort_by(|a, b| a.0.total_cmp(&b.0));
+    for i in (1..curve.len()).rev() {
+        if curve[i - 1].1 < curve[i].1 {
+            curve[i - 1].1 = curve[i].1;
+        }
+    }
+    curve
 }
 
 impl From<&Profile> for L2Profile {
@@ -51,6 +72,13 @@ impl From<&Profile> for L2Profile {
             .get("l1_to_l2_spill_threshold_bytes_per_sm")
             .and_then(Option::as_ref)
             .map_or(s.l1_size_bytes, |v| v.value.max(0.0).round() as u64);
+        let raw_curve: Vec<(f64, f64)> = p
+            .measured
+            .memory
+            .l2_rescan_hit_rate_by_working_set
+            .iter()
+            .map(|pt| (pt.working_set_ratio_to_l2, pt.estimated_hit_rate.value))
+            .collect();
         Self {
             l2_size_bytes: s.l2_size_bytes,
             l2_effective_capacity_bytes: p
@@ -64,6 +92,7 @@ impl From<&Profile> for L2Profile {
             l2_sector_bytes: s.l2_sector_bytes,
             l1_size_bytes: s.l1_size_bytes,
             l1_to_l2_spill_threshold_bytes_per_sm: spill_threshold,
+            rescan_hit_curve: build_monotone_rescan_curve(&raw_curve),
         }
     }
 }
@@ -126,9 +155,10 @@ pub struct L2Model<'a> {
     resident_tiles: HashMap<(u32, u32), ResidentTile>,
     active_chunks: HashMap<ChunkKey, (u32, u64)>,
     active_working_set_bytes: u64,
-    recent_lru: VecDeque<(ChunkKey, u64)>,
-    recent_set: HashMap<ChunkKey, u64>,
-    recent_bytes: u64,
+    /// Monotonic counter of unique full-K-stream bytes that have flowed through L2.
+    stream_clock_bytes: u64,
+    /// O(1) map from ChunkKey to the `stream_clock_bytes` when it last completed streaming.
+    last_seen_stream_byte: HashMap<ChunkKey, u64>,
     spill_l2_pressure_bytes: u64,
 }
 
@@ -192,9 +222,8 @@ impl<'a> L2Model<'a> {
             resident_tiles: HashMap::new(),
             active_chunks: HashMap::new(),
             active_working_set_bytes: 0,
-            recent_lru: VecDeque::new(),
-            recent_set: HashMap::new(),
-            recent_bytes: 0,
+            stream_clock_bytes: 0,
+            last_seen_stream_byte: HashMap::new(),
             spill_l2_pressure_bytes: 0,
         };
         model.total_read_footprint_bytes = model.compute_total_read_footprint();
@@ -244,9 +273,13 @@ impl<'a> L2Model<'a> {
                     self.active_working_set_bytes = self
                         .active_working_set_bytes
                         .saturating_sub(rc.step_aligned_bytes);
+                    // Advance L2 stream clock by the full K-stream volume in O(1).
+                    self.stream_clock_bytes = self
+                        .stream_clock_bytes
+                        .saturating_add(rc.full_stream_bytes);
                     if self.options.cross_wave_reuse {
-                        // Account for the full K-stream volume that flowed through L2 during this tile.
-                        self.push_recent(rc.key, rc.full_stream_bytes);
+                        self.last_seen_stream_byte
+                            .insert(rc.key, self.stream_clock_bytes);
                     }
                 }
             }
@@ -302,7 +335,7 @@ impl<'a> L2Model<'a> {
         let total_f = total_aligned as f64;
 
         if is_write || binding.is_write {
-            // Intentional M1 simplification: treat all global stores as DRAM write-back traffic
+            // Intentional M1/M2 simplification: treat all global stores as DRAM write-back traffic
             // without modeling write-allocate L2 hit credit.
             return L2SplitResult {
                 l2_bytes: 0.0,
@@ -330,26 +363,35 @@ impl<'a> L2Model<'a> {
             .map(|(cnt, _)| (*cnt).max(1))
             .unwrap_or(1) as f64;
 
-        // Intra-wave sharing: R concurrent CTAs sharing a chunk incur 1/R DRAM fetch.
+        // 1. Intra-wave sharing: R concurrent CTAs sharing a chunk incur 1/R DRAM fetch.
         let mut raw_hit = (sharing_count - 1.0) / sharing_count;
 
-        let eff_cap = self.profile.l2_effective_capacity_bytes.max(1) as f64;
-
-        // Cross-wave hit: only hits if the full K-stream chunk has not been evicted from recent_lru.
-        if self.options.cross_wave_reuse && self.recent_set.contains_key(&ckey) {
-            raw_hit = raw_hit.max(1.0);
+        // 2. Cross-wave reuse: evaluate the empirical rescan curve at the reuse distance since
+        //    this chunk last streamed through L2.
+        if self.options.cross_wave_reuse {
+            if let Some(&prev_clock) = self.last_seen_stream_byte.get(&ckey) {
+                let inner_trips = self.ir.inner_trip_count(cta_id, outer_idx).unwrap_or(1).max(1);
+                let full_stream = full_chunk_stream_bytes(step_aligned, entry, inner_trips);
+                let reuse_dist = self
+                    .stream_clock_bytes
+                    .saturating_sub(prev_clock)
+                    .max(full_stream);
+                raw_hit = raw_hit.max(self.eval_rescan_hit(reuse_dist as f64));
+            }
         }
 
-        // Warm L2: only the fraction of total kernel read footprint that fits in L2 can be pre-warmed.
+        // 3. Warm L2 initial state: repeated full-kernel scan has reuse distance equal to the
+        //    total deduplicated read footprint of the kernel.
         if self.initial_state == L2InitState::Warm {
             let warm_hit = if self.total_read_footprint_bytes == 0 {
                 1.0
             } else {
-                (eff_cap / self.total_read_footprint_bytes as f64).clamp(0.0, 1.0)
+                self.eval_rescan_hit(self.total_read_footprint_bytes as f64)
             };
             raw_hit = raw_hit.max(warm_hit);
         }
 
+        let eff_cap = self.profile.l2_effective_capacity_bytes.max(1) as f64;
         let working_set =
             (self.active_working_set_bytes.saturating_add(self.spill_l2_pressure_bytes)) as f64;
 
@@ -360,7 +402,6 @@ impl<'a> L2Model<'a> {
                 if working_set <= lo {
                     (1.0, false)
                 } else if working_set < hi {
-                    // Smooth linear transition across [0.85 * C_eff, 1.15 * C_eff].
                     let t = (working_set - lo) / (hi - lo);
                     let at_hi = (eff_cap / hi).min(1.0);
                     (1.0 - t * (1.0 - at_hi), true)
@@ -455,6 +496,22 @@ impl<'a> L2Model<'a> {
         self.total_read_footprint_bytes
     }
 
+    /// Evaluates L2 survival probability for a sequential scan of `reuse_distance_bytes`.
+    fn eval_rescan_hit(&self, reuse_distance_bytes: f64) -> f64 {
+        let eff_cap = self.profile.l2_effective_capacity_bytes.max(1) as f64;
+        let ratio = (reuse_distance_bytes / eff_cap).max(0.0);
+        if !self.profile.rescan_hit_curve.is_empty() {
+            interpolate(&self.profile.rescan_hit_curve, ratio).clamp(0.0, 1.0)
+        } else {
+            // Fallback when profile lacks an empirical rescan curve: strict capacity cliff.
+            if ratio <= 1.0 {
+                1.0
+            } else {
+                0.0
+            }
+        }
+    }
+
     fn compute_total_read_footprint(&self) -> u64 {
         let mut seen = HashSet::new();
         let mut total: u64 = 0;
@@ -496,29 +553,6 @@ impl<'a> L2Model<'a> {
         let aligned_row = row_bytes.div_ceil(sector).saturating_mul(sector);
         entry.rows().saturating_mul(aligned_row)
     }
-
-    fn push_recent(&mut self, key: ChunkKey, full_bytes: u64) {
-        let cap = self.profile.l2_effective_capacity_bytes;
-        if full_bytes == 0 || full_bytes > cap {
-            return;
-        }
-        if let Some(prev_bytes) = self.recent_set.remove(&key) {
-            self.recent_bytes = self.recent_bytes.saturating_sub(prev_bytes);
-            if let Some(pos) = self.recent_lru.iter().position(|(k, _)| *k == key) {
-                self.recent_lru.remove(pos);
-            }
-        }
-        while self.recent_bytes.saturating_add(full_bytes) > cap {
-            let Some((old_k, old_b)) = self.recent_lru.pop_front() else {
-                break;
-            };
-            self.recent_set.remove(&old_k);
-            self.recent_bytes = self.recent_bytes.saturating_sub(old_b);
-        }
-        self.recent_lru.push_back((key, full_bytes));
-        self.recent_set.insert(key, full_bytes);
-        self.recent_bytes = self.recent_bytes.saturating_add(full_bytes);
-    }
 }
 
 fn full_chunk_stream_bytes(step_aligned: u64, entry: Strided2dEntry, inner_trips: u64) -> u64 {
@@ -546,14 +580,9 @@ mod tests {
     use crate::ir::TripCounts;
 
     fn rtx4070_l2_profile() -> L2Profile {
-        L2Profile {
-            l2_size_bytes: 36 * 1024 * 1024,
-            l2_effective_capacity_bytes: 30 * 1024 * 1024,
-            l2_line_bytes: 128,
-            l2_sector_bytes: 32,
-            l1_size_bytes: 128 * 1024,
-            l1_to_l2_spill_threshold_bytes_per_sm: 64 * 1024,
-        }
+        let profile_json = include_str!("../../../../profiles/rtx4070.json");
+        let gpu_profile = Profile::from_json(profile_json).unwrap();
+        L2Profile::from(&gpu_profile)
     }
 
     #[test]
@@ -577,28 +606,26 @@ mod tests {
         assert!((res_a.l2_bytes + res_a.dram_bytes - res_a.sector_aligned_bytes as f64).abs() < 1e-3);
         assert!(!res_a.near_cliff);
 
-        // End wave 1 (8 A stripes + 2 B stripes = 10 MB <= 30 MB C_eff) -> fits in recent_lru.
+        // End wave 1 (8 A stripes + 2 B stripes = 10 MiB <= 36 MiB L2) -> rescan curve gives 1.0.
         for cta in 0..16u32 {
             l2.end_tile(cta % 46, cta, 0, 1000.0);
         }
         l2.begin_tile(0, 16, 0, 1000.0);
         let res_a_next = l2.split(0, 16, 0, "load_A", 0, 128, false, CachePolicy::Default, 1000.0);
-        assert!((res_a_next.hit_ratio - 1.0).abs() < 1e-6, "10 MB wave fits in 30 MB L2");
+        assert!((res_a_next.hit_ratio - 1.0).abs() < 1e-6, "10 MiB reuse distance fits in 36 MiB L2");
     }
 
     #[test]
     fn cross_wave_history_accounts_for_full_k_stream_and_evicts_on_4096_gemm() {
         let json = include_str!("../../../../schemas/examples/gemm_sm89.json");
         let ir = KernelIR::from_json_str(json).unwrap();
-        let prof = rtx4070_l2_profile(); // 36 MB nominal, 30 MB effective
+        let prof = rtx4070_l2_profile();
         let mut l2 = L2Model::new(&ir, prof, L2InitState::Cold, L2Options::default());
 
-        // 4096^3 f16 GEMM has 32 MB A + 32 MB B = 64 MB total read footprint.
+        // 4096^3 f16 GEMM has 32 MiB A + 32 MiB B = 64 MiB total read footprint.
         assert_eq!(l2.total_read_footprint_bytes(), 64 * 1024 * 1024);
 
-        // Simulate 46-SM GPU with 2 CTAs/SM -> 92 CTAs per wave across all 1024 CTAs.
-        // Group 0 (CTAs 0..256) streams 8 MB of A + 32 MB of B = 40 MB > 30 MB effective L2,
-        // so earlier B stripes must be evicted before Group 1 (CTAs 256..512) reuses them.
+        // Run all 1024 CTAs in 92-CTA waves.
         let wave_size = 92u32;
         let mut total_b_hit_wave2_plus = 0.0;
         let mut count_b_wave2_plus = 0u32;
@@ -609,8 +636,6 @@ mod tests {
                 l2.begin_tile(cta % 46, cta, 0, 0.0);
             }
             if wave_start >= 256 {
-                // Measure solo-CTA cross-wave B hit by checking after intra-wave isolation,
-                // or check directly on Group 1 start where B cols 0..N were streamed in Group 0.
                 let res_b = l2.split(0, wave_start, 0, "load_B", 0, 128, false, CachePolicy::Default, 0.0);
                 total_b_hit_wave2_plus += res_b.hit_ratio;
                 count_b_wave2_plus += 1;
@@ -620,55 +645,64 @@ mod tests {
             }
         }
 
-        // Now dispatch a single solo CTA 256 (pid_m=8, pid_n=0) after the full 64 MB streamed:
-        // its B column 0 (1 MB) was evicted long ago, so cross-wave hit must be 0.0 (not 1.0).
+        // After streaming 64 MiB (> 45 MiB cliff on RTX 4070), a solo CTA reusing an early B column
+        // must see near-zero cross-wave hit (not 1.0 and not C_eff/F).
         l2.begin_tile(0, 256, 0, 2000.0);
         let solo_b = l2.split(0, 256, 0, "load_B", 0, 128, false, CachePolicy::Default, 2000.0);
         assert!(
-            solo_b.hit_ratio < 0.01,
-            "evicted B stripe after 64 MB stream must miss, got {}",
+            solo_b.hit_ratio < 0.05,
+            "evicted B stripe after 64 MiB stream must miss, got {}",
             solo_b.hit_ratio
         );
-        // Average hit across later waves must also be strictly below 1.0 (not falsely 1.0).
         let avg_b_hit = total_b_hit_wave2_plus / count_b_wave2_plus as f64;
         assert!(
             avg_b_hit < 0.95,
-            "cross-wave B hit on 64 MB GEMM in 30 MB L2 must be well below 1.0, got {}",
+            "cross-wave B hit on 64 MiB GEMM in 36 MiB L2 must be well below 1.0, got {}",
             avg_b_hit
         );
     }
 
     #[test]
-    fn warm_state_scales_hit_ratio_by_l2_capacity_vs_footprint() {
+    fn warm_state_follows_empirical_rescan_curve() {
         let json = include_str!("../../../../schemas/examples/gemm_sm89.json");
         let ir_large = KernelIR::from_json_str(json).unwrap();
-        let prof = rtx4070_l2_profile(); // 30 MB effective L2
+        let prof = rtx4070_l2_profile();
+        assert!(!prof.rescan_hit_curve.is_empty(), "rtx4070.json must populate rescan_hit_curve");
 
-        // Large 4096^3 GEMM: 64 MB footprint > 30 MB L2 -> warm hit must be < 1.0 (30/64 = 0.46875).
-        let mut l2_large = L2Model::new(&ir_large, prof, L2InitState::Warm, L2Options::default());
+        // 1. Large 4096^3 GEMM (64 MiB > 45 MiB cliff on RTX 4070): warm hit must be near 0,
+        //    far below the naive C_eff/F = 0.5625 ratio.
+        let mut l2_large = L2Model::new(&ir_large, prof.clone(), L2InitState::Warm, L2Options::default());
         l2_large.begin_tile(0, 0, 0, 0.0);
         let large_res = l2_large.split(0, 0, 0, "load_A", 0, 128, false, CachePolicy::Default, 0.0);
-        let expected_large = (30.0 * 1024.0 * 1024.0) / (64.0 * 1024.0 * 1024.0);
         assert!(
-            (large_res.hit_ratio - expected_large).abs() < 1e-6,
-            "expected warm hit {}, got {}",
-            expected_large,
+            large_res.hit_ratio < 0.05,
+            "64 MiB warm scan exceeds 45 MiB cliff; expected near-zero hit, got {}",
             large_res.hit_ratio
         );
-        assert!(large_res.hit_ratio < 1.0);
 
-        // Small footprint (reduce K iterations from 128 to 8 -> 4 MB total footprint <= 30 MB L2):
-        // warm hit should be 1.0.
+        // 2. Small footprint (K=8 -> 4 MiB <= 36 MiB L2): warm hit must be 1.0.
         let mut ir_small = ir_large.clone();
         ir_small.body.pipeline_loop.trip_counts = TripCounts::Uniform(8);
-        let mut l2_small = L2Model::new(&ir_small, prof, L2InitState::Warm, L2Options::default());
+        let mut l2_small = L2Model::new(&ir_small, prof.clone(), L2InitState::Warm, L2Options::default());
         assert_eq!(l2_small.total_read_footprint_bytes(), 4 * 1024 * 1024);
         l2_small.begin_tile(0, 0, 0, 0.0);
         let small_res = l2_small.split(0, 0, 0, "load_A", 0, 8, false, CachePolicy::Default, 0.0);
         assert!(
             (small_res.hit_ratio - 1.0).abs() < 1e-6,
-            "small 4 MB footprint in 30 MB warm L2 should hit ~1.0, got {}",
+            "4 MiB footprint in 36 MiB warm L2 should hit 1.0, got {}",
             small_res.hit_ratio
+        );
+
+        // 3. Transition knee (~39 MiB, K=78 -> 39 MiB = 1.083x L2): partial hit between 0.1 and 0.6.
+        let mut ir_knee = ir_large.clone();
+        ir_knee.body.pipeline_loop.trip_counts = TripCounts::Uniform(78);
+        let mut l2_knee = L2Model::new(&ir_knee, prof, L2InitState::Warm, L2Options::default());
+        l2_knee.begin_tile(0, 0, 0, 0.0);
+        let knee_res = l2_knee.split(0, 0, 0, "load_A", 0, 78, false, CachePolicy::Default, 0.0);
+        assert!(
+            knee_res.hit_ratio > 0.1 && knee_res.hit_ratio < 0.6,
+            "39 MiB warm scan should land on the measured transition knee, got {}",
+            knee_res.hit_ratio
         );
     }
 
@@ -717,7 +751,6 @@ mod tests {
             .expect("profiles/rtx4070.json should deserialize into Profile");
         let prof = L2Profile::from(&gpu_profile);
 
-        // Measured values change whenever the profile is re-measured, so read them from the file.
         let raw: serde_json::Value = serde_json::from_str(profile_json).unwrap();
         let measured = |path: &str| raw.pointer(path).and_then(|v| v.as_f64()).unwrap() as u64;
         let capacity = measured("/measured/memory/l2_effective_capacity_bytes/value");
@@ -731,17 +764,21 @@ mod tests {
             prof.l1_to_l2_spill_threshold_bytes_per_sm,
             measured("/measured/spill/l1_to_l2_spill_threshold_bytes_per_sm/value")
         );
+        assert!(!prof.rescan_hit_curve.is_empty());
 
-        // Verify L2Model actually consumes the loaded profile's l2_effective_capacity_bytes.
+        // Verify L2Model consumes the profile's empirical rescan curve.
         let ir_json = include_str!("../../../../schemas/examples/gemm_sm89.json");
         let ir = KernelIR::from_json_str(ir_json).unwrap();
-        let mut l2 = L2Model::new(&ir, prof, L2InitState::Warm, L2Options::default());
+        let mut l2 = L2Model::new(&ir, prof.clone(), L2InitState::Warm, L2Options::default());
         l2.begin_tile(0, 0, 0, 0.0);
         let res = l2.split(0, 0, 0, "load_A", 0, 128, false, CachePolicy::Default, 0.0);
-        let expected = (capacity as f64 / (64.0 * 1024.0 * 1024.0)).min(1.0);
+        let expected = interpolate(
+            &prof.rescan_hit_curve,
+            (64.0 * 1024.0 * 1024.0) / capacity as f64,
+        );
         assert!(
             (res.hit_ratio - expected).abs() < 1e-6,
-            "expected warm hit from rtx4070.json ({}), got {}",
+            "expected warm hit from rtx4070.json rescan curve ({}), got {}",
             expected,
             res.hit_ratio
         );
