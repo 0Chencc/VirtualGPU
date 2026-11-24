@@ -1,7 +1,9 @@
 //! Online, phase-segment-level L2 cache reuse model (v1).
 
 use crate::ir::{AccessEntry, CachePolicy, KernelIR, Op, Strided2dEntry};
+use serde::Deserialize;
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum L2InitState {
@@ -39,6 +41,92 @@ pub struct L2Profile {
     pub l2_sector_bytes: u64,
     pub l1_size_bytes: u64,
     pub l1_to_l2_spill_threshold_bytes_per_sm: u64,
+}
+
+#[derive(Debug)]
+pub struct L2ProfileError {
+    pub message: String,
+}
+
+impl fmt::Display for L2ProfileError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "L2Profile error: {}", self.message)
+    }
+}
+
+impl std::error::Error for L2ProfileError {}
+
+#[derive(Deserialize)]
+struct RawGpuProfileForL2 {
+    specs: RawL2Specs,
+    measured: RawL2Measured,
+}
+
+#[derive(Deserialize)]
+struct RawL2Specs {
+    l2_size_bytes: u64,
+    l2_line_bytes: u64,
+    #[serde(default = "default_sector_bytes")]
+    l2_sector_bytes: u64,
+    l1_size_bytes: u64,
+}
+
+fn default_sector_bytes() -> u64 {
+    32
+}
+
+#[derive(Deserialize)]
+struct RawL2Measured {
+    memory: RawL2MemoryMeasured,
+    spill: RawL2SpillMeasured,
+}
+
+#[derive(Deserialize)]
+struct RawL2MemoryMeasured {
+    l2_effective_capacity_bytes: RawMeasuredScalar,
+}
+
+#[derive(Deserialize)]
+struct RawL2SpillMeasured {
+    l1_to_l2_spill_threshold_bytes_per_sm: RawMeasuredScalar,
+}
+
+#[derive(Deserialize)]
+struct RawMeasuredScalar {
+    value: f64,
+}
+
+impl L2Profile {
+    /// Constructs an `L2Profile` directly from a GPU profile JSON document (schema v0.1).
+    pub fn from_gpu_profile_json(json: &str) -> Result<Self, L2ProfileError> {
+        let raw: RawGpuProfileForL2 =
+            serde_json::from_str(json).map_err(|e| L2ProfileError {
+                message: format!("failed to parse GPU profile JSON: {}", e),
+            })?;
+        let eff_val = raw.measured.memory.l2_effective_capacity_bytes.value;
+        if !eff_val.is_finite() || eff_val <= 0.0 {
+            return Err(L2ProfileError {
+                message: format!("invalid l2_effective_capacity_bytes: {}", eff_val),
+            });
+        }
+        let spill_val = raw.measured.spill.l1_to_l2_spill_threshold_bytes_per_sm.value;
+        if !spill_val.is_finite() || spill_val < 0.0 {
+            return Err(L2ProfileError {
+                message: format!(
+                    "invalid l1_to_l2_spill_threshold_bytes_per_sm: {}",
+                    spill_val
+                ),
+            });
+        }
+        Ok(Self {
+            l2_size_bytes: raw.specs.l2_size_bytes,
+            l2_effective_capacity_bytes: eff_val.round() as u64,
+            l2_line_bytes: raw.specs.l2_line_bytes,
+            l2_sector_bytes: raw.specs.l2_sector_bytes,
+            l1_size_bytes: raw.specs.l1_size_bytes,
+            l1_to_l2_spill_threshold_bytes_per_sm: spill_val.round() as u64,
+        })
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -681,5 +769,33 @@ mod tests {
         let large = l2.account_spill(0, 256, 512, 64, 64);
         assert!((large.overflow_ratio - 0.5).abs() < 1e-6);
         assert!(large.l2_bytes_per_iter > 0);
+    }
+
+    #[test]
+    fn construct_l2_profile_from_rtx4070_json() {
+        let profile_json = include_str!("../../../../profiles/rtx4070.json");
+        let prof = L2Profile::from_gpu_profile_json(profile_json)
+            .expect("profiles/rtx4070.json should parse into L2Profile");
+
+        assert_eq!(prof.l2_size_bytes, 37_748_736);
+        assert_eq!(prof.l2_effective_capacity_bytes, 32_086_426);
+        assert_eq!(prof.l2_line_bytes, 128);
+        assert_eq!(prof.l2_sector_bytes, 32);
+        assert_eq!(prof.l1_size_bytes, 131_072);
+        assert_eq!(prof.l1_to_l2_spill_threshold_bytes_per_sm, 65_536);
+
+        // Verify L2Model actually consumes the loaded profile's l2_effective_capacity_bytes.
+        let ir_json = include_str!("../../../../schemas/examples/gemm_sm89.json");
+        let ir = KernelIR::from_json_str(ir_json).unwrap();
+        let mut l2 = L2Model::new(&ir, prof, L2InitState::Warm, L2Options::default());
+        l2.begin_tile(0, 0, 0, 0.0);
+        let res = l2.split(0, 0, 0, "load_A", 0, 128, false, CachePolicy::Default, 0.0);
+        let expected = 32_086_426.0 / (64.0 * 1024.0 * 1024.0);
+        assert!(
+            (res.hit_ratio - expected).abs() < 1e-6,
+            "expected warm hit from rtx4070.json ({}), got {}",
+            expected,
+            res.hit_ratio
+        );
     }
 }
