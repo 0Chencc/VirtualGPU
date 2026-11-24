@@ -10,9 +10,20 @@ license = "Apache-2.0"
 requires-python = ">=3.10"
 dependencies = ["jsonschema>=4"]
 
+[project.scripts]
+virtualgpu = "virtualgpu.cli:main"
+
 [project.optional-dependencies]
 # The frontend calls Triton internals; upgrade only after re-validating it.
 triton = ["triton==3.9.0"]
+# Hardware runner and scoring in validation/.
+validation = [
+    "numpy>=2,<3",
+    "nvidia-ml-py>=13.615.71,<14",
+    "cuda-bindings>=12.9.11,<14",
+    "torch==2.15.0",
+    "triton==3.9.0",
+]
 
 [tool.maturin]
 manifest-path = "crates/vgpu-core/Cargo.toml"
