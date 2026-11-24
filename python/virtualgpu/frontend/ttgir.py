@@ -69,6 +69,11 @@ _RE_TT_DOT = re.compile(
 _RE_LOCAL_LOAD = re.compile(
     r"ttg\.local_load\b[^:]*:\s*!ttg\.memdesc<(\d+)x(\d+)x([a-zA-Z0-9_]+)"
 )
+_RE_TTGIR_WAIT_NUM = re.compile(r"ttg\.async_wait\b[^{]*\{\s*num\s*=\s*(\d+)")
+_RE_PTX_WAIT_GROUP = re.compile(r"\bcp\.async\.wait_group\s+(\d+)\s*;")
+_RE_PTX_COMMIT_GROUP = re.compile(r"\bcp\.async\.commit_group\s*;")
+_RE_PTX_LABEL = re.compile(r"^\s*(\$[A-Za-z0-9_]+):")
+_RE_PTX_BRA = re.compile(r"\bbra(?:\.uni)?\s+(\$[A-Za-z0-9_]+)")
 
 
 def dtype_bits(dtype: str) -> int:
@@ -80,22 +85,83 @@ def dtype_bits(dtype: str) -> int:
 
 def _extract_loop_body(ttgir: str) -> str:
     """Return the text inside the primary scf.for loop, or empty string if none."""
-    idx = ttgir.find("scf.for ")
-    if idx == -1:
+    lines = ttgir.splitlines()
+    start_idx = -1
+    for i, line in enumerate(lines):
+        if "scf.for " in line and line.rstrip().endswith("{"):
+            start_idx = i
+            break
+    if start_idx == -1:
         return ""
-    brace_start = ttgir.find("{", idx)
-    if brace_start == -1:
-        return ""
-    depth = 0
-    for pos in range(brace_start, len(ttgir)):
-        ch = ttgir[pos]
-        if ch == "{":
+    body_lines: list[str] = []
+    depth = 1
+    for line in lines[start_idx + 1 :]:
+        # Track block braces at line boundaries (ignore attribute braces like #ttg.dot_op<{...}>)
+        stripped = line.strip()
+        if stripped.endswith("{"):
             depth += 1
-        elif ch == "}":
+        if stripped.startswith("}"):
             depth -= 1
             if depth == 0:
-                return ttgir[brace_start + 1 : pos]
-    return ttgir[brace_start + 1 :]
+                break
+        body_lines.append(line)
+    return "\n".join(body_lines)
+
+
+def _extract_ptx_loop_body(ptx: str) -> str:
+    """Extract lines inside the primary PTX backward-branch loop body."""
+    lines = ptx.splitlines()
+    labels: dict[str, int] = {}
+    for idx, line in enumerate(lines):
+        m = _RE_PTX_LABEL.match(line)
+        if m:
+            labels[m.group(1)] = idx
+
+    best_range: tuple[int, int] | None = None
+    for idx, line in enumerate(lines):
+        m = _RE_PTX_BRA.search(line)
+        if m and m.group(1) in labels and labels[m.group(1)] < idx:
+            start = labels[m.group(1)]
+            # Prefer a loop containing cp.async instructions; otherwise the largest loop.
+            span = (start, idx)
+            if best_range is None:
+                best_range = span
+            else:
+                cur_text = "\n".join(lines[start : idx + 1])
+                best_text = "\n".join(lines[best_range[0] : best_range[1] + 1])
+                cur_has_async = "cp.async." in cur_text
+                best_has_async = "cp.async." in best_text
+                if (cur_has_async and not best_has_async) or (
+                    cur_has_async == best_has_async and (idx - start) > (best_range[1] - best_range[0])
+                ):
+                    best_range = span
+    if best_range is None:
+        return ""
+    return "\n".join(lines[best_range[0] : best_range[1] + 1])
+
+
+def _derive_cp_async_prefetch_distance(ptx: str, ttgir_loop_body: str, buf_depth: int) -> int:
+    """Derive effective in-flight stage overlap from loop cp.async.wait_group N.
+
+    PTX ISA semantics: `cp.async.wait_group N` waits until at most N most-recent
+    committed async groups remain pending. Dividing N by the number of
+    `cp.async.commit_group` instructions per loop iteration gives the number of
+    stages still in flight while compute executes.
+    """
+    ptx_loop = _extract_ptx_loop_body(ptx)
+    if ptx_loop:
+        ptx_waits = [int(m.group(1)) for m in _RE_PTX_WAIT_GROUP.finditer(ptx_loop)]
+        ptx_commits = len(_RE_PTX_COMMIT_GROUP.findall(ptx_loop))
+        if ptx_waits and ptx_commits > 0:
+            return min(ptx_waits) // ptx_commits
+
+    # Fallback to post-pipelining TTGIR loop wait/commit structure.
+    ttgir_waits = [int(m.group(1)) for m in _RE_TTGIR_WAIT_NUM.finditer(ttgir_loop_body)]
+    ttgir_commits = ttgir_loop_body.count("ttg.async_commit_group")
+    if ttgir_waits and ttgir_commits > 0:
+        return min(ttgir_waits) // ttgir_commits
+
+    return max(0, buf_depth - 1)
 
 
 def _extract_mma(ttgir: str, ptx: str) -> MmaInfo | None:
@@ -182,6 +248,8 @@ def parse_ttgir_summary(
     else:
         async_copy = "none"
 
+    loop_body = _extract_loop_body(ttgir)
+
     # Extract materialized multi-buffer depth from 3D SMEM memdesc allocations
     # (excluding 1-element i64 mbarrier arrays).
     buf_depths = [
@@ -190,8 +258,14 @@ def parse_ttgir_summary(
         if not (int(m.group(2)) == 1 and m.group(4) == "i64")
     ]
     if async_copy != "none" and buf_depths:
-        prefetch_distance = max(buf_depths)
-        num_stages = prefetch_distance + 1
+        buf_depth = max(buf_depths)
+        num_stages = buf_depth + 1
+        if async_copy == "async_element":
+            prefetch_distance = _derive_cp_async_prefetch_distance(ptx, loop_body, buf_depth)
+        else:
+            # TMA mbarrier pipelines prefill `buf_depth` stages and wait on the
+            # oldest before compute, leaving `buf_depth - 1` stages in flight.
+            prefetch_distance = max(0, buf_depth - 1)
     else:
         prefetch_distance = 0
         num_stages = 1
@@ -207,7 +281,6 @@ def parse_ttgir_summary(
     else:
         transfer_width_bytes = 16
 
-    loop_body = _extract_loop_body(ttgir)
     smem_load_bytes = 0
     for m in _RE_LOCAL_LOAD.finditer(loop_body):
         rows, cols, dt = int(m.group(1)), int(m.group(2)), m.group(3)

@@ -178,7 +178,7 @@ def test_extract_gemm_validates_against_schema(target_arch: str) -> None:
     assert ir["body"]["prologue"]["ops"] == []
     assert ir["body"]["pipeline_loop"]["async_copy"] == "async_element"
     assert ir["body"]["pipeline_loop"]["num_stages"] == 3
-    assert ir["body"]["pipeline_loop"]["prefetch_distance"] == 2
+    assert ir["body"]["pipeline_loop"]["prefetch_distance"] == 1
     assert ir["unsupported_features"] == []
     assert len(ir["metadata"]["toolchain"]["ptx_sha256"]) == 64
     assert len(ir["metadata"]["toolchain"]["ttgir_sha256"]) == 64
@@ -203,6 +203,45 @@ def test_extract_tma_gemm_sm121_uses_async_tensor() -> None:
     jsonschema.validate(instance=ir, schema=schema)
     assert ir["body"]["pipeline_loop"]["async_copy"] == "async_tensor"
     assert ir["body"]["pipeline_loop"]["num_stages"] == 3
+    assert ir["body"]["pipeline_loop"]["prefetch_distance"] == 1
+
+
+@pytest.mark.parametrize(
+    ("req_stages", "expected_async", "expected_stages", "expected_prefetch"),
+    [
+        (1, "none", 1, 0),
+        (2, "async_element", 2, 0),
+        (3, "async_element", 3, 1),
+        (4, "async_element", 4, 2),
+    ],
+)
+def test_cp_async_prefetch_distance_from_ptx_wait_group(
+    req_stages: int,
+    expected_async: str,
+    expected_stages: int,
+    expected_prefetch: int,
+) -> None:
+    schema = _load_schema()
+    ir = extract_gemm_kernel_ir(
+        _matmul_kernel,
+        M=1024,
+        N=1024,
+        K=512,
+        config={
+            "BLOCK_SIZE_M": 64,
+            "BLOCK_SIZE_N": 128,
+            "BLOCK_SIZE_K": 32,
+            "GROUP_SIZE_M": 8,
+            "num_warps": 4,
+            "num_stages": req_stages,
+        },
+        target_arch="sm_89",
+    )
+    jsonschema.validate(instance=ir, schema=schema)
+    pl = ir["body"]["pipeline_loop"]
+    assert pl["async_copy"] == expected_async
+    assert pl["num_stages"] == expected_stages
+    assert pl["prefetch_distance"] == expected_prefetch
 
 
 def test_unaligned_shape_and_unpipelined_fallback_diagnostic() -> None:
