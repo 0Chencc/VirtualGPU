@@ -24,6 +24,7 @@ class ScalarEvalResult:
     # Optional 2D TMA coordinates: ptr arg index -> list of (coord0, coord1)
     tma_coords: dict[int, list[tuple[int, int]]]
     data_dependent: bool = False
+    has_nested_loop: bool = False
 
 
 _RE_FUNC_HEADER = re.compile(r"tt\.func\s+[^{]+\((.*)\)\s*(?:attributes\s*\{[^}]*\}\s*)?\{")
@@ -232,6 +233,17 @@ def evaluate_ttgir_cta_offsets(
     """
     params = _parse_func_params(ttgir)
     top_lines, loop_lines = _extract_top_level_lines(ttgir)
+    has_nested_loop = any("scf.for " in ln for ln in loop_lines)
+    if has_nested_loop:
+        # Persistent kernels compute per-tile coordinates inside an outer scf.for;
+        # do not silently return incomplete single-iteration offsets.
+        return ScalarEvalResult(
+            ptr_elem_offsets={},
+            tma_coords={},
+            data_dependent=False,
+            has_nested_loop=True,
+        )
+
     instrs, scratch_to_ptr, tma_uses, ptr_sinks = _compile_instructions(top_lines)
 
     # Also collect ptr/TMA sinks inside the loop if prologue didn't issue loads
@@ -359,4 +371,5 @@ def evaluate_ttgir_cta_offsets(
         ptr_elem_offsets=ptr_elem_offsets,
         tma_coords=tma_coords,
         data_dependent=data_dependent,
+        has_nested_loop=False,
     )

@@ -152,10 +152,10 @@ def _recover_cta_tile_coords(
     block_n: int,
     stride_am: int,
     stride_bk: int,
-) -> tuple[list[tuple[int, int]], bool, bool]:
+) -> tuple[list[tuple[int, int]], bool, bool, bool]:
     """Use the TTGIR scalar evaluator to recover per-CTA (pid_m, pid_n) order.
 
-    Returns (coords, used_fallback, data_dependent).
+    Returns (coords, used_fallback, data_dependent, has_nested_loop).
     """
     # Map non-constexpr runtime parameters in tt.func order to their integer values.
     param_int_values: list[int | None] = []
@@ -186,20 +186,20 @@ def _recover_cta_tile_coords(
             row_start = oa // stride_am if stride_am > 0 else 0
             col_start = ob % stride_bk if stride_bk > 0 else ob
             coords.append((row_start // block_m, col_start // block_n))
-        return coords, False, ev.data_dependent
+        return coords, False, ev.data_dependent, ev.has_nested_loop
 
     # Case 2: TMA 2D coordinates recovered for A (arg 0) and B (arg 1).
     tma_a = ev.tma_coords.get(0)
     tma_b = ev.tma_coords.get(1)
     if tma_a is not None and tma_b is not None and len(tma_a) == total_ctas and len(tma_b) == total_ctas:
         coords = [(ca[0] // block_m, cb[1] // block_n) for ca, cb in zip(tma_a, tma_b)]
-        return coords, False, ev.data_dependent
+        return coords, False, ev.data_dependent, ev.has_nested_loop
 
     # Fallback: linear row-major tile order.
     num_pid_m = math.ceil(M / block_m)
     num_pid_n = math.ceil(N / block_n)
     linear = [(pm, pn) for pm in range(num_pid_m) for pn in range(num_pid_n)]
-    return linear, True, ev.data_dependent
+    return linear, True, ev.data_dependent, ev.has_nested_loop
 
 
 def extract_gemm_kernel_ir(
@@ -299,7 +299,7 @@ def extract_gemm_kernel_ir(
     stride_am = strides_a[0] if strides_a is not None else K
     stride_bk = strides_b[0] if strides_b is not None else N
 
-    cta_tile_coords, used_linear_fallback, data_dependent = _recover_cta_tile_coords(
+    cta_tile_coords, used_linear_fallback, data_dependent, has_nested_loop = _recover_cta_tile_coords(
         artifacts.ttgir,
         grid,
         fn=fn,
@@ -313,6 +313,8 @@ def extract_gemm_kernel_ir(
         stride_am=stride_am,
         stride_bk=stride_bk,
     )
+    if has_nested_loop:
+        diagnostics.append("persistent_kernel_unmodeled")
     if used_linear_fallback:
         diagnostics.append("linear_access_fallback")
     if data_dependent and "data_dependent_address" not in unsupported_features:

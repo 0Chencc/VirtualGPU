@@ -90,7 +90,7 @@ _RE_VERSION = re.compile(r"release\s+([0-9.]+),\s*V([0-9.]+)")
 _RE_PTX_LOCAL_LDST = re.compile(r"\b(?:ld|st)\.local\b")
 _RE_TTGIR_LOC_DEF = re.compile(r"^#loc\d*\s*=.*$")
 
-ARTIFACT_HASH_VERSION = "1"
+ARTIFACT_HASH_VERSION = "2"
 
 
 def _strip_ttgir_locs(line: str) -> str:
@@ -122,19 +122,32 @@ def _strip_ttgir_locs(line: str) -> str:
 
 
 def hash_ptx(ptx: str) -> str:
-    """Compute a normalized SHA-256 over PTX, stripping comments and debug locs.
+    """Compute a normalized SHA-256 over PTX, stripping comments, .file/.loc, and debug sections.
 
     Shared between offline AOT compilation and on-GPU runtime validation to
-    verify that both paths compiled the exact same kernel.
+    verify that both paths compiled the exact same kernel regardless of source
+    file path or line numbers.
     """
     norm_lines: list[str] = []
+    in_debug_section = False
+    debug_brace_depth = 0
     for raw in ptx.splitlines():
-        line = raw.split("//", 1)[0].strip()
+        line = " ".join(raw.split("//", 1)[0].split())
         if not line:
             continue
-        if line.startswith((".loc ", ".file ", ".section .debug")):
+        if in_debug_section:
+            debug_brace_depth += line.count("{") - line.count("}")
+            if debug_brace_depth <= 0:
+                in_debug_section = False
+                debug_brace_depth = 0
             continue
-        norm_lines.append(" ".join(line.split()))
+        if line.startswith(".section .debug"):
+            in_debug_section = True
+            debug_brace_depth = line.count("{") - line.count("}")
+            continue
+        if line.startswith((".loc ", ".file ")) or line in (".loc", ".file"):
+            continue
+        norm_lines.append(line)
     payload = "\n".join(norm_lines).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
 

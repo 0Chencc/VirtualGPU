@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
 from pathlib import Path
+import tempfile
 
 import jsonschema
 import pytest
@@ -259,9 +261,22 @@ def test_runtime_specialization_parity_and_artifact_hashing() -> None:
     assert attrs_u[(0,)] == []
     assert attrs_u[(3,)] == []
 
-    # Normalized hashes ignore comments and debug locations
-    ptx1 = "// comment a\n.loc 1 10 0\nmma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 d, a, b, c;\n"
-    ptx2 = "// different path\n.loc 2 99 0\n  mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32   d, a, b, c; // trailing\n"
+    # Normalized hashes ignore comments, tab-separated .loc/.file, and debug sections
+    ptx1 = (
+        "// comment a\n"
+        '.file\t1 "/path/a.py"\n'
+        ".loc\t1 10 0\n"
+        ".section .debug_info {\n"
+        "  .b8 1, 2, 3\n"
+        "}\n"
+        "mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 d, a, b, c;\n"
+    )
+    ptx2 = (
+        "// different path\n"
+        '.file\t1 "/other/b.py"\n'
+        ".loc\t2 99 0\n"
+        "  mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32   d, a, b, c; // trailing\n"
+    )
     assert hash_ptx(ptx1) == hash_ptx(ptx2)
 
     ttgir1 = (
@@ -363,3 +378,104 @@ def test_scalar_evaluator_recovers_group_size_m_swizzle() -> None:
         (0, 4), (0, 5), (0, 6), (0, 7),
         (1, 0), (1, 1),
     ]
+
+
+def test_ptx_and_ttgir_hash_invariant_across_file_paths_and_line_numbers() -> None:
+    kernel_src = (
+        "import triton\n"
+        "import triton.language as tl\n\n"
+        "@triton.jit\n"
+        "def same_gemm(A, B, C, M: tl.constexpr, N: tl.constexpr, K: tl.constexpr,\n"
+        "              BM: tl.constexpr, BN: tl.constexpr, BK: tl.constexpr, GROUP_M: tl.constexpr):\n"
+        "    pid = tl.program_id(0)\n"
+        "    grid_m = tl.cdiv(M, BM)\n"
+        "    grid_n = tl.cdiv(N, BN)\n"
+        "    group = pid // (GROUP_M * grid_n)\n"
+        "    first_m = group * GROUP_M\n"
+        "    group_size = tl.minimum(grid_m - first_m, GROUP_M)\n"
+        "    local_id = pid % (GROUP_M * grid_n)\n"
+        "    rows = (first_m + local_id % group_size) * BM + tl.arange(0, BM)\n"
+        "    cols = (local_id // group_size) * BN + tl.arange(0, BN)\n"
+        "    offsets = tl.arange(0, BK)\n"
+        "    acc = tl.full((BM, BN), 0, tl.float32)\n"
+        "    for step in range(tl.cdiv(K, BK)):\n"
+        "        inner = step * BK + offsets\n"
+        "        a = tl.load(A + rows[:, None] * K + inner[None, :], (rows[:, None] < M) & (inner[None, :] < K), other=0)\n"
+        "        b = tl.load(B + inner[:, None] * N + cols[None, :], (inner[:, None] < K) & (cols[None, :] < N), other=0)\n"
+        "        acc = tl.dot(a, b, acc)\n"
+        "    tl.store(C + rows[:, None] * N + cols[None, :], acc.to(tl.float16), (rows[:, None] < M) & (cols[None, :] < N))\n"
+    )
+    with tempfile.TemporaryDirectory() as td:
+        p1 = Path(td) / "dir_a" / "k1.py"
+        p2 = Path(td) / "dir_b" / "k2.py"
+        p1.parent.mkdir()
+        p2.parent.mkdir()
+        p1.write_text(kernel_src, encoding="utf-8")
+        p2.write_text("\n\n\n\n" + kernel_src, encoding="utf-8")
+
+        def _load(path: Path):
+            spec = importlib.util.spec_from_file_location(f"_mod_{path.stem}", path)
+            assert spec and spec.loader
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            return mod.same_gemm
+
+        cfg = {"M": 1024, "N": 1024, "K": 512, "BM": 128, "BN": 128, "BK": 32, "GROUP_M": 8, "num_warps": 4, "num_stages": 3}
+        args = (MockTensor("f16", 0x10000), MockTensor("f16", 0x200000), MockTensor("f16", 0x400000))
+        ir1 = extract_gemm_kernel_ir(_load(p1), M=1024, N=1024, K=512, config=cfg, target_arch="sm_89", call_args=args)
+        ir2 = extract_gemm_kernel_ir(_load(p2), M=1024, N=1024, K=512, config=cfg, target_arch="sm_89", call_args=args)
+        assert ir1["metadata"]["toolchain"]["ptx_sha256"] == ir2["metadata"]["toolchain"]["ptx_sha256"]
+        assert ir1["metadata"]["toolchain"]["ttgir_sha256"] == ir2["metadata"]["toolchain"]["ttgir_sha256"]
+
+
+@triton.jit
+def _persistent_gemm(
+    a_ptr, b_ptr, c_ptr,
+    M, N, K,
+    stride_am, stride_ak,
+    stride_bk, stride_bn,
+    stride_cm, stride_cn,
+    BLOCK_SIZE_M: tl.constexpr,
+    BLOCK_SIZE_N: tl.constexpr,
+    BLOCK_SIZE_K: tl.constexpr,
+    NUM_SMS: tl.constexpr,
+):
+    start_pid = tl.program_id(axis=0)
+    num_pid_m = tl.cdiv(M, BLOCK_SIZE_M)
+    num_pid_n = tl.cdiv(N, BLOCK_SIZE_N)
+    num_tiles = num_pid_m * num_pid_n
+    offs_k = tl.arange(0, BLOCK_SIZE_K)
+    for tile_id in range(start_pid, num_tiles, NUM_SMS):
+        pid_m = tile_id // num_pid_n
+        pid_n = tile_id % num_pid_n
+        offs_am = pid_m * BLOCK_SIZE_M + tl.arange(0, BLOCK_SIZE_M)
+        offs_bn = pid_n * BLOCK_SIZE_N + tl.arange(0, BLOCK_SIZE_N)
+        acc = tl.zeros((BLOCK_SIZE_M, BLOCK_SIZE_N), dtype=tl.float32)
+        for k in range(0, tl.cdiv(K, BLOCK_SIZE_K)):
+            kk = k * BLOCK_SIZE_K + offs_k
+            a = tl.load(a_ptr + offs_am[:, None] * stride_am + kk[None, :] * stride_ak, mask=kk[None, :] < K, other=0.0)
+            b = tl.load(b_ptr + kk[:, None] * stride_bk + offs_bn[None, :] * stride_bn, mask=kk[:, None] < K, other=0.0)
+            acc = tl.dot(a, b, acc)
+        tl.store(c_ptr + offs_am[:, None] * stride_cm + offs_bn[None, :] * stride_cn, acc.to(tl.float16))
+
+
+def test_persistent_kernel_emits_explicit_diagnostic() -> None:
+    schema = _load_schema()
+    ir = extract_gemm_kernel_ir(
+        _persistent_gemm,
+        M=1024,
+        N=1024,
+        K=512,
+        config={
+            "BLOCK_SIZE_M": 128,
+            "BLOCK_SIZE_N": 128,
+            "BLOCK_SIZE_K": 32,
+            "NUM_SMS": 46,
+            "num_warps": 4,
+            "num_stages": 3,
+        },
+        target_arch="sm_89",
+    )
+    jsonschema.validate(instance=ir, schema=schema)
+    assert "persistent_kernel_unmodeled" in ir["diagnostics"]
+    assert "linear_access_fallback" in ir["diagnostics"]
