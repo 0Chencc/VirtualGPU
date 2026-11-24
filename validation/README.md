@@ -107,7 +107,18 @@ fixed ridge penalty from the other development cases, using both cache regimes.
 The report includes a fit trained on all development cases for future transfer
 evaluation. The two baselines apply the same 5% practical band to nominal
 predictions for pair scoring. Pass `--core-predictions` to include the model
-comparison. The JSON carries `profile_revision`, `manifest_sha256`, and
+comparison and the development checks from `docs/design.md`.
+
+```sh
+.venv/bin/python -m validation.predict results/m2/suite.json results/m2 \
+  profiles/rtx4070.json results/m2/core-predictions.json
+.venv/bin/python -m validation.experiment results/m2/suite.json results/m2 \
+  profiles/rtx4070.json results/m2/scores.json \
+  --core-predictions results/m2/core-predictions.json
+```
+
+The prediction JSON carries `profile_revision`, `manifest_sha256`, and
 `perturbation_draws`. Its `cases` object maps case ID, cache regime, and config
 ID to prediction records. Each successful record has draws keyed by ID,
-including draw 0 equal to `nominal_latency_ns`.
+including draw 0 equal to `nominal_latency_ns`. The core orders a pair when
+all draws agree on a direction by at least the fixed 5% practical margin.

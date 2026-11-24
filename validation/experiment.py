@@ -11,7 +11,7 @@ import statistics
 
 from validation.baseline import predict as roofline
 from validation.neusight import fit, leave_one_case_out, tile_features
-from validation.score import check_artifact, pair_observations, score
+from validation.score import PRACTICAL_MARGIN, check_artifact, pair_observations, score
 
 CACHE_STATES = ("warm", "cold")
 
@@ -151,6 +151,35 @@ def summarize(reports, has_core):
     return summary
 
 
+def development_gates(summary):
+    """Apply the criteria in docs/design.md separately to both cache regimes."""
+    gates = {}
+    for cache, methods in summary.items():
+        core = methods["core"]
+        tau, regret = core["median_tau_b"], core["mean_top_5_regret"]
+        checks = {}
+        for baseline in ("roofline_wave", "neusight_style"):
+            other = methods[baseline]
+            rank = other["median_tau_b"]
+            shortlist = other["mean_top_5_regret"]
+            gain = tau - rank if tau is not None and rank is not None else None
+            excess = regret - shortlist if regret is not None and shortlist is not None else None
+            checks[baseline] = {
+                "median_tau_b_gain": gain,
+                "mean_top_5_regret_excess": excess,
+                "ranking_pass": gain is not None and gain >= 0.05 - 1e-12,
+                "non_inferiority_pass": excess is not None and excess <= 0.005 + 1e-12,
+            }
+        absolute = regret is not None and regret <= 0.01 + 1e-12
+        gates[cache] = {
+            "absolute_regret_pass": absolute,
+            "baselines": checks,
+            "pass": absolute and all(row["ranking_pass"] and row["non_inferiority_pass"]
+                                     for row in checks.values()),
+        }
+    return gates
+
+
 def evaluate(suite, results, profile, sessions, manifest_sha, core_predictions=None):
     cases = [case for case in suite["cases"] if case["split"] == "development"]
     configs = {cfg["config_id"]: cfg for cfg in suite["configs"]}
@@ -184,10 +213,10 @@ def evaluate(suite, results, profile, sessions, manifest_sha, core_predictions=N
         for cache, timings in data.timings.items():
             observations = pair_observations(timings)
             scores = {
-                "roofline_wave": score(timings, baseline, nominal_pair_margin=0.05,
+                "roofline_wave": score(timings, baseline, nominal_pair_margin=PRACTICAL_MARGIN,
                                        observations=observations),
                 "neusight_style": score(
-                    timings, learned.get((key, cache), {}), nominal_pair_margin=0.05,
+                    timings, learned.get((key, cache), {}), nominal_pair_margin=PRACTICAL_MARGIN,
                     observations=observations,
                 ),
             }
@@ -202,16 +231,19 @@ def evaluate(suite, results, profile, sessions, manifest_sha, core_predictions=N
                 }
             case_result["cache"][cache] = scores
         reports[key] = case_result
+    summary = summarize(reports, core_predictions is not None)
     return {
         "profile_revision": revision,
         "manifest_sha256": manifest_sha,
         "sessions_per_case": sessions,
         "neusight_evaluation": "leave_one_development_case_out",
         "neusight_full_development_fit": fit(examples).to_json(),
-        "baseline_pair_margin": 0.05,
+        "baseline_pair_margin": PRACTICAL_MARGIN,
+        "model_pair_margin": PRACTICAL_MARGIN,
         "core_perturbation_draws": (core_predictions["perturbation_draws"]
                                     if core_predictions is not None else None),
-        "summary": summarize(reports, core_predictions is not None),
+        "summary": summary,
+        "development_gates": development_gates(summary) if core_predictions is not None else None,
         "cases": reports,
     }
 
@@ -226,6 +258,8 @@ def main():
     parser.add_argument("--core-predictions", type=Path,
                         help="Prediction records grouped by case, cache state, and config ID")
     args = parser.parse_args()
+    if args.sessions < 1:
+        parser.error("Use a positive session count")
     raw = args.manifest.read_bytes()
     profile = json.loads(args.profile.read_text())
     core = json.loads(args.core_predictions.read_text()) if args.core_predictions else None

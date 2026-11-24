@@ -7,6 +7,7 @@ import unittest
 from virtualgpu.frontend.compiler import ARTIFACT_HASH_VERSION
 
 from validation.baseline import gemm_work, latency_ns, predict
+from validation.experiment import core_records, development_gates
 from validation.neusight import TileFeatures, fit, leave_one_case_out
 from validation.score import check_artifact, kendall_tau_b, median_ci95, observed_pair, predicted_pair, score
 from validation.suite import development_manifest, manifest
@@ -65,6 +66,24 @@ class BaselineTest(unittest.TestCase):
 
 
 class ScoreTest(unittest.TestCase):
+    def test_core_draws_include_every_shared_id(self):
+        row = {"status": "ok", "nominal_latency_ns": 100, "draws": {"0": 100, "1": 110}}
+        data = {"cases": {"case": {"cold": {"cfg": row}}}, "perturbation_draws": 1}
+        self.assertEqual(core_records(data, "case", "cold", {"cfg": {}}), {"cfg": row})
+        row["draws"] = {"0": 100}
+        with self.assertRaisesRegex(ValueError, "invalid shared draw set"):
+            core_records(data, "case", "cold", {"cfg": {}})
+
+    def test_development_gates_include_regret_non_inferiority(self):
+        cache = {
+            "core": {"median_tau_b": 0.70, "mean_top_5_regret": 0.01},
+            "roofline_wave": {"median_tau_b": 0.61, "mean_top_5_regret": 0.02},
+            "neusight_style": {"median_tau_b": 0.65, "mean_top_5_regret": 0.005},
+        }
+        self.assertTrue(development_gates({"cold": cache})["cold"]["pass"])
+        cache["neusight_style"]["mean_top_5_regret"] = 0.004
+        self.assertFalse(development_gates({"cold": cache})["cold"]["pass"])
+
     def test_artifact_gate(self):
         toolchain = {
             "compiler": "triton", "compiler_version": "3.9.0", "assembler": "ptxas",
@@ -133,6 +152,8 @@ class ScoreTest(unittest.TestCase):
         self.assertEqual(predicted_pair({"0": 3, "1": 2}, {"0": 3, "1": 3}), "indistinguishable")
         self.assertEqual(predicted_pair({"0": 4}, {"0": 3}), "b_faster")
         self.assertEqual(predicted_pair({"0": 4, "1": 4}, {"0": 3}), "unavailable")
+        self.assertEqual(predicted_pair({"0": 100, "1": 100}, {"0": 106, "1": 104}), "indistinguishable")
+        self.assertEqual(predicted_pair({"0": 100, "1": 100}, {"0": 105, "1": 110}), "a_faster")
 
     def test_shortlist_oracle_includes_abstentions(self):
         block = ("session", 0)
