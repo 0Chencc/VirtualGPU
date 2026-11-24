@@ -59,6 +59,32 @@ def read_probe(Data, Out, BLOCK: tl.constexpr):
     tl.store(Out + pid, tl.sum(values))
 
 
+@triton.jit
+def read_flush(Data, Sink, BLOCK: tl.constexpr):
+    pid = tl.program_id(0)
+    indices = pid * BLOCK + tl.arange(0, BLOCK)
+    values = tl.load(Data + indices, cache_modifier=".cg")
+    total = tl.sum(values)
+    # Keep the loads live without a store for the all-ones eviction buffer.
+    if total == -1:
+        tl.store(Sink + pid, total)
+
+
+def make_read_flush(l2_bytes):
+    block = 4096
+    block_bytes = block * 4
+    size = max(3 * l2_bytes, 128 * 1024**2)
+    blocks = triton.cdiv(size, block_bytes)
+    buffer = torch.ones(blocks * block, device="cuda", dtype=torch.int32)
+    sink = torch.empty(blocks, device="cuda", dtype=torch.int32)
+
+    def evict():
+        read_flush[(blocks,)](buffer, sink, block)
+
+    evict()
+    return evict, blocks * block_bytes
+
+
 def l2_capacity():
     status, = driver.cuInit(0)
     if status != driver.CUresult.CUDA_SUCCESS:
@@ -205,14 +231,14 @@ def measure(case, configs, input_seed, args, manifest_sha):
         raise RuntimeError(f"Only the RTX 4070 is authorized in M1: {gpu.name}")
     l2_bytes = l2_capacity()
     operations, artifacts = prepare_candidates(case, configs, input_seed)
-    eviction = torch.empty(2 * l2_bytes, device="cuda", dtype=torch.uint8)
-    def evict():
-        eviction.fill_(1)
-
-    control = cache_control(evict, l2_bytes) if operations else {}
-    trials = {(cache, key): timed_graph(prepare, operation)
-              for key, operation in operations.items()
-              for cache, prepare in (("warm", operation), ("cold", evict))}
+    caches = ("warm", "cold") if args.cache == "both" else (args.cache,)
+    eviction_bytes = 0
+    evict = None
+    if "cold" in caches and operations:
+        evict, eviction_bytes = make_read_flush(l2_bytes)
+    control = cache_control(evict, l2_bytes) if evict else {}
+    trials = {(cache, key): timed_graph(evict if cache == "cold" else operation, operation)
+              for key, operation in operations.items() for cache in caches}
 
     rng = random.Random(args.seed)
     samples, telemetry = [], []
@@ -277,8 +303,9 @@ def measure(case, configs, input_seed, args, manifest_sha):
         "kernel_sha256": hashlib.sha256(dense_gemm.src.encode()).hexdigest(),
         "manifest_sha256": manifest_sha,
         "protocol": {"clock_policy": "record_only", "timer": "cuda_graph_single_launch",
-                     "l2_bytes": l2_bytes,
-                     "eviction_bytes": 2 * l2_bytes, "blocks": args.blocks,
+                     "l2_bytes": l2_bytes, "cache_states": list(caches),
+                     "cold_flush": "read_cg" if "cold" in caches else None,
+                     "eviction_bytes": eviction_bytes, "blocks": args.blocks,
                      "order_seed": args.seed, "thermal_warmup_seconds": args.warmup_seconds},
         "cache_control_ns": control,
         "configs": artifacts,
@@ -294,6 +321,7 @@ def main():
     parser.add_argument("case_id")
     parser.add_argument("output", type=Path)
     parser.add_argument("--config", action="append")
+    parser.add_argument("--cache", choices=("both", "warm", "cold"), default="both")
     parser.add_argument("--blocks", type=int, default=15)
     parser.add_argument("--seed", type=int, default=17)
     parser.add_argument("--warmup-seconds", type=float, default=2)

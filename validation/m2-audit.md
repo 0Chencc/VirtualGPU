@@ -54,3 +54,31 @@ timestamp. The formal rerun uses that core, profile `0.3.0-m2`, draw 0 and
 Its artifacts are `results/m2/scores-formal.json` and
 `results/m2/report-formal.md`. All methods scored all 255 configurations in
 both cache regimes.
+
+## Cold label protocol correction
+
+On 2026-11-25, the validation team compared cold eviction protocols in 30
+randomized paired blocks on the RTX 4070. The timed GEMM was identical within
+each comparison. The original 72 MiB write eviction was compared with a
+128 MiB read-only L2 scan, a 128 MiB write eviction, and a write followed by
+the read-only scan. A warm trial served as a control.
+
+For the three decode-16 configurations, read-only eviction reduced the
+paired median latency by 24.6% to 25.6% compared with the original write
+eviction. All three 95% intervals excluded zero. The same-size write
+control retained the slowdown, and the write-then-read control recovered
+approximately the same latency as read-only eviction. The memory clock
+samples remained at 10251 MHz. The m1-cube read-only comparison had a 0.0%
+paired median effect and a 95% interval from -10.5% to +11.1%.
+
+The decode controls establish a measurement bias attributable to the write
+preparation and support the dirty-writeback explanation. The experiment did
+not measure DRAM writeback counters. The raw A/B reports are
+`results/m2/cold-flush-ab-decode-16.json` and
+`results/m2/cold-flush-ab-m1-cube.json`.
+
+The runner now uses an L1-bypassing read scan over a once-initialized
+disjoint allocation of at least 128 MiB and three times L2 capacity. The
+write-based cold scores are superseded. Replacement cold sessions are
+stored separately from the original warm measurements. The holdout remained
+sealed.

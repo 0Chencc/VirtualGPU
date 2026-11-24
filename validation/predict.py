@@ -17,6 +17,7 @@ def main():
     parser.add_argument("profile", type=Path)
     parser.add_argument("output", type=Path)
     parser.add_argument("--sessions", type=int, default=3)
+    parser.add_argument("--cold-results", type=Path, help="Directory of replacement read-only cold sessions")
     parser.add_argument("--draws", type=int, default=32)
     parser.add_argument("--seed", type=int, default=17)
     args = parser.parse_args()
@@ -32,7 +33,7 @@ def main():
         if case["split"] != "development":
             continue
         key = case["case_id"]
-        data = load_case(case, args.results, digest, args.sessions)
+        data = load_case(case, args.results, digest, args.sessions, args.cold_results)
         ir_dir = args.results / "aot" / key
         predictions[key] = {}
         for cache in CACHE_STATES:

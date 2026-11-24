@@ -3,12 +3,14 @@
 import json
 import math
 from pathlib import Path
+import tempfile
 import unittest
+from unittest.mock import patch
 
 from virtualgpu.frontend.compiler import ARTIFACT_HASH_VERSION
 
 from validation.baseline import gemm_work, latency_ns, predict
-from validation.experiment import core_records, development_gates
+from validation.experiment import core_records, development_gates, load_case
 from validation.neusight import TileFeatures, fit, leave_one_case_out
 from validation.score import check_artifact, kendall_tau_b, median_ci95, observed_pair, predicted_pair, score
 from validation.suite import development_manifest, manifest
@@ -187,6 +189,46 @@ class NeuSightTest(unittest.TestCase):
         self.assertAlmostEqual(fits["b"].predict_ns(tile), tile.kernel_floor_ns)
         with self.assertRaisesRegex(ValueError, "only development"):
             fit([dict(examples[0], split="holdout")])
+
+
+class MeasurementTest(unittest.TestCase):
+    def test_clean_cold_replacement_preserves_warm_labels(self):
+        case = {"case_id": "shape", "shape": [1, 2, 3], "config_ids": ["cfg"]}
+        report = {
+            "case_id": "shape", "split": "development", "shape": [1, 2, 3],
+            "manifest_sha256": "manifest", "session_id": "old",
+            "gpu": {}, "software": {}, "kernel_sha256": "kernel",
+            "configs": {"cfg": {"status": "ok"}},
+        }
+        protocol = {"clock_policy": "record_only", "timer": "graph", "l2_bytes": 4,
+                    "eviction_bytes": 8, "blocks": 1}
+
+        def sample(cache, ns):
+            return dict(cache=cache, config_id="cfg", block=0, latency_ns=ns)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            results = Path(tmp)
+            cold = results / "replacement"
+            aot = results / "aot" / "shape"
+            cold.mkdir()
+            aot.mkdir(parents=True)
+            (aot / "cfg.json").write_text("{}")
+            (results / "shape-session-1.json").write_text(json.dumps(dict(
+                report, protocol=protocol, samples=[sample("warm", 100), sample("cold", 150)],
+            )))
+            (cold / "shape-session-1.json").write_text(json.dumps(dict(
+                report, session_id="new",
+                protocol=dict(protocol, cache_states=["cold"], cold_flush="read_cg",
+                              eviction_bytes=16),
+                samples=[sample("cold", 120)],
+            )))
+            with patch("validation.experiment.check_artifact", return_value={"status": "matched"}):
+                with self.assertRaisesRegex(ValueError, "require read-only"):
+                    load_case(case, results, "manifest", 1)
+                data = load_case(case, results, "manifest", 1, cold)
+        self.assertEqual(data.timings["warm"]["cfg"], {("old", 0): 100})
+        self.assertEqual(data.timings["cold"]["cfg"], {("new", 0): 120})
+        self.assertEqual(data.matched_config_sessions, 2)
 
 
 if __name__ == "__main__":

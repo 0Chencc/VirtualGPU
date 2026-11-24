@@ -24,8 +24,10 @@ development and holdout cases for a later sweep.
 
 The runner checks every candidate against an FP32 reference before timing.
 Each randomized block has one warm and one cold trial for every valid
-candidate. Each CUDA Graph primes the same buffers or writes a disjoint buffer
-twice the reported L2 capacity, then brackets one GEMM with CUDA events. Cache
+candidate. Each CUDA Graph primes the same buffers or scans a disjoint
+read-only buffer with L2-caching, L1-bypassing loads, then brackets one GEMM
+with CUDA events. The eviction buffer holds at least three times the reported
+L2 capacity and at least 128 MiB. It is initialized once. Cache
 preparation and host submission are outside that interval. A separate read
 probe records the observed effect of cache preparation. Clock telemetry is
 record-only and is sampled asynchronously. An unsupported telemetry query is
@@ -122,3 +124,9 @@ The prediction JSON carries `profile_revision`, `manifest_sha256`, and
 ID to prediction records. Each successful record has draws keyed by ID,
 including draw 0 equal to `nominal_latency_ns`. The core orders a pair when
 all draws agree on a direction by at least the fixed 5% practical margin.
+
+Use `validation.runner --cache cold` to replace a cold measurement without
+rerunning warm trials. Keep the original sessions in place and pass the
+replacement directory to both `validation.predict` and `validation.experiment`
+through `--cold-results`. The experiment reads only warm samples from the
+original sessions and requires read-only eviction for every cold sample.
