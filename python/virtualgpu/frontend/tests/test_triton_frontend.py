@@ -307,3 +307,59 @@ def test_nonstandard_param_names_use_triton_binder() -> None:
     assert ir["body"]["pipeline_loop"]["async_copy"] == "async_element"
     assert ir["body"]["pipeline_loop"]["num_stages"] == 3
     assert ir["metadata"]["toolchain"]["artifact_hash_version"] == ARTIFACT_HASH_VERSION
+    assert "linear_access_fallback" not in ir["diagnostics"]
+    assert ir["launch"]["grid"] == [8, 8, 1]
+
+
+def test_scalar_evaluator_recovers_group_size_m_swizzle() -> None:
+    schema = _load_schema()
+    # 1024x1024 with 128x128 tiles -> 8x8 tile grid.
+    # With GROUP_SIZE_M = 4, first 4 CTAs traverse M=0..3 at N=0, then M=0..3 at N=1.
+    ir_g4 = extract_gemm_kernel_ir(
+        _matmul_kernel,
+        M=1024,
+        N=1024,
+        K=512,
+        config={
+            "BLOCK_SIZE_M": 128,
+            "BLOCK_SIZE_N": 128,
+            "BLOCK_SIZE_K": 32,
+            "GROUP_SIZE_M": 4,
+            "num_warps": 4,
+            "num_stages": 3,
+        },
+        target_arch="sm_89",
+    )
+    jsonschema.validate(instance=ir_g4, schema=schema)
+    assert "linear_access_fallback" not in ir_g4["diagnostics"]
+    coords_g4 = [(e[0], e[1]) for e in ir_g4["access_map"]["acc_A"]["entries"][:10]]
+    assert coords_g4 == [
+        (0, 0), (1, 0), (2, 0), (3, 0),
+        (0, 1), (1, 1), (2, 1), (3, 1),
+        (0, 2), (1, 2),
+    ]
+
+    # With GROUP_SIZE_M = 1, traversal is row-major: (0,0), (0,1), (0,2), ...
+    ir_g1 = extract_gemm_kernel_ir(
+        _matmul_kernel,
+        M=1024,
+        N=1024,
+        K=512,
+        config={
+            "BLOCK_SIZE_M": 128,
+            "BLOCK_SIZE_N": 128,
+            "BLOCK_SIZE_K": 32,
+            "GROUP_SIZE_M": 1,
+            "num_warps": 4,
+            "num_stages": 3,
+        },
+        target_arch="sm_89",
+    )
+    jsonschema.validate(instance=ir_g1, schema=schema)
+    assert "linear_access_fallback" not in ir_g1["diagnostics"]
+    coords_g1 = [(e[0], e[1]) for e in ir_g1["access_map"]["acc_A"]["entries"][:10]]
+    assert coords_g1 == [
+        (0, 0), (0, 1), (0, 2), (0, 3),
+        (0, 4), (0, 5), (0, 6), (0, 7),
+        (1, 0), (1, 1),
+    ]

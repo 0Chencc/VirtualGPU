@@ -11,6 +11,7 @@ from virtualgpu.frontend.compiler import (
     compile_triton_aot,
     specialize_triton_call,
 )
+from virtualgpu.frontend.scalar_eval import evaluate_ttgir_cta_offsets
 from virtualgpu.frontend.ttgir import dtype_bits, parse_ttgir_summary
 
 
@@ -59,7 +60,9 @@ def _build_gemm_call_args(
     return tuple(positional)
 
 
-def _build_linear_access_maps(
+def _build_access_maps_from_coords(
+    cta_tile_coords: list[tuple[int, int]],
+    *,
     M: int,
     N: int,
     K: int,
@@ -71,10 +74,7 @@ def _build_linear_access_maps(
     base_b: int,
     base_c: int,
 ) -> dict[str, dict[str, Any]]:
-    """Build linear CTA traversal access_map entries (M1; swizzle evaluator in M2)."""
-    num_pid_m = math.ceil(M / block_m)
-    num_pid_n = math.ceil(N / block_n)
-
+    """Build strided_2d_per_outer_tile access_map entries for a given CTA tile sequence."""
     entries_a: list[list[Any]] = []
     entries_b: list[list[Any]] = []
     entries_c: list[list[Any]] = []
@@ -87,57 +87,119 @@ def _build_linear_access_maps(
     step_b_bytes = block_k * stride_b_bytes
     k_masked = (K % block_k) != 0
 
-    for pid_m in range(num_pid_m):
+    for pid_m, pid_n in cta_tile_coords:
         row_start = pid_m * block_m
-        eff_m = min(block_m, M - row_start)
+        col_start = pid_n * block_n
+        eff_m = max(0, min(block_m, M - row_start))
+        eff_n = max(0, min(block_n, N - col_start))
         m_masked = eff_m < block_m
+        n_masked = eff_n < block_n
 
-        for pid_n in range(num_pid_n):
-            col_start = pid_n * block_n
-            eff_n = min(block_n, N - col_start)
-            n_masked = eff_n < block_n
+        # A tile: [eff_m, block_k] stepping along K
+        entries_a.append([
+            pid_m,
+            pid_n,
+            base_a + row_start * stride_a_bytes,
+            eff_m,
+            min(block_k, K) * elem_bytes,
+            stride_a_bytes,
+            step_a_bytes,
+            m_masked or k_masked,
+        ])
 
-            # A tile: [eff_m, block_k] stepping along K
-            entries_a.append([
-                pid_m,
-                pid_n,
-                base_a + row_start * stride_a_bytes,
-                eff_m,
-                min(block_k, K) * elem_bytes,
-                stride_a_bytes,
-                step_a_bytes,
-                m_masked or k_masked,
-            ])
+        # B tile: [block_k, eff_n] stepping along K
+        entries_b.append([
+            pid_m,
+            pid_n,
+            base_b + col_start * elem_bytes,
+            min(block_k, K),
+            eff_n * elem_bytes,
+            stride_b_bytes,
+            step_b_bytes,
+            n_masked or k_masked,
+        ])
 
-            # B tile: [block_k, eff_n] stepping along K
-            entries_b.append([
-                pid_m,
-                pid_n,
-                base_b + col_start * elem_bytes,
-                min(block_k, K),
-                eff_n * elem_bytes,
-                stride_b_bytes,
-                step_b_bytes,
-                n_masked or k_masked,
-            ])
-
-            # C tile: [eff_m, eff_n] epilogue store (no K step)
-            entries_c.append([
-                pid_m,
-                pid_n,
-                base_c + row_start * stride_c_bytes + col_start * elem_bytes,
-                eff_m,
-                eff_n * elem_bytes,
-                stride_c_bytes,
-                0,
-                m_masked or n_masked,
-            ])
+        # C tile: [eff_m, eff_n] epilogue store (no K step)
+        entries_c.append([
+            pid_m,
+            pid_n,
+            base_c + row_start * stride_c_bytes + col_start * elem_bytes,
+            eff_m,
+            eff_n * elem_bytes,
+            stride_c_bytes,
+            0,
+            m_masked or n_masked,
+        ])
 
     return {
         "acc_A": {"encoding": "strided_2d_per_outer_tile", "sidecar_ref": None, "entries": entries_a},
         "acc_B": {"encoding": "strided_2d_per_outer_tile", "sidecar_ref": None, "entries": entries_b},
         "acc_C": {"encoding": "strided_2d_per_outer_tile", "sidecar_ref": None, "entries": entries_c},
     }
+
+
+def _recover_cta_tile_coords(
+    ttgir: str,
+    grid: tuple[int, int, int],
+    *,
+    fn: Any,
+    call_args: tuple[Any, ...],
+    signature: dict[str, str],
+    M: int,
+    N: int,
+    K: int,
+    block_m: int,
+    block_n: int,
+    stride_am: int,
+    stride_bk: int,
+) -> tuple[list[tuple[int, int]], bool, bool]:
+    """Use the TTGIR scalar evaluator to recover per-CTA (pid_m, pid_n) order.
+
+    Returns (coords, used_fallback, data_dependent).
+    """
+    # Map non-constexpr runtime parameters in tt.func order to their integer values.
+    param_int_values: list[int | None] = []
+    runtime_int_args: dict[str, int] = {}
+    for arg_name, val in zip(fn.arg_names, call_args):
+        if signature.get(arg_name) == "constexpr":
+            continue
+        if isinstance(val, int) and not isinstance(val, bool):
+            param_int_values.append(val)
+            runtime_int_args[arg_name] = val
+        else:
+            param_int_values.append(None)
+
+    ev = evaluate_ttgir_cta_offsets(
+        ttgir=ttgir,
+        grid=grid,
+        runtime_int_args=runtime_int_args,
+        param_int_values=param_int_values,
+    )
+    total_ctas = grid[0] * grid[1] * grid[2]
+
+    # Case 1: Pointer offsets recovered for A (arg 0) and B (arg 1).
+    offs_a = ev.ptr_elem_offsets.get(0)
+    offs_b = ev.ptr_elem_offsets.get(1)
+    if offs_a is not None and offs_b is not None and len(offs_a) == total_ctas and len(offs_b) == total_ctas:
+        coords: list[tuple[int, int]] = []
+        for oa, ob in zip(offs_a, offs_b):
+            row_start = oa // stride_am if stride_am > 0 else 0
+            col_start = ob % stride_bk if stride_bk > 0 else ob
+            coords.append((row_start // block_m, col_start // block_n))
+        return coords, False, ev.data_dependent
+
+    # Case 2: TMA 2D coordinates recovered for A (arg 0) and B (arg 1).
+    tma_a = ev.tma_coords.get(0)
+    tma_b = ev.tma_coords.get(1)
+    if tma_a is not None and tma_b is not None and len(tma_a) == total_ctas and len(tma_b) == total_ctas:
+        coords = [(ca[0] // block_m, cb[1] // block_n) for ca, cb in zip(tma_a, tma_b)]
+        return coords, False, ev.data_dependent
+
+    # Fallback: linear row-major tile order.
+    num_pid_m = math.ceil(M / block_m)
+    num_pid_n = math.ceil(N / block_n)
+    linear = [(pm, pn) for pm in range(num_pid_m) for pn in range(num_pid_n)]
+    return linear, True, ev.data_dependent
 
 
 def extract_gemm_kernel_ir(
@@ -224,13 +286,37 @@ def extract_gemm_kernel_ir(
     )
 
     diagnostics = list(summary.diagnostics)
+    unsupported_features = list(summary.unsupported_features)
     if artifacts.ptxas.ptxas_only_spill:
         diagnostics.append("ptxas_only_spill")
 
     num_pid_m = math.ceil(M / block_m)
     num_pid_n = math.ceil(N / block_n)
-    grid_x = num_pid_m * num_pid_n
+    uses_2d_grid = "tt.get_program_id y" in artifacts.ttgir
+    grid = (num_pid_m, num_pid_n, 1) if uses_2d_grid else (num_pid_m * num_pid_n, 1, 1)
     k_trips = math.ceil(K / block_k)
+
+    stride_am = strides_a[0] if strides_a is not None else K
+    stride_bk = strides_b[0] if strides_b is not None else N
+
+    cta_tile_coords, used_linear_fallback, data_dependent = _recover_cta_tile_coords(
+        artifacts.ttgir,
+        grid,
+        fn=fn,
+        call_args=call_args,
+        signature=signature,
+        M=M,
+        N=N,
+        K=K,
+        block_m=block_m,
+        block_n=block_n,
+        stride_am=stride_am,
+        stride_bk=stride_bk,
+    )
+    if used_linear_fallback:
+        diagnostics.append("linear_access_fallback")
+    if data_dependent and "data_dependent_address" not in unsupported_features:
+        unsupported_features.append("data_dependent_address")
 
     tile_bytes_a = block_m * block_k * elem_bytes
     tile_bytes_b = block_k * block_n * elem_bytes
@@ -344,7 +430,8 @@ def extract_gemm_kernel_ir(
         },
     ]
 
-    access_map = _build_linear_access_maps(
+    access_map = _build_access_maps_from_coords(
+        cta_tile_coords,
         M=M,
         N=N,
         K=K,
@@ -377,7 +464,7 @@ def extract_gemm_kernel_ir(
             "config": dict(config),
         },
         "launch": {
-            "grid": [grid_x, 1, 1],
+            "grid": list(grid),
             "cluster_shape": list(summary.cluster_shape),
             "num_warps": summary.num_warps,
             "warp_size": summary.warp_size,
@@ -446,5 +533,5 @@ def extract_gemm_kernel_ir(
         },
         "access_map": access_map,
         "diagnostics": diagnostics,
-        "unsupported_features": summary.unsupported_features,
+        "unsupported_features": unsupported_features,
     }
