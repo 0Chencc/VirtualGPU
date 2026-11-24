@@ -21,8 +21,8 @@ sys.path.insert(0, str(REPO_ROOT / "python"))
 from virtualgpu.profile import validate_profile  # noqa: E402
 
 DEFAULT_BIN = Path(__file__).resolve().parent / "build" / "vgpu_bench"
-SUITE_VERSION = "0.4.0"
-PROFILE_REVISION = "0.4.0-m2"
+SUITE_VERSION = "0.5.0"
+PROFILE_REVISION = "0.5.0-m2"
 
 
 def find_nvidia_smi() -> str | None:
@@ -81,23 +81,30 @@ def run_bench_with_clock_polling(
     poll_interval_s: float = 0.15,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """Run vgpu_bench while polling nvidia-smi under active load (avoids idle P8 clocks)."""
+    import tempfile
     import time
 
     cmd = [str(binary), "--mode", mode, "--device", str(device)]
     if extra_args:
         cmd.extend(extra_args)
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    samples: list[dict[str, Any]] = []
-    # Wait briefly for kernel warmup before polling clocks.
-    time.sleep(poll_interval_s)
-    while proc.poll() is None:
-        snap = sample_nvidia_smi(device)
-        if snap:
-            samples.append(snap)
+    # Write stdout to a temp file so large JSON outputs (>64 KB) never deadlock the pipe.
+    with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as out_f, tempfile.TemporaryFile(
+        mode="w+", encoding="utf-8"
+    ) as err_f:
+        proc = subprocess.Popen(cmd, stdout=out_f, stderr=err_f, text=True)
+        samples: list[dict[str, Any]] = []
         time.sleep(poll_interval_s)
-    stdout, stderr = proc.communicate()
-    if proc.returncode != 0:
-        raise subprocess.CalledProcessError(proc.returncode, cmd, output=stdout, stderr=stderr)
+        while proc.poll() is None:
+            snap = sample_nvidia_smi(device)
+            if snap:
+                samples.append(snap)
+            time.sleep(poll_interval_s)
+        out_f.seek(0)
+        err_f.seek(0)
+        stdout = out_f.read()
+        stderr = err_f.read()
+        if proc.returncode != 0:
+            raise subprocess.CalledProcessError(proc.returncode, cmd, output=stdout, stderr=stderr)
     if not samples:
         snap = sample_nvidia_smi(device)
         if snap:
@@ -276,6 +283,7 @@ def build_profile(
     lat_curve_raw: dict[str, Any],
     l2_rescan_raw: dict[str, Any],
     mlp_raw: dict[str, Any],
+    closed_loop_raw: dict[str, Any],
     smi_samples: list[dict[str, Any]],
 ) -> dict[str, Any]:
     major = int(query["major"])
@@ -604,6 +612,45 @@ def build_profile(
         mlp_raw["l2_bw_by_bytes_in_flight"], "cuda_mlp_l2_warm", "l2_bw", sm_range
     )
 
+    # Cross-check peak read BW against MLP saturation points (use the higher measured ceiling).
+    best_dram_mlp = max(dram_mlp_curve, key=lambda pt: pt["bw_gbps"]["value"])["bw_gbps"]
+    if best_dram_mlp["value"] > full_read_mv["value"]:
+        full_read_mv = best_dram_mlp
+    best_l2_mlp = max(l2_mlp_curve, key=lambda pt: pt["bw_gbps"]["value"])["bw_gbps"]
+    if best_l2_mlp["value"] > full_l2_read_mv["value"]:
+        full_l2_read_mv = best_l2_mlp
+
+    dram_closed_loop: list[dict[str, Any]] = []
+    for pt in closed_loop_raw["dram_closed_loop"]:
+        mode = pt["issue_mode"]
+        bw_mv = make_measured(
+            pt["bw_gbps_samples"],
+            unit="GB/s",
+            method=f"cuda_closed_loop_dram_{mode}",
+            perturb_group="dram_bw",
+            clock_range=mem_range,
+            locked=False,
+            throttle_events=throttle_events,
+        )
+        turn_mv = make_measured(
+            pt["turnaround_ns_samples"],
+            unit="ns",
+            method=f"cuda_closed_loop_dram_{mode}",
+            perturb_group=None,
+            clock_range=mem_range,
+            locked=False,
+            throttle_events=throttle_events,
+        )
+        dram_closed_loop.append({
+            "issue_mode": mode,
+            "tokens": int(pt["tokens"]),
+            "active_ctas": int(pt["active_ctas"]),
+            "stage_bytes": int(pt["stage_bytes"]),
+            "compute_ns": float(pt["compute_ns"]),
+            "delivered_bw_gbps": bw_mv,
+            "mean_stage_turnaround_ns": turn_mv,
+        })
+
     sm_clock_ghz = (
         (statistics.median(sm_clocks) / 1000.0)
         if sm_clocks
@@ -688,6 +735,7 @@ def build_profile(
                 "dram_bw_write_gbps": full_write_mv,
                 "dram_bw_by_active_sms": read_curve_points,
                 "dram_bw_by_bytes_in_flight": dram_mlp_curve,
+                "dram_closed_loop": dram_closed_loop,
                 "l2_bw_read_gbps": full_l2_read_mv,
                 "l2_bw_write_gbps": full_l2_write_mv,
                 "l2_bw_by_active_sms": l2_curve_points,
@@ -774,14 +822,19 @@ def main() -> int:
     mlp_raw, smi_mlp = run_bench_with_clock_polling(
         args.binary, "mlp", args.device, ["--samples", "11"]
     )
+    closed_loop_raw, smi_cl = run_bench_with_clock_polling(
+        args.binary, "closed-loop", args.device, ["--samples", "7", "--warmup", "1"]
+    )
     dispatch_raw, smi_disp = run_bench_with_clock_polling(
         args.binary, "cta-dispatch", args.device, ["--repeats", str(args.repeats)]
     )
-    smi_samples = smi_dram + smi_mma + smi_l2 + smi_cp + smi_lat + smi_launch + smi_lc + smi_rs + smi_mlp + smi_disp
+    smi_samples = (
+        smi_dram + smi_mma + smi_l2 + smi_cp + smi_lat + smi_launch + smi_lc + smi_rs + smi_mlp + smi_cl + smi_disp
+    )
 
     profile = build_profile(
         query, dram_raw, dispatch_raw, mma_raw, l2_raw, cp_async_raw,
-        latency_raw, launch_raw, lat_curve_raw, l2_rescan_raw, mlp_raw, smi_samples
+        latency_raw, launch_raw, lat_curve_raw, l2_rescan_raw, mlp_raw, closed_loop_raw, smi_samples
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("w", encoding="utf-8") as fh:

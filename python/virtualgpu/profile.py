@@ -121,6 +121,27 @@ def _semantic_checks(profile: dict[str, Any]) -> list[str]:
                         f"exceeds {peak_key} * (1 + rel_uncertainty) ({max_allowed:.1f})"
                     )
 
+    if "dram_closed_loop" in mem:
+        peak_mv = mem["dram_bw_read_gbps"]
+        max_allowed = peak_mv["value"] * (1.0 + peak_mv["rel_uncertainty"])
+        for idx, pt in enumerate(mem["dram_closed_loop"]):
+            tokens = pt["tokens"]
+            mode = pt["issue_mode"]
+            if tokens == 0 and mode != "ld_global_v4":
+                errors.append(
+                    f"measured.memory.dram_closed_loop[{idx}]: tokens=0 requires issue_mode='ld_global_v4'"
+                )
+            if tokens > 0 and mode != "cp_async":
+                errors.append(
+                    f"measured.memory.dram_closed_loop[{idx}]: tokens={tokens} requires issue_mode='cp_async'"
+                )
+            bw = pt["delivered_bw_gbps"]["value"]
+            if bw > max_allowed:
+                errors.append(
+                    f"measured.memory.dram_closed_loop[{idx}].delivered_bw_gbps ({bw:.1f}) "
+                    f"exceeds dram_bw_read_gbps * (1 + rel_uncertainty) ({max_allowed:.1f})"
+                )
+
     for lat_key, peak_key in (
         ("dram_latency_by_bw", "dram_bw_read_gbps"),
         ("l2_latency_by_bw", "l2_bw_read_gbps"),

@@ -512,6 +512,9 @@ int main(int argc, char** argv) {
   if (mode == "mlp") {
     return run_mlp(device, samples, warmup);
   }
+  if (mode == "closed-loop") {
+    return run_closed_loop(device, samples, warmup);
+  }
   std::fprintf(stderr, "Unknown mode: %s\n", mode.c_str());
   return 2;
 }

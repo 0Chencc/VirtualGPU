@@ -42,6 +42,7 @@ def test_rtx4070_profile_is_valid() -> None:
     assert len(mem["l2_latency_by_bw"]) >= 5
     assert len(mem["dram_bw_by_bytes_in_flight"]) >= 16
     assert len(mem["l2_bw_by_bytes_in_flight"]) >= 16
+    assert len(mem["dram_closed_loop"]) >= 100
     assert len(mem["l2_rescan_hit_rate_by_working_set"]) >= 12
     assert profile["measured"]["async_pipeline"]["cp_async_bw_per_sm_gbps"]["source"] == "measured"
     assert profile["measured"]["overhead"]["launch_overhead_us"]["source"] == "measured"
