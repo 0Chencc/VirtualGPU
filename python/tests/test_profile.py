@@ -93,3 +93,14 @@ def test_rejects_dispatch_policy_not_in_candidates() -> None:
     profile["measured"]["cta_dispatch"]["candidate_policies"] = ["round_robin"]
     with pytest.raises(ProfileValidationError, match="candidate_policies"):
         validate_profile(profile)
+
+
+def test_rejects_latency_curve_bw_exceeding_peak() -> None:
+    profile = copy.deepcopy(load_profile(EXAMPLE_PROFILE))
+    peak = profile["measured"]["memory"]["dram_bw_read_gbps"]["value"]
+    profile["measured"]["memory"]["dram_latency_by_bw"] = [
+        {"achieved_bw_gbps": 0.0, "latency_ns": profile["measured"]["memory"]["dram_latency_ns"]},
+        {"achieved_bw_gbps": peak * 1.3, "latency_ns": profile["measured"]["memory"]["dram_latency_ns"]},
+    ]
+    with pytest.raises(ProfileValidationError, match="exceeds 1.15x dram_bw_read_gbps"):
+        validate_profile(profile)

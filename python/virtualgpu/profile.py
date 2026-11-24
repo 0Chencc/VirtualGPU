@@ -92,7 +92,10 @@ def _semantic_checks(profile: dict[str, Any]) -> list[str]:
         mem["l2_bw_by_active_sms"], "active_sms", sm_count, "measured.memory.l2_bw_by_active_sms", errors
     )
 
-    for lat_key in ("dram_latency_by_bw", "l2_latency_by_bw"):
+    for lat_key, peak_key in (
+        ("dram_latency_by_bw", "dram_bw_read_gbps"),
+        ("l2_latency_by_bw", "l2_bw_read_gbps"),
+    ):
         if lat_key in mem:
             prev_bw = -1.0
             for idx, pt in enumerate(mem[lat_key]):
@@ -102,6 +105,12 @@ def _semantic_checks(profile: dict[str, Any]) -> list[str]:
                         f"measured.memory.{lat_key}[{idx}].achieved_bw_gbps ({bw}) must be non-decreasing (prev={prev_bw})"
                     )
                 prev_bw = bw
+            peak_bw = mem[peak_key]["value"]
+            if prev_bw > peak_bw * 1.15:
+                errors.append(
+                    f"measured.memory.{lat_key} max achieved_bw_gbps ({prev_bw:.1f}) "
+                    f"exceeds 1.15x {peak_key} ({peak_bw:.1f})"
+                )
 
     if "l2_rescan_hit_rate_by_working_set" in mem:
         prev_ws = 0

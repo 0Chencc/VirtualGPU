@@ -30,6 +30,24 @@ static __device__ __forceinline__ uint64_t read_globaltimer() {
   return t;
 }
 
+__global__ void l2_flush_clean_kernel(const uint4* __restrict__ buf,
+                                      uint4* __restrict__ sink,
+                                      size_t n) {
+  size_t idx = static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  size_t stride = static_cast<size_t>(gridDim.x) * blockDim.x;
+  uint32_t acc = 0;
+  for (size_t i = idx; i < n; i += stride) {
+    uint4 v;
+    asm volatile("ld.global.cg.v4.u32 {%0,%1,%2,%3}, [%4];"
+                 : "=r"(v.x), "=r"(v.y), "=r"(v.z), "=r"(v.w)
+                 : "l"(buf + i));
+    acc ^= (v.x + v.y + v.z + v.w);
+  }
+  if (acc == 0xdeadbeefu) {
+    sink[idx & 1023u] = make_uint4(acc, acc, acc, acc);
+  }
+}
+
 __global__ void l2_flush_kernel(uint4* __restrict__ buf, size_t n, uint32_t seed) {
   size_t idx = static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   size_t stride = static_cast<size_t>(gridDim.x) * blockDim.x;
@@ -241,7 +259,7 @@ static int run_dram_bw(int device, int samples, int warmup, size_t buffer_mb) {
       int grid = (target_sms == sm_count) ? (sm_count * 4) : target_sms;
 
       for (int w = 0; w < warmup; ++w) {
-        l2_flush_kernel<<<flush_blocks, 256>>>(d_flush, flush_vec4, static_cast<uint32_t>(w));
+        l2_flush_clean_kernel<<<flush_blocks, 256>>>(d_flush, reinterpret_cast<uint4*>(d_sink), flush_vec4);
         if (is_write) {
           dram_write_kernel<<<grid, threads>>>(d_buf, n_vec4, 1.0f + w, d_sm_seen);
         } else {
@@ -255,7 +273,7 @@ static int run_dram_bw(int device, int samples, int warmup, size_t buffer_mb) {
       int observed_sms = 0;
 
       for (int s = 0; s < samples; ++s) {
-        l2_flush_kernel<<<flush_blocks, 256>>>(d_flush, flush_vec4, static_cast<uint32_t>(s + 100));
+        l2_flush_clean_kernel<<<flush_blocks, 256>>>(d_flush, reinterpret_cast<uint4*>(d_sink), flush_vec4);
         CUDA_CHECK(cudaMemset(d_sm_seen, 0, static_cast<size_t>(sm_count) * sizeof(uint32_t)));
         CUDA_CHECK(cudaEventRecord(ev_start));
         if (is_write) {
