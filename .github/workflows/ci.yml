@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  language-check:
+    name: Check English-only text files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject CJK characters in tracked text files
+        run: |
+          python3 - <<'PY'
+          import pathlib, re, subprocess, sys
+
+          pattern = re.compile(r"[\u3000-\u9fff\uff00-\uffef]")
+          files = subprocess.check_output(["git", "ls-files"], text=True).splitlines()
+          failures = []
+          for rel in files:
+              path = pathlib.Path(rel)
+              try:
+                  text = path.read_text(encoding="utf-8")
+              except (UnicodeDecodeError, OSError):
+                  continue
+              for lineno, line in enumerate(text.splitlines(), 1):
+                  match = pattern.search(line)
+                  if match:
+                      failures.append(f"{rel}:{lineno}: U+{ord(match.group(0)):04X}")
+                      break
+
+          if failures:
+              print("Found non-English (CJK) characters in tracked files:", file=sys.stderr)
+              for item in failures:
+                  print(f"  {item}", file=sys.stderr)
+              sys.exit(1)
+          print(f"Checked {len(files)} tracked files: no CJK characters found.")
+          PY
+
+  rust:
+    name: Rust test and clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Run cargo test
+        run: cargo test
+      - name: Run cargo clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+  python:
+    name: Python and validation CPU-only tests
+    runs-on: ubuntu-latest
+    env:
+      CUDA_VISIBLE_DEVICES: ""
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: pyo3
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+      - name: Create virtual environment and install CPU-only test dependencies
+        run: |
+          uv venv --python 3.12
+          uv pip install --python .venv maturin pytest jsonschema "triton==3.9.0" numpy
+      - name: Build Rust PyO3 extension
+        run: .venv/bin/maturin develop --uv
+      - name: Run Python test suite
+        run: .venv/bin/python -m pytest -v python
+      - name: Run CPU-only validation tests
+        # validation/test_validation.py is strictly CPU-only (no torch/pynvml/GPU).
+        # GPU hardware runner tests in validation/runner.py are excluded from CPU CI.
+        run: .venv/bin/python -m unittest -v validation.test_validation
