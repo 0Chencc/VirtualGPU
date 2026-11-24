@@ -424,6 +424,8 @@ static int run_cta_dispatch(int device, int repeats) {
   return 0;
 }
 
+#include "m2_kernels.cuh"
+
 int main(int argc, char** argv) {
   std::string mode = "query";
   int device = 0;
@@ -461,6 +463,21 @@ int main(int argc, char** argv) {
   }
   if (mode == "cta-dispatch") {
     return run_cta_dispatch(device, repeats);
+  }
+  if (mode == "mma") {
+    return run_mma(device, samples, warmup);
+  }
+  if (mode == "l2") {
+    return run_l2(device, samples, warmup);
+  }
+  if (mode == "cp-async") {
+    return run_cp_async(device, samples, warmup);
+  }
+  if (mode == "latency") {
+    return run_latency(device, samples);
+  }
+  if (mode == "launch") {
+    return run_launch(device, samples, warmup);
   }
   std::fprintf(stderr, "Unknown mode: %s\n", mode.c_str());
   return 2;
