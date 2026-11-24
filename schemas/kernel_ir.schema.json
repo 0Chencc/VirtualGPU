@@ -1,0 +1,582 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://virtualgpu.dev/schemas/kernel_ir.schema.json",
+  "title": "VirtualGPU KernelIR",
+  "description": "Language- and vendor-agnostic intermediate representation emitted by kernel frontends and consumed by the Rust L2 reuse model and performance model core.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "metadata",
+    "launch",
+    "resources",
+    "tensors",
+    "body",
+    "access_map",
+    "diagnostics",
+    "unsupported_features"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "0.1"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kernel_name",
+        "target_vendor",
+        "target_arch",
+        "frontend"
+      ],
+      "properties": {
+        "kernel_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target_vendor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target_arch": {
+          "type": "string",
+          "minLength": 1
+        },
+        "frontend": {
+          "type": "string",
+          "minLength": 1
+        },
+        "toolchain": {
+          "type": "object",
+          "description": "Opaque frontend-defined provenance metadata. Must not be read by the model core.",
+          "additionalProperties": true
+        },
+        "config": {
+          "type": "object",
+          "description": "Opaque frontend-defined kernel configuration metadata. Must not be read by the model core.",
+          "additionalProperties": true
+        }
+      }
+    },
+    "launch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "grid",
+        "cluster_shape",
+        "num_warps",
+        "warp_size",
+        "warp_groups",
+        "dynamic_smem_bytes"
+      ],
+      "properties": {
+        "grid": {
+          "$ref": "#/$defs/dim3"
+        },
+        "cluster_shape": {
+          "$ref": "#/$defs/dim3"
+        },
+        "num_warps": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "warp_size": {
+          "type": "integer",
+          "enum": [32, 64]
+        },
+        "warp_groups": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "role", "num_warps"],
+            "properties": {
+              "id": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "role": {
+                "type": "string",
+                "enum": ["unified", "producer", "consumer"]
+              },
+              "num_warps": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        },
+        "dynamic_smem_bytes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "registers_per_thread",
+        "static_smem_bytes",
+        "stack_frame_bytes",
+        "spill_stores_bytes",
+        "spill_loads_bytes",
+        "spill_scope",
+        "barriers"
+      ],
+      "properties": {
+        "source": {
+          "type": "string",
+          "enum": ["assembler_report", "estimated"]
+        },
+        "registers_per_thread": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "static_smem_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "stack_frame_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "spill_stores_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "spill_loads_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "spill_scope": {
+          "type": "string",
+          "enum": [
+            "none",
+            "prologue_epilogue",
+            "inner_loop_confirmed",
+            "inner_loop_assumed"
+          ]
+        },
+        "barriers": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "tensors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "dtype",
+          "element_bits",
+          "shape",
+          "strides",
+          "base_addr",
+          "cache_policy"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "dtype": {
+            "type": "string",
+            "minLength": 1
+          },
+          "element_bits": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "shape": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "strides": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "base_addr": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "cache_policy": {
+            "type": "string",
+            "enum": [
+              "default",
+              "bypass_l1",
+              "streaming",
+              "evict_first",
+              "volatile"
+            ]
+          }
+        }
+      }
+    },
+    "body": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outer_loop", "prologue", "pipeline_loop", "epilogue"],
+      "properties": {
+        "outer_loop": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["trip_count_mode", "trip_counts"],
+          "properties": {
+            "trip_count_mode": {
+              "type": "string",
+              "enum": ["uniform", "per_cta"]
+            },
+            "trip_counts": {
+              "oneOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "prologue": {
+          "$ref": "#/$defs/op_block"
+        },
+        "pipeline_loop": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "trip_count_mode",
+            "trip_counts",
+            "num_stages",
+            "prefetch_distance",
+            "async_copy",
+            "ops"
+          ],
+          "properties": {
+            "trip_count_mode": {
+              "type": "string",
+              "enum": ["uniform", "per_outer_iter"]
+            },
+            "trip_counts": {
+              "oneOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              ]
+            },
+            "num_stages": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "prefetch_distance": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "async_copy": {
+              "type": "string",
+              "enum": ["none", "async_element", "async_tensor"]
+            },
+            "ops": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/op"
+              }
+            }
+          }
+        },
+        "epilogue": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["overlaps_next_tile", "ops"],
+          "properties": {
+            "overlaps_next_tile": {
+              "type": "boolean"
+            },
+            "ops": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/op"
+              }
+            }
+          }
+        }
+      }
+    },
+    "access_map": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/access_entry"
+      }
+    },
+    "diagnostics": {
+      "type": "array",
+      "description": "Soft warnings: model still executes, but confidence is lowered or uncertainty widened.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "unsupported_features": {
+      "type": "array",
+      "description": "Hard blockers: model core returns status=unsupported with these reasons.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "$defs": {
+    "dim3": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "integer",
+        "minimum": 1
+      }
+    },
+    "op_block": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ops"],
+      "properties": {
+        "ops": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/op"
+          }
+        }
+      }
+    },
+    "op": {
+      "oneOf": [
+        { "$ref": "#/$defs/gmem_op" },
+        { "$ref": "#/$defs/smem_op" },
+        { "$ref": "#/$defs/mma_op" },
+        { "$ref": "#/$defs/scalar_op" },
+        { "$ref": "#/$defs/barrier_op" }
+      ]
+    },
+    "gmem_op": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op_id",
+        "kind",
+        "warp_group_id",
+        "stage_offset",
+        "tensor_id",
+        "nominal_bytes_per_cta",
+        "transfer_width_bytes",
+        "access_ref"
+      ],
+      "properties": {
+        "op_id": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "enum": ["gmem_load", "gmem_store"] },
+        "warp_group_id": { "type": "integer", "minimum": 0 },
+        "stage_offset": { "type": "integer", "minimum": 0 },
+        "tensor_id": { "type": "string", "minLength": 1 },
+        "nominal_bytes_per_cta": { "type": "integer", "minimum": 0 },
+        "transfer_width_bytes": { "type": "integer", "minimum": 1 },
+        "access_ref": { "type": "string", "minLength": 1 }
+      }
+    },
+    "smem_op": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op_id",
+        "kind",
+        "warp_group_id",
+        "stage_offset",
+        "bytes_per_cta"
+      ],
+      "properties": {
+        "op_id": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "enum": ["smem_load", "smem_store"] },
+        "warp_group_id": { "type": "integer", "minimum": 0 },
+        "stage_offset": { "type": "integer", "minimum": 0 },
+        "bytes_per_cta": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "mma_op": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op_id",
+        "kind",
+        "warp_group_id",
+        "stage_offset",
+        "op_class",
+        "tile_mnk",
+        "inst_mnk",
+        "a_dtype",
+        "b_dtype",
+        "acc_dtype",
+        "count"
+      ],
+      "properties": {
+        "op_id": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "const": "mma" },
+        "warp_group_id": { "type": "integer", "minimum": 0 },
+        "stage_offset": { "type": "integer", "minimum": 0 },
+        "op_class": { "type": "string", "minLength": 1 },
+        "tile_mnk": { "$ref": "#/$defs/dim3" },
+        "inst_mnk": { "$ref": "#/$defs/dim3" },
+        "a_dtype": { "type": "string", "minLength": 1 },
+        "b_dtype": { "type": "string", "minLength": 1 },
+        "acc_dtype": { "type": "string", "minLength": 1 },
+        "count": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "scalar_op": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op_id",
+        "kind",
+        "warp_group_id",
+        "stage_offset",
+        "dtype",
+        "count"
+      ],
+      "properties": {
+        "op_id": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "enum": ["alu", "sfu"] },
+        "warp_group_id": { "type": "integer", "minimum": 0 },
+        "stage_offset": { "type": "integer", "minimum": 0 },
+        "dtype": { "type": "string", "minLength": 1 },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Instructions per warp per iteration (insts_per_warp_per_iter)."
+        }
+      }
+    },
+    "barrier_op": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op_id", "kind", "warp_group_id", "stage_offset", "count"],
+      "properties": {
+        "op_id": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "const": "barrier" },
+        "warp_group_id": { "type": "integer", "minimum": 0 },
+        "stage_offset": { "type": "integer", "minimum": 0 },
+        "count": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "sidecar_ref": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["file", "offset", "count"],
+          "properties": {
+            "file": { "type": "string", "minLength": 1 },
+            "offset": { "type": "integer", "minimum": 0 },
+            "count": { "type": "integer", "minimum": 0 }
+          }
+        }
+      ]
+    },
+    "access_entry": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["encoding", "entries"],
+          "properties": {
+            "encoding": {
+              "type": "string",
+              "const": "strided_2d_per_outer_tile"
+            },
+            "sidecar_ref": { "$ref": "#/$defs/sidecar_ref" },
+            "entries": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "prefixItems": [
+                  { "type": "integer" },
+                  { "type": "integer" },
+                  { "type": "integer", "minimum": 0 },
+                  { "type": "integer", "minimum": 0 },
+                  { "type": "integer", "minimum": 0 },
+                  { "type": "integer", "minimum": 0 },
+                  { "type": "integer" },
+                  { "type": "boolean" }
+                ],
+                "items": false,
+                "minItems": 8,
+                "maxItems": 8
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["encoding", "entries"],
+          "properties": {
+            "encoding": {
+              "type": "string",
+              "const": "explicit_blocks"
+            },
+            "sidecar_ref": { "$ref": "#/$defs/sidecar_ref" },
+            "entries": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "cta_id",
+                  "outer_idx",
+                  "inner_step",
+                  "byte_offset",
+                  "byte_len"
+                ],
+                "properties": {
+                  "cta_id": { "type": "integer", "minimum": 0 },
+                  "outer_idx": { "type": "integer", "minimum": 0 },
+                  "inner_step": { "type": "integer", "minimum": 0 },
+                  "byte_offset": { "type": "integer", "minimum": 0 },
+                  "byte_len": { "type": "integer", "minimum": 0 }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
