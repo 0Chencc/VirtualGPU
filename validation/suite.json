@@ -1,0 +1,1015 @@
+{
+  "schema_version": 1,
+  "kernel": "dense_gemm",
+  "input_dtype": "float16",
+  "output_dtype": "float16",
+  "accumulator_dtype": "float32",
+  "input_seed": 17,
+  "configs": [
+    {
+      "config_id": "m16n64k32-w4-s1-g1",
+      "tile": [
+        16,
+        64,
+        32
+      ],
+      "num_warps": 4,
+      "num_stages": 1,
+      "group_m": 1
+    },
+    {
+      "config_id": "m16n64k32-w4-s2-g1",
+      "tile": [
+        16,
+        64,
+        32
+      ],
+      "num_warps": 4,
+      "num_stages": 2,
+      "group_m": 1
+    },
+    {
+      "config_id": "m16n64k32-w4-s4-g1",
+      "tile": [
+        16,
+        64,
+        32
+      ],
+      "num_warps": 4,
+      "num_stages": 4,
+      "group_m": 1
+    },
+    {
+      "config_id": "m16n64k32-w8-s1-g1",
+      "tile": [
+        16,
+        64,
+        32
+      ],
+      "num_warps": 8,
+      "num_stages": 1,
+      "group_m": 1
+    },
+    {
+      "config_id": "m16n64k32-w8-s2-g1",
+      "tile": [
+        16,
+        64,
+        32
+      ],
+      "num_warps": 8,
+      "num_stages": 2,
+      "group_m": 1
+    },
+    {
+      "config_id": "m16n64k32-w8-s4-g1",
+      "tile": [
+        16,
+        64,
+        32
+      ],
+      "num_warps": 8,
+      "num_stages": 4,
+      "group_m": 1
+    },
+    {
+      "config_id": "m32n64k32-w4-s1-g1",
+      "tile": [
+        32,
+        64,
+        32
+      ],
+      "num_warps": 4,
+      "num_stages": 1,
+      "group_m": 1
+    },
+    {
+      "config_id": "m32n64k32-w4-s2-g1",
+      "tile": [
+        32,
+        64,
+        32
+      ],
+      "num_warps": 4,
+      "num_stages": 2,
+      "group_m": 1
+    },
+    {
+      "config_id": "m32n64k32-w4-s4-g1",
+      "tile": [
+        32,
+        64,
+        32
+      ],
+      "num_warps": 4,
+      "num_stages": 4,
+      "group_m": 1
+    },
+    {
+      "config_id": "m32n64k32-w8-s1-g1",
+      "tile": [
+        32,
+        64,
+        32
+      ],
+      "num_warps": 8,
+      "num_stages": 1,
+      "group_m": 1
+    },
+    {
+      "config_id": "m32n64k32-w8-s2-g1",
+      "tile": [
+        32,
+        64,
+        32
+      ],
+      "num_warps": 8,
+      "num_stages": 2,
+      "group_m": 1
+    },
+    {
+      "config_id": "m32n64k32-w8-s4-g1",
+      "tile": [
+        32,
+        64,
+        32
+      ],
+      "num_warps": 8,
+      "num_stages": 4,
+      "group_m": 1
+    },
+    {
+      "config_id": "m64n64k32-w4-s1-g1",
+      "tile": [
+        64,
+        64,
+        32
+      ],
+      "num_warps": 4,
+      "num_stages": 1,
+      "group_m": 1
+    },
+    {
+      "config_id": "m64n64k32-w4-s2-g1",
+      "tile": [
+        64,
+        64,
+        32
+      ],
+      "num_warps": 4,
+      "num_stages": 2,
+      "group_m": 1
+    },
+    {
+      "config_id": "m64n64k32-w4-s4-g1",
+      "tile": [
+        64,
+        64,
+        32
+      ],
+      "num_warps": 4,
+      "num_stages": 4,
+      "group_m": 1
+    },
+    {
+      "config_id": "m64n64k32-w8-s1-g1",
+      "tile": [
+        64,
+        64,
+        32
+      ],
+      "num_warps": 8,
+      "num_stages": 1,
+      "group_m": 1
+    },
+    {
+      "config_id": "m64n64k32-w8-s2-g1",
+      "tile": [
+        64,
+        64,
+        32
+      ],
+      "num_warps": 8,
+      "num_stages": 2,
+      "group_m": 1
+    },
+    {
+      "config_id": "m64n64k32-w8-s4-g1",
+      "tile": [
+        64,
+        64,
+        32
+      ],
+      "num_warps": 8,
+      "num_stages": 4,
+      "group_m": 1
+    },
+    {
+      "config_id": "m64n128k32-w4-s1-g1",
+      "tile": [
+        64,
+        128,
+        32
+      ],
+      "num_warps": 4,
+      "num_stages": 1,
+      "group_m": 1
+    },
+    {
+      "config_id": "m64n128k32-w4-s2-g1",
+      "tile": [
+        64,
+        128,
+        32
+      ],
+      "num_warps": 4,
+      "num_stages": 2,
+      "group_m": 1
+    },
+    {
+      "config_id": "m64n128k32-w4-s4-g1",
+      "tile": [
+        64,
+        128,
+        32
+      ],
+      "num_warps": 4,
+      "num_stages": 4,
+      "group_m": 1
+    },
+    {
+      "config_id": "m64n128k32-w8-s1-g1",
+      "tile": [
+        64,
+        128,
+        32
+      ],
+      "num_warps": 8,
+      "num_stages": 1,
+      "group_m": 1
+    },
+    {
+      "config_id": "m64n128k32-w8-s2-g1",
+      "tile": [
+        64,
+        128,
+        32
+      ],
+      "num_warps": 8,
+      "num_stages": 2,
+      "group_m": 1
+    },
+    {
+      "config_id": "m64n128k32-w8-s4-g1",
+      "tile": [
+        64,
+        128,
+        32
+      ],
+      "num_warps": 8,
+      "num_stages": 4,
+      "group_m": 1
+    },
+    {
+      "config_id": "m128n64k64-w4-s1-g1",
+      "tile": [
+        128,
+        64,
+        64
+      ],
+      "num_warps": 4,
+      "num_stages": 1,
+      "group_m": 1
+    },
+    {
+      "config_id": "m128n64k64-w4-s2-g1",
+      "tile": [
+        128,
+        64,
+        64
+      ],
+      "num_warps": 4,
+      "num_stages": 2,
+      "group_m": 1
+    },
+    {
+      "config_id": "m128n64k64-w4-s4-g1",
+      "tile": [
+        128,
+        64,
+        64
+      ],
+      "num_warps": 4,
+      "num_stages": 4,
+      "group_m": 1
+    },
+    {
+      "config_id": "m128n64k64-w8-s1-g1",
+      "tile": [
+        128,
+        64,
+        64
+      ],
+      "num_warps": 8,
+      "num_stages": 1,
+      "group_m": 1
+    },
+    {
+      "config_id": "m128n64k64-w8-s2-g1",
+      "tile": [
+        128,
+        64,
+        64
+      ],
+      "num_warps": 8,
+      "num_stages": 2,
+      "group_m": 1
+    },
+    {
+      "config_id": "m128n64k64-w8-s4-g1",
+      "tile": [
+        128,
+        64,
+        64
+      ],
+      "num_warps": 8,
+      "num_stages": 4,
+      "group_m": 1
+    },
+    {
+      "config_id": "m128n128k64-w4-s1-g1",
+      "tile": [
+        128,
+        128,
+        64
+      ],
+      "num_warps": 4,
+      "num_stages": 1,
+      "group_m": 1
+    },
+    {
+      "config_id": "m128n128k64-w4-s2-g1",
+      "tile": [
+        128,
+        128,
+        64
+      ],
+      "num_warps": 4,
+      "num_stages": 2,
+      "group_m": 1
+    },
+    {
+      "config_id": "m128n128k64-w4-s4-g1",
+      "tile": [
+        128,
+        128,
+        64
+      ],
+      "num_warps": 4,
+      "num_stages": 4,
+      "group_m": 1
+    },
+    {
+      "config_id": "m128n128k64-w8-s1-g1",
+      "tile": [
+        128,
+        128,
+        64
+      ],
+      "num_warps": 8,
+      "num_stages": 1,
+      "group_m": 1
+    },
+    {
+      "config_id": "m128n128k64-w8-s2-g1",
+      "tile": [
+        128,
+        128,
+        64
+      ],
+      "num_warps": 8,
+      "num_stages": 2,
+      "group_m": 1
+    },
+    {
+      "config_id": "m128n128k64-w8-s4-g1",
+      "tile": [
+        128,
+        128,
+        64
+      ],
+      "num_warps": 8,
+      "num_stages": 4,
+      "group_m": 1
+    },
+    {
+      "config_id": "m64n64k32-w4-s2-g8",
+      "tile": [
+        64,
+        64,
+        32
+      ],
+      "num_warps": 4,
+      "num_stages": 2,
+      "group_m": 8
+    },
+    {
+      "config_id": "m128n128k32-w4-s3-g8",
+      "tile": [
+        128,
+        128,
+        32
+      ],
+      "num_warps": 4,
+      "num_stages": 3,
+      "group_m": 8
+    }
+  ],
+  "cases": [
+    {
+      "case_id": "decode-1",
+      "split": "development",
+      "family": "decode",
+      "shape": [
+        1,
+        4096,
+        4096
+      ],
+      "strides": {
+        "a": [
+          4096,
+          1
+        ],
+        "b": [
+          4096,
+          1
+        ],
+        "c": [
+          4096,
+          1
+        ]
+      },
+      "config_ids": [
+        "m16n64k32-w4-s1-g1",
+        "m16n64k32-w4-s2-g1",
+        "m16n64k32-w4-s4-g1",
+        "m16n64k32-w8-s1-g1",
+        "m16n64k32-w8-s2-g1",
+        "m16n64k32-w8-s4-g1",
+        "m32n64k32-w4-s1-g1",
+        "m32n64k32-w4-s2-g1",
+        "m32n64k32-w4-s4-g1",
+        "m32n64k32-w8-s1-g1",
+        "m32n64k32-w8-s2-g1",
+        "m32n64k32-w8-s4-g1",
+        "m64n64k32-w4-s1-g1",
+        "m64n64k32-w4-s2-g1",
+        "m64n64k32-w4-s4-g1",
+        "m64n64k32-w8-s1-g1",
+        "m64n64k32-w8-s2-g1",
+        "m64n64k32-w8-s4-g1",
+        "m64n128k32-w4-s1-g1",
+        "m64n128k32-w4-s2-g1",
+        "m64n128k32-w4-s4-g1",
+        "m64n128k32-w8-s1-g1",
+        "m64n128k32-w8-s2-g1",
+        "m64n128k32-w8-s4-g1",
+        "m128n64k64-w4-s1-g1",
+        "m128n64k64-w4-s2-g1",
+        "m128n64k64-w4-s4-g1",
+        "m128n64k64-w8-s1-g1",
+        "m128n64k64-w8-s2-g1",
+        "m128n64k64-w8-s4-g1",
+        "m128n128k64-w4-s1-g1",
+        "m128n128k64-w4-s2-g1",
+        "m128n128k64-w4-s4-g1",
+        "m128n128k64-w8-s1-g1",
+        "m128n128k64-w8-s2-g1",
+        "m128n128k64-w8-s4-g1"
+      ]
+    },
+    {
+      "case_id": "decode-16",
+      "split": "development",
+      "family": "decode",
+      "shape": [
+        16,
+        8192,
+        4096
+      ],
+      "strides": {
+        "a": [
+          4096,
+          1
+        ],
+        "b": [
+          8192,
+          1
+        ],
+        "c": [
+          8192,
+          1
+        ]
+      },
+      "config_ids": [
+        "m16n64k32-w4-s1-g1",
+        "m16n64k32-w4-s2-g1",
+        "m16n64k32-w4-s4-g1",
+        "m16n64k32-w8-s1-g1",
+        "m16n64k32-w8-s2-g1",
+        "m16n64k32-w8-s4-g1",
+        "m32n64k32-w4-s1-g1",
+        "m32n64k32-w4-s2-g1",
+        "m32n64k32-w4-s4-g1",
+        "m32n64k32-w8-s1-g1",
+        "m32n64k32-w8-s2-g1",
+        "m32n64k32-w8-s4-g1",
+        "m64n64k32-w4-s1-g1",
+        "m64n64k32-w4-s2-g1",
+        "m64n64k32-w4-s4-g1",
+        "m64n64k32-w8-s1-g1",
+        "m64n64k32-w8-s2-g1",
+        "m64n64k32-w8-s4-g1",
+        "m64n128k32-w4-s1-g1",
+        "m64n128k32-w4-s2-g1",
+        "m64n128k32-w4-s4-g1",
+        "m64n128k32-w8-s1-g1",
+        "m64n128k32-w8-s2-g1",
+        "m64n128k32-w8-s4-g1",
+        "m128n64k64-w4-s1-g1",
+        "m128n64k64-w4-s2-g1",
+        "m128n64k64-w4-s4-g1",
+        "m128n64k64-w8-s1-g1",
+        "m128n64k64-w8-s2-g1",
+        "m128n64k64-w8-s4-g1",
+        "m128n128k64-w4-s1-g1",
+        "m128n128k64-w4-s2-g1",
+        "m128n128k64-w4-s4-g1",
+        "m128n128k64-w8-s1-g1",
+        "m128n128k64-w8-s2-g1",
+        "m128n128k64-w8-s4-g1"
+      ]
+    },
+    {
+      "case_id": "decode-32",
+      "split": "development",
+      "family": "decode",
+      "shape": [
+        32,
+        4096,
+        11008
+      ],
+      "strides": {
+        "a": [
+          11008,
+          1
+        ],
+        "b": [
+          4096,
+          1
+        ],
+        "c": [
+          4096,
+          1
+        ]
+      },
+      "config_ids": [
+        "m16n64k32-w4-s1-g1",
+        "m16n64k32-w4-s2-g1",
+        "m16n64k32-w4-s4-g1",
+        "m16n64k32-w8-s1-g1",
+        "m16n64k32-w8-s2-g1",
+        "m16n64k32-w8-s4-g1",
+        "m32n64k32-w4-s1-g1",
+        "m32n64k32-w4-s2-g1",
+        "m32n64k32-w4-s4-g1",
+        "m32n64k32-w8-s1-g1",
+        "m32n64k32-w8-s2-g1",
+        "m32n64k32-w8-s4-g1",
+        "m64n64k32-w4-s1-g1",
+        "m64n64k32-w4-s2-g1",
+        "m64n64k32-w4-s4-g1",
+        "m64n64k32-w8-s1-g1",
+        "m64n64k32-w8-s2-g1",
+        "m64n64k32-w8-s4-g1",
+        "m64n128k32-w4-s1-g1",
+        "m64n128k32-w4-s2-g1",
+        "m64n128k32-w4-s4-g1",
+        "m64n128k32-w8-s1-g1",
+        "m64n128k32-w8-s2-g1",
+        "m64n128k32-w8-s4-g1",
+        "m128n64k64-w4-s1-g1",
+        "m128n64k64-w4-s2-g1",
+        "m128n64k64-w4-s4-g1",
+        "m128n64k64-w8-s1-g1",
+        "m128n64k64-w8-s2-g1",
+        "m128n64k64-w8-s4-g1",
+        "m128n128k64-w4-s1-g1",
+        "m128n128k64-w4-s2-g1",
+        "m128n128k64-w4-s4-g1",
+        "m128n128k64-w8-s1-g1",
+        "m128n128k64-w8-s2-g1",
+        "m128n128k64-w8-s4-g1"
+      ]
+    },
+    {
+      "case_id": "prefill-256",
+      "split": "holdout",
+      "family": "prefill",
+      "shape": [
+        256,
+        4096,
+        4096
+      ],
+      "strides": {
+        "a": [
+          4096,
+          1
+        ],
+        "b": [
+          4096,
+          1
+        ],
+        "c": [
+          4096,
+          1
+        ]
+      },
+      "config_ids": [
+        "m16n64k32-w4-s1-g1",
+        "m16n64k32-w4-s2-g1",
+        "m16n64k32-w4-s4-g1",
+        "m16n64k32-w8-s1-g1",
+        "m16n64k32-w8-s2-g1",
+        "m16n64k32-w8-s4-g1",
+        "m32n64k32-w4-s1-g1",
+        "m32n64k32-w4-s2-g1",
+        "m32n64k32-w4-s4-g1",
+        "m32n64k32-w8-s1-g1",
+        "m32n64k32-w8-s2-g1",
+        "m32n64k32-w8-s4-g1",
+        "m64n64k32-w4-s1-g1",
+        "m64n64k32-w4-s2-g1",
+        "m64n64k32-w4-s4-g1",
+        "m64n64k32-w8-s1-g1",
+        "m64n64k32-w8-s2-g1",
+        "m64n64k32-w8-s4-g1",
+        "m64n128k32-w4-s1-g1",
+        "m64n128k32-w4-s2-g1",
+        "m64n128k32-w4-s4-g1",
+        "m64n128k32-w8-s1-g1",
+        "m64n128k32-w8-s2-g1",
+        "m64n128k32-w8-s4-g1",
+        "m128n64k64-w4-s1-g1",
+        "m128n64k64-w4-s2-g1",
+        "m128n64k64-w4-s4-g1",
+        "m128n64k64-w8-s1-g1",
+        "m128n64k64-w8-s2-g1",
+        "m128n64k64-w8-s4-g1",
+        "m128n128k64-w4-s1-g1",
+        "m128n128k64-w4-s2-g1",
+        "m128n128k64-w4-s4-g1",
+        "m128n128k64-w8-s1-g1",
+        "m128n128k64-w8-s2-g1",
+        "m128n128k64-w8-s4-g1"
+      ]
+    },
+    {
+      "case_id": "prefill-1024",
+      "split": "holdout",
+      "family": "prefill",
+      "shape": [
+        1024,
+        4096,
+        11008
+      ],
+      "strides": {
+        "a": [
+          11008,
+          1
+        ],
+        "b": [
+          4096,
+          1
+        ],
+        "c": [
+          4096,
+          1
+        ]
+      },
+      "config_ids": [
+        "m16n64k32-w4-s1-g1",
+        "m16n64k32-w4-s2-g1",
+        "m16n64k32-w4-s4-g1",
+        "m16n64k32-w8-s1-g1",
+        "m16n64k32-w8-s2-g1",
+        "m16n64k32-w8-s4-g1",
+        "m32n64k32-w4-s1-g1",
+        "m32n64k32-w4-s2-g1",
+        "m32n64k32-w4-s4-g1",
+        "m32n64k32-w8-s1-g1",
+        "m32n64k32-w8-s2-g1",
+        "m32n64k32-w8-s4-g1",
+        "m64n64k32-w4-s1-g1",
+        "m64n64k32-w4-s2-g1",
+        "m64n64k32-w4-s4-g1",
+        "m64n64k32-w8-s1-g1",
+        "m64n64k32-w8-s2-g1",
+        "m64n64k32-w8-s4-g1",
+        "m64n128k32-w4-s1-g1",
+        "m64n128k32-w4-s2-g1",
+        "m64n128k32-w4-s4-g1",
+        "m64n128k32-w8-s1-g1",
+        "m64n128k32-w8-s2-g1",
+        "m64n128k32-w8-s4-g1",
+        "m128n64k64-w4-s1-g1",
+        "m128n64k64-w4-s2-g1",
+        "m128n64k64-w4-s4-g1",
+        "m128n64k64-w8-s1-g1",
+        "m128n64k64-w8-s2-g1",
+        "m128n64k64-w8-s4-g1",
+        "m128n128k64-w4-s1-g1",
+        "m128n128k64-w4-s2-g1",
+        "m128n128k64-w4-s4-g1",
+        "m128n128k64-w8-s1-g1",
+        "m128n128k64-w8-s2-g1",
+        "m128n128k64-w8-s4-g1"
+      ]
+    },
+    {
+      "case_id": "prefill-2048",
+      "split": "holdout",
+      "family": "prefill",
+      "shape": [
+        2048,
+        8192,
+        4096
+      ],
+      "strides": {
+        "a": [
+          4096,
+          1
+        ],
+        "b": [
+          8192,
+          1
+        ],
+        "c": [
+          8192,
+          1
+        ]
+      },
+      "config_ids": [
+        "m16n64k32-w4-s1-g1",
+        "m16n64k32-w4-s2-g1",
+        "m16n64k32-w4-s4-g1",
+        "m16n64k32-w8-s1-g1",
+        "m16n64k32-w8-s2-g1",
+        "m16n64k32-w8-s4-g1",
+        "m32n64k32-w4-s1-g1",
+        "m32n64k32-w4-s2-g1",
+        "m32n64k32-w4-s4-g1",
+        "m32n64k32-w8-s1-g1",
+        "m32n64k32-w8-s2-g1",
+        "m32n64k32-w8-s4-g1",
+        "m64n64k32-w4-s1-g1",
+        "m64n64k32-w4-s2-g1",
+        "m64n64k32-w4-s4-g1",
+        "m64n64k32-w8-s1-g1",
+        "m64n64k32-w8-s2-g1",
+        "m64n64k32-w8-s4-g1",
+        "m64n128k32-w4-s1-g1",
+        "m64n128k32-w4-s2-g1",
+        "m64n128k32-w4-s4-g1",
+        "m64n128k32-w8-s1-g1",
+        "m64n128k32-w8-s2-g1",
+        "m64n128k32-w8-s4-g1",
+        "m128n64k64-w4-s1-g1",
+        "m128n64k64-w4-s2-g1",
+        "m128n64k64-w4-s4-g1",
+        "m128n64k64-w8-s1-g1",
+        "m128n64k64-w8-s2-g1",
+        "m128n64k64-w8-s4-g1",
+        "m128n128k64-w4-s1-g1",
+        "m128n128k64-w4-s2-g1",
+        "m128n128k64-w4-s4-g1",
+        "m128n128k64-w8-s1-g1",
+        "m128n128k64-w8-s2-g1",
+        "m128n128k64-w8-s4-g1"
+      ]
+    },
+    {
+      "case_id": "mask-m",
+      "split": "development",
+      "family": "mask-m",
+      "shape": [
+        129,
+        4096,
+        4096
+      ],
+      "strides": {
+        "a": [
+          4096,
+          1
+        ],
+        "b": [
+          4096,
+          1
+        ],
+        "c": [
+          4096,
+          1
+        ]
+      },
+      "config_ids": [
+        "m16n64k32-w4-s1-g1",
+        "m16n64k32-w4-s2-g1",
+        "m16n64k32-w4-s4-g1",
+        "m16n64k32-w8-s1-g1",
+        "m16n64k32-w8-s2-g1",
+        "m16n64k32-w8-s4-g1",
+        "m32n64k32-w4-s1-g1",
+        "m32n64k32-w4-s2-g1",
+        "m32n64k32-w4-s4-g1",
+        "m32n64k32-w8-s1-g1",
+        "m32n64k32-w8-s2-g1",
+        "m32n64k32-w8-s4-g1",
+        "m64n64k32-w4-s1-g1",
+        "m64n64k32-w4-s2-g1",
+        "m64n64k32-w4-s4-g1",
+        "m64n64k32-w8-s1-g1",
+        "m64n64k32-w8-s2-g1",
+        "m64n64k32-w8-s4-g1",
+        "m64n128k32-w4-s1-g1",
+        "m64n128k32-w4-s2-g1",
+        "m64n128k32-w4-s4-g1",
+        "m64n128k32-w8-s1-g1",
+        "m64n128k32-w8-s2-g1",
+        "m64n128k32-w8-s4-g1",
+        "m128n64k64-w4-s1-g1",
+        "m128n64k64-w4-s2-g1",
+        "m128n64k64-w4-s4-g1",
+        "m128n64k64-w8-s1-g1",
+        "m128n64k64-w8-s2-g1",
+        "m128n64k64-w8-s4-g1",
+        "m128n128k64-w4-s1-g1",
+        "m128n128k64-w4-s2-g1",
+        "m128n128k64-w4-s4-g1",
+        "m128n128k64-w8-s1-g1",
+        "m128n128k64-w8-s2-g1",
+        "m128n128k64-w8-s4-g1"
+      ]
+    },
+    {
+      "case_id": "mask-mnk",
+      "split": "holdout",
+      "family": "mask-mnk",
+      "shape": [
+        513,
+        4103,
+        4093
+      ],
+      "strides": {
+        "a": [
+          4093,
+          1
+        ],
+        "b": [
+          4103,
+          1
+        ],
+        "c": [
+          4103,
+          1
+        ]
+      },
+      "config_ids": [
+        "m16n64k32-w4-s1-g1",
+        "m16n64k32-w4-s2-g1",
+        "m16n64k32-w4-s4-g1",
+        "m16n64k32-w8-s1-g1",
+        "m16n64k32-w8-s2-g1",
+        "m16n64k32-w8-s4-g1",
+        "m32n64k32-w4-s1-g1",
+        "m32n64k32-w4-s2-g1",
+        "m32n64k32-w4-s4-g1",
+        "m32n64k32-w8-s1-g1",
+        "m32n64k32-w8-s2-g1",
+        "m32n64k32-w8-s4-g1",
+        "m64n64k32-w4-s1-g1",
+        "m64n64k32-w4-s2-g1",
+        "m64n64k32-w4-s4-g1",
+        "m64n64k32-w8-s1-g1",
+        "m64n64k32-w8-s2-g1",
+        "m64n64k32-w8-s4-g1",
+        "m64n128k32-w4-s1-g1",
+        "m64n128k32-w4-s2-g1",
+        "m64n128k32-w4-s4-g1",
+        "m64n128k32-w8-s1-g1",
+        "m64n128k32-w8-s2-g1",
+        "m64n128k32-w8-s4-g1",
+        "m128n64k64-w4-s1-g1",
+        "m128n64k64-w4-s2-g1",
+        "m128n64k64-w4-s4-g1",
+        "m128n64k64-w8-s1-g1",
+        "m128n64k64-w8-s2-g1",
+        "m128n64k64-w8-s4-g1",
+        "m128n128k64-w4-s1-g1",
+        "m128n128k64-w4-s2-g1",
+        "m128n128k64-w4-s4-g1",
+        "m128n128k64-w8-s1-g1",
+        "m128n128k64-w8-s2-g1",
+        "m128n128k64-w8-s4-g1"
+      ]
+    },
+    {
+      "case_id": "swizzle-320",
+      "split": "development",
+      "family": "swizzle",
+      "shape": [
+        320,
+        4096,
+        4096
+      ],
+      "strides": {
+        "a": [
+          4096,
+          1
+        ],
+        "b": [
+          4096,
+          1
+        ],
+        "c": [
+          4096,
+          1
+        ]
+      },
+      "config_ids": [
+        "m64n64k32-w4-s2-g1",
+        "m64n64k32-w4-s2-g8"
+      ]
+    },
+    {
+      "case_id": "m1-cube",
+      "split": "development",
+      "family": "m1-reference",
+      "shape": [
+        4096,
+        4096,
+        4096
+      ],
+      "strides": {
+        "a": [
+          4096,
+          1
+        ],
+        "b": [
+          4096,
+          1
+        ],
+        "c": [
+          4096,
+          1
+        ]
+      },
+      "config_ids": [
+        "m128n128k32-w4-s3-g8"
+      ]
+    }
+  ],
+  "boundary_rules": [
+    {
+      "family": "sm-round",
+      "split": "development",
+      "capacity": "sm_count",
+      "offsets": [
+        -1,
+        0,
+        1
+      ],
+      "reference_config_id": "m64n64k32-w4-s2-g1"
+    },
+    {
+      "family": "resident-wave",
+      "split": "holdout",
+      "capacity": "sm_count_times_residency",
+      "offsets": [
+        -1,
+        0,
+        1
+      ],
+      "reference_config_id": "m64n64k32-w4-s2-g1"
+    },
+    {
+      "family": "l2-working-set",
+      "split": "holdout",
+      "capacity": "l2_capacity_bytes",
+      "ratios": [
+        0.75,
+        1.25
+      ],
+      "reference_config_id": "m64n64k32-w4-s2-g1"
+    }
+  ]
+}
