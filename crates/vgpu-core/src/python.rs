@@ -1,9 +1,10 @@
 //! PyO3 bindings, exposed to Python as `virtualgpu._core`.
 
+use crate::draws::{draws as draw_profiles, Draw};
 use crate::from_ir::{kernel_from_ir, IrL2};
 use crate::ir::KernelIR;
-use crate::l2::{L2InitState, L2Options};
-use crate::profile::Profile;
+use crate::kernel::Kernel;
+use crate::l2::L2InitState;
 use crate::sim::{simulate, Machine, ModelError, RESOURCES};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
@@ -13,19 +14,24 @@ fn err(e: impl std::fmt::Debug) -> PyErr {
     PyValueError::new_err(format!("{e:?}"))
 }
 
-/// Predict one kernel variant on one GPU profile at the nominal draw.
+/// Predict one kernel variant on one GPU profile under perturbation draws.
 ///
-/// Takes the KernelIR and profile as JSON strings and `l2_state` as "cold" or
-/// "warm". Returns a dict with `status`: "ok" with the predicted time and
-/// diagnostics, or "unsupported" with a `reason` (for example a CTA that does
-/// not fit on an SM). Malformed input raises `ValueError`.
+/// Takes the KernelIR and profile as JSON strings, `l2_state` as "cold" or
+/// "warm", the number of perturbed draws and their seed. Returns a dict with
+/// `status`: "ok" with the draw 0 (unperturbed) prediction and diagnostics
+/// plus `draws`, the time per draw ID including "0"; or "unsupported" with a
+/// `reason` (for example a CTA that does not fit on an SM). Draws depend only
+/// on the profile, `draws` and `seed`, so variants predicted with the same
+/// arguments share them. Malformed input raises `ValueError`.
 #[pyfunction]
-#[pyo3(signature = (kernel_ir_json, profile_json, l2_state = "cold"))]
+#[pyo3(signature = (kernel_ir_json, profile_json, l2_state = "cold", draws = 32, seed = 17))]
 fn predict<'py>(
     py: Python<'py>,
     kernel_ir_json: &str,
     profile_json: &str,
     l2_state: &str,
+    draws: usize,
+    seed: u64,
 ) -> PyResult<Bound<'py, PyDict>> {
     let initial = match l2_state {
         "cold" => L2InitState::Cold,
@@ -38,18 +44,28 @@ fn predict<'py>(
     };
     let ir = KernelIR::from_json_str(kernel_ir_json).map_err(err)?;
     ir.validate().map_err(err)?;
-    let p = Profile::from_json(profile_json).map_err(err)?;
+    let all = draw_profiles(profile_json, draws, seed).map_err(err)?;
+    let nominal = &all[0].profile;
 
     let d = PyDict::new(py);
     d.set_item("l2_state", l2_state)?;
     d.set_item("dispatch_policy", "round_robin")?;
+    let one = |k: &Kernel, draw: &Draw| {
+        let mut m = Machine::nominal(&draw.profile, &k.mma_key)?;
+        m.assumed_spill_scale = draw.assumed_spill_scale;
+        let mut l2 = IrL2::new(&ir, &draw.profile, initial, draw.l2);
+        simulate(k, &draw.profile, &m, &mut l2)
+    };
     let result = kernel_from_ir(&ir).and_then(|k| {
-        let m = Machine::nominal(&p, &k.mma_key)?;
-        let mut l2 = IrL2::new(&ir, &p, initial, L2Options::default());
-        simulate(&k, &p, &m, &mut l2)
+        let r = one(&k, &all[0])?;
+        let mut times = vec![r.time_ns];
+        for draw in &all[1..] {
+            times.push(one(&k, draw)?.time_ns);
+        }
+        Ok((r, times))
     });
-    let r = match result {
-        Ok(r) => r,
+    let (r, times) = match result {
+        Ok(x) => x,
         Err(ModelError::EmptyCurve(name)) => {
             return Err(PyValueError::new_err(format!(
                 "profile curve {name} is empty"
@@ -63,6 +79,11 @@ fn predict<'py>(
     };
     d.set_item("status", "ok")?;
     d.set_item("time_ns", r.time_ns)?;
+    let by_draw = PyDict::new(py);
+    for (draw, t) in all.iter().zip(times) {
+        by_draw.set_item(draw.id.to_string(), t)?;
+    }
+    d.set_item("draws", by_draw)?;
     d.set_item("makespan_ns", r.makespan_ns)?;
     d.set_item("ctas_per_sm", r.occupancy.ctas_per_sm)?;
     d.set_item("occupancy_limiter", format!("{:?}", r.occupancy.limiter))?;
@@ -76,6 +97,19 @@ fn predict<'py>(
         bound.set_item(name, f)?;
     }
     d.set_item("bound_fraction", bound)?;
+    let mut flags: Vec<String> = Vec::new();
+    if ir.resources.spill_loads_bytes + ir.resources.spill_stores_bytes > 0 {
+        flags.push("spill".into());
+    }
+    if !ir.diagnostics.is_empty() {
+        flags.push("unvalidated_feature".into());
+    }
+    let dispatch = &nominal.measured.cta_dispatch;
+    if dispatch.candidate_policies.len() > 1 || dispatch.confidence.as_deref() != Some("high") {
+        flags.push("dispatch_ambiguous".into());
+    }
+    d.set_item("flags", flags)?;
+    d.set_item("diagnostics", ir.diagnostics.clone())?;
     Ok(d)
 }
 

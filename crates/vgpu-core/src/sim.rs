@@ -96,6 +96,8 @@ pub struct Machine {
     pub local_bw: f64,
     pub launch_overhead_ns: f64,
     pub cta_launch_ns: f64,
+    /// Multiplier on per-iteration spill traffic whose loop placement is assumed.
+    pub assumed_spill_scale: f64,
 }
 
 fn curve<T>(
@@ -172,6 +174,7 @@ impl Machine {
                 .map_or(m.memory.smem_bw_per_sm_gbps.value, |v| v.value),
             launch_overhead_ns: m.overhead.launch_overhead_us.value * 1e3,
             cta_launch_ns: m.overhead.per_cta_launch_latency_ns.value,
+            assumed_spill_scale: 1.0,
         })
     }
 }
@@ -374,7 +377,10 @@ impl<'a, L: L2> Sim<'a, L> {
         self.dram_bytes += misses + stores;
         let spill_executions = match (k.spill.scope, phase) {
             (SpillScope::Once, Phase::Prologue) => 1.0,
-            (SpillScope::PerIteration { .. }, Phase::Main) => f64::from(steps),
+            (SpillScope::PerIteration { assumed: false }, Phase::Main) => f64::from(steps),
+            (SpillScope::PerIteration { assumed: true }, Phase::Main) => {
+                f64::from(steps) * self.m.assumed_spill_scale
+            }
             _ => 0.0,
         };
         let (spill_l1, spill_l2, spill_dram) = self.spill;

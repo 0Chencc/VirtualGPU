@@ -35,3 +35,15 @@ def test_predict_reports_cta_that_does_not_fit_as_unsupported():
 def test_schemas_are_embedded():
     for name in ("kernel_ir", "gpu_profile"):
         assert json.loads(_core.schema(name))["$schema"]
+
+
+def test_draws_are_shared_and_include_the_nominal_draw():
+    a = _core.predict(IR, PROFILE, draws=8, seed=3)
+    b = _core.predict(IR, PROFILE, draws=8, seed=3)
+    assert list(a["draws"]) == [str(i) for i in range(9)]
+    assert a["draws"]["0"] == a["time_ns"]
+    assert a["draws"] == b["draws"]
+    assert len(set(a["draws"].values())) > 1
+    c = _core.predict(IR, PROFILE, draws=8, seed=4)
+    assert c["draws"]["0"] == a["draws"]["0"]
+    assert c["draws"] != a["draws"]
