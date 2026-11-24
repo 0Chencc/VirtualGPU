@@ -177,7 +177,14 @@ Metrics:
 
 VirtualGPU must beat two independent baselines built by the validation work, not by the model authors: roofline with wave quantization, and a NeuSight-style learned tile predictor. If a simple formula ranks as well, the event-driven model has no reason to exist.
 
-Proposed pass criteria, fixed before the holdout is opened: at least 0.05 higher median Kendall τ-b and at least 1 percentage point lower mean top-5 regret than each baseline.
+Pass criteria, revised and fixed on 2026-11-25, after the development baseline scores and before any model score or holdout timing was seen:
+
+- **Ranking:** median Kendall τ-b at least 0.05 higher than each baseline.
+- **Shortlist:** mean top-5 regret at most 1% absolute, and no more than 0.5 percentage points worse than any baseline (non-inferiority).
+
+The original shortlist criterion (1 percentage point lower regret than each baseline) was infeasible: the NeuSight-style baseline already reaches 0.46% (warm) and 1.09% (cold) mean top-5 regret on the development set, measured on the same GPU it was trained on.
+
+The same criteria apply to the cross-GPU experiment (8.2), where the learned baseline is trained only on RTX 4070 labels and VirtualGPU only receives the target GPU's profile. That experiment is the main test: a learned baseline needs labels from some GPU, while VirtualGPU needs none from any GPU.
 
 Hardware measurements use locked clocks where possible, explicit cold or warm L2 preparation, randomized repeated blocks across sessions, and 95% intervals. Calibration data (microbenchmarks), development data, and holdout data are kept strictly separate.
 
