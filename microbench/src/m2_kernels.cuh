@@ -1523,6 +1523,8 @@ __global__ void closed_loop_cp_async_kernel(const uint4* __restrict__ src,
       asm volatile("cp.async.wait_group 1;\n" ::);
     } else if constexpr (TOKENS == 3) {
       asm volatile("cp.async.wait_group 2;\n" ::);
+    } else if constexpr (TOKENS == 4) {
+      asm volatile("cp.async.wait_group 3;\n" ::);
     }
     // Hold the arrived stage buffer during compute before releasing and refilling it.
     spin_cycles(compute_cycles);
@@ -1577,65 +1579,273 @@ static int run_closed_loop(int device, int samples, int warmup) {
   const int sm_count = prop.multiProcessorCount;
 
   const size_t dram_bytes = 256ULL * 1024ULL * 1024ULL;
+  const size_t l2_bytes = 8ULL * 1024ULL * 1024ULL;
   const size_t dram_mask = (dram_bytes / sizeof(uint4)) - 1ULL;
+  const size_t l2_mask = (l2_bytes / sizeof(uint4)) - 1ULL;
   const size_t flush_vec4 = dram_bytes / sizeof(uint4);
+
+  // Opt-in to 64 KB dynamic shared memory for tokens=4, stage_bytes=16384.
+  CUDA_CHECK(cudaFuncSetAttribute(
+      closed_loop_cp_async_kernel<4, 4>, cudaFuncAttributeMaxDynamicSharedMemorySize, 65536));
 
   uint4* d_dram = nullptr;
   uint4* d_flush = nullptr;
+  uint4* d_l2 = nullptr;
   uint4* d_sink = nullptr;
   CUDA_CHECK(cudaMalloc(&d_dram, dram_bytes));
   CUDA_CHECK(cudaMalloc(&d_flush, dram_bytes));
+  CUDA_CHECK(cudaMalloc(&d_l2, l2_bytes));
   CUDA_CHECK(cudaMalloc(&d_sink, 1024 * sizeof(uint4)));
   CUDA_CHECK(cudaMemset(d_dram, 17, dram_bytes));
   CUDA_CHECK(cudaMemset(d_flush, 18, dram_bytes));
+  CUDA_CHECK(cudaMemset(d_l2, 19, l2_bytes));
 
   cudaEvent_t ev_start, ev_stop;
   CUDA_CHECK(cudaEventCreate(&ev_start));
   CUDA_CHECK(cudaEventCreate(&ev_stop));
   const double cycles_per_ns = measure_cycles_per_ns(ev_start, ev_stop);
 
-  const std::vector<int> token_list = {0, 1, 2, 3};
-  const std::vector<int> cta_list = {16, 32, sm_count, sm_count * 2};
+  const std::vector<int> token_list = {0, 1, 2, 3, 4};
+  const std::vector<int> cta_list = {16, 32, sm_count, sm_count * 2, 128};
   const std::vector<int> stage_bytes_list = {4096, 8192, 16384};
   const std::vector<uint64_t> compute_ns_list = {0ULL, 250ULL, 500ULL, 1000ULL, 2000ULL};
 
-  std::printf("{\n  \"samples\": %d,\n  \"cycles_per_ns\": %.4f,\n  \"dram_closed_loop\": [",
+  auto max_resident_ctas = [&](int tokens, int vecs, size_t dyn_smem) -> int {
+    int max_blk = 1;
+    if (tokens == 0) {
+      if (vecs == 1) cudaOccupancyMaxActiveBlocksPerMultiprocessor(&max_blk, closed_loop_ld_v4_kernel<1>, 256, 0);
+      else if (vecs == 2) cudaOccupancyMaxActiveBlocksPerMultiprocessor(&max_blk, closed_loop_ld_v4_kernel<2>, 256, 0);
+      else cudaOccupancyMaxActiveBlocksPerMultiprocessor(&max_blk, closed_loop_ld_v4_kernel<4>, 256, 0);
+    } else if (tokens == 1) {
+      if (vecs == 1) cudaOccupancyMaxActiveBlocksPerMultiprocessor(&max_blk, closed_loop_cp_async_kernel<1, 1>, 256, dyn_smem);
+      else if (vecs == 2) cudaOccupancyMaxActiveBlocksPerMultiprocessor(&max_blk, closed_loop_cp_async_kernel<1, 2>, 256, dyn_smem);
+      else cudaOccupancyMaxActiveBlocksPerMultiprocessor(&max_blk, closed_loop_cp_async_kernel<1, 4>, 256, dyn_smem);
+    } else if (tokens == 2) {
+      if (vecs == 1) cudaOccupancyMaxActiveBlocksPerMultiprocessor(&max_blk, closed_loop_cp_async_kernel<2, 1>, 256, dyn_smem);
+      else if (vecs == 2) cudaOccupancyMaxActiveBlocksPerMultiprocessor(&max_blk, closed_loop_cp_async_kernel<2, 2>, 256, dyn_smem);
+      else cudaOccupancyMaxActiveBlocksPerMultiprocessor(&max_blk, closed_loop_cp_async_kernel<2, 4>, 256, dyn_smem);
+    } else if (tokens == 3) {
+      if (vecs == 1) cudaOccupancyMaxActiveBlocksPerMultiprocessor(&max_blk, closed_loop_cp_async_kernel<3, 1>, 256, dyn_smem);
+      else if (vecs == 2) cudaOccupancyMaxActiveBlocksPerMultiprocessor(&max_blk, closed_loop_cp_async_kernel<3, 2>, 256, dyn_smem);
+      else cudaOccupancyMaxActiveBlocksPerMultiprocessor(&max_blk, closed_loop_cp_async_kernel<3, 4>, 256, dyn_smem);
+    } else {
+      if (vecs == 1) cudaOccupancyMaxActiveBlocksPerMultiprocessor(&max_blk, closed_loop_cp_async_kernel<4, 1>, 256, dyn_smem);
+      else if (vecs == 2) cudaOccupancyMaxActiveBlocksPerMultiprocessor(&max_blk, closed_loop_cp_async_kernel<4, 2>, 256, dyn_smem);
+      else cudaOccupancyMaxActiveBlocksPerMultiprocessor(&max_blk, closed_loop_cp_async_kernel<4, 4>, 256, dyn_smem);
+    }
+    return sm_count * max_blk;
+  };
+
+  auto run_level = [&](const char* key, bool is_dram, bool comma) {
+    const uint4* buf = is_dram ? d_dram : d_l2;
+    const size_t mask = is_dram ? dram_mask : l2_mask;
+    std::printf("  \"%s\": [", key);
+    bool first = true;
+
+    for (int tokens : token_list) {
+      const char* mode_name = (tokens == 0) ? "ld_global_v4" : "cp_async";
+      for (int ctas : cta_list) {
+        for (int stage_bytes : stage_bytes_list) {
+          const int vecs = stage_bytes / 4096;
+          const size_t dyn_smem = static_cast<size_t>(tokens) * static_cast<size_t>(stage_bytes);
+          // Skip configs that exceed single-wave residency so every point is truly concurrent.
+          if (ctas > max_resident_ctas(tokens, vecs, dyn_smem)) continue;
+
+          for (uint64_t tc_ns : compute_ns_list) {
+            const uint64_t tc_cyc = static_cast<uint64_t>(static_cast<double>(tc_ns) * cycles_per_ns);
+            const double bw_ref = is_dram ? 450.0 : 1400.0;
+            double est_bw_step_ns = (static_cast<double>(ctas) * stage_bytes) / bw_ref;
+            double est_step_ns = std::max({static_cast<double>(tc_ns), est_bw_step_ns, is_dram ? 250.0 : 120.0});
+            int steps = std::max(256, std::min(1024, static_cast<int>(500000.0 / est_step_ns)));
+            double total_bytes = static_cast<double>(ctas) * static_cast<double>(stage_bytes) * steps;
+
+            auto launch_once = [&]() {
+              if (tokens == 0) {
+                if (vecs == 1) closed_loop_ld_v4_kernel<1><<<ctas, 256>>>(buf, d_sink, mask, steps, tc_cyc);
+                else if (vecs == 2) closed_loop_ld_v4_kernel<2><<<ctas, 256>>>(buf, d_sink, mask, steps, tc_cyc);
+                else closed_loop_ld_v4_kernel<4><<<ctas, 256>>>(buf, d_sink, mask, steps, tc_cyc);
+              } else if (tokens == 1) {
+                if (vecs == 1) closed_loop_cp_async_kernel<1, 1><<<ctas, 256, dyn_smem>>>(buf, d_sink, mask, steps, tc_cyc);
+                else if (vecs == 2) closed_loop_cp_async_kernel<1, 2><<<ctas, 256, dyn_smem>>>(buf, d_sink, mask, steps, tc_cyc);
+                else closed_loop_cp_async_kernel<1, 4><<<ctas, 256, dyn_smem>>>(buf, d_sink, mask, steps, tc_cyc);
+              } else if (tokens == 2) {
+                if (vecs == 1) closed_loop_cp_async_kernel<2, 1><<<ctas, 256, dyn_smem>>>(buf, d_sink, mask, steps, tc_cyc);
+                else if (vecs == 2) closed_loop_cp_async_kernel<2, 2><<<ctas, 256, dyn_smem>>>(buf, d_sink, mask, steps, tc_cyc);
+                else closed_loop_cp_async_kernel<2, 4><<<ctas, 256, dyn_smem>>>(buf, d_sink, mask, steps, tc_cyc);
+              } else if (tokens == 3) {
+                if (vecs == 1) closed_loop_cp_async_kernel<3, 1><<<ctas, 256, dyn_smem>>>(buf, d_sink, mask, steps, tc_cyc);
+                else if (vecs == 2) closed_loop_cp_async_kernel<3, 2><<<ctas, 256, dyn_smem>>>(buf, d_sink, mask, steps, tc_cyc);
+                else closed_loop_cp_async_kernel<3, 4><<<ctas, 256, dyn_smem>>>(buf, d_sink, mask, steps, tc_cyc);
+              } else {
+                if (vecs == 1) closed_loop_cp_async_kernel<4, 1><<<ctas, 256, dyn_smem>>>(buf, d_sink, mask, steps, tc_cyc);
+                else if (vecs == 2) closed_loop_cp_async_kernel<4, 2><<<ctas, 256, dyn_smem>>>(buf, d_sink, mask, steps, tc_cyc);
+                else closed_loop_cp_async_kernel<4, 4><<<ctas, 256, dyn_smem>>>(buf, d_sink, mask, steps, tc_cyc);
+              }
+            };
+
+            for (int w = 0; w < warmup; ++w) {
+              if (is_dram) l2_read_cg_kernel<<<sm_count * 4, 512>>>(d_flush, d_sink, flush_vec4, 1);
+              launch_once();
+            }
+            CUDA_CHECK(cudaDeviceSynchronize());
+
+            std::vector<double> bw_samples;
+            std::vector<double> turn_samples;
+            bw_samples.reserve(samples);
+            turn_samples.reserve(samples);
+
+            for (int s = 0; s < samples; ++s) {
+              if (is_dram) l2_read_cg_kernel<<<sm_count * 4, 512>>>(d_flush, d_sink, flush_vec4, 1);
+              CUDA_CHECK(cudaEventRecord(ev_start));
+              launch_once();
+              CUDA_CHECK(cudaEventRecord(ev_stop));
+              CUDA_CHECK(cudaEventSynchronize(ev_stop));
+              float ms = 0.0f;
+              CUDA_CHECK(cudaEventElapsedTime(&ms, ev_start, ev_stop));
+              bw_samples.push_back((total_bytes / 1e9) / (static_cast<double>(ms) / 1e3));
+              turn_samples.push_back((static_cast<double>(ms) * 1e6) / static_cast<double>(steps));
+            }
+
+            if (!first) std::printf(",");
+            first = false;
+            std::printf(
+                "\n    {\"issue_mode\": \"%s\", \"tokens\": %d, \"active_ctas\": %d, "
+                "\"stage_bytes\": %d, \"compute_ns\": %llu, \"bw_gbps_samples\": [",
+                mode_name, tokens, ctas, stage_bytes, static_cast<unsigned long long>(tc_ns));
+            for (size_t k = 0; k < bw_samples.size(); ++k) {
+              if (k > 0) std::printf(", ");
+              std::printf("%.3f", bw_samples[k]);
+            }
+            std::printf("], \"turnaround_ns_samples\": [");
+            for (size_t k = 0; k < turn_samples.size(); ++k) {
+              if (k > 0) std::printf(", ");
+              std::printf("%.2f", turn_samples[k]);
+            }
+            std::printf("]}");
+          }
+        }
+      }
+    }
+    std::printf("\n  ]%s\n", comma ? "," : "");
+  };
+
+  std::printf("{\n  \"samples\": %d,\n  \"cycles_per_ns\": %.4f,\n", samples, cycles_per_ns);
+  run_level("dram_closed_loop", true, true);
+  run_level("l2_closed_loop", false, false);
+  std::printf("}\n");
+
+  CUDA_CHECK(cudaEventDestroy(ev_start));
+  CUDA_CHECK(cudaEventDestroy(ev_stop));
+  CUDA_CHECK(cudaFree(d_dram));
+  CUDA_CHECK(cudaFree(d_flush));
+  CUDA_CHECK(cudaFree(d_l2));
+  CUDA_CHECK(cudaFree(d_sink));
+  return 0;
+}
+
+// ---------------------------------------------------------------------------
+// 10. L2 miss-merging benchmark: sharing degree R with stagger=0 vs stagger=16
+// ---------------------------------------------------------------------------
+
+template <int VECS_PER_THREAD>
+__global__ void l2_merge_cp_async_kernel(const uint4* __restrict__ src,
+                                         uint4* __restrict__ sink,
+                                         double* __restrict__ out_cta_turn_cycles,
+                                         size_t n_vec4_mask,
+                                         int steps,
+                                         int sharing,
+                                         uint64_t stagger_delay_cycles) {
+  extern __shared__ uint4 smem[];
+  const uint32_t tid = threadIdx.x;
+  const int group_id = blockIdx.x / sharing;
+  const int rank = blockIdx.x % sharing;
+  const int n_groups = gridDim.x / sharing;
+  const size_t stage_vec4 = static_cast<size_t>(256) * static_cast<size_t>(VECS_PER_THREAD);
+  const size_t group_stride_vec4 = static_cast<size_t>(n_groups) * stage_vec4;
+  size_t base = (static_cast<size_t>(group_id) * stage_vec4 + tid) & n_vec4_mask;
+
+  // When staggered, followers wait briefly so rank 0 fetches data into L2 first (resident hit).
+  if (stagger_delay_cycles > 0 && rank > 0) {
+    spin_cycles(stagger_delay_cycles);
+  }
+  __syncthreads();
+  uint64_t t0 = (tid == 0) ? static_cast<uint64_t>(clock64()) : 0;
+
+  for (int step = 0; step < steps; ++step) {
+    #pragma unroll
+    for (int v = 0; v < VECS_PER_THREAD; ++v) {
+      uint32_t smem_addr = static_cast<uint32_t>(
+          __cvta_generic_to_shared(smem + static_cast<size_t>(v) * 256ULL + tid));
+      const void* gptr = src + ((base + static_cast<size_t>(v) * 256ULL) & n_vec4_mask);
+      asm volatile("cp.async.cg.shared.global [%0], [%1], 16;\n" :: "r"(smem_addr), "l"(gptr));
+    }
+    asm volatile("cp.async.commit_group;\n" ::);
+    asm volatile("cp.async.wait_group 0;\n" ::);
+    base = (base + group_stride_vec4) & n_vec4_mask;
+  }
+
+  __syncthreads();
+  if (tid == 0) {
+    uint64_t t1 = static_cast<uint64_t>(clock64());
+    out_cta_turn_cycles[blockIdx.x] = static_cast<double>(t1 - t0) / static_cast<double>(steps);
+  }
+  uint4 val = smem[tid];
+  if (val.x == 0xdeadbeefu && val.y == 0xdeadbeefu) {
+    sink[tid] = val;
+  }
+}
+
+static int run_l2_merge(int device, int samples, int warmup) {
+  cudaDeviceProp prop{};
+  CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
+  const int sm_count = prop.multiProcessorCount;
+
+  const size_t dram_bytes = 256ULL * 1024ULL * 1024ULL;
+  const size_t dram_mask = (dram_bytes / sizeof(uint4)) - 1ULL;
+  const size_t flush_vec4 = dram_bytes / sizeof(uint4);
+
+  uint4* d_dram = nullptr;
+  uint4* d_flush = nullptr;
+  uint4* d_sink = nullptr;
+  double* d_cta_turn = nullptr;
+  CUDA_CHECK(cudaMalloc(&d_dram, dram_bytes));
+  CUDA_CHECK(cudaMalloc(&d_flush, dram_bytes));
+  CUDA_CHECK(cudaMalloc(&d_sink, 1024 * sizeof(uint4)));
+  CUDA_CHECK(cudaMalloc(&d_cta_turn, 256 * sizeof(double)));
+  CUDA_CHECK(cudaMemset(d_dram, 21, dram_bytes));
+  CUDA_CHECK(cudaMemset(d_flush, 22, dram_bytes));
+
+  cudaEvent_t ev_start, ev_stop;
+  CUDA_CHECK(cudaEventCreate(&ev_start));
+  CUDA_CHECK(cudaEventCreate(&ev_stop));
+  const double cycles_per_ns = measure_cycles_per_ns(ev_start, ev_stop);
+
+  const std::vector<int> n_list = {16, 23, sm_count, sm_count * 2};
+  const std::vector<int> r_list = {1, 2, 4, 8, 16, 23};
+  const std::vector<int> k_list = {4096, 8192, 16384};
+  const int steps = 256;
+
+  std::vector<double> h_cta_turn(256, 0.0);
+  std::printf("{\n  \"samples\": %d,\n  \"cycles_per_ns\": %.4f,\n  \"l2_merge_by_sharing\": [",
               samples, cycles_per_ns);
   bool first = true;
 
-  for (int tokens : token_list) {
-    const char* mode_name = (tokens == 0) ? "ld_global_v4" : "cp_async";
-    for (int ctas : cta_list) {
-      for (int stage_bytes : stage_bytes_list) {
-        const int vecs = stage_bytes / 4096;  // 1, 2, or 4 (256 threads x 16B = 4096 B)
-        const size_t dyn_smem = static_cast<size_t>(tokens) * static_cast<size_t>(stage_bytes);
-
-        for (uint64_t tc_ns : compute_ns_list) {
-          const uint64_t tc_cyc = static_cast<uint64_t>(static_cast<double>(tc_ns) * cycles_per_ns);
-          // Aim for ~0.5-0.9 ms per kernel launch for high SNR and short total lock time.
-          double est_bw_step_ns = (static_cast<double>(ctas) * stage_bytes) / 450.0;
-          double est_step_ns = std::max({static_cast<double>(tc_ns), est_bw_step_ns, 250.0});
-          int steps = std::max(32, std::min(1536, static_cast<int>(600000.0 / est_step_ns)));
-          double total_bytes = static_cast<double>(ctas) * static_cast<double>(stage_bytes) * steps;
+  for (int n : n_list) {
+    for (int r : r_list) {
+      if (n % r != 0) continue;
+      for (int k : k_list) {
+        const int vecs = k / 4096;
+        const size_t dyn_smem = static_cast<size_t>(k);
+        std::vector<int> staggers = (r == 1) ? std::vector<int>{0} : std::vector<int>{0, 16};
+        for (int stag : staggers) {
+          // ~300 ns per staggered stage so rank 0 populates L2 ahead of followers.
+          uint64_t stag_cyc = static_cast<uint64_t>(static_cast<double>(stag) * 300.0 * cycles_per_ns);
+          double total_l2_bytes = static_cast<double>(n) * static_cast<double>(k) * steps;
 
           auto launch_once = [&]() {
-            if (tokens == 0) {
-              if (vecs == 1) closed_loop_ld_v4_kernel<1><<<ctas, 256>>>(d_dram, d_sink, dram_mask, steps, tc_cyc);
-              else if (vecs == 2) closed_loop_ld_v4_kernel<2><<<ctas, 256>>>(d_dram, d_sink, dram_mask, steps, tc_cyc);
-              else closed_loop_ld_v4_kernel<4><<<ctas, 256>>>(d_dram, d_sink, dram_mask, steps, tc_cyc);
-            } else if (tokens == 1) {
-              if (vecs == 1) closed_loop_cp_async_kernel<1, 1><<<ctas, 256, dyn_smem>>>(d_dram, d_sink, dram_mask, steps, tc_cyc);
-              else if (vecs == 2) closed_loop_cp_async_kernel<1, 2><<<ctas, 256, dyn_smem>>>(d_dram, d_sink, dram_mask, steps, tc_cyc);
-              else closed_loop_cp_async_kernel<1, 4><<<ctas, 256, dyn_smem>>>(d_dram, d_sink, dram_mask, steps, tc_cyc);
-            } else if (tokens == 2) {
-              if (vecs == 1) closed_loop_cp_async_kernel<2, 1><<<ctas, 256, dyn_smem>>>(d_dram, d_sink, dram_mask, steps, tc_cyc);
-              else if (vecs == 2) closed_loop_cp_async_kernel<2, 2><<<ctas, 256, dyn_smem>>>(d_dram, d_sink, dram_mask, steps, tc_cyc);
-              else closed_loop_cp_async_kernel<2, 4><<<ctas, 256, dyn_smem>>>(d_dram, d_sink, dram_mask, steps, tc_cyc);
-            } else {
-              if (vecs == 1) closed_loop_cp_async_kernel<3, 1><<<ctas, 256, dyn_smem>>>(d_dram, d_sink, dram_mask, steps, tc_cyc);
-              else if (vecs == 2) closed_loop_cp_async_kernel<3, 2><<<ctas, 256, dyn_smem>>>(d_dram, d_sink, dram_mask, steps, tc_cyc);
-              else closed_loop_cp_async_kernel<3, 4><<<ctas, 256, dyn_smem>>>(d_dram, d_sink, dram_mask, steps, tc_cyc);
-            }
+            if (vecs == 1) l2_merge_cp_async_kernel<1><<<n, 256, dyn_smem>>>(d_dram, d_sink, d_cta_turn, dram_mask, steps, r, stag_cyc);
+            else if (vecs == 2) l2_merge_cp_async_kernel<2><<<n, 256, dyn_smem>>>(d_dram, d_sink, d_cta_turn, dram_mask, steps, r, stag_cyc);
+            else l2_merge_cp_async_kernel<4><<<n, 256, dyn_smem>>>(d_dram, d_sink, d_cta_turn, dram_mask, steps, r, stag_cyc);
           };
 
           for (int w = 0; w < warmup; ++w) {
@@ -1644,10 +1854,10 @@ static int run_closed_loop(int device, int samples, int warmup) {
           }
           CUDA_CHECK(cudaDeviceSynchronize());
 
-          std::vector<double> bw_samples;
-          std::vector<double> turn_samples;
-          bw_samples.reserve(samples);
-          turn_samples.reserve(samples);
+          std::vector<double> turn_ns_s, dram_bw_s, l2_bw_s;
+          turn_ns_s.reserve(samples);
+          dram_bw_s.reserve(samples);
+          l2_bw_s.reserve(samples);
 
           for (int s = 0; s < samples; ++s) {
             l2_read_cg_kernel<<<sm_count * 4, 512>>>(d_flush, d_sink, flush_vec4, 1);
@@ -1657,24 +1867,36 @@ static int run_closed_loop(int device, int samples, int warmup) {
             CUDA_CHECK(cudaEventSynchronize(ev_stop));
             float ms = 0.0f;
             CUDA_CHECK(cudaEventElapsedTime(&ms, ev_start, ev_stop));
-            bw_samples.push_back((total_bytes / 1e9) / (static_cast<double>(ms) / 1e3));
-            turn_samples.push_back((static_cast<double>(ms) * 1e6) / static_cast<double>(steps));
+            CUDA_CHECK(cudaMemcpy(h_cta_turn.data(), d_cta_turn,
+                                  static_cast<size_t>(n) * sizeof(double), cudaMemcpyDeviceToHost));
+            double avg_cyc = 0.0;
+            for (int c = 0; c < n; ++c) avg_cyc += h_cta_turn[c];
+            avg_cyc /= static_cast<double>(n);
+            double l2_bw = (total_l2_bytes / 1e9) / (static_cast<double>(ms) / 1e3);
+            turn_ns_s.push_back(avg_cyc / cycles_per_ns);
+            l2_bw_s.push_back(l2_bw);
+            dram_bw_s.push_back(l2_bw / static_cast<double>(r));
           }
 
           if (!first) std::printf(",");
           first = false;
           std::printf(
-              "\n    {\"issue_mode\": \"%s\", \"tokens\": %d, \"active_ctas\": %d, "
-              "\"stage_bytes\": %d, \"compute_ns\": %llu, \"bw_gbps_samples\": [",
-              mode_name, tokens, ctas, stage_bytes, static_cast<unsigned long long>(tc_ns));
-          for (size_t k = 0; k < bw_samples.size(); ++k) {
-            if (k > 0) std::printf(", ");
-            std::printf("%.3f", bw_samples[k]);
+              "\n    {\"active_ctas\": %d, \"sharing\": %d, \"bytes_per_cta\": %d, \"stagger_stages\": %d, "
+              "\"turnaround_ns_samples\": [",
+              n, r, k, stag);
+          for (size_t i = 0; i < turn_ns_s.size(); ++i) {
+            if (i > 0) std::printf(", ");
+            std::printf("%.2f", turn_ns_s[i]);
           }
-          std::printf("], \"turnaround_ns_samples\": [");
-          for (size_t k = 0; k < turn_samples.size(); ++k) {
-            if (k > 0) std::printf(", ");
-            std::printf("%.2f", turn_samples[k]);
+          std::printf("], \"dram_unique_bw_gbps_samples\": [");
+          for (size_t i = 0; i < dram_bw_s.size(); ++i) {
+            if (i > 0) std::printf(", ");
+            std::printf("%.3f", dram_bw_s[i]);
+          }
+          std::printf("], \"l2_to_sm_bw_gbps_samples\": [");
+          for (size_t i = 0; i < l2_bw_s.size(); ++i) {
+            if (i > 0) std::printf(", ");
+            std::printf("%.3f", l2_bw_s[i]);
           }
           std::printf("]}");
         }
@@ -1688,5 +1910,6 @@ static int run_closed_loop(int device, int samples, int warmup) {
   CUDA_CHECK(cudaFree(d_dram));
   CUDA_CHECK(cudaFree(d_flush));
   CUDA_CHECK(cudaFree(d_sink));
+  CUDA_CHECK(cudaFree(d_cta_turn));
   return 0;
 }

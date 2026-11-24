@@ -21,8 +21,8 @@ sys.path.insert(0, str(REPO_ROOT / "python"))
 from virtualgpu.profile import validate_profile  # noqa: E402
 
 DEFAULT_BIN = Path(__file__).resolve().parent / "build" / "vgpu_bench"
-SUITE_VERSION = "0.5.0"
-PROFILE_REVISION = "0.5.0-m2"
+SUITE_VERSION = "0.6.0"
+PROFILE_REVISION = "0.6.0-m2"
 
 
 def find_nvidia_smi() -> str | None:
@@ -284,6 +284,7 @@ def build_profile(
     l2_rescan_raw: dict[str, Any],
     mlp_raw: dict[str, Any],
     closed_loop_raw: dict[str, Any],
+    l2_merge_raw: dict[str, Any],
     smi_samples: list[dict[str, Any]],
 ) -> dict[str, Any]:
     major = int(query["major"])
@@ -620,35 +621,85 @@ def build_profile(
     if best_l2_mlp["value"] > full_l2_read_mv["value"]:
         full_l2_read_mv = best_l2_mlp
 
-    dram_closed_loop: list[dict[str, Any]] = []
-    for pt in closed_loop_raw["dram_closed_loop"]:
-        mode = pt["issue_mode"]
-        bw_mv = make_measured(
-            pt["bw_gbps_samples"],
-            unit="GB/s",
-            method=f"cuda_closed_loop_dram_{mode}",
-            perturb_group="dram_bw",
-            clock_range=mem_range,
-            locked=False,
-            throttle_events=throttle_events,
-        )
-        turn_mv = make_measured(
-            pt["turnaround_ns_samples"],
-            unit="ns",
-            method=f"cuda_closed_loop_dram_{mode}",
-            perturb_group=None,
-            clock_range=mem_range,
-            locked=False,
-            throttle_events=throttle_events,
-        )
-        dram_closed_loop.append({
-            "issue_mode": mode,
-            "tokens": int(pt["tokens"]),
+    def build_closed_loop(
+        raw_pts: list[dict[str, Any]],
+        method_prefix: str,
+        perturb_group: str,
+        clk_rng: list[float] | None,
+    ) -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
+        for pt in raw_pts:
+            mode = pt["issue_mode"]
+            bw_mv = make_measured(
+                pt["bw_gbps_samples"],
+                unit="GB/s",
+                method=f"{method_prefix}_{mode}",
+                perturb_group=perturb_group,
+                clock_range=clk_rng,
+                locked=False,
+                throttle_events=throttle_events,
+            )
+            turn_mv = make_measured(
+                pt["turnaround_ns_samples"],
+                unit="ns",
+                method=f"{method_prefix}_{mode}",
+                perturb_group=None,
+                clock_range=clk_rng,
+                locked=False,
+                throttle_events=throttle_events,
+            )
+            out.append({
+                "issue_mode": mode,
+                "tokens": int(pt["tokens"]),
+                "active_ctas": int(pt["active_ctas"]),
+                "stage_bytes": int(pt["stage_bytes"]),
+                "compute_ns": float(pt["compute_ns"]),
+                "delivered_bw_gbps": bw_mv,
+                "mean_stage_turnaround_ns": turn_mv,
+            })
+        return out
+
+    dram_closed_loop = build_closed_loop(
+        closed_loop_raw["dram_closed_loop"], "cuda_closed_loop_dram", "dram_bw", mem_range
+    )
+    l2_closed_loop = build_closed_loop(
+        closed_loop_raw["l2_closed_loop"], "cuda_closed_loop_l2", "l2_bw", sm_range
+    )
+
+    l2_merge_by_sharing: list[dict[str, Any]] = []
+    for pt in l2_merge_raw["l2_merge_by_sharing"]:
+        l2_merge_by_sharing.append({
             "active_ctas": int(pt["active_ctas"]),
-            "stage_bytes": int(pt["stage_bytes"]),
-            "compute_ns": float(pt["compute_ns"]),
-            "delivered_bw_gbps": bw_mv,
-            "mean_stage_turnaround_ns": turn_mv,
+            "sharing": int(pt["sharing"]),
+            "bytes_per_cta": int(pt["bytes_per_cta"]),
+            "stagger_stages": int(pt["stagger_stages"]),
+            "turnaround_ns": make_measured(
+                pt["turnaround_ns_samples"],
+                unit="ns",
+                method="cuda_l2_merge_cp_async",
+                perturb_group=None,
+                clock_range=mem_range,
+                locked=False,
+                throttle_events=throttle_events,
+            ),
+            "dram_unique_bw_gbps": make_measured(
+                pt["dram_unique_bw_gbps_samples"],
+                unit="GB/s",
+                method="cuda_l2_merge_cp_async",
+                perturb_group="dram_bw",
+                clock_range=mem_range,
+                locked=False,
+                throttle_events=throttle_events,
+            ),
+            "l2_to_sm_bw_gbps": make_measured(
+                pt["l2_to_sm_bw_gbps_samples"],
+                unit="GB/s",
+                method="cuda_l2_merge_cp_async",
+                perturb_group="l2_bw",
+                clock_range=sm_range,
+                locked=False,
+                throttle_events=throttle_events,
+            ),
         })
 
     sm_clock_ghz = (
@@ -740,6 +791,8 @@ def build_profile(
                 "l2_bw_write_gbps": full_l2_write_mv,
                 "l2_bw_by_active_sms": l2_curve_points,
                 "l2_bw_by_bytes_in_flight": l2_mlp_curve,
+                "l2_closed_loop": l2_closed_loop,
+                "l2_merge_by_sharing": l2_merge_by_sharing,
                 "l2_effective_capacity_bytes": l2_eff_mv,
                 "smem_bw_per_sm_gbps": smem_bw_mv,
                 "dram_latency_ns": dram_lat_mv,
@@ -823,18 +876,21 @@ def main() -> int:
         args.binary, "mlp", args.device, ["--samples", "11"]
     )
     closed_loop_raw, smi_cl = run_bench_with_clock_polling(
-        args.binary, "closed-loop", args.device, ["--samples", "7", "--warmup", "1"]
+        args.binary, "closed-loop", args.device, ["--samples", "5", "--warmup", "1"]
+    )
+    l2_merge_raw, smi_mg = run_bench_with_clock_polling(
+        args.binary, "l2-merge", args.device, ["--samples", "7", "--warmup", "1"]
     )
     dispatch_raw, smi_disp = run_bench_with_clock_polling(
         args.binary, "cta-dispatch", args.device, ["--repeats", str(args.repeats)]
     )
     smi_samples = (
-        smi_dram + smi_mma + smi_l2 + smi_cp + smi_lat + smi_launch + smi_lc + smi_rs + smi_mlp + smi_cl + smi_disp
+        smi_dram + smi_mma + smi_l2 + smi_cp + smi_lat + smi_launch + smi_lc + smi_rs + smi_mlp + smi_cl + smi_mg + smi_disp
     )
 
     profile = build_profile(
         query, dram_raw, dispatch_raw, mma_raw, l2_raw, cp_async_raw,
-        latency_raw, launch_raw, lat_curve_raw, l2_rescan_raw, mlp_raw, closed_loop_raw, smi_samples
+        latency_raw, launch_raw, lat_curve_raw, l2_rescan_raw, mlp_raw, closed_loop_raw, l2_merge_raw, smi_samples
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("w", encoding="utf-8") as fh:

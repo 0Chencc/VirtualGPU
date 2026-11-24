@@ -515,6 +515,9 @@ int main(int argc, char** argv) {
   if (mode == "closed-loop") {
     return run_closed_loop(device, samples, warmup);
   }
+  if (mode == "l2-merge") {
+    return run_l2_merge(device, samples, warmup);
+  }
   std::fprintf(stderr, "Unknown mode: %s\n", mode.c_str());
   return 2;
 }

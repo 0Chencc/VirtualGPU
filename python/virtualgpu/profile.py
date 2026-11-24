@@ -121,25 +121,51 @@ def _semantic_checks(profile: dict[str, Any]) -> list[str]:
                         f"exceeds {peak_key} * (1 + rel_uncertainty) ({max_allowed:.1f})"
                     )
 
-    if "dram_closed_loop" in mem:
-        peak_mv = mem["dram_bw_read_gbps"]
-        max_allowed = peak_mv["value"] * (1.0 + peak_mv["rel_uncertainty"])
-        for idx, pt in enumerate(mem["dram_closed_loop"]):
-            tokens = pt["tokens"]
-            mode = pt["issue_mode"]
-            if tokens == 0 and mode != "ld_global_v4":
+    for cl_key, peak_key in (
+        ("dram_closed_loop", "dram_bw_read_gbps"),
+        ("l2_closed_loop", "l2_bw_read_gbps"),
+    ):
+        if cl_key in mem:
+            peak_mv = mem[peak_key]
+            max_allowed = peak_mv["value"] * (1.0 + peak_mv["rel_uncertainty"])
+            for idx, pt in enumerate(mem[cl_key]):
+                tokens = pt["tokens"]
+                mode = pt["issue_mode"]
+                if tokens == 0 and mode != "ld_global_v4":
+                    errors.append(
+                        f"measured.memory.{cl_key}[{idx}]: tokens=0 requires issue_mode='ld_global_v4'"
+                    )
+                if tokens > 0 and mode != "cp_async":
+                    errors.append(
+                        f"measured.memory.{cl_key}[{idx}]: tokens={tokens} requires issue_mode='cp_async'"
+                    )
+                bw = pt["delivered_bw_gbps"]["value"]
+                if bw > max_allowed:
+                    errors.append(
+                        f"measured.memory.{cl_key}[{idx}].delivered_bw_gbps ({bw:.1f}) "
+                        f"exceeds {peak_key} * (1 + rel_uncertainty) ({max_allowed:.1f})"
+                    )
+
+    if "l2_merge_by_sharing" in mem:
+        dram_peak = mem["dram_bw_read_gbps"]
+        l2_peak = mem["l2_bw_read_gbps"]
+        max_dram = dram_peak["value"] * (1.0 + dram_peak["rel_uncertainty"])
+        max_l2 = l2_peak["value"] * (1.0 + l2_peak["rel_uncertainty"])
+        for idx, pt in enumerate(mem["l2_merge_by_sharing"]):
+            if pt["active_ctas"] % pt["sharing"] != 0:
                 errors.append(
-                    f"measured.memory.dram_closed_loop[{idx}]: tokens=0 requires issue_mode='ld_global_v4'"
+                    f"measured.memory.l2_merge_by_sharing[{idx}]: active_ctas ({pt['active_ctas']}) "
+                    f"must be divisible by sharing ({pt['sharing']})"
                 )
-            if tokens > 0 and mode != "cp_async":
+            if pt["dram_unique_bw_gbps"]["value"] > max_dram:
                 errors.append(
-                    f"measured.memory.dram_closed_loop[{idx}]: tokens={tokens} requires issue_mode='cp_async'"
+                    f"measured.memory.l2_merge_by_sharing[{idx}].dram_unique_bw_gbps "
+                    f"({pt['dram_unique_bw_gbps']['value']:.1f}) exceeds {max_dram:.1f}"
                 )
-            bw = pt["delivered_bw_gbps"]["value"]
-            if bw > max_allowed:
+            if pt["l2_to_sm_bw_gbps"]["value"] > max_l2:
                 errors.append(
-                    f"measured.memory.dram_closed_loop[{idx}].delivered_bw_gbps ({bw:.1f}) "
-                    f"exceeds dram_bw_read_gbps * (1 + rel_uncertainty) ({max_allowed:.1f})"
+                    f"measured.memory.l2_merge_by_sharing[{idx}].l2_to_sm_bw_gbps "
+                    f"({pt['l2_to_sm_bw_gbps']['value']:.1f}) exceeds {max_l2:.1f}"
                 )
 
     for lat_key, peak_key in (
