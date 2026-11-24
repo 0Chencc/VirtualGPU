@@ -104,11 +104,45 @@ impl From<&Profile> for L2Profile {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct L2SplitResult {
+    /// Bytes already resident in L2 at request time (warm L2 or surviving cross-wave data):
+    /// served at L2 bandwidth and L2 latency.
+    pub resident_hit_bytes: f64,
+    /// Bytes coalesced into an in-flight DRAM fill from concurrent resident CTAs (MSHR miss merge):
+    /// served at L2 bandwidth (no extra DRAM bandwidth), but waits on DRAM fill latency.
+    pub merged_bytes: f64,
+    /// Total bytes served by L2 (`resident_hit_bytes + merged_bytes`).
     pub l2_bytes: f64,
+    /// Bytes fetched from DRAM (DRAM bandwidth and DRAM latency).
     pub dram_bytes: f64,
     pub hit_ratio: f64,
     pub sector_aligned_bytes: u64,
     pub near_cliff: bool,
+}
+
+impl L2SplitResult {
+    fn zero() -> Self {
+        Self {
+            resident_hit_bytes: 0.0,
+            merged_bytes: 0.0,
+            l2_bytes: 0.0,
+            dram_bytes: 0.0,
+            hit_ratio: 0.0,
+            sector_aligned_bytes: 0,
+            near_cliff: false,
+        }
+    }
+
+    fn all_dram(sector_aligned_bytes: u64) -> Self {
+        Self {
+            resident_hit_bytes: 0.0,
+            merged_bytes: 0.0,
+            l2_bytes: 0.0,
+            dram_bytes: sector_aligned_bytes as f64,
+            hit_ratio: 0.0,
+            sector_aligned_bytes,
+            near_cliff: false,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -306,33 +340,15 @@ impl<'a> L2Model<'a> {
     ) -> L2SplitResult {
         let steps = k_end.saturating_sub(k_begin);
         if steps == 0 {
-            return L2SplitResult {
-                l2_bytes: 0.0,
-                dram_bytes: 0.0,
-                hit_ratio: 0.0,
-                sector_aligned_bytes: 0,
-                near_cliff: false,
-            };
+            return L2SplitResult::zero();
         }
 
         let Some(binding) = self.op_bindings.get(op_id) else {
-            return L2SplitResult {
-                l2_bytes: 0.0,
-                dram_bytes: 0.0,
-                hit_ratio: 0.0,
-                sector_aligned_bytes: 0,
-                near_cliff: false,
-            };
+            return L2SplitResult::zero();
         };
 
         let Some(entry) = self.lookup_strided(&binding.access_ref, cta_id, outer_idx) else {
-            return L2SplitResult {
-                l2_bytes: 0.0,
-                dram_bytes: 0.0,
-                hit_ratio: 0.0,
-                sector_aligned_bytes: 0,
-                near_cliff: false,
-            };
+            return L2SplitResult::zero();
         };
 
         let step_aligned = self.sector_aligned_step_bytes(entry);
@@ -342,23 +358,11 @@ impl<'a> L2Model<'a> {
         if is_write || binding.is_write {
             // Intentional M1/M2 simplification: treat all global stores as DRAM write-back traffic
             // without modeling write-allocate L2 hit credit.
-            return L2SplitResult {
-                l2_bytes: 0.0,
-                dram_bytes: total_f,
-                hit_ratio: 0.0,
-                sector_aligned_bytes: total_aligned,
-                near_cliff: false,
-            };
+            return L2SplitResult::all_dram(total_aligned);
         }
 
         if cache_policy == CachePolicy::Volatile {
-            return L2SplitResult {
-                l2_bytes: 0.0,
-                dram_bytes: total_f,
-                hit_ratio: 0.0,
-                sector_aligned_bytes: total_aligned,
-                near_cliff: false,
-            };
+            return L2SplitResult::all_dram(total_aligned);
         }
 
         let ckey = make_chunk_key(binding.tensor_idx, entry);
@@ -368,11 +372,9 @@ impl<'a> L2Model<'a> {
             .map(|(cnt, _)| (*cnt).max(1))
             .unwrap_or(1) as f64;
 
-        // 1. Intra-wave sharing: R concurrent CTAs sharing a chunk incur 1/R DRAM fetch.
-        let mut raw_hit = (sharing_count - 1.0) / sharing_count;
-
-        // 2. Cross-wave reuse: evaluate the empirical rescan curve at the reuse distance since
-        //    this chunk last streamed through L2.
+        // 1. Resident L2 hits (data already in L2 at request time -> L2 latency):
+        //    from cross-wave reuse or warm initial L2 state, evaluated on the empirical rescan curve.
+        let mut resident_raw = 0.0f64;
         if self.options.cross_wave_reuse {
             if let Some(&prev_clock) = self.last_seen_stream_byte.get(&ckey) {
                 let inner_trips = self.ir.inner_trip_count(cta_id, outer_idx).unwrap_or(1).max(1);
@@ -381,20 +383,23 @@ impl<'a> L2Model<'a> {
                     .stream_clock_bytes
                     .saturating_sub(prev_clock)
                     .max(full_stream);
-                raw_hit = raw_hit.max(self.eval_rescan_hit(reuse_dist as f64));
+                resident_raw = resident_raw.max(self.eval_rescan_hit(reuse_dist as f64));
             }
         }
-
-        // 3. Warm L2 initial state: repeated full-kernel scan has reuse distance equal to the
-        //    total deduplicated read footprint of the kernel.
         if self.initial_state == L2InitState::Warm {
             let warm_hit = if self.total_read_footprint_bytes == 0 {
                 1.0
             } else {
                 self.eval_rescan_hit(self.total_read_footprint_bytes as f64)
             };
-            raw_hit = raw_hit.max(warm_hit);
+            resident_raw = resident_raw.max(warm_hit);
         }
+
+        // 2. Concurrent intra-wave miss merging (MSHR coalescing -> L2 BW, DRAM fill latency):
+        //    the non-resident fraction (1 - resident_raw) is fetched from DRAM once across R
+        //    concurrent CTAs, so (R - 1) / R of the miss fraction coalesces as merged bytes.
+        let miss_raw = (1.0 - resident_raw).clamp(0.0, 1.0);
+        let merged_raw = miss_raw * (sharing_count - 1.0) / sharing_count;
 
         let eff_cap = self.profile.l2_effective_capacity_bytes.max(1) as f64;
         let working_set =
@@ -423,11 +428,17 @@ impl<'a> L2Model<'a> {
             }
         };
 
-        let hit_ratio = (raw_hit * cap_factor).clamp(0.0, 1.0);
-        let l2_bytes = total_f * hit_ratio;
-        let dram_bytes = total_f - l2_bytes;
+        let resident_ratio = (resident_raw * cap_factor).clamp(0.0, 1.0);
+        let merged_ratio = (merged_raw * cap_factor).clamp(0.0, 1.0 - resident_ratio);
+        let hit_ratio = (resident_ratio + merged_ratio).clamp(0.0, 1.0);
+        let resident_hit_bytes = total_f * resident_ratio;
+        let merged_bytes = total_f * merged_ratio;
+        let l2_bytes = resident_hit_bytes + merged_bytes;
+        let dram_bytes = (total_f - l2_bytes).max(0.0);
 
         L2SplitResult {
+            resident_hit_bytes,
+            merged_bytes,
             l2_bytes,
             dram_bytes,
             hit_ratio,
@@ -870,5 +881,56 @@ mod tests {
             "halving effective L2 must shift 39 MiB cliff to 19.5 MiB (0.326), got {}",
             r_pert.hit_ratio
         );
+    }
+
+    #[test]
+    fn split_distinguishes_resident_hits_from_mshr_merged_bytes() {
+        let ir_json = include_str!("../../../../schemas/examples/gemm_sm89.json");
+        let ir = KernelIR::from_json_str(ir_json).unwrap();
+        let prof = synthetic_l2_profile();
+
+        // 1. Cold first wave (16 CTAs: A shared by 2, B shared by 8):
+        //    nothing is resident yet, so all L2 savings are MSHR merged_bytes.
+        let mut l2_cold = L2Model::new(&ir, prof.clone(), L2InitState::Cold, L2Options::default());
+        for cta in 0..16u32 {
+            l2_cold.begin_tile(cta % 46, cta, 0, 0.0);
+        }
+        let cold_b = l2_cold.split(0, 0, 0, "load_B", 0, 128, false, CachePolicy::Default, 0.0);
+        let total = cold_b.sector_aligned_bytes as f64;
+        assert!(cold_b.resident_hit_bytes.abs() < 1e-6, "cold wave 1 has zero resident hits");
+        assert!((cold_b.merged_bytes - total * 0.875).abs() < 1e-3);
+        assert!((cold_b.dram_bytes - total * 0.125).abs() < 1e-3);
+        assert!((cold_b.l2_bytes - (cold_b.resident_hit_bytes + cold_b.merged_bytes)).abs() < 1e-6);
+
+        // 2. Cross-wave reuse after 10 MiB wave (fits in 36 MiB L2):
+        //    A row is now resident in L2 -> all bytes are resident_hit_bytes, zero merged/dram.
+        for cta in 0..16u32 {
+            l2_cold.end_tile(cta % 46, cta, 0, 1000.0);
+        }
+        l2_cold.begin_tile(0, 16, 0, 1000.0);
+        let xwave_a = l2_cold.split(0, 16, 0, "load_A", 0, 128, false, CachePolicy::Default, 1000.0);
+        let total_a = xwave_a.sector_aligned_bytes as f64;
+        assert!((xwave_a.resident_hit_bytes - total_a).abs() < 1e-3);
+        assert!(xwave_a.merged_bytes.abs() < 1e-6);
+        assert!(xwave_a.dram_bytes.abs() < 1e-6);
+
+        // 3. Partial warm residency + concurrent sharing:
+        //    synthetic profile gives 0.5 resident hit at 39.6 MiB. With K=79 (39.5 MiB) or
+        //    exact 39.6 MiB curve point, test exact 50% resident + 8-way B sharing ->
+        //    50% resident, 50% * 7/8 = 43.75% merged, 50% * 1/8 = 6.25% dram.
+        let mut prof_half = prof;
+        let mib = 1024.0 * 1024.0;
+        prof_half.rescan_hit_curve = vec![(32.0 * mib, 0.5), (128.0 * mib, 0.5)];
+        let mut l2_partial = L2Model::new(&ir, prof_half, L2InitState::Warm, L2Options::default());
+        for cta in 0..16u32 {
+            l2_partial.begin_tile(cta % 46, cta, 0, 0.0);
+        }
+        let pb = l2_partial.split(0, 0, 0, "load_B", 0, 128, false, CachePolicy::Default, 0.0);
+        let ptot = pb.sector_aligned_bytes as f64;
+        assert!((pb.resident_hit_bytes - ptot * 0.5).abs() < 1e-3);
+        assert!((pb.merged_bytes - ptot * 0.4375).abs() < 1e-3);
+        assert!((pb.dram_bytes - ptot * 0.0625).abs() < 1e-3);
+        assert!((pb.l2_bytes - (pb.resident_hit_bytes + pb.merged_bytes)).abs() < 1e-6);
+        assert!((pb.l2_bytes + pb.dram_bytes - ptot).abs() < 1e-3);
     }
 }
