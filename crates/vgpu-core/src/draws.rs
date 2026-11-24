@@ -4,9 +4,10 @@
 //! every perturbation dimension:
 //!
 //! - each measured value is scaled uniformly within `+/- rel_uncertainty`;
-//!   values sharing a `perturb_group` share one dimension, and every point of
-//!   one curve (`*_by_active_sms`, `*_by_warps`, ...) shares one dimension so
-//!   the curve keeps its shape;
+//!   values sharing a `perturb_group`, and all points of one curve
+//!   (`*_by_active_sms`, `*_by_warps`, ...), share one dimension and one
+//!   multiplier, so a curve keeps its shape. The multiplier's range is the
+//!   largest `rel_uncertainty` among the values sharing it;
 //! - the L2 model's eviction mode and cross-wave reuse;
 //! - the scale of spill traffic whose loop placement the compiler did not
 //!   confirm, from none to every iteration.
@@ -102,11 +103,14 @@ pub fn draws(profile_json: &str, n: usize, seed: u64) -> Result<Vec<Draw>, serde
     let nominal: Value = serde_json::from_str(profile_json)?;
     let mut measured = nominal.get("measured").cloned().unwrap_or(Value::Null);
 
-    // Dimension index per key, in a stable order.
-    let mut dims: BTreeMap<String, usize> = BTreeMap::new();
-    visit(&mut measured, "measured", None, &mut |key, _| {
+    // Per key: dimension index, in a stable order, and the largest
+    // relative uncertainty of the values sharing it.
+    let mut dims: BTreeMap<String, (usize, f64)> = BTreeMap::new();
+    visit(&mut measured, "measured", None, &mut |key, mv| {
+        let u = mv["rel_uncertainty"].as_f64().unwrap_or(0.0);
         let next = dims.len();
-        dims.entry(key.to_string()).or_insert(next);
+        let d = dims.entry(key.to_string()).or_insert((next, 0.0));
+        d.1 = d.1.max(u);
     });
     let discrete = dims.len();
     let total = discrete + 3; // eviction mode, cross-wave reuse, assumed spill scale
@@ -122,8 +126,8 @@ pub fn draws(profile_json: &str, n: usize, seed: u64) -> Result<Vec<Draw>, serde
     for (i, x) in samples.iter().enumerate() {
         let mut v = nominal.clone();
         visit(&mut v["measured"], "measured", None, &mut |key, mv| {
-            let u = mv["rel_uncertainty"].as_f64().unwrap_or(0.0);
-            let scale = 1.0 + u * (2.0 * x[dims[key]] - 1.0);
+            let (dim, u) = dims[key];
+            let scale = 1.0 + u * (2.0 * x[dim] - 1.0);
             let value = mv["value"].as_f64().unwrap_or(0.0) * scale;
             mv["value"] = Value::from(value);
         });
@@ -174,17 +178,47 @@ mod tests {
     }
 
     #[test]
-    fn curves_scale_as_a_whole_within_uncertainty() {
-        let nominal = dram_curve(&Profile::from_json(PROFILE).unwrap());
-        for d in draws(PROFILE, 16, 17).unwrap() {
+    fn a_curve_with_mixed_uncertainties_keeps_its_shape() {
+        // Synthetic profile: one curve whose points carry different
+        // uncertainties, and a group whose members do too.
+        let mut v: Value = serde_json::from_str(PROFILE).unwrap();
+        let mem = &mut v["measured"]["memory"];
+        for (i, q) in mem["dram_bw_by_active_sms"]
+            .as_array_mut()
+            .unwrap()
+            .iter_mut()
+            .enumerate()
+        {
+            q["bw_gbps"]["rel_uncertainty"] = Value::from(0.05 + 0.05 * i as f64);
+            q["bw_gbps"]["perturb_group"] = Value::Null;
+        }
+        mem["dram_latency_ns"]["perturb_group"] = Value::from("shared");
+        mem["dram_latency_ns"]["rel_uncertainty"] = Value::from(0.1);
+        mem["l2_latency_ns"]["perturb_group"] = Value::from("shared");
+        mem["l2_latency_ns"]["rel_uncertainty"] = Value::from(0.3);
+        let text = v.to_string();
+        let nominal = Profile::from_json(&text).unwrap();
+        let widest = 0.05 + 0.05 * (nominal.measured.memory.dram_bw_by_active_sms.len() - 1) as f64;
+        let mut largest: f64 = 0.0;
+        for d in draws(&text, 32, 17).unwrap() {
             let ratios: Vec<f64> = dram_curve(&d.profile)
                 .iter()
-                .zip(&nominal)
+                .zip(dram_curve(&nominal))
                 .map(|(a, b)| a / b)
                 .collect();
-            assert!(ratios.iter().all(|r| (r - ratios[0]).abs() < 1e-12));
-            assert!((ratios[0] - 1.0).abs() <= 0.1 + 1e-12, "{}", ratios[0]);
+            assert!(
+                ratios.iter().all(|r| (r - ratios[0]).abs() < 1e-12),
+                "{ratios:?}"
+            );
+            assert!((ratios[0] - 1.0).abs() <= widest + 1e-12);
+            largest = largest.max((ratios[0] - 1.0).abs());
+            let m = &d.profile.measured.memory;
+            let a = m.dram_latency_ns.value / nominal.measured.memory.dram_latency_ns.value;
+            let b = m.l2_latency_ns.value / nominal.measured.memory.l2_latency_ns.value;
+            assert!((a - b).abs() < 1e-12 && (a - 1.0).abs() <= 0.3 + 1e-12);
         }
+        // The range is the widest point's, not the first point's.
+        assert!(largest > 0.05 + 0.05, "{largest}");
     }
 
     #[test]
