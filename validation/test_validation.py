@@ -7,8 +7,9 @@ import unittest
 from virtualgpu.frontend.compiler import ARTIFACT_HASH_VERSION
 
 from validation.baseline import gemm_work, latency_ns, predict
+from validation.neusight import TileFeatures, fit, leave_one_case_out
 from validation.score import check_artifact, kendall_tau_b, median_ci95, observed_pair, predicted_pair, score
-from validation.suite import manifest
+from validation.suite import development_manifest, manifest
 
 
 class ManifestTest(unittest.TestCase):
@@ -22,6 +23,14 @@ class ManifestTest(unittest.TestCase):
             splits[case["split"]].add(tuple(case["shape"]))
         self.assertFalse(splits["development"] & splits["holdout"])
         self.assertEqual(len(frozen["cases"][0]["config_ids"]), 36)
+
+    def test_materialized_development_boundaries(self):
+        suite = development_manifest({"specs": {"sm_count": 46},
+                                      "provenance": {"profile_revision": "test"}})
+        self.assertTrue(all(case["split"] == "development" for case in suite["cases"]))
+        boundaries = [case for case in suite["cases"] if case["family"] == "sm-round"]
+        self.assertEqual([case["shape"][1] // 64 for case in boundaries], [45, 46, 47])
+        self.assertTrue(all(len(case["config_ids"]) == 36 for case in boundaries))
 
 
 class BaselineTest(unittest.TestCase):
@@ -100,6 +109,14 @@ class ScoreTest(unittest.TestCase):
         self.assertEqual(result["configs"]["a"]["relative_ci95_half_width"], 0)
         self.assertAlmostEqual(result["configs"]["b"]["gap_to_measured_best"], 0.03)
 
+    def test_nominal_baseline_pair_margin(self):
+        blocks = {("session", index): 100 for index in range(3)}
+        records = {key: {"status": "ok", "nominal_latency_ns": value}
+                   for key, value in (("a", 100), ("b", 104), ("c", 106))}
+        result = score(dict.fromkeys(records, blocks), records, nominal_pair_margin=0.05)
+        self.assertEqual(result["pair_confusion"],
+                         {"indistinguishable": {"indistinguishable": 2, "a_faster": 1}})
+
     def test_tau_b_with_ties(self):
         actual = {"a": 1, "b": 2, "c": 2}
         self.assertAlmostEqual(kendall_tau_b(actual, {"a": 1, "b": 2, "c": 3}), 2 / 6**0.5)
@@ -132,6 +149,20 @@ class ScoreTest(unittest.TestCase):
         self.assertEqual(result["kendall_tau_b"], 1)
         self.assertEqual(result["scored_configs"], 2)
         self.assertEqual(result["measured_configs"], 3)
+
+
+class NeuSightTest(unittest.TestCase):
+    def test_fit_uses_only_development_cases_other_than_scored_case(self):
+        tile = TileFeatures((1.0, 2.0), 30.0, 3, 5.0)
+        examples = [
+            {"case_id": "a", "split": "development", "tile": tile, "measured_ns": 20.0},
+            {"case_id": "b", "split": "development", "tile": tile, "measured_ns": 185.0},
+        ]
+        fits = leave_one_case_out(examples)
+        self.assertAlmostEqual(fits["a"].predict_ns(tile), 185.0)
+        self.assertAlmostEqual(fits["b"].predict_ns(tile), tile.kernel_floor_ns)
+        with self.assertRaisesRegex(ValueError, "only development"):
+            fit([dict(examples[0], split="holdout")])
 
 
 if __name__ == "__main__":

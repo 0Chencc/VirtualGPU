@@ -74,3 +74,40 @@ mismatched samples remain in runner reports and are excluded from validated
 scoring. The scorer requires the current hash version for both artifacts.
 The exploratory flag skips the AOT comparison and still requires a
 current-version JIT report.
+
+## Run the M2 development sweep
+
+Generate the development-only manifest using the measured 4070 profile. This
+also materializes the planned single-SM-round boundary cases from its SM
+count. The frozen portable manifest retains its holdout declarations.
+
+```sh
+mkdir -p results/m2
+.venv/bin/python -m validation.suite results/m2/suite.json \
+  --development-profile profiles/rtx4070.json
+TRITON_DEFAULT_FP_FUSION=1 .venv/bin/python -m validation.aot \
+  results/m2/suite.json results/m2/aot
+TRITON_DEFAULT_FP_FUSION=1 flock /tmp/virtualgpu-gpu.lock \
+  .venv/bin/python -m validation.runner results/m2/suite.json \
+  decode-1 results/m2/decode-1-session-1.json --blocks 10 --seed 101
+```
+
+Collect sessions 1, 2, and 3 per development case, using order seeds 101,
+102, and 103. Each invocation takes and releases the lock independently.
+The offline compiler records rejected candidates in each case directory.
+The experiment verifies the artifacts and all blocks before using the timings.
+
+```sh
+.venv/bin/python -m validation.experiment results/m2/suite.json results/m2 \
+  profiles/rtx4070.json results/m2/scores.json
+```
+
+The learned baseline needs NumPy. It learns bounded wave efficiency with a
+fixed ridge penalty from the other development cases, using both cache regimes.
+The report includes a fit trained on all development cases for future transfer
+evaluation. The two baselines apply the same 5% practical band to nominal
+predictions for pair scoring. Pass `--core-predictions` to include the model
+comparison. The JSON carries `profile_revision`, `manifest_sha256`, and
+`perturbation_draws`. Its `cases` object maps case ID, cache regime, and config
+ID to prediction records. Each successful record has draws keyed by ID,
+including draw 0 equal to `nominal_latency_ns`.

@@ -72,11 +72,32 @@ def manifest():
     }
 
 
+def development_manifest(profile):
+    """Resolve development-only boundary cases against the measured device."""
+    suite = manifest()
+    suite["cases"] = [entry for entry in suite["cases"] if entry["split"] == "development"]
+    configs = {entry["config_id"]: entry for entry in suite["configs"]}
+    core_ids = suite["cases"][0]["config_ids"]
+    rule = next(rule for rule in suite.pop("boundary_rules")
+                if rule["family"] == "sm-round" and rule["split"] == "development")
+    bm, bn, _ = configs[rule["reference_config_id"]]["tile"]
+    sm_count = profile["specs"]["sm_count"]
+    for name, offset in zip(("below", "exact", "above"), rule["offsets"], strict=True):
+        suite["cases"].append(case(f"sm-round-{name}", "development", "sm-round",
+                                   (bm, bn * (sm_count + offset), 4096), core_ids))
+    suite["boundary_profile_revision"] = profile["provenance"]["profile_revision"]
+    return suite
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("output", type=Path)
+    parser.add_argument("--development-profile", type=Path,
+                        help="Emit the development subset and resolve its device-dependent cases")
     args = parser.parse_args()
-    args.output.write_text(json.dumps(manifest(), indent=2) + "\n")
+    suite = (development_manifest(json.loads(args.development_profile.read_text()))
+             if args.development_profile else manifest())
+    args.output.write_text(json.dumps(suite, indent=2) + "\n")
 
 
 if __name__ == "__main__":

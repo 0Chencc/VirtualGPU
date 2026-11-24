@@ -104,7 +104,13 @@ def check_artifact(jit, ir):
     }
 
 
-def score(timings, records, k=5, samples=1000, seed=17):
+def pair_observations(timings, samples=1000, seed=17):
+    return {(a, b): observed_pair(timings[a], timings[b], samples, seed)
+            for a, b in itertools.combinations(sorted(timings), 2)}
+
+
+def score(timings, records, k=5, samples=1000, seed=17, nominal_pair_margin=None,
+          observations=None):
     if not timings or k < 1 or samples < 2:
         raise ValueError("Require timings, positive k, and at least two bootstrap samples")
     measured = {key: statistics.median(values.values()) for key, values in timings.items()}
@@ -115,11 +121,17 @@ def score(timings, records, k=5, samples=1000, seed=17):
     regret = min((measured[key] / oracle - 1 for key in shortlist), default=None)
     pairs = []
     confusion = {}
-    for a, b in itertools.combinations(sorted(measured), 2):
-        observed, interval = observed_pair(timings[a], timings[b], samples, seed)
+    if observations is None:
+        observations = pair_observations(timings, samples, seed)
+    for (a, b), (observed, interval) in observations.items():
         forecast = "unavailable"
         if a in predicted and b in predicted:
-            forecast = predicted_pair(records[a].get("draws", {}), records[b].get("draws", {}))
+            if nominal_pair_margin is None:
+                forecast = predicted_pair(records[a].get("draws", {}), records[b].get("draws", {}))
+            elif max(predicted[a], predicted[b]) <= min(predicted[a], predicted[b]) * (1 + nominal_pair_margin):
+                forecast = "indistinguishable"
+            else:
+                forecast = "a_faster" if predicted[a] < predicted[b] else "b_faster"
         pairs.append({
             "a": a, "b": b, "observed": observed, "predicted": forecast,
             "observed_log_ratio_ci95": interval,
