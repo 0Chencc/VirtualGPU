@@ -777,12 +777,20 @@ mod tests {
         let prof = L2Profile::from_gpu_profile_json(profile_json)
             .expect("profiles/rtx4070.json should parse into L2Profile");
 
+        // Measured values change whenever the profile is re-measured, so read them from the file.
+        let raw: serde_json::Value = serde_json::from_str(profile_json).unwrap();
+        let measured = |path: &str| raw.pointer(path).and_then(|v| v.as_f64()).unwrap() as u64;
+        let capacity = measured("/measured/memory/l2_effective_capacity_bytes/value");
+
         assert_eq!(prof.l2_size_bytes, 37_748_736);
-        assert_eq!(prof.l2_effective_capacity_bytes, 32_086_426);
+        assert_eq!(prof.l2_effective_capacity_bytes, capacity);
         assert_eq!(prof.l2_line_bytes, 128);
         assert_eq!(prof.l2_sector_bytes, 32);
         assert_eq!(prof.l1_size_bytes, 131_072);
-        assert_eq!(prof.l1_to_l2_spill_threshold_bytes_per_sm, 65_536);
+        assert_eq!(
+            prof.l1_to_l2_spill_threshold_bytes_per_sm,
+            measured("/measured/spill/l1_to_l2_spill_threshold_bytes_per_sm/value")
+        );
 
         // Verify L2Model actually consumes the loaded profile's l2_effective_capacity_bytes.
         let ir_json = include_str!("../../../../schemas/examples/gemm_sm89.json");
@@ -790,7 +798,7 @@ mod tests {
         let mut l2 = L2Model::new(&ir, prof, L2InitState::Warm, L2Options::default());
         l2.begin_tile(0, 0, 0, 0.0);
         let res = l2.split(0, 0, 0, "load_A", 0, 128, false, CachePolicy::Default, 0.0);
-        let expected = 32_086_426.0 / (64.0 * 1024.0 * 1024.0);
+        let expected = (capacity as f64 / (64.0 * 1024.0 * 1024.0)).min(1.0);
         assert!(
             (res.hit_ratio - expected).abs() < 1e-6,
             "expected warm hit from rtx4070.json ({}), got {}",
