@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pytest
@@ -11,6 +12,7 @@ PROFILE = (ROOT / "profiles/rtx4070.json").read_text()
 
 def test_predict_example_gemm_on_rtx4070():
     r = _core.predict(IR, PROFILE)
+    assert r["status"] == "ok"
     assert r["time_ns"] > r["makespan_ns"] > 0
     assert r["ctas_per_sm"] >= 1
     assert 0 < r["tail_efficiency"] <= 1
@@ -19,3 +21,17 @@ def test_predict_example_gemm_on_rtx4070():
 def test_predict_rejects_bad_l2_state():
     with pytest.raises(ValueError):
         _core.predict(IR, PROFILE, l2_state="lukewarm")
+
+
+def test_predict_reports_cta_that_does_not_fit_as_unsupported():
+    ir = json.loads(IR)
+    ir["resources"]["static_smem_bytes"] = 131 * 1024
+    r = _core.predict(json.dumps(ir), PROFILE)
+    assert r["status"] == "unsupported"
+    assert "TooMuchSharedMemory" in r["reason"]
+    assert "time_ns" not in r
+
+
+def test_schemas_are_embedded():
+    for name in ("kernel_ir", "gpu_profile"):
+        assert json.loads(_core.schema(name))["$schema"]

@@ -4,7 +4,7 @@ use crate::from_ir::{kernel_from_ir, IrL2};
 use crate::ir::KernelIR;
 use crate::l2::{L2InitState, L2Options};
 use crate::profile::Profile;
-use crate::sim::{simulate, Machine};
+use crate::sim::{simulate, Machine, ModelError};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
@@ -16,7 +16,9 @@ fn err(e: impl std::fmt::Debug) -> PyErr {
 /// Predict one kernel variant on one GPU profile at the nominal draw.
 ///
 /// Takes the KernelIR and profile as JSON strings and `l2_state` as "cold" or
-/// "warm". Returns a dict with the predicted time and diagnostics.
+/// "warm". Returns a dict with `status`: "ok" with the predicted time and
+/// diagnostics, or "unsupported" with a `reason` (for example a CTA that does
+/// not fit on an SM). Malformed input raises `ValueError`.
 #[pyfunction]
 #[pyo3(signature = (kernel_ir_json, profile_json, l2_state = "cold"))]
 fn predict<'py>(
@@ -37,12 +39,29 @@ fn predict<'py>(
     let ir = KernelIR::from_json_str(kernel_ir_json).map_err(err)?;
     ir.validate().map_err(err)?;
     let p = Profile::from_json(profile_json).map_err(err)?;
-    let k = kernel_from_ir(&ir).map_err(err)?;
-    let m = Machine::nominal(&p, &k.mma_key).map_err(err)?;
-    let mut l2 = IrL2::new(&ir, &p, initial, L2Options::default());
-    let r = simulate(&k, &p, &m, &mut l2).map_err(err)?;
 
     let d = PyDict::new(py);
+    d.set_item("l2_state", l2_state)?;
+    d.set_item("dispatch_policy", "round_robin")?;
+    let result = kernel_from_ir(&ir).and_then(|k| {
+        let m = Machine::nominal(&p, &k.mma_key)?;
+        let mut l2 = IrL2::new(&ir, &p, initial, L2Options::default());
+        simulate(&k, &p, &m, &mut l2)
+    });
+    let r = match result {
+        Ok(r) => r,
+        Err(ModelError::EmptyCurve(name)) => {
+            return Err(PyValueError::new_err(format!(
+                "profile curve {name} is empty"
+            )))
+        }
+        Err(e) => {
+            d.set_item("status", "unsupported")?;
+            d.set_item("reason", format!("{e:?}"))?;
+            return Ok(d);
+        }
+    };
+    d.set_item("status", "ok")?;
     d.set_item("time_ns", r.time_ns)?;
     d.set_item("makespan_ns", r.makespan_ns)?;
     d.set_item("ctas_per_sm", r.occupancy.ctas_per_sm)?;
@@ -52,14 +71,25 @@ fn predict<'py>(
     d.set_item("load_bytes", r.load_bytes)?;
     d.set_item("l2_hit_bytes", r.l2_hit_bytes)?;
     d.set_item("dram_bytes", r.dram_bytes)?;
-    d.set_item("l2_state", l2_state)?;
-    d.set_item("dispatch_policy", "round_robin")?;
     Ok(d)
+}
+
+/// The JSON Schema contracts, embedded at build time so installed wheels have them.
+#[pyfunction]
+fn schema(name: &str) -> PyResult<&'static str> {
+    match name {
+        "kernel_ir" => Ok(include_str!("../../../schemas/kernel_ir.schema.json")),
+        "gpu_profile" => Ok(include_str!("../../../schemas/gpu_profile.schema.json")),
+        other => Err(PyValueError::new_err(format!(
+            "unknown schema {other}; expected kernel_ir or gpu_profile"
+        ))),
+    }
 }
 
 #[pymodule]
 fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     m.add_function(wrap_pyfunction!(predict, m)?)?;
+    m.add_function(wrap_pyfunction!(schema, m)?)?;
     Ok(())
 }
