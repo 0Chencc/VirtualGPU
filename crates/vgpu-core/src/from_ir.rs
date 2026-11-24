@@ -2,7 +2,8 @@
 //! L2 model.
 
 use crate::ir::{self, CachePolicy, KernelIR, Op, WarpGroupRole};
-use crate::kernel::{Access, Kernel, Tile, TripCounts, Work};
+use crate::kernel::{Access, Kernel, Spill, SpillScope, Tile, TripCounts, Work};
+use crate::l2::SpillTraffic;
 use crate::l2::{L2InitState, L2Model, L2Options, L2Profile};
 use crate::profile::Profile;
 use crate::sim::{ModelError, L2};
@@ -88,6 +89,17 @@ pub fn kernel_from_ir(ir: &KernelIR) -> Result<Kernel, ModelError> {
         prefetch_distance: ir.body.pipeline_loop.prefetch_distance,
         epilogue: work(&ir.body.epilogue.ops, &mut mma_key)?,
     };
+    let r = &ir.resources;
+    let spill = Spill {
+        bytes_per_thread: (r.spill_loads_bytes + r.spill_stores_bytes) as f64,
+        stack_frame_bytes: r.stack_frame_bytes,
+        scope: match r.spill_scope {
+            ir::SpillScope::None => SpillScope::None,
+            ir::SpillScope::PrologueEpilogue => SpillScope::Once,
+            ir::SpillScope::InnerLoopConfirmed => SpillScope::PerIteration { assumed: false },
+            ir::SpillScope::InnerLoopAssumed => SpillScope::PerIteration { assumed: true },
+        },
+    };
     Ok(Kernel {
         grid: u32_of(ir.total_ctas(), "grid size")?,
         num_warps: ir.launch.num_warps,
@@ -96,6 +108,7 @@ pub fn kernel_from_ir(ir: &KernelIR) -> Result<Kernel, ModelError> {
         tiles_per_program,
         mma_key: mma_key.ok_or_else(|| unsupported("kernel without MMA"))?,
         tile,
+        spill,
     })
 }
 
@@ -174,5 +187,22 @@ impl L2 for IrL2<'_> {
             t_ns,
         );
         (r.l2_bytes, r.dram_bytes)
+    }
+
+    fn spill(&mut self, sm: u32, active_threads_in_sm: u32, s: &Spill) -> (f64, f64, f64) {
+        let bytes = s.bytes_per_thread.round() as u64;
+        let SpillTraffic {
+            l1_bytes_per_iter,
+            l2_bytes_per_iter,
+            dram_bytes_per_iter,
+            ..
+        } = self
+            .model
+            .account_spill(sm, active_threads_in_sm, s.stack_frame_bytes, bytes, 0);
+        (
+            l1_bytes_per_iter as f64,
+            l2_bytes_per_iter as f64,
+            dram_bytes_per_iter as f64,
+        )
     }
 }

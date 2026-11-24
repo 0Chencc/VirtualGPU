@@ -39,6 +39,28 @@ pub struct Tile {
     pub epilogue: Work,
 }
 
+/// When register spill traffic happens.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum SpillScope {
+    #[default]
+    None,
+    /// Once per tile, outside the pipeline loop.
+    Once,
+    /// Every pipeline iteration. `assumed` when the compiler did not confirm
+    /// that the spill code is inside the loop.
+    PerIteration { assumed: bool },
+}
+
+/// Register spills as reported by the assembler.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Spill {
+    /// Spill load plus store bytes per thread per execution of the scope.
+    pub bytes_per_thread: f64,
+    /// Local memory frame per thread.
+    pub stack_frame_bytes: u64,
+    pub scope: SpillScope,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum TripCounts {
     Uniform(u32),
@@ -59,6 +81,7 @@ pub struct Kernel {
     /// Profile key of the MMA instruction, `<op_class>:<a>:<b>:<acc>:<MxNxK>`.
     pub mma_key: String,
     pub tile: Tile,
+    pub spill: Spill,
 }
 
 impl Kernel {

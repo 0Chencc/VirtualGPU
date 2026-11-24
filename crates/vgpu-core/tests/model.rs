@@ -1,4 +1,4 @@
-use vgpu_core::kernel::{Access, Kernel, Tile, TripCounts, Work};
+use vgpu_core::kernel::{Access, Kernel, Spill, SpillScope, Tile, TripCounts, Work};
 use vgpu_core::occupancy::{occupancy, Limiter, OccupancyError};
 use vgpu_core::profile::Profile;
 use vgpu_core::sim::{simulate, ConstantHitRatio, Machine, Prediction};
@@ -25,6 +25,7 @@ fn gemm(grid: u32, iterations: u32, prefetch_distance: u32) -> Kernel {
         smem_per_cta_bytes: 16384 * u64::from(prefetch_distance + 1),
         tiles_per_program: TripCounts::Uniform(1),
         mma_key: MMA.to_string(),
+        spill: Spill::default(),
         tile: Tile {
             prologue: Work::default(),
             iterations,
@@ -288,4 +289,29 @@ fn load_raises_latency() {
         loaded.makespan_ns,
         idle.makespan_ns
     );
+}
+
+#[test]
+fn spills_cost_local_memory_bandwidth_per_scope() {
+    let base = compute_only(46);
+    let spilled = |scope| {
+        let mut k = compute_only(46);
+        k.spill = Spill {
+            bytes_per_thread: 4096.0,
+            stack_frame_bytes: 64,
+            scope,
+        };
+        k
+    };
+    let mut m = machine(&base);
+    m.local_bw = 1.0; // slow enough that per-iteration spills dominate
+    let t = |k: &Kernel| run(k, m.clone()).makespan_ns;
+    let none = t(&base);
+    let once = t(&spilled(SpillScope::Once));
+    let per_iter = spilled(SpillScope::PerIteration { assumed: false });
+    let every = t(&per_iter);
+    assert!(none < once && once < every, "{none} {once} {every}");
+    // 64 iterations of 4096 B for 128 threads at 1 B/ns, one CTA per SM.
+    assert!(close(every, 64.0 * 4096.0 * 128.0), "{every}");
+    assert!(run(&per_iter, m.clone()).bound_fraction[4] > 0.99);
 }

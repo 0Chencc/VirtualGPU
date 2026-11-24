@@ -6,7 +6,7 @@
 use std::time::Instant;
 use vgpu_core::from_ir::{kernel_from_ir, IrL2};
 use vgpu_core::ir::KernelIR;
-use vgpu_core::kernel::{Access, Kernel, Tile, TripCounts, Work};
+use vgpu_core::kernel::{Access, Kernel, Spill, Tile, TripCounts, Work};
 use vgpu_core::l2::{L2InitState, L2Options};
 use vgpu_core::profile::Profile;
 use vgpu_core::sim::{simulate, ConstantHitRatio, Machine};
@@ -28,6 +28,7 @@ fn main() {
         smem_per_cta_bytes: 3 * 16384,
         tiles_per_program: TripCounts::Uniform(1),
         mma_key: "mma.sync:f16:f16:f32:16x8x16".to_string(),
+        spill: Spill::default(),
         tile: Tile {
             prologue: Work::default(),
             iterations: 128,

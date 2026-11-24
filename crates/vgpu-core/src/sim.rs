@@ -11,7 +11,7 @@
 //!
 //! See `docs/proposals/model-core.md`, sections 3.1 to 3.5.
 
-use crate::kernel::{Access, Kernel};
+use crate::kernel::{Access, Kernel, Spill, SpillScope};
 use crate::occupancy::{occupancy, Occupancy, OccupancyError};
 use crate::profile::{interpolate, Profile};
 
@@ -33,6 +33,16 @@ pub trait L2 {
         is_write: bool,
         t_ns: f64,
     ) -> (f64, f64);
+
+    /// Spill traffic of all resident threads of one SM per execution of the
+    /// spill scope, as `(L1 bytes, L2 bytes, DRAM bytes)`.
+    fn spill(&mut self, _sm: u32, active_threads_in_sm: u32, s: &Spill) -> (f64, f64, f64) {
+        (
+            s.bytes_per_thread * f64::from(active_threads_in_sm),
+            0.0,
+            0.0,
+        )
+    }
 }
 
 /// Fixed hit ratio for loads, nominal bytes, stores go to DRAM. For tests.
@@ -82,6 +92,8 @@ pub struct Machine {
     pub issue_rate: f64,
     /// Shared memory bytes per ns per SM.
     pub smem_bw: f64,
+    /// L1-resident local memory (spill) bytes per ns per SM.
+    pub local_bw: f64,
     pub launch_overhead_ns: f64,
     pub cta_launch_ns: f64,
 }
@@ -153,6 +165,11 @@ impl Machine {
             )?,
             issue_rate: m.compute.non_mma_issue_rate_per_sm_gips.value,
             smem_bw: m.memory.smem_bw_per_sm_gbps.value,
+            local_bw: m
+                .spill
+                .get("local_mem_l1_hit_bw_per_sm_gbps")
+                .and_then(Option::as_ref)
+                .map_or(m.memory.smem_bw_per_sm_gbps.value, |v| v.value),
             launch_overhead_ns: m.overhead.launch_overhead_us.value * 1e3,
             cta_launch_ns: m.overhead.per_cta_launch_latency_ns.value,
         })
@@ -175,11 +192,11 @@ pub struct Prediction {
     pub events: u64,
     /// Fraction of CTA-time during which each resource of `RESOURCES` was the
     /// bound of the CTA's current phase.
-    pub bound_fraction: [f64; 6],
+    pub bound_fraction: [f64; 7],
 }
 
 /// Resources a phase can be bound by, in `Prediction::bound_fraction` order.
-pub const RESOURCES: [&str; 6] = ["latency", "mma", "issue", "smem", "l2", "dram"];
+pub const RESOURCES: [&str; 7] = ["latency", "mma", "issue", "smem", "local", "l2", "dram"];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Phase {
@@ -195,6 +212,8 @@ struct Demand {
     flops: f64,
     warp_insts: f64,
     smem_bytes: f64,
+    /// Spill bytes served by L1.
+    local_bytes: f64,
     /// All bytes through L2 (loads and stores).
     bytes: f64,
     dram_bytes: f64,
@@ -213,6 +232,7 @@ impl Demand {
         self.flops == 0.0
             && self.warp_insts == 0.0
             && self.smem_bytes == 0.0
+            && self.local_bytes == 0.0
             && self.bytes == 0.0
             && self.fixed_latency_ns == 0.0
             && self.round_trips == 0.0
@@ -279,6 +299,9 @@ struct Sim<'a, L: L2> {
     load_bytes: f64,
     l2_hit_bytes: f64,
     dram_bytes: f64,
+    /// Spill traffic of one CTA per execution of the spill scope, as
+    /// `(L1 bytes, L2 bytes, DRAM bytes)`.
+    spill: (f64, f64, f64),
 }
 
 impl<'a, L: L2> Sim<'a, L> {
@@ -349,13 +372,26 @@ impl<'a, L: L2> Sim<'a, L> {
         self.load_bytes += load_bytes;
         self.l2_hit_bytes += hits;
         self.dram_bytes += misses + stores;
+        let spill_executions = match (k.spill.scope, phase) {
+            (SpillScope::Once, Phase::Prologue) => 1.0,
+            (SpillScope::PerIteration { .. }, Phase::Main) => f64::from(steps),
+            _ => 0.0,
+        };
+        let (spill_l1, spill_l2, spill_dram) = self.spill;
+        let (spill_l1, spill_l2, spill_dram) = (
+            spill_l1 * spill_executions,
+            spill_l2 * spill_executions,
+            spill_dram * spill_executions,
+        );
+        self.dram_bytes += spill_dram;
         let steps = f64::from(steps);
         Demand {
             flops: compute.mma_flops * steps,
             warp_insts: compute.alu_insts_per_warp * f64::from(k.num_warps) * steps,
             smem_bytes: compute.smem_bytes * steps,
-            bytes: load_bytes + stores,
-            dram_bytes: misses + stores,
+            local_bytes: spill_l1,
+            bytes: load_bytes + stores + spill_l2 + spill_dram,
+            dram_bytes: misses + stores + spill_dram,
             fixed_latency_ns: 0.0,
             round_trips: if load_bytes > 0.0 { round_trips } else { 0.0 },
             hit_fraction: if load_bytes > 0.0 {
@@ -433,6 +469,7 @@ struct Scratch {
     mma_users: Vec<u32>,
     issue_users: Vec<u32>,
     smem_users: Vec<u32>,
+    local_users: Vec<u32>,
     resident: Vec<u32>,
     t_compute: Vec<f64>,
     caps: Vec<f64>,
@@ -440,7 +477,7 @@ struct Scratch {
     dram_share: Vec<f64>,
     rate: Vec<f64>,
     /// Per CTA, the time each resource alone would need, in `RESOURCES` order.
-    terms: Vec<[f64; 6]>,
+    terms: Vec<[f64; 7]>,
 }
 
 /// `mma_per_cta[u]` is the tensor throughput of each of `u` MMA-issuing CTAs on one SM.
@@ -452,6 +489,8 @@ fn rates(ctas: &[Cta], m: &Machine, mma_per_cta: &[f64], lat: Latency, s: &mut S
     s.issue_users.resize(n_sm, 0);
     s.smem_users.clear();
     s.smem_users.resize(n_sm, 0);
+    s.local_users.clear();
+    s.local_users.resize(n_sm, 0);
     s.resident.clear();
     s.resident.resize(n_sm, 0);
     for c in ctas {
@@ -460,6 +499,7 @@ fn rates(ctas: &[Cta], m: &Machine, mma_per_cta: &[f64], lat: Latency, s: &mut S
         s.mma_users[i] += u32::from(c.demand.flops > 0.0);
         s.issue_users[i] += u32::from(c.demand.warp_insts > 0.0);
         s.smem_users[i] += u32::from(c.demand.smem_bytes > 0.0);
+        s.local_users[i] += u32::from(c.demand.local_bytes > 0.0);
     }
     let active_sms = s.resident.iter().filter(|&&r| r > 0).count() as f64;
 
@@ -483,10 +523,15 @@ fn rates(ctas: &[Cta], m: &Machine, mma_per_cta: &[f64], lat: Latency, s: &mut S
         } else {
             0.0
         };
-        s.terms
-            .push([d.latency(lat), t_mma, t_issue, t_smem, 0.0, 0.0]);
-        let t_sm = t_mma.max(t_issue).max(t_smem);
+        let t_local = if d.local_bytes > 0.0 {
+            d.local_bytes * f64::from(s.local_users[i]) / m.local_bw
+        } else {
+            0.0
+        };
         let latency = d.latency(lat);
+        s.terms
+            .push([latency, t_mma, t_issue, t_smem, t_local, 0.0, 0.0]);
+        let t_sm = t_mma.max(t_issue).max(t_smem).max(t_local);
         // Time without memory bandwidth limits: caps the bandwidth demand.
         s.t_compute.push(if d.serial {
             latency + t_sm
@@ -538,11 +583,11 @@ fn rates(ctas: &[Cta], m: &Machine, mma_per_cta: &[f64], lat: Latency, s: &mut S
         } else {
             0.0
         };
-        s.terms[i][4] = t_l2;
-        s.terms[i][5] = t_dram;
+        s.terms[i][5] = t_l2;
+        s.terms[i][6] = t_dram;
         let t_mem = t_l2.max(t_dram);
-        let [latency, t_mma, t_issue, t_smem, ..] = s.terms[i];
-        let t_sm = t_mma.max(t_issue).max(t_smem);
+        let [latency, t_mma, t_issue, t_smem, t_local, ..] = s.terms[i];
+        let t_sm = t_mma.max(t_issue).max(t_smem).max(t_local);
         // Synchronous loads: the CTA waits for its loads, then computes. The
         // wait is the longer of the round trip and the transfer.
         let t = if d.serial {
@@ -564,6 +609,14 @@ pub fn simulate<L: L2>(
     let occ = occupancy(k, &p.specs).map_err(ModelError::Occupancy)?;
     let n_sm = m.sm_count;
     let slots = occ.ctas_per_sm * n_sm;
+    // Spill traffic at full residency, computed once for the steady state.
+    let threads_in_sm = occ.ctas_per_sm * k.num_warps * p.specs.warp_size;
+    let (l1, l2b, dram) = match k.spill.scope {
+        SpillScope::None => (0.0, 0.0, 0.0),
+        _ => l2.spill(0, threads_in_sm, &k.spill),
+    };
+    let per_cta = f64::from(occ.ctas_per_sm);
+    let spill = (l1 / per_cta, l2b / per_cta, dram / per_cta);
     let mut sim = Sim {
         k,
         m,
@@ -572,6 +625,7 @@ pub fn simulate<L: L2>(
         load_bytes: 0.0,
         l2_hit_bytes: 0.0,
         dram_bytes: 0.0,
+        spill,
     };
 
     // First wave: breadth-first round robin over SMs. Later: first SM to free a slot.
@@ -597,7 +651,7 @@ pub fn simulate<L: L2>(
     let mut advanced: Vec<Cta> = Vec::new();
     let mut busy_sm_ns = 0.0;
     let mut events = 0u64;
-    let mut bound_ns = [0.0f64; 6];
+    let mut bound_ns = [0.0f64; 7];
     // Memory utilization carried between events; latency depends on it and
     // it depends on the rates, so each event takes two damped passes.
     let (dram_peak, l2_peak) = (Machine::peak(&m.dram_bw), Machine::peak(&m.l2_bw));
