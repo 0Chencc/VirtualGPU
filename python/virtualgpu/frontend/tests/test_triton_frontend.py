@@ -16,12 +16,14 @@ from virtualgpu.frontend import (
     ARTIFACT_HASH_VERSION,
     MockTensor,
     artifact_hashes,
+    compile_triton_aot,
     extract_gemm_kernel_ir,
     hash_ptx,
     hash_ttgir,
     parse_ptxas_verbose,
     specialize_triton_call,
 )
+from virtualgpu.frontend.ttgir import _extract_loop_body, parse_ttgir_summary
 
 
 SCHEMA_PATH = Path(__file__).resolve().parents[4] / "schemas" / "kernel_ir.schema.json"
@@ -497,6 +499,111 @@ def _persistent_gemm(
             b = tl.load(b_ptr + kk[:, None] * stride_bk + offs_bn[None, :] * stride_bn, mask=kk[:, None] < K, other=0.0)
             acc = tl.dot(a, b, acc)
         tl.store(c_ptr + offs_am[:, None] * stride_cm + offs_bn[None, :] * stride_cn, acc.to(tl.float16))
+
+
+@triton.jit
+def _three_input_gemm(
+    a0_ptr, a1_ptr, b_ptr, c_ptr,
+    M, N, K,
+    stride_am, stride_ak,
+    stride_bk, stride_bn,
+    stride_cm, stride_cn,
+    BLOCK_SIZE_M: tl.constexpr,
+    BLOCK_SIZE_N: tl.constexpr,
+    BLOCK_SIZE_K: tl.constexpr,
+):
+    pid_m = tl.program_id(0)
+    pid_n = tl.program_id(1)
+    offs_m = (pid_m * BLOCK_SIZE_M + tl.arange(0, BLOCK_SIZE_M)) % M
+    offs_n = (pid_n * BLOCK_SIZE_N + tl.arange(0, BLOCK_SIZE_N)) % N
+    offs_k = tl.arange(0, BLOCK_SIZE_K)
+    a0_ptrs = a0_ptr + (offs_m[:, None] * stride_am + offs_k[None, :] * stride_ak)
+    a1_ptrs = a1_ptr + (offs_m[:, None] * stride_am + offs_k[None, :] * stride_ak)
+    b_ptrs = b_ptr + (offs_k[:, None] * stride_bk + offs_n[None, :] * stride_bn)
+    acc = tl.zeros((BLOCK_SIZE_M, BLOCK_SIZE_N), dtype=tl.float32)
+    for k in range(0, tl.cdiv(K, BLOCK_SIZE_K)):
+        km = offs_k[None, :] < K - k * BLOCK_SIZE_K
+        a0 = tl.load(a0_ptrs, mask=km, other=0.0)
+        a1 = tl.load(a1_ptrs, mask=km, other=0.0)
+        b = tl.load(b_ptrs, mask=offs_k[:, None] < K - k * BLOCK_SIZE_K, other=0.0)
+        acc = tl.dot(a0, b, acc)
+        acc = tl.dot(a1, b, acc)
+        a0_ptrs += BLOCK_SIZE_K * stride_ak
+        a1_ptrs += BLOCK_SIZE_K * stride_ak
+        b_ptrs += BLOCK_SIZE_K * stride_bk
+    tl.store(
+        c_ptr + (pid_m * BLOCK_SIZE_M + tl.arange(0, BLOCK_SIZE_M))[:, None] * stride_cm
+        + (pid_n * BLOCK_SIZE_N + tl.arange(0, BLOCK_SIZE_N))[None, :] * stride_cn,
+        acc.to(tl.float16),
+    )
+
+
+def test_three_input_kernel_derives_prefetch_by_commit_group_count() -> None:
+    """Verify prefetch_distance divides wait_group N by commits per stage (3, not hardcoded 2)."""
+    args = (
+        MockTensor("f16", 0x10000),
+        MockTensor("f16", 0x210000),
+        MockTensor("f16", 0x410000),
+        MockTensor("f16", 0x610000),
+        1024, 1024, 512,
+        512, 1, 1024, 1, 1024, 1,
+    )
+    for req_stages, expected_prefetch in ((2, 0), (3, 1), (4, 2)):
+        kw = {
+            "BLOCK_SIZE_M": 64,
+            "BLOCK_SIZE_N": 64,
+            "BLOCK_SIZE_K": 32,
+            "num_warps": 4,
+            "num_stages": req_stages,
+        }
+        opts, sig, consts, attrs = specialize_triton_call(_three_input_gemm, "sm_89", args, kw)
+        art = compile_triton_aot(_three_input_gemm, sig, consts, "sm_89", 4, req_stages, attrs=attrs, options=opts)
+        loop_body = _extract_loop_body(art.ttgir)
+        assert loop_body.count("ttg.async_commit_group") == 3
+        summary = parse_ttgir_summary(art.ttgir, art.ptx, requested_num_stages=req_stages, element_bytes=2)
+        assert summary.async_copy == "async_element"
+        assert summary.num_stages == req_stages
+        assert summary.prefetch_distance == expected_prefetch
+        assert "prefetch_distance_mismatch" not in summary.diagnostics
+        assert "prefetch_distance_unverified" not in summary.diagnostics
+
+
+def test_prefetch_derivation_diagnostics_on_mismatch_and_unverified_tma() -> None:
+    # Synthetic mismatch between PTX wait_group and TTGIR async_wait
+    fake_ttgir = (
+        'module attributes {"ttg.num-warps" = 4 : i32, "ttg.threads-per-warp" = 32 : i32} {\n'
+        '  %a = ttg.local_alloc : () -> !ttg.memdesc<2x64x32xf16, #shared, #smem, mutable>\n'
+        '  scf.for %i = %c0 to %c10 step %c1 {\n'
+        '    %w = ttg.async_wait %t {num = 4 : i32}\n'
+        '    %c = ttg.async_copy_global_to_local %p, %a : tensor<64x32x!tt.ptr<f16>>\n'
+        '    %g1 = ttg.async_commit_group tokens %c\n'
+        '    %g2 = ttg.async_commit_group tokens %c\n'
+        '  }\n'
+        '}\n'
+    )
+    fake_ptx = (
+        "$L__loop:\n"
+        "  cp.async.wait_group 2;\n"
+        "  cp.async.commit_group;\n"
+        "  cp.async.commit_group;\n"
+        "  bra $L__loop;\n"
+    )
+    s_mis = parse_ttgir_summary(fake_ttgir, fake_ptx, requested_num_stages=3, element_bytes=2)
+    assert s_mis.prefetch_distance == 1
+    assert "prefetch_distance_mismatch" in s_mis.diagnostics
+
+    # TMA IR missing wait_barrier must emit tma_prefetch_unverified rather than guessing
+    fake_tma = (
+        'module attributes {"ttg.num-warps" = 4 : i32, "ttg.threads-per-warp" = 32 : i32} {\n'
+        '  %a = ttg.local_alloc : () -> !ttg.memdesc<2x64x32xf16, #shared, #smem, mutable>\n'
+        '  scf.for %i = %c0 to %c10 step %c1 {\n'
+        '    ttng.async_tma_copy_global_to_local %d[%x, %y] %a, %b, %p\n'
+        '  }\n'
+        '}\n'
+    )
+    s_tma = parse_ttgir_summary(fake_tma, "", requested_num_stages=3, element_bytes=2)
+    assert s_tma.prefetch_distance == 0
+    assert "tma_prefetch_unverified" in s_tma.diagnostics
 
 
 def test_persistent_kernel_emits_explicit_diagnostic() -> None:
