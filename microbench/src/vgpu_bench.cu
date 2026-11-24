@@ -521,6 +521,9 @@ int main(int argc, char** argv) {
   if (mode == "stage-overhead") {
     return run_stage_overhead(device, samples, warmup);
   }
+  if (mode == "closed-loop-mma") {
+    return run_closed_loop_mma(device, samples, warmup);
+  }
   std::fprintf(stderr, "Unknown mode: %s\n", mode.c_str());
   return 2;
 }

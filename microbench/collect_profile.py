@@ -21,8 +21,8 @@ sys.path.insert(0, str(REPO_ROOT / "python"))
 from virtualgpu.profile import validate_profile  # noqa: E402
 
 DEFAULT_BIN = Path(__file__).resolve().parent / "build" / "vgpu_bench"
-SUITE_VERSION = "0.7.0"
-PROFILE_REVISION = "0.7.0-m3"
+SUITE_VERSION = "0.8.0"
+PROFILE_REVISION = "0.8.0-m3"
 
 
 def find_nvidia_smi() -> str | None:
@@ -286,6 +286,7 @@ def build_profile(
     closed_loop_raw: dict[str, Any],
     l2_merge_raw: dict[str, Any],
     stage_oh_raw: dict[str, Any],
+    closed_loop_mma_raw: dict[str, Any],
     smi_samples: list[dict[str, Any]],
 ) -> dict[str, Any]:
     major = int(query["major"])
@@ -721,6 +722,80 @@ def build_profile(
             ),
         })
 
+    fixed_sync_ns: list[dict[str, Any]] = []
+    for pt in stage_oh_raw["fixed_sync_ns"]:
+        fixed_sync_ns.append({
+            "num_warps": int(pt["num_warps"]),
+            "tokens": int(pt["tokens"]),
+            "overhead_ns": make_measured(
+                pt["overhead_ns_samples"],
+                unit="ns",
+                method="cuda_empty_commit_wait_bar_sync",
+                perturb_group=None,
+                clock_range=sm_range,
+                locked=False,
+                throttle_events=throttle_events,
+            ),
+        })
+
+    min_async_rt_mv = make_measured(
+        stage_oh_raw["min_async_roundtrip_ns_samples"],
+        unit="ns",
+        method="cuda_16b_hot_l2_cp_async_d1",
+        perturb_group=None,
+        clock_range=sm_range,
+        locked=False,
+        throttle_events=throttle_events,
+    )
+
+    dram_closed_loop_mma: list[dict[str, Any]] = []
+    for pt in closed_loop_mma_raw["dram_closed_loop_mma"]:
+        dram_closed_loop_mma.append({
+            "ctas_per_sm": int(pt["ctas_per_sm"]),
+            "active_ctas": int(pt["active_ctas"]),
+            "tokens": int(pt["tokens"]),
+            "num_warps": int(pt["num_warps"]),
+            "stage_bytes": int(pt["stage_bytes"]),
+            "mma_iters_per_stage": int(pt["mma_iters_per_stage"]),
+            "solo_compute_ns": float(pt["solo_compute_ns"]),
+            "delivered_bw_gbps": make_measured(
+                pt["bw_gbps_samples"],
+                unit="GB/s",
+                method="cuda_closed_loop_dram_mma_cp_async",
+                perturb_group="dram_bw",
+                clock_range=mem_range,
+                locked=False,
+                throttle_events=throttle_events,
+            ),
+            "mean_stage_turnaround_ns": make_measured(
+                pt["turnaround_ns_samples"],
+                unit="ns",
+                method="cuda_closed_loop_dram_mma_cp_async",
+                perturb_group=None,
+                clock_range=mem_range,
+                locked=False,
+                throttle_events=throttle_events,
+            ),
+            "achieved_mma_tflops_per_sm": make_measured(
+                pt["mma_tflops_per_sm_samples"],
+                unit="TFLOP/s",
+                method="cuda_closed_loop_dram_mma_cp_async",
+                perturb_group="mma_dense",
+                clock_range=sm_range,
+                locked=False,
+                throttle_events=throttle_events,
+            ),
+            "tensor_utilization": make_measured(
+                pt["tensor_util_samples"],
+                unit="ratio",
+                method="cuda_closed_loop_dram_mma_cp_async",
+                perturb_group=None,
+                clock_range=sm_range,
+                locked=False,
+                throttle_events=throttle_events,
+            ),
+        })
+
     sm_clock_ghz = (
         (statistics.median(sm_clocks) / 1000.0)
         if sm_clocks
@@ -806,6 +881,7 @@ def build_profile(
                 "dram_bw_by_active_sms": read_curve_points,
                 "dram_bw_by_bytes_in_flight": dram_mlp_curve,
                 "dram_closed_loop": dram_closed_loop,
+                "dram_closed_loop_mma": dram_closed_loop_mma,
                 "l2_bw_read_gbps": full_l2_read_mv,
                 "l2_bw_write_gbps": full_l2_write_mv,
                 "l2_bw_by_active_sms": l2_curve_points,
@@ -839,6 +915,8 @@ def build_profile(
             },
             "pipeline": {
                 "stage_sync_overhead_ns": stage_sync_overhead_ns,
+                "fixed_sync_ns": fixed_sync_ns,
+                "min_async_roundtrip_ns": min_async_rt_mv,
             },
             "spill": {
                 "local_mem_l1_hit_bw_per_sm_gbps": make_estimated(150.0, "GB/s", "m2_estimated", "spill_l1"),
@@ -906,17 +984,20 @@ def main() -> int:
     stage_oh_raw, smi_so = run_bench_with_clock_polling(
         args.binary, "stage-overhead", args.device, ["--samples", str(args.samples), "--warmup", "2"]
     )
+    closed_loop_mma_raw, smi_clm = run_bench_with_clock_polling(
+        args.binary, "closed-loop-mma", args.device, ["--samples", "5", "--warmup", "1"]
+    )
     dispatch_raw, smi_disp = run_bench_with_clock_polling(
         args.binary, "cta-dispatch", args.device, ["--repeats", str(args.repeats)]
     )
     smi_samples = (
-        smi_dram + smi_mma + smi_l2 + smi_cp + smi_lat + smi_launch + smi_lc + smi_rs + smi_mlp + smi_cl + smi_mg + smi_so + smi_disp
+        smi_dram + smi_mma + smi_l2 + smi_cp + smi_lat + smi_launch + smi_lc + smi_rs + smi_mlp + smi_cl + smi_mg + smi_so + smi_clm + smi_disp
     )
 
     profile = build_profile(
         query, dram_raw, dispatch_raw, mma_raw, l2_raw, cp_async_raw,
         latency_raw, launch_raw, lat_curve_raw, l2_rescan_raw, mlp_raw,
-        closed_loop_raw, l2_merge_raw, stage_oh_raw, smi_samples
+        closed_loop_raw, l2_merge_raw, stage_oh_raw, closed_loop_mma_raw, smi_samples
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("w", encoding="utf-8") as fh:

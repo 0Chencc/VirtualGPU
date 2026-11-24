@@ -146,6 +146,22 @@ def _semantic_checks(profile: dict[str, Any]) -> list[str]:
                         f"exceeds {peak_key} * (1 + rel_uncertainty) ({max_allowed:.1f})"
                     )
 
+    if "dram_closed_loop_mma" in mem:
+        peak_mv = mem["dram_bw_read_gbps"]
+        max_allowed = peak_mv["value"] * (1.0 + peak_mv["rel_uncertainty"])
+        for idx, pt in enumerate(mem["dram_closed_loop_mma"]):
+            if pt["active_ctas"] != pt["ctas_per_sm"] * sm_count:
+                errors.append(
+                    f"measured.memory.dram_closed_loop_mma[{idx}].active_ctas ({pt['active_ctas']}) "
+                    f"!= ctas_per_sm * sm_count ({pt['ctas_per_sm'] * sm_count})"
+                )
+            bw = pt["delivered_bw_gbps"]["value"]
+            if bw > max_allowed:
+                errors.append(
+                    f"measured.memory.dram_closed_loop_mma[{idx}].delivered_bw_gbps ({bw:.1f}) "
+                    f"exceeds dram_bw_read_gbps * (1 + rel_uncertainty) ({max_allowed:.1f})"
+                )
+
     if "l2_merge_by_sharing" in mem:
         dram_peak = mem["dram_bw_read_gbps"]
         l2_peak = mem["l2_bw_read_gbps"]

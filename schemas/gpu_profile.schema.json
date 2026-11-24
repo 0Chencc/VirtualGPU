@@ -242,6 +242,11 @@
               "minItems": 1,
               "items": { "$ref": "#/$defs/ClosedLoopPoint" }
             },
+            "dram_closed_loop_mma": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/ClosedLoopMmaPoint" }
+            },
             "l2_bw_read_gbps": { "$ref": "#/$defs/MeasuredValue" },
             "l2_bw_write_gbps": { "$ref": "#/$defs/MeasuredValue" },
             "l2_bw_by_active_sms": {
@@ -371,6 +376,14 @@
               "type": "array",
               "minItems": 1,
               "items": { "$ref": "#/$defs/StageSyncOverheadPoint" }
+            },
+            "fixed_sync_ns": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/FixedSyncOverheadPoint" }
+            },
+            "min_async_roundtrip_ns": {
+              "oneOf": [{ "$ref": "#/$defs/MeasuredValue" }, { "type": "null" }]
             }
           }
         },
@@ -579,6 +592,46 @@
         "num_warps": { "type": "integer", "minimum": 1 },
         "tokens": { "type": "integer", "minimum": 0 },
         "overhead_ns": { "$ref": "#/$defs/MeasuredValue" }
+      }
+    },
+    "FixedSyncOverheadPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["num_warps", "tokens", "overhead_ns"],
+      "properties": {
+        "num_warps": { "type": "integer", "minimum": 1 },
+        "tokens": { "type": "integer", "minimum": 1 },
+        "overhead_ns": { "$ref": "#/$defs/MeasuredValue" }
+      }
+    },
+    "ClosedLoopMmaPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ctas_per_sm",
+        "active_ctas",
+        "tokens",
+        "num_warps",
+        "stage_bytes",
+        "mma_iters_per_stage",
+        "solo_compute_ns",
+        "delivered_bw_gbps",
+        "mean_stage_turnaround_ns",
+        "achieved_mma_tflops_per_sm",
+        "tensor_utilization"
+      ],
+      "properties": {
+        "ctas_per_sm": { "type": "integer", "minimum": 1 },
+        "active_ctas": { "type": "integer", "minimum": 1 },
+        "tokens": { "type": "integer", "minimum": 1 },
+        "num_warps": { "type": "integer", "minimum": 1 },
+        "stage_bytes": { "type": "integer", "minimum": 1 },
+        "mma_iters_per_stage": { "type": "integer", "minimum": 0 },
+        "solo_compute_ns": { "type": "number", "minimum": 0 },
+        "delivered_bw_gbps": { "$ref": "#/$defs/MeasuredValue" },
+        "mean_stage_turnaround_ns": { "$ref": "#/$defs/MeasuredValue" },
+        "achieved_mma_tflops_per_sm": { "$ref": "#/$defs/MeasuredValue" },
+        "tensor_utilization": { "$ref": "#/$defs/MeasuredValue" }
       }
     },
     "LatencyByBwPoint": {

@@ -45,10 +45,13 @@ def test_rtx4070_profile_is_valid() -> None:
     assert max(pt["bytes_in_flight"] for pt in mem["dram_bw_by_bytes_in_flight"]) >= 6 * 1024 * 1024
     assert max(pt["bytes_in_flight"] for pt in mem["l2_bw_by_bytes_in_flight"]) >= 6 * 1024 * 1024
     assert len(mem["dram_closed_loop"]) >= 100
+    assert len(mem["dram_closed_loop_mma"]) >= 48
     assert len(mem["l2_closed_loop"]) >= 100
     assert len(mem["l2_merge_by_sharing"]) >= 20
     assert len(mem["l2_rescan_hit_rate_by_working_set"]) >= 12
     assert len(profile["measured"]["pipeline"]["stage_sync_overhead_ns"]) >= 8
+    assert len(profile["measured"]["pipeline"]["fixed_sync_ns"]) >= 8
+    assert profile["measured"]["pipeline"]["min_async_roundtrip_ns"]["source"] == "measured"
     assert profile["measured"]["async_pipeline"]["cp_async_bw_per_sm_gbps"]["source"] == "measured"
     assert profile["measured"]["overhead"]["launch_overhead_us"]["source"] == "measured"
     mma_f16 = profile["measured"]["compute"]["mma_tflops_per_sm_by_warps"]["mma.sync:f16:f16:f32:16x8x16"]
