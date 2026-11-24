@@ -21,8 +21,8 @@ sys.path.insert(0, str(REPO_ROOT / "python"))
 from virtualgpu.profile import validate_profile  # noqa: E402
 
 DEFAULT_BIN = Path(__file__).resolve().parent / "build" / "vgpu_bench"
-SUITE_VERSION = "0.6.0"
-PROFILE_REVISION = "0.6.0-m2"
+SUITE_VERSION = "0.7.0"
+PROFILE_REVISION = "0.7.0-m3"
 
 
 def find_nvidia_smi() -> str | None:
@@ -285,6 +285,7 @@ def build_profile(
     mlp_raw: dict[str, Any],
     closed_loop_raw: dict[str, Any],
     l2_merge_raw: dict[str, Any],
+    stage_oh_raw: dict[str, Any],
     smi_samples: list[dict[str, Any]],
 ) -> dict[str, Any]:
     major = int(query["major"])
@@ -702,6 +703,24 @@ def build_profile(
             ),
         })
 
+    stage_sync_overhead_ns: list[dict[str, Any]] = []
+    for pt in stage_oh_raw["stage_sync_overhead_ns"]:
+        mode = pt["issue_mode"]
+        stage_sync_overhead_ns.append({
+            "issue_mode": mode,
+            "num_warps": int(pt["num_warps"]),
+            "tokens": int(pt["tokens"]),
+            "overhead_ns": make_measured(
+                pt["overhead_ns_samples"],
+                unit="ns",
+                method=f"cuda_stage_sync_overhead_{mode}",
+                perturb_group=None,
+                clock_range=sm_range,
+                locked=False,
+                throttle_events=throttle_events,
+            ),
+        })
+
     sm_clock_ghz = (
         (statistics.median(sm_clocks) / 1000.0)
         if sm_clocks
@@ -818,6 +837,9 @@ def build_profile(
                 "tma_bw_per_sm_gbps": make_estimated(150.0, "GB/s", "m2_estimated", "async_tma") if tma_supported else None,
                 "tma_setup_ns": make_estimated(80.0, "ns", "m2_estimated", None) if tma_supported else None,
             },
+            "pipeline": {
+                "stage_sync_overhead_ns": stage_sync_overhead_ns,
+            },
             "spill": {
                 "local_mem_l1_hit_bw_per_sm_gbps": make_estimated(150.0, "GB/s", "m2_estimated", "spill_l1"),
                 "local_mem_l1_miss_bw_per_sm_gbps": make_estimated(40.0, "GB/s", "m2_estimated", "spill_l2"),
@@ -881,16 +903,20 @@ def main() -> int:
     l2_merge_raw, smi_mg = run_bench_with_clock_polling(
         args.binary, "l2-merge", args.device, ["--samples", "7", "--warmup", "1"]
     )
+    stage_oh_raw, smi_so = run_bench_with_clock_polling(
+        args.binary, "stage-overhead", args.device, ["--samples", str(args.samples), "--warmup", "2"]
+    )
     dispatch_raw, smi_disp = run_bench_with_clock_polling(
         args.binary, "cta-dispatch", args.device, ["--repeats", str(args.repeats)]
     )
     smi_samples = (
-        smi_dram + smi_mma + smi_l2 + smi_cp + smi_lat + smi_launch + smi_lc + smi_rs + smi_mlp + smi_cl + smi_mg + smi_disp
+        smi_dram + smi_mma + smi_l2 + smi_cp + smi_lat + smi_launch + smi_lc + smi_rs + smi_mlp + smi_cl + smi_mg + smi_so + smi_disp
     )
 
     profile = build_profile(
         query, dram_raw, dispatch_raw, mma_raw, l2_raw, cp_async_raw,
-        latency_raw, launch_raw, lat_curve_raw, l2_rescan_raw, mlp_raw, closed_loop_raw, l2_merge_raw, smi_samples
+        latency_raw, launch_raw, lat_curve_raw, l2_rescan_raw, mlp_raw,
+        closed_loop_raw, l2_merge_raw, stage_oh_raw, smi_samples
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("w", encoding="utf-8") as fh:

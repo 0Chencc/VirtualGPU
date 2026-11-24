@@ -363,6 +363,17 @@
             }
           }
         },
+        "pipeline": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "stage_sync_overhead_ns": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/StageSyncOverheadPoint" }
+            }
+          }
+        },
         "spill": {
           "type": "object",
           "additionalProperties": false,
@@ -554,6 +565,20 @@
         "turnaround_ns": { "$ref": "#/$defs/MeasuredValue" },
         "dram_unique_bw_gbps": { "$ref": "#/$defs/MeasuredValue" },
         "l2_to_sm_bw_gbps": { "$ref": "#/$defs/MeasuredValue" }
+      }
+    },
+    "StageSyncOverheadPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["issue_mode", "num_warps", "tokens", "overhead_ns"],
+      "properties": {
+        "issue_mode": {
+          "type": "string",
+          "enum": ["cp_async", "ld_global_v4"]
+        },
+        "num_warps": { "type": "integer", "minimum": 1 },
+        "tokens": { "type": "integer", "minimum": 0 },
+        "overhead_ns": { "$ref": "#/$defs/MeasuredValue" }
       }
     },
     "LatencyByBwPoint": {

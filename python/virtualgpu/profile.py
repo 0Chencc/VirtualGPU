@@ -207,6 +207,20 @@ def _semantic_checks(profile: dict[str, Any]) -> list[str]:
                 )
             prev_ws = ws
 
+    pipeline = measured.get("pipeline")
+    if isinstance(pipeline, dict) and "stage_sync_overhead_ns" in pipeline:
+        for idx, pt in enumerate(pipeline["stage_sync_overhead_ns"]):
+            tokens = pt["tokens"]
+            mode = pt["issue_mode"]
+            if tokens == 0 and mode != "ld_global_v4":
+                errors.append(
+                    f"measured.pipeline.stage_sync_overhead_ns[{idx}]: tokens=0 requires issue_mode='ld_global_v4'"
+                )
+            if tokens > 0 and mode != "cp_async":
+                errors.append(
+                    f"measured.pipeline.stage_sync_overhead_ns[{idx}]: tokens={tokens} requires issue_mode='cp_async'"
+                )
+
     max_warps = specs["max_warps_per_sm"]
     for key, curve in measured["compute"]["mma_tflops_per_sm_by_warps"].items():
         _check_monotonic_curve(

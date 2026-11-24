@@ -1228,24 +1228,32 @@ static int run_l2_rescan(int device, int samples) {
 // 8. MLP curves: delivered BW vs bytes in flight (cp.async & ld.global.v4)
 // ---------------------------------------------------------------------------
 
-template <int STAGES>
+template <int STAGES, int SUB_PER_STAGE>
 __global__ void mlp_cp_async_kernel(const uint4* __restrict__ src,
                                     uint4* __restrict__ sink,
                                     size_t n_vec4_mask,
                                     int steps) {
-  __shared__ uint4 smem[STAGES * 256];
+  // Disjoint shared memory slot per (stage, sub) so every cp.async writes a unique address.
+  extern __shared__ uint4 smem[];
   uint32_t tid = threadIdx.x;
   size_t idx = (static_cast<size_t>(blockIdx.x) * 256ULL + tid) & n_vec4_mask;
   size_t stride = static_cast<size_t>(gridDim.x) * 256ULL;
 
-  // Prefill STAGES groups in flight (each group = 256 * 16B = 4096 B per CTA).
+  auto issue_group = [&](int slot) {
+    #pragma unroll
+    for (int sub = 0; sub < SUB_PER_STAGE; ++sub) {
+      size_t smem_off = (static_cast<size_t>(slot) * SUB_PER_STAGE + sub) * 256ULL + tid;
+      uint32_t smem_addr = static_cast<uint32_t>(__cvta_generic_to_shared(&smem[smem_off]));
+      const void* gptr = src + idx;
+      asm volatile("cp.async.cg.shared.global [%0], [%1], 16;\n" :: "r"(smem_addr), "l"(gptr) : "memory");
+      idx = (idx + stride) & n_vec4_mask;
+    }
+    asm volatile("cp.async.commit_group;\n" :: : "memory");
+  };
+
   #pragma unroll
   for (int s = 0; s < STAGES; ++s) {
-    uint32_t smem_addr = static_cast<uint32_t>(__cvta_generic_to_shared(&smem[s * 256 + tid]));
-    const void* gptr = src + idx;
-    asm volatile("cp.async.cg.shared.global [%0], [%1], 16;\n" :: "r"(smem_addr), "l"(gptr));
-    asm volatile("cp.async.commit_group;\n" ::);
-    idx = (idx + stride) & n_vec4_mask;
+    issue_group(s);
   }
 
   for (int step = STAGES; step < steps; ++step) {
@@ -1256,12 +1264,7 @@ __global__ void mlp_cp_async_kernel(const uint4* __restrict__ src,
     } else if constexpr (STAGES == 4) {
       asm volatile("cp.async.wait_group 3;\n" ::);
     }
-    int slot = step % STAGES;
-    uint32_t smem_addr = static_cast<uint32_t>(__cvta_generic_to_shared(&smem[slot * 256 + tid]));
-    const void* gptr = src + idx;
-    asm volatile("cp.async.cg.shared.global [%0], [%1], 16;\n" :: "r"(smem_addr), "l"(gptr));
-    asm volatile("cp.async.commit_group;\n" ::);
-    idx = (idx + stride) & n_vec4_mask;
+    issue_group(step % STAGES);
   }
   asm volatile("cp.async.wait_all;\n" ::);
   __syncthreads();
@@ -1329,21 +1332,35 @@ static int run_mlp(int device, int samples, int warmup) {
 
   struct MlpPoint {
     int ctas;
-    int mult;  // STAGES for cp_async, UNROLL for ld_global_v4 (each = 4096 B/CTA)
+    int mult;  // Total 4 KB units in flight per CTA (1, 2, 4, 8, 12, 16)
   };
+  // Dense log-spaced coverage across 32-256 KB (>= 4 points per octave) and extended to >= 6 MB
+  // (up to 8.83 MB on 46-SM RTX 4070 with 138 concurrent CTAs = 3 CTAs/SM).
   std::vector<MlpPoint> raw_pts = {
-      {1, 1},
-      {2, 1},
-      {4, 1},
-      {8, 1},
-      {16, 1},
-      {std::min(32, sm_count), 1},
-      {std::min(32, sm_count), 2},
-      {sm_count, 2},
-      {std::min(32, sm_count), 4},
-      {sm_count, 4},
-      {sm_count * 2, 4},
-      {sm_count * 3, 4},
+      {1, 1},   // 4 KB
+      {2, 1},   // 8 KB
+      {4, 1},   // 16 KB
+      {8, 1},   // 32 KB
+      {10, 1},  // 40 KB
+      {12, 1},  // 48 KB
+      {14, 1},  // 56 KB
+      {16, 1},  // 64 KB
+      {19, 1},  // 76 KB
+      {22, 1},  // 88 KB
+      {26, 1},  // 104 KB
+      {std::min(32, sm_count), 1},  // 128 KB
+      {std::min(38, sm_count), 1},  // 152 KB
+      {sm_count, 1},                // 184 KB
+      {std::min(28, sm_count), 2},  // 224 KB
+      {std::min(32, sm_count), 2},  // 256 KB
+      {sm_count, 2},                // 368 KB
+      {std::min(32, sm_count), 4},  // 512 KB
+      {sm_count, 4},                // 736 KB
+      {sm_count * 2, 4},            // 1472 KB
+      {sm_count * 3, 4},            // 2208 KB
+      {sm_count * 3, 8},            // 4416 KB (32 KB/CTA x 3 CTAs/SM = 96 KB/SM)
+      {sm_count * 4, 8},            // 5888 KB
+      {sm_count * 5, 8},            // 7360 KB (> 7 MiB)
   };
   // Deduplicate and sort strictly by bytes_in_flight = ctas * mult * 4096.
   std::sort(raw_pts.begin(), raw_pts.end(), [](const MlpPoint& a, const MlpPoint& b) {
@@ -1375,21 +1392,26 @@ static int run_mlp(int device, int samples, int warmup) {
         size_t target_bytes = is_dram
                                   ? std::min(dram_bytes, std::max<size_t>(16ULL * 1024ULL * 1024ULL, bif * 128ULL))
                                   : std::max<size_t>(64ULL * 1024ULL * 1024ULL, bif * 256ULL);
-        int cp_steps = std::max(mult * 4, static_cast<int>(target_bytes / (static_cast<size_t>(ctas) * 4096ULL)));
-        int ld_iters = std::max(4, cp_steps / mult);
+        int cp_sub = (mult <= 4) ? 1 : (mult / 4);
+        int cp_stages = (mult <= 4) ? mult : 4;
+        int cp_steps = std::max(cp_stages * 4, static_cast<int>(target_bytes / (static_cast<size_t>(ctas) * 4096ULL * cp_sub)));
+        int ld_iters = std::max(4, static_cast<int>(target_bytes / (static_cast<size_t>(ctas) * 4096ULL * mult)));
         double actual_bytes = is_cp
-                                  ? (static_cast<double>(ctas) * 4096.0 * cp_steps)
+                                  ? (static_cast<double>(ctas) * 4096.0 * cp_sub * cp_steps)
                                   : (static_cast<double>(ctas) * 4096.0 * mult * ld_iters);
 
+        const size_t cp_dyn_smem = static_cast<size_t>(cp_stages) * static_cast<size_t>(cp_sub) * 4096ULL;
         auto launch_once = [&]() {
           if (is_cp) {
-            if (mult == 1) mlp_cp_async_kernel<1><<<ctas, 256>>>(buf, d_sink, mask, cp_steps);
-            else if (mult == 2) mlp_cp_async_kernel<2><<<ctas, 256>>>(buf, d_sink, mask, cp_steps);
-            else mlp_cp_async_kernel<4><<<ctas, 256>>>(buf, d_sink, mask, cp_steps);
+            if (mult == 1) mlp_cp_async_kernel<1, 1><<<ctas, 256, cp_dyn_smem>>>(buf, d_sink, mask, cp_steps);
+            else if (mult == 2) mlp_cp_async_kernel<2, 1><<<ctas, 256, cp_dyn_smem>>>(buf, d_sink, mask, cp_steps);
+            else if (mult == 4) mlp_cp_async_kernel<4, 1><<<ctas, 256, cp_dyn_smem>>>(buf, d_sink, mask, cp_steps);
+            else mlp_cp_async_kernel<4, 2><<<ctas, 256, cp_dyn_smem>>>(buf, d_sink, mask, cp_steps);
           } else {
             if (mult == 1) mlp_ld_v4_kernel<1><<<ctas, 256>>>(buf, d_sink, mask, ld_iters);
             else if (mult == 2) mlp_ld_v4_kernel<2><<<ctas, 256>>>(buf, d_sink, mask, ld_iters);
-            else mlp_ld_v4_kernel<4><<<ctas, 256>>>(buf, d_sink, mask, ld_iters);
+            else if (mult == 4) mlp_ld_v4_kernel<4><<<ctas, 256>>>(buf, d_sink, mask, ld_iters);
+            else mlp_ld_v4_kernel<8><<<ctas, 256>>>(buf, d_sink, mask, ld_iters);
           }
         };
 
@@ -1911,5 +1933,181 @@ static int run_l2_merge(int device, int samples, int warmup) {
   CUDA_CHECK(cudaFree(d_flush));
   CUDA_CHECK(cudaFree(d_sink));
   CUDA_CHECK(cudaFree(d_cta_turn));
+  return 0;
+}
+
+// ---------------------------------------------------------------------------
+// 11. Per-stage fixed sync/pipeline overhead (hot cache, minimal data)
+// ---------------------------------------------------------------------------
+
+template <int TOKENS>
+__global__ void stage_overhead_cp_async_kernel(const uint4* __restrict__ hot_src,
+                                               uint4* __restrict__ sink,
+                                               double* __restrict__ out_cycles_per_stage,
+                                               int steps) {
+  extern __shared__ uint4 smem[];
+  const uint32_t tid = threadIdx.x;
+  const uint32_t nthreads = blockDim.x;
+  // Each thread reads its own 16B slot in a tiny hot L2-resident buffer (<= 4 KB/CTA, zero bank contention).
+  const void* gptr = hot_src + static_cast<size_t>(blockIdx.x) * nthreads + tid;
+
+  auto issue_tiny = [&](int slot) {
+    uint32_t smem_addr = static_cast<uint32_t>(__cvta_generic_to_shared(&smem[slot * nthreads + tid]));
+    asm volatile("cp.async.cg.shared.global [%0], [%1], 16;\n" :: "r"(smem_addr), "l"(gptr) : "memory");
+    asm volatile("cp.async.commit_group;\n" :: : "memory");
+  };
+
+  // Warmup and prefill TOKENS stages.
+  for (int w = 0; w < 16; ++w) {
+    issue_tiny(w % TOKENS);
+    asm volatile("cp.async.wait_all;\n" ::);
+    __syncthreads();
+  }
+  #pragma unroll
+  for (int s = 0; s < TOKENS; ++s) {
+    issue_tiny(s);
+  }
+  __syncthreads();
+  uint64_t t0 = (tid == 0) ? static_cast<uint64_t>(clock64()) : 0;
+
+  for (int step = 0; step < steps; ++step) {
+    if constexpr (TOKENS == 1) {
+      asm volatile("cp.async.wait_group 0;\n" ::);
+    } else if constexpr (TOKENS == 2) {
+      asm volatile("cp.async.wait_group 1;\n" ::);
+    } else if constexpr (TOKENS == 3) {
+      asm volatile("cp.async.wait_group 2;\n" ::);
+    } else if constexpr (TOKENS == 4) {
+      asm volatile("cp.async.wait_group 3;\n" ::);
+    }
+    __syncthreads();
+    issue_tiny(step % TOKENS);
+  }
+
+  asm volatile("cp.async.wait_all;\n" ::);
+  __syncthreads();
+  if (tid == 0) {
+    uint64_t t1 = static_cast<uint64_t>(clock64());
+    out_cycles_per_stage[blockIdx.x] = static_cast<double>(t1 - t0) / static_cast<double>(steps);
+  }
+  uint4 val = smem[tid];
+  if (val.x == 0xdeadbeefu && val.y == 0xdeadbeefu) {
+    sink[tid] = val;
+  }
+}
+
+__global__ void stage_overhead_ld_v4_kernel(const uint4* __restrict__ hot_src,
+                                            uint4* __restrict__ sink,
+                                            double* __restrict__ out_cycles_per_stage,
+                                            int steps) {
+  const uint32_t tid = threadIdx.x;
+  const uint4* gptr = hot_src + (tid & 31u);
+  uint32_t acc = 0;
+
+  for (int w = 0; w < 16; ++w) {
+    uint4 v;
+    asm volatile("ld.global.ca.v4.u32 {%0,%1,%2,%3}, [%4];"
+                 : "=r"(v.x), "=r"(v.y), "=r"(v.z), "=r"(v.w)
+                 : "l"(gptr));
+    acc ^= v.x;
+    __syncthreads();
+  }
+
+  uint64_t t0 = (tid == 0) ? static_cast<uint64_t>(clock64()) : 0;
+  for (int step = 0; step < steps; ++step) {
+    uint4 v;
+    asm volatile("ld.global.ca.v4.u32 {%0,%1,%2,%3}, [%4];"
+                 : "=r"(v.x), "=r"(v.y), "=r"(v.z), "=r"(v.w)
+                 : "l"(gptr + ((acc == 0xdeadbeefu) ? 1u : 0u)));
+    acc ^= (v.x ^ v.y ^ v.z ^ v.w);
+    __syncthreads();
+  }
+  if (tid == 0) {
+    uint64_t t1 = static_cast<uint64_t>(clock64());
+    out_cycles_per_stage[blockIdx.x] = static_cast<double>(t1 - t0) / static_cast<double>(steps);
+  }
+  if (acc == 0xdeadbeefu) {
+    sink[tid] = make_uint4(acc, acc, acc, acc);
+  }
+}
+
+static int run_stage_overhead(int device, int samples, int warmup) {
+  cudaDeviceProp prop{};
+  CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
+
+  // Run on 1 CTA so per-stage sync/pipeline overhead is isolated from cross-SM L2 contention.
+  const int grid = 1;
+  uint4* d_hot = nullptr;
+  uint4* d_sink = nullptr;
+  double* d_out = nullptr;
+  CUDA_CHECK(cudaMalloc(&d_hot, 512 * sizeof(uint4)));
+  CUDA_CHECK(cudaMalloc(&d_sink, 512 * sizeof(uint4)));
+  CUDA_CHECK(cudaMalloc(&d_out, sizeof(double)));
+  CUDA_CHECK(cudaMemset(d_hot, 3, 512 * sizeof(uint4)));
+
+  cudaEvent_t ev_start, ev_stop;
+  CUDA_CHECK(cudaEventCreate(&ev_start));
+  CUDA_CHECK(cudaEventCreate(&ev_stop));
+  const double cycles_per_ns = measure_cycles_per_ns(ev_start, ev_stop);
+
+  const std::vector<int> warp_list = {4, 8};
+  const std::vector<int> token_list = {0, 1, 2, 3, 4};
+  const int steps = 4096;
+
+  std::printf("{\n  \"samples\": %d,\n  \"cycles_per_ns\": %.4f,\n  \"stage_sync_overhead_ns\": [",
+              samples, cycles_per_ns);
+  bool first = true;
+
+  for (int warps : warp_list) {
+    int threads = warps * 32;
+    for (int tokens : token_list) {
+      const char* mode_name = (tokens == 0) ? "ld_global_v4" : "cp_async";
+      size_t dyn_smem = static_cast<size_t>(std::max(1, tokens)) * static_cast<size_t>(threads) * sizeof(uint4);
+
+      auto launch_once = [&]() {
+        if (tokens == 0) {
+          stage_overhead_ld_v4_kernel<<<grid, threads>>>(d_hot, d_sink, d_out, steps);
+        } else if (tokens == 1) {
+          stage_overhead_cp_async_kernel<1><<<grid, threads, dyn_smem>>>(d_hot, d_sink, d_out, steps);
+        } else if (tokens == 2) {
+          stage_overhead_cp_async_kernel<2><<<grid, threads, dyn_smem>>>(d_hot, d_sink, d_out, steps);
+        } else if (tokens == 3) {
+          stage_overhead_cp_async_kernel<3><<<grid, threads, dyn_smem>>>(d_hot, d_sink, d_out, steps);
+        } else {
+          stage_overhead_cp_async_kernel<4><<<grid, threads, dyn_smem>>>(d_hot, d_sink, d_out, steps);
+        }
+      };
+
+      for (int w = 0; w < warmup; ++w) launch_once();
+      CUDA_CHECK(cudaDeviceSynchronize());
+
+      std::vector<double> ns_samples;
+      ns_samples.reserve(samples);
+      for (int s = 0; s < samples; ++s) {
+        launch_once();
+        CUDA_CHECK(cudaDeviceSynchronize());
+        double cyc = 0.0;
+        CUDA_CHECK(cudaMemcpy(&cyc, d_out, sizeof(double), cudaMemcpyDeviceToHost));
+        ns_samples.push_back(cyc / cycles_per_ns);
+      }
+
+      if (!first) std::printf(",");
+      first = false;
+      std::printf("\n    {\"issue_mode\": \"%s\", \"num_warps\": %d, \"tokens\": %d, \"overhead_ns_samples\": [",
+                  mode_name, warps, tokens);
+      for (size_t i = 0; i < ns_samples.size(); ++i) {
+        if (i > 0) std::printf(", ");
+        std::printf("%.2f", ns_samples[i]);
+      }
+      std::printf("]}");
+    }
+  }
+  std::printf("\n  ]\n}\n");
+
+  CUDA_CHECK(cudaEventDestroy(ev_start));
+  CUDA_CHECK(cudaEventDestroy(ev_stop));
+  CUDA_CHECK(cudaFree(d_hot));
+  CUDA_CHECK(cudaFree(d_sink));
+  CUDA_CHECK(cudaFree(d_out));
   return 0;
 }
