@@ -1,0 +1,16 @@
+[build-system]
+requires = ["maturin>=1.7,<2"]
+build-backend = "maturin"
+
+[project]
+name = "virtualgpu"
+version = "0.1.0"
+description = "Predict the relative performance of GPU kernel variants without the GPU"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+
+[tool.maturin]
+manifest-path = "crates/vgpu-core/Cargo.toml"
+python-source = "python"
+module-name = "virtualgpu._core"
+features = ["python"]

@@ -1,0 +1,19 @@
+[package]
+name = "vgpu-core"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Tile-level, event-driven GPU performance model"
+
+[lib]
+name = "vgpu_core"
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# Enabled by maturin only. Plain `cargo test` builds without Python.
+python = ["dep:pyo3"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+pyo3 = { version = "0.30", features = ["extension-module", "abi3-py310"], optional = true }
