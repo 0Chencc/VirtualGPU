@@ -67,6 +67,39 @@ def predicted_pair(a, b):
     return "indistinguishable"
 
 
+def check_artifact(jit, ir):
+    """Check the emitted code and resource contract before using timings."""
+    metadata = ir["metadata"]
+    aot = metadata["toolchain"]
+    toolchain = jit.get("toolchain", {})
+    expected_options = metadata["config"]
+    resources = ir["resources"]
+    expected = {
+        "artifact_hash_version": aot.get("artifact_hash_version"),
+        "ptx_sha256": aot.get("ptx_sha256"),
+        "grid": ir["launch"]["grid"],
+        "registers_per_thread": resources["registers_per_thread"],
+        "shared_bytes": resources["static_smem_bytes"] + ir["launch"]["dynamic_smem_bytes"],
+        **{key: aot.get(key) for key in (
+            "compiler", "compiler_version", "assembler", "assembler_version", "target_sm_compiled",
+        )},
+        "enable_fp_fusion": expected_options.get("enable_fp_fusion", True),
+        "ptx_options": expected_options.get("ptx_options") or None,
+        "disable_ptxas_opt": False,
+    }
+    actual = {**jit, **toolchain, "grid": [*jit["grid"], 1, 1][:3]}
+    differences = [key for key, value in expected.items()
+                   if key not in actual or actual[key] != value]
+    if not aot.get("artifact_hash_version") or not aot.get("ptx_sha256"):
+        differences.append("missing_aot_hash")
+    ttgir = aot.get("ttgir_sha256")
+    return {
+        "status": "matched" if not differences else "mismatch",
+        "differences": differences,
+        "ttgir_match": bool(ttgir and ttgir == jit.get("ttgir_sha256")),
+    }
+
+
 def score(timings, records, k=5, samples=1000, seed=17):
     if not timings or k < 1 or samples < 2:
         raise ValueError("Require timings, positive k, and at least two bootstrap samples")
@@ -125,11 +158,23 @@ def main():
     parser.add_argument("--profile-revision", required=True)
     parser.add_argument("--cache", choices=("warm", "cold"), required=True)
     parser.add_argument("--top-k", type=int, default=5)
+    gate = parser.add_mutually_exclusive_group(required=True)
+    gate.add_argument("--aot", action="append", default=[], metavar="CONFIG_ID=KERNEL_IR_JSON",
+                      help="Require matching AOT output for every scored configuration")
+    gate.add_argument("--unchecked", action="store_true",
+                      help="Allow unverified timings for exploratory smoke tests")
     args = parser.parse_args()
+    artifacts = {}
+    for entry in args.aot:
+        key, sep, path = entry.partition("=")
+        if not sep or not key or not path or key in artifacts:
+            parser.error("Supply one --aot CONFIG_ID=KERNEL_IR_JSON per configuration")
+        artifacts[key] = json.loads(Path(path).read_text())
     sessions = [json.loads(path.read_text()) for path in args.measurements]
     case_id = sessions[0]["case_id"]
     identity = ("case_id", "gpu", "kernel_sha256", "manifest_sha256")
     timings = {}
+    artifact_checks = {}
     for session in sessions:
         if any(session[field] != sessions[0][field] for field in identity):
             parser.error("Measurements must use the same case, GPU, kernel, and manifest")
@@ -139,8 +184,16 @@ def main():
             parser.error("Measurements must use the same timing and cache preparation protocol")
         for sample in session["samples"]:
             if sample["cache"] == args.cache:
+                key = sample["config_id"]
+                if artifacts:
+                    checks = artifact_checks.setdefault(session["session_id"], {})
+                    if key not in checks:
+                        checks[key] = (check_artifact(session["configs"][key], artifacts[key])
+                                       if key in artifacts else {"status": "missing_aot"})
+                    if checks[key]["status"] != "matched":
+                        continue
                 block = session["session_id"], sample["block"]
-                per_config = timings.setdefault(sample["config_id"], {})
+                per_config = timings.setdefault(key, {})
                 if block in per_config:
                     parser.error("Duplicate timing sample")
                 per_config[block] = sample["latency_ns"]
@@ -151,9 +204,13 @@ def main():
             if key in predictions:
                 parser.error("Duplicate prediction record")
             predictions[key] = row
-    report = score(timings, predictions, args.top_k)
-    report.update(case_id=case_id, cache=args.cache, profile_revision=args.profile_revision)
+    report = score(timings, predictions, args.top_k) if timings else {"error": "No eligible timings"}
+    report.update(case_id=case_id, cache=args.cache, profile_revision=args.profile_revision,
+                  artifact_gate="required" if artifacts else "unchecked",
+                  artifact_checks=artifact_checks)
     print(json.dumps(report, indent=2))
+    if not timings:
+        raise SystemExit(2)
 
 
 if __name__ == "__main__":

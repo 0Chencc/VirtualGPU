@@ -19,7 +19,9 @@ import pynvml
 import torch
 import triton
 import triton.language as tl
+from triton.backends.nvidia.compiler import get_ptxas
 from triton.runtime.errors import PTXASError
+from virtualgpu.frontend.compiler import artifact_hashes, detect_ptx_target, get_ptxas_version
 
 from validation.score import median_ci95
 
@@ -134,6 +136,8 @@ def prepare_candidates(case, configs, seed):
     out = torch.empty((m, n), device="cuda", dtype=torch.float16)
     torch.backends.cuda.matmul.allow_tf32 = False
     reference = (a.float() @ b.float()).half()
+    ptxas = Path(get_ptxas(89).path)
+    assembler_version = get_ptxas_version(str(ptxas))
     operations = {}
     artifacts = {}
 
@@ -161,7 +165,18 @@ def prepare_candidates(case, configs, seed):
             "mma_shapes": sorted({f"{m}x{n}x{k}" for m, n, k in mma_shapes}),
             "grid": list(grid),
             "shared_bytes": compiled.metadata.shared,
-            "ptx_sha256": hashlib.sha256(ptx.encode()).hexdigest(),
+            "ptx_raw_sha256": hashlib.sha256(ptx.encode()).hexdigest(),
+            **artifact_hashes(ptx, compiled.asm["ttgir"]),
+            "toolchain": {
+                "compiler": "triton",
+                "compiler_version": triton.__version__,
+                "assembler": ptxas.name,
+                "assembler_version": assembler_version,
+                "target_sm_compiled": detect_ptx_target(ptx, 89),
+                "enable_fp_fusion": compiled.metadata.enable_fp_fusion,
+                "ptx_options": compiled.metadata.ptx_options,
+                "disable_ptxas_opt": triton.knobs.nvidia.disable_ptxas_opt,
+            },
         }
         artifacts[key] = row
         try:

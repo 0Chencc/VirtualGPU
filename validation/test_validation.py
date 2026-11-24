@@ -5,7 +5,7 @@ from pathlib import Path
 import unittest
 
 from validation.baseline import gemm_work, latency_ns, predict
-from validation.score import kendall_tau_b, median_ci95, observed_pair, predicted_pair, score
+from validation.score import check_artifact, kendall_tau_b, median_ci95, observed_pair, predicted_pair, score
 from validation.suite import manifest
 
 
@@ -54,6 +54,35 @@ class BaselineTest(unittest.TestCase):
 
 
 class ScoreTest(unittest.TestCase):
+    def test_artifact_gate(self):
+        toolchain = {
+            "compiler": "triton", "compiler_version": "3.9.0", "assembler": "ptxas",
+            "assembler_version": "12.9", "target_sm_compiled": "sm_89",
+        }
+        ir = {
+            "metadata": {
+                "config": {},
+                "toolchain": dict(toolchain, artifact_hash_version="1",
+                                  ptx_sha256="matching", ttgir_sha256="aot"),
+            },
+            "launch": {"grid": [8, 1, 1], "dynamic_smem_bytes": 0},
+            "resources": {"static_smem_bytes": 4096, "registers_per_thread": 96},
+        }
+        jit = {
+            "artifact_hash_version": "1", "ptx_sha256": "matching", "ttgir_sha256": "jit",
+            "grid": [8], "shared_bytes": 4096, "registers_per_thread": 96,
+            "toolchain": dict(toolchain, enable_fp_fusion=True, ptx_options=None,
+                              disable_ptxas_opt=False),
+        }
+        self.assertEqual(check_artifact(jit, ir),
+                         {"status": "matched", "differences": [], "ttgir_match": False})
+        jit["ptx_sha256"] = "different"
+        jit["registers_per_thread"] = 100
+        self.assertEqual(check_artifact(jit, ir)["differences"],
+                         ["ptx_sha256", "registers_per_thread"])
+        jit["toolchain"]["enable_fp_fusion"] = False
+        self.assertIn("enable_fp_fusion", check_artifact(jit, ir)["differences"])
+
     def test_measurement_intervals_and_gaps(self):
         self.assertEqual(median_ci95([[100, 100], [110, 110]]), (105, 105))
         blocks = {("session", index): 100 for index in range(3)}

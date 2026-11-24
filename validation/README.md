@@ -1,9 +1,9 @@
 # M1 GEMM validation
 
-Run commands from the repository root. The CPU tools use the standard library.
-The runner uses Python 3.12, PyTorch 2.8 with CUDA 12.8, Triton 3.4,
-`cuda-bindings`, and `nvidia-ml-py`. Use a worktree-local `.venv` and reuse
-cached CUDA wheels where available.
+Run commands from the repository root. The CPU scoring tools use the standard
+library. The runner uses Python 3.12, PyTorch 2.8 with CUDA 12.8, Triton 3.9,
+`cuda-bindings`, `nvidia-ml-py`, and the installed VirtualGPU Python package.
+Use a worktree-local `.venv` and reuse cached CUDA wheels where available.
 
 ## Run a development case
 
@@ -43,7 +43,7 @@ resampling blocks within each session.
 python3 -m validation.baseline schemas/examples/profile_example.json \
   results/decode-16.json > results/baseline.json
 python3 -m validation.score results/baseline.json results/decode-16.json \
-  --profile-revision 0.1.0-example --cache cold --top-k 2
+  --profile-revision 0.1.0-example --cache cold --top-k 2 --unchecked
 python3 -m unittest validation.test_validation
 ```
 
@@ -60,3 +60,15 @@ nominal prediction. Provide the `draws` object keyed by draw ID, including
 `"0"`, to enable pairwise scoring. Pass multiple raw files to score matched
 blocks across sessions. Compare one cache regime at a time with a matching
 initial-cache assumption.
+
+For validated comparisons, supply `--aot CONFIG_ID=KERNEL_IR_JSON` once per
+config in place of `--unchecked`. Generate the IR offline from the exact same
+`dense_gemm` function, arguments, specializations, and compiler options used
+by the runner. Pass explicit `call_args` containing three aligned FP16
+`MockTensor` arguments followed by `M`, `N`, and `K` to the frontend
+extractor. It takes the tile, traversal, warp, and stage knobs in `config`.
+The scorer verifies the versioned PTX digest, toolchain, launch grid, and
+resources. It reports TTGIR digest agreement as a diagnostic. Unverified or
+mismatched samples remain in runner reports and are excluded from validated
+scoring. Reports from before the shared hash protocol can be inspected with
+the exploratory flag.
