@@ -645,10 +645,13 @@ fn rates(ctas: &[Cta], m: &Machine, mma_per_cta: &[f64], lat: Latency, s: &mut S
         let t_mem = t_l2.max(t_dram);
         let [latency, t_mma, t_issue, t_smem, t_local, ..] = s.terms[i];
         let t_sm = t_mma.max(t_issue).max(t_smem).max(t_local);
-        // Synchronous loads: the CTA waits for its loads, then computes. The
-        // wait is the longer of the round trip and the transfer.
+        // Synchronous loads: the CTA waits a loaded round trip, then
+        // computes. The loaded latency already contains queueing and transfer
+        // under the current load, and DRAM and L2 serve whichever CTAs have
+        // requests outstanding, so the bandwidth share only bounds the
+        // average rate instead of adding to every iteration.
         let t = if d.serial {
-            latency.max(t_mem) + t_sm
+            (latency + t_sm).max(t_mem)
         } else {
             latency.max(t_sm).max(t_mem)
         };
