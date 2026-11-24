@@ -14,6 +14,26 @@ fn err(e: impl std::fmt::Debug) -> PyErr {
     PyValueError::new_err(format!("{e:?}"))
 }
 
+/// Map `f` over the draws on all available cores, keeping the draw order.
+fn parallel_times<F>(draws: &[Draw], f: F) -> Result<Vec<f64>, ModelError>
+where
+    F: Fn(&Draw) -> Result<f64, ModelError> + Sync,
+{
+    let threads = std::thread::available_parallelism().map_or(1, |n| n.get());
+    let chunk = draws.len().div_ceil(threads).max(1);
+    std::thread::scope(|scope| {
+        let handles: Vec<_> = draws
+            .chunks(chunk)
+            .map(|part| scope.spawn(|| part.iter().map(&f).collect::<Result<Vec<_>, _>>()))
+            .collect();
+        let mut out = Vec::with_capacity(draws.len());
+        for h in handles {
+            out.extend(h.join().expect("draw thread panicked")?);
+        }
+        Ok(out)
+    })
+}
+
 /// Predict one kernel variant on one GPU profile under perturbation draws.
 ///
 /// Takes the KernelIR and profile as JSON strings, `l2_state` as "cold" or
@@ -58,10 +78,9 @@ fn predict<'py>(
     };
     let result = kernel_from_ir(&ir).and_then(|k| {
         let r = one(&k, &all[0])?;
+        let rest = py.detach(|| parallel_times(&all[1..], |draw| one(&k, draw).map(|p| p.time_ns)));
         let mut times = vec![r.time_ns];
-        for draw in &all[1..] {
-            times.push(one(&k, draw)?.time_ns);
-        }
+        times.extend(rest?);
         Ok((r, times))
     });
     let (r, times) = match result {
