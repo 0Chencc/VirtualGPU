@@ -19,6 +19,9 @@ import pynvml
 import torch
 import triton
 import triton.language as tl
+from triton.runtime.errors import PTXASError
+
+from validation.score import median_ci95
 
 
 @triton.jit
@@ -134,37 +137,48 @@ def prepare_candidates(case, configs, seed):
     operations = {}
     artifacts = {}
 
-    def make_launch(cfg):
-        bm, bn, bk = cfg["tile"]
-        grid = (triton.cdiv(m, bm) * triton.cdiv(n, bn),)
-        return grid, lambda: dense_gemm[grid](
-            a, b, out, m, n, k, bm, bn, bk, cfg["group_m"],
-            num_warps=cfg["num_warps"], num_stages=cfg["num_stages"],
-        )
-
     for cfg in configs:
         key = cfg["config_id"]
-        grid, operation = make_launch(cfg)
+        bm, bn, bk = cfg["tile"]
+        grid = (triton.cdiv(m, bm) * triton.cdiv(n, bn),)
+        kernel_args = (a, b, out, m, n, k, bm, bn, bk, cfg["group_m"])
+        options = dict(num_warps=cfg["num_warps"], num_stages=cfg["num_stages"])
+
+        def operation(grid=grid, kernel_args=kernel_args, options=options):
+            return dense_gemm[grid](*kernel_args, **options)
+
         try:
-            compiled = operation()
-            torch.testing.assert_close(out, reference, rtol=0.01, atol=0.015)
-        except (triton.CompilationError, triton.OutOfResources, AssertionError) as error:
-            artifacts[key] = {"status": "rejected", "reason": str(error)}
+            compiled = dense_gemm.run(*kernel_args, grid=grid, warmup=True, **options)
+        except (triton.CompilationError, PTXASError) as error:
+            artifacts[key] = {"status": "compile_failed", "reason": str(error)}
             continue
-        operations[key] = operation
+
         ptx = compiled.asm["ptx"]
         mma_shapes = re.findall(r"mma\.sync\.aligned\.m(\d+)n(\d+)k(\d+)\.row\.col\.f32\.f16\.f16\.f32", ptx)
-        artifacts[key] = {
-            "status": "ok",
+        row = {
             "tile": cfg["tile"],
             "num_warps": cfg["num_warps"],
             "mma_shapes": sorted({f"{m}x{n}x{k}" for m, n, k in mma_shapes}),
             "grid": list(grid),
-            "registers_per_thread": compiled.n_regs,
-            "spill_count": compiled.n_spills,
             "shared_bytes": compiled.metadata.shared,
             "ptx_sha256": hashlib.sha256(ptx.encode()).hexdigest(),
         }
+        artifacts[key] = row
+        try:
+            operation()
+        except (triton.OutOfResources, RuntimeError) as error:
+            row.update(status="launch_failed", reason=str(error))
+            continue
+        # An asynchronous execution error can invalidate the CUDA context.
+        torch.cuda.synchronize()
+        row.update(registers_per_thread=compiled.n_regs, spill_count=compiled.n_spills)
+        try:
+            torch.testing.assert_close(out, reference, rtol=0.01, atol=0.015)
+        except AssertionError as error:
+            row.update(status="incorrect", reason=str(error))
+            continue
+        row["status"] = "ok"
+        operations[key] = operation
     return operations, artifacts
 
 
@@ -176,13 +190,11 @@ def measure(case, configs, input_seed, args, manifest_sha):
         raise RuntimeError(f"Only the RTX 4070 is authorized in M1: {gpu.name}")
     l2_bytes = l2_capacity()
     operations, artifacts = prepare_candidates(case, configs, input_seed)
-    if not operations:
-        raise RuntimeError(f"No legal candidates: {artifacts}")
     eviction = torch.empty(2 * l2_bytes, device="cuda", dtype=torch.uint8)
     def evict():
         eviction.fill_(1)
 
-    control = cache_control(evict, l2_bytes)
+    control = cache_control(evict, l2_bytes) if operations else {}
     trials = {(cache, key): timed_graph(prepare, operation)
               for key, operation in operations.items()
               for cache, prepare in (("warm", operation), ("cold", evict))}
@@ -200,7 +212,7 @@ def measure(case, configs, input_seed, args, manifest_sha):
         monitor.start()
         try:
             deadline = time.monotonic() + args.warmup_seconds
-            while time.monotonic() < deadline:
+            while operations and time.monotonic() < deadline:
                 for operation in operations.values():
                     operation()
                 torch.cuda.synchronize()
@@ -224,11 +236,20 @@ def measure(case, configs, input_seed, args, manifest_sha):
     for cache, key in sorted(order):
         times = [row["latency_ns"] for row in samples
                  if row["cache"] == cache and row["config_id"] == key]
+        median = statistics.median(times)
+        low, high = median_ci95([times], seed=args.seed)
+        stdev = statistics.stdev(times)
         summary.setdefault(cache, {})[key] = {
-            "median_ns": statistics.median(times),
-            "sample_stdev_ns": statistics.stdev(times),
-            "cv": statistics.stdev(times) / statistics.mean(times),
+            "median_ns": median,
+            "median_ci95_ns": [low, high],
+            "relative_ci95_half_width": (high - low) / (2 * median),
+            "sample_stdev_ns": stdev,
+            "cv": stdev / statistics.mean(times),
         }
+    for entries in summary.values():
+        best = min(entry["median_ns"] for entry in entries.values())
+        for entry in entries.values():
+            entry["gap_to_measured_best"] = entry["median_ns"] / best - 1
     return {
         "session_id": str(uuid4()),
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),

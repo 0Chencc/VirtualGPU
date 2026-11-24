@@ -5,7 +5,7 @@ from pathlib import Path
 import unittest
 
 from validation.baseline import gemm_work, latency_ns, predict
-from validation.score import kendall_tau_b, observed_pair, predicted_pair, score
+from validation.score import kendall_tau_b, median_ci95, observed_pair, predicted_pair, score
 from validation.suite import manifest
 
 
@@ -54,6 +54,14 @@ class BaselineTest(unittest.TestCase):
 
 
 class ScoreTest(unittest.TestCase):
+    def test_measurement_intervals_and_gaps(self):
+        self.assertEqual(median_ci95([[100, 100], [110, 110]]), (105, 105))
+        blocks = {("session", index): 100 for index in range(3)}
+        result = score({"a": blocks, "b": dict.fromkeys(blocks, 103)}, {})
+        self.assertEqual(result["configs"]["a"]["measured_median_ci95_ns"], (100, 100))
+        self.assertEqual(result["configs"]["a"]["relative_ci95_half_width"], 0)
+        self.assertAlmostEqual(result["configs"]["b"]["gap_to_measured_best"], 0.03)
+
     def test_tau_b_with_ties(self):
         actual = {"a": 1, "b": 2, "c": 2}
         self.assertAlmostEqual(kendall_tau_b(actual, {"a": 1, "b": 2, "c": 3}), 2 / 6**0.5)

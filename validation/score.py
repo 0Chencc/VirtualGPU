@@ -26,6 +26,17 @@ def kendall_tau_b(measured, predicted):
     return concordance / denominator if denominator else None
 
 
+def median_ci95(groups, samples=1000, seed=17):
+    rng = random.Random(seed)
+    estimates = sorted(
+        statistics.median(value for group in groups
+                          for value in rng.choices(group, k=len(group)))
+        for _ in range(samples)
+    )
+    last = samples - 1
+    return estimates[int(0.025 * last)], estimates[math.ceil(0.975 * last)]
+
+
 def observed_pair(a, b, samples, seed):
     by_session = {}
     for session, block in sorted(a.keys() & b.keys()):
@@ -33,13 +44,7 @@ def observed_pair(a, b, samples, seed):
         by_session.setdefault(session, []).append(math.log(a[key] / b[key]))
     if sum(map(len, by_session.values())) < 2:
         return "unavailable", None
-    rng = random.Random(seed)
-    estimates = sorted(
-        statistics.median(value for values in by_session.values()
-                          for value in rng.choices(values, k=len(values)))
-        for _ in range(samples)
-    )
-    low, high = estimates[int(0.025 * (samples - 1))], estimates[math.ceil(0.975 * (samples - 1))]
+    low, high = median_ci95(list(by_session.values()), samples, seed)
     margin = math.log(1.05)
     if high < -margin:
         return "a_faster", (low, high)
@@ -84,6 +89,21 @@ def score(timings, records, k=5, samples=1000, seed=17):
         })
         counts = confusion.setdefault(observed, {})
         counts[forecast] = counts.get(forecast, 0) + 1
+    comparison = {}
+    for key in sorted(measured):
+        groups = {}
+        for (session, _), latency in sorted(timings[key].items()):
+            groups.setdefault(session, []).append(latency)
+        median = measured[key]
+        interval = median_ci95(list(groups.values()), samples, seed) if len(timings[key]) >= 2 else None
+        comparison[key] = {
+            "measured_median_ns": median,
+            "measured_median_ci95_ns": interval,
+            "relative_ci95_half_width": (interval[1] - interval[0]) / (2 * median) if interval else None,
+            "gap_to_measured_best": median / oracle - 1,
+            "nominal_latency_ns": predicted.get(key),
+            "prediction_status": records.get(key, {}).get("status", "missing"),
+        }
     return {
         "kendall_tau_b": kendall_tau_b(measured, predicted),
         "k": k,
@@ -92,14 +112,7 @@ def score(timings, records, k=5, samples=1000, seed=17):
         "top_k_regret": regret,
         "scored_configs": len(predicted),
         "measured_configs": len(measured),
-        "configs": {
-            key: {
-                "measured_median_ns": measured[key],
-                "nominal_latency_ns": predicted.get(key),
-                "prediction_status": records.get(key, {}).get("status", "missing"),
-            }
-            for key in sorted(measured)
-        },
+        "configs": comparison,
         "pair_confusion": confusion,
         "pairs": pairs,
     }

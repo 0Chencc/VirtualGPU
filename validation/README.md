@@ -30,6 +30,12 @@ probe records the observed effect of cache preparation. Clock telemetry is
 record-only and is sampled asynchronously. An unsupported telemetry query is
 recorded as unavailable. Reports include every sample and its block, the
 cache control, compiled artifact hashes, timing dispersion, and telemetry.
+Candidate statuses distinguish compilation failures, launch failures, and
+incorrect outputs. Only successful candidates contribute timing samples.
+Each cache regime reports a bootstrap 95% median interval, its half-width
+divided by the median, and each config's median gap to the fastest measured
+candidate. The scorer also reports these statistics across input sessions,
+resampling blocks within each session.
 
 ## Compare with a prediction
 
