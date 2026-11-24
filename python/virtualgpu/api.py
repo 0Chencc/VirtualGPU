@@ -89,16 +89,15 @@ def predict_kernel_ir(
     case_id: str,
     config_id: str,
     l2_state: str = "cold",
-    draws: int = 0,
-    seed: int = 0,
+    draws: int = 32,
+    seed: int = 17,
     core_module: Any = None,
 ) -> dict[str, Any]:
     """Run virtualgpu._core.predict on a single KernelIR and format a validation record."""
     if draws < 0:
         raise ValueError(f"draws must be >= 0, got {draws}")
-    if draws > 0:
-        raise NotImplementedError("perturbation draws are not implemented in the core yet")
-    del seed  # Reserved until core perturbation sampling is wired in.
+    if seed < 0:
+        raise ValueError(f"seed must be >= 0, got {seed}")
 
     if core_module is None:
         from virtualgpu import _core as core_module  # type: ignore[no-redef]
@@ -107,7 +106,15 @@ def predict_kernel_ir(
     revision = profile_data["provenance"]["profile_revision"]
     ir_text = ir if isinstance(ir, str) else json.dumps(ir)
 
-    raw = dict(core_module.predict(ir_text, profile_text, l2_state=l2_state))
+    raw = dict(
+        core_module.predict(
+            ir_text,
+            profile_text,
+            l2_state=l2_state,
+            draws=draws,
+            seed=seed,
+        )
+    )
     status = raw.pop("status")
     rec: dict[str, Any] = {
         "case_id": case_id,
@@ -121,6 +128,11 @@ def predict_kernel_ir(
     }
     if status == "ok":
         rec["nominal_latency_ns"] = float(raw.pop("time_ns"))
+        raw_draws = raw.pop("draws", None)
+        if draws > 0:
+            if not isinstance(raw_draws, Mapping) or "0" not in raw_draws:
+                raise RuntimeError("core.predict returned ok with draws > 0 but omitted draw map")
+            rec["draws"] = {str(k): float(v) for k, v in raw_draws.items()}
         rec["diagnostics"] = raw
     else:
         rec["reason"] = raw.pop("reason", "unsupported")
@@ -181,8 +193,8 @@ def predict_gemm_configs(
     profile: str | Path | Mapping[str, Any],
     l2_state: str = "cold",
     dtype: str = "f16",
-    draws: int = 0,
-    seed: int = 0,
+    draws: int = 32,
+    seed: int = 17,
     cache_dir: str | Path | None = None,
     use_cache: bool = True,
     ir_out_dir: str | Path | None = None,
@@ -194,8 +206,8 @@ def predict_gemm_configs(
     """
     if draws < 0:
         raise ValueError(f"draws must be >= 0, got {draws}")
-    if draws > 0:
-        raise NotImplementedError("perturbation draws are not implemented in the core yet")
+    if seed < 0:
+        raise ValueError(f"seed must be >= 0, got {seed}")
     profile_text, profile_data = _load_profile(profile)
     target_arch = profile_data["identity"]["arch"]
     revision = profile_data["provenance"]["profile_revision"]
@@ -244,15 +256,15 @@ def predict_ir_dir(
     case_id: str,
     profile: str | Path | Mapping[str, Any],
     l2_state: str = "cold",
-    draws: int = 0,
-    seed: int = 0,
+    draws: int = 32,
+    seed: int = 17,
     core_module: Any = None,
 ) -> list[dict[str, Any]]:
     """Predict every KernelIR JSON file in a directory and return validation records."""
     if draws < 0:
         raise ValueError(f"draws must be >= 0, got {draws}")
-    if draws > 0:
-        raise NotImplementedError("perturbation draws are not implemented in the core yet")
+    if seed < 0:
+        raise ValueError(f"seed must be >= 0, got {seed}")
     profile_text, _ = _load_profile(profile)
     records: list[dict[str, Any]] = []
     for ir_file in sorted(Path(ir_dir).glob("*.json")):

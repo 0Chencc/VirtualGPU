@@ -25,24 +25,33 @@ SCHEMA_PATH = REPO_ROOT / "schemas" / "kernel_ir.schema.json"
 PROFILE_EXAMPLE_PATH = REPO_ROOT / "schemas" / "examples" / "profile_example.json"
 
 
-class _DummyNominalCore:
-    """Mimics M1 virtualgpu._core with single-draw nominal predict()."""
+class _DummyCore:
+    """Mimics virtualgpu._core.predict with perturbation draws support."""
 
     @staticmethod
-    def predict(kernel_ir_json: str, profile_json: str, l2_state: str = "cold") -> dict[str, Any]:
+    def predict(
+        kernel_ir_json: str,
+        profile_json: str,
+        l2_state: str = "cold",
+        draws: int = 32,
+        seed: int = 17,
+    ) -> dict[str, Any]:
         ir = json.loads(kernel_ir_json)
         if ir["resources"]["static_smem_bytes"] > 100_000:
             return {
                 "status": "unsupported",
                 "l2_state": l2_state,
                 "dispatch_policy": "round_robin",
-                "reason": "SmemExceedsLimit",
+                "reason": "TooMuchSharedMemory",
             }
+        base = 12345.0
+        by_draw = {str(i): base + (i * (seed + 1)) for i in range(draws + 1)}
         return {
             "status": "ok",
             "l2_state": l2_state,
             "dispatch_policy": "round_robin",
-            "time_ns": 12345.0,
+            "time_ns": base,
+            "draws": by_draw,
             "makespan_ns": 11000.0,
             "ctas_per_sm": 1,
             "occupancy_limiter": "Registers",
@@ -52,6 +61,8 @@ class _DummyNominalCore:
             "l2_hit_bytes": 512,
             "dram_bytes": 512,
             "bound_fraction": {"mma": 0.8, "dram": 0.2},
+            "flags": [],
+            "diagnostics": [],
         }
 
 
@@ -102,7 +113,7 @@ def test_aot_disk_cache_hits_and_skips_recompilation(tmp_path: Path, monkeypatch
     )
 
 
-def test_predict_api_formats_nominal_and_rejects_unimplemented_draws(tmp_path: Path) -> None:
+def test_predict_api_formats_perturbed_nominal_and_unsupported_records(tmp_path: Path) -> None:
     cache_dir = tmp_path / "cache"
     ir_dir = tmp_path / "irs"
     configs = [
@@ -132,32 +143,42 @@ def test_predict_api_formats_nominal_and_rejects_unimplemented_draws(tmp_path: P
         configs=configs,
         profile=PROFILE_EXAMPLE_PATH,
         l2_state="cold",
+        draws=4,
+        seed=7,
         cache_dir=cache_dir,
         ir_out_dir=ir_dir,
-        core_module=_DummyNominalCore,
+        core_module=_DummyCore,
     )
     assert len(records) == 2
     by_id = {r["config_id"]: r for r in records}
     assert by_id["c_ok"]["status"] == "ok"
     assert by_id["c_ok"]["nominal_latency_ns"] == 12345.0
-    assert "draws" not in by_id["c_ok"]
+    assert by_id["c_ok"]["draws"] == {
+        "0": 12345.0,
+        "1": 12353.0,
+        "2": 12361.0,
+        "3": 12369.0,
+        "4": 12377.0,
+    }
     assert by_id["c_ok"]["assumptions"]["l2_state"] == "cold"
     assert by_id["c_big_smem"]["status"] == "unsupported"
-    assert by_id["c_big_smem"]["reason"] == "SmemExceedsLimit"
+    assert by_id["c_big_smem"]["reason"] == "TooMuchSharedMemory"
 
-    # Requesting perturbation draws must fail loudly rather than silently returning nominal only.
+    # draws=0 runs nominal only and omits draws map so scorer does not misclassify single-draw pairs.
     ir_ok = json.loads((ir_dir / "c_ok.json").read_text(encoding="utf-8"))
-    with pytest.raises(NotImplementedError, match="perturbation draws are not implemented"):
-        predict_kernel_ir(
-            ir_ok,
-            PROFILE_EXAMPLE_PATH,
-            case_id="test-case",
-            config_id="c_ok",
-            l2_state="warm",
-            draws=32,
-            seed=7,
-            core_module=_DummyNominalCore,
-        )
+    rec_nom = predict_kernel_ir(
+        ir_ok,
+        PROFILE_EXAMPLE_PATH,
+        case_id="test-case",
+        config_id="c_ok",
+        l2_state="warm",
+        draws=0,
+        core_module=_DummyCore,
+    )
+    assert rec_nom["status"] == "ok"
+    assert rec_nom["nominal_latency_ns"] == 12345.0
+    assert "draws" not in rec_nom
+
     with pytest.raises(ValueError, match="draws must be >= 0"):
         predict_kernel_ir(
             ir_ok,
@@ -165,7 +186,7 @@ def test_predict_api_formats_nominal_and_rejects_unimplemented_draws(tmp_path: P
             case_id="test-case",
             config_id="c_ok",
             draws=-1,
-            core_module=_DummyNominalCore,
+            core_module=_DummyCore,
         )
 
     # Directory prediction helper produces matching records.
@@ -174,7 +195,9 @@ def test_predict_api_formats_nominal_and_rejects_unimplemented_draws(tmp_path: P
         case_id="test-case",
         profile=PROFILE_EXAMPLE_PATH,
         l2_state="cold",
-        core_module=_DummyNominalCore,
+        draws=2,
+        seed=17,
+        core_module=_DummyCore,
     )
     assert {r["config_id"] for r in dir_records} == {"c_ok", "c_big_smem"}
 
@@ -215,7 +238,7 @@ def test_cli_extract_and_predict_ir_dir(tmp_path: Path, monkeypatch: pytest.Monk
     # Patch virtualgpu._core for CPU-only CLI predict test when extension is not built.
     import virtualgpu
 
-    monkeypatch.setattr(virtualgpu, "_core", _DummyNominalCore, raising=False)
+    monkeypatch.setattr(virtualgpu, "_core", _DummyCore, raising=False)
     out_preds = tmp_path / "preds.json"
     rc2 = cli_main([
         "predict",
@@ -223,6 +246,8 @@ def test_cli_extract_and_predict_ir_dir(tmp_path: Path, monkeypatch: pytest.Monk
         "--case", "smoke-case",
         "--profile", str(PROFILE_EXAMPLE_PATH),
         "--cache", "cold",
+        "--draws", "4",
+        "--seed", "17",
         "--out", str(out_preds),
     ])
     assert rc2 == 0
@@ -232,4 +257,5 @@ def test_cli_extract_and_predict_ir_dir(tmp_path: Path, monkeypatch: pytest.Monk
     assert preds[0]["config_id"] == "c01"
     assert preds[0]["status"] == "ok"
     assert preds[0]["nominal_latency_ns"] == 12345.0
-    assert "draws" not in preds[0]
+    assert len(preds[0]["draws"]) == 5
+    assert preds[0]["draws"]["0"] == 12345.0
