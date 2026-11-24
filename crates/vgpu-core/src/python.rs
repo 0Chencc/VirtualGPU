@@ -4,7 +4,7 @@ use crate::from_ir::{kernel_from_ir, IrL2};
 use crate::ir::KernelIR;
 use crate::l2::{L2InitState, L2Options};
 use crate::profile::Profile;
-use crate::sim::{simulate, Machine, ModelError};
+use crate::sim::{simulate, Machine, ModelError, RESOURCES};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
@@ -71,6 +71,11 @@ fn predict<'py>(
     d.set_item("load_bytes", r.load_bytes)?;
     d.set_item("l2_hit_bytes", r.l2_hit_bytes)?;
     d.set_item("dram_bytes", r.dram_bytes)?;
+    let bound = PyDict::new(py);
+    for (name, f) in RESOURCES.iter().zip(r.bound_fraction) {
+        bound.set_item(name, f)?;
+    }
+    d.set_item("bound_fraction", bound)?;
     Ok(d)
 }
 

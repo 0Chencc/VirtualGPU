@@ -146,7 +146,13 @@ pub struct Prediction {
     pub l2_hit_bytes: f64,
     pub dram_bytes: f64,
     pub events: u64,
+    /// Fraction of CTA-time during which each resource of `RESOURCES` was the
+    /// bound of the CTA's current phase.
+    pub bound_fraction: [f64; 6],
 }
+
+/// Resources a phase can be bound by, in `Prediction::bound_fraction` order.
+pub const RESOURCES: [&str; 6] = ["latency", "mma", "issue", "smem", "l2", "dram"];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Phase {
@@ -387,6 +393,8 @@ struct Scratch {
     l2_share: Vec<f64>,
     dram_share: Vec<f64>,
     rate: Vec<f64>,
+    /// Per CTA, the time each resource alone would need, in `RESOURCES` order.
+    terms: Vec<[f64; 6]>,
 }
 
 /// `mma_per_cta[u]` is the tensor throughput of each of `u` MMA-issuing CTAs on one SM.
@@ -410,6 +418,7 @@ fn rates(ctas: &[Cta], m: &Machine, mma_per_cta: &[f64], s: &mut Scratch) {
     let active_sms = s.resident.iter().filter(|&&r| r > 0).count() as f64;
 
     s.t_compute.clear();
+    s.terms.clear();
     for c in ctas {
         let d = &c.demand;
         let i = c.sm as usize;
@@ -428,6 +437,8 @@ fn rates(ctas: &[Cta], m: &Machine, mma_per_cta: &[f64], s: &mut Scratch) {
         } else {
             0.0
         };
+        s.terms
+            .push([d.latency_ns, t_mma, t_issue, t_smem, 0.0, 0.0]);
         let t_sm = t_mma.max(t_issue).max(t_smem);
         s.t_compute.push(if d.serial {
             d.latency_ns + t_sm
@@ -479,6 +490,8 @@ fn rates(ctas: &[Cta], m: &Machine, mma_per_cta: &[f64], s: &mut Scratch) {
         } else {
             0.0
         };
+        s.terms[i][4] = t_l2;
+        s.terms[i][5] = t_dram;
         let t_mem = t_l2.max(t_dram);
         let t = if d.serial {
             s.t_compute[i] + t_mem
@@ -532,6 +545,7 @@ pub fn simulate<L: L2>(
     let mut advanced: Vec<Cta> = Vec::new();
     let mut busy_sm_ns = 0.0;
     let mut events = 0u64;
+    let mut bound_ns = [0.0f64; 6];
     while !ctas.is_empty() {
         rates(&ctas, m, &mma_per_cta, &mut s);
         let dt = ctas
@@ -541,6 +555,10 @@ pub fn simulate<L: L2>(
             .fold(f64::INFINITY, f64::min);
         sim.t += dt;
         busy_sm_ns += dt * s.resident.iter().filter(|&&r| r > 0).count() as f64;
+        for t in &s.terms {
+            let b = (0..t.len()).fold(0, |b, j| if t[j] > t[b] { j } else { b });
+            bound_ns[b] += dt;
+        }
         events += 1;
 
         for (c, &r) in ctas.iter_mut().zip(&s.rate) {
@@ -589,5 +607,9 @@ pub fn simulate<L: L2>(
         l2_hit_bytes: sim.l2_hit_bytes,
         dram_bytes: sim.dram_bytes,
         events,
+        bound_fraction: {
+            let total: f64 = bound_ns.iter().sum();
+            bound_ns.map(|b| if total > 0.0 { b / total } else { 0.0 })
+        },
     })
 }

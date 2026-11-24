@@ -217,3 +217,11 @@ fn fully_prefetched_loop_loads_each_iteration_once() {
     let p = run(&k, machine(&k));
     assert!(close(p.load_bytes, 46.0 * 2.0 * 16384.0));
 }
+
+#[test]
+fn bound_fraction_names_the_bounding_resource() {
+    let k = compute_only(46);
+    let p = run(&k, machine(&k));
+    assert!(close(p.bound_fraction.iter().sum(), 1.0));
+    assert!(close(p.bound_fraction[1], 1.0), "{:?}", p.bound_fraction);
+}
