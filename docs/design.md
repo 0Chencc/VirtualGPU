@@ -21,7 +21,7 @@ A plain-language overview is in [roadmap.html](roadmap.html).
 - **One neutral Kernel IR:** the IR is independent of the source language and of the GPU vendor. Triton is the first frontend; a PTX frontend follows and covers CUDA, CUTLASS, TileLang and other languages that compile to PTX. AMD follows through its public ISA.
 - **Implementation:** the model core (scheduler, L2 model, perturbation) is written in Rust and exposed to Python through PyO3. Frontends are written in Python. The microbenchmark suite is written in CUDA C++ to control the exact instructions it measures.
 - **Test GPUs:** RTX 4070 (Ada, `sm_89`) for development; DGX Spark (GB10, `sm_121`) as a held-out GPU for the cross-GPU experiment.
-- **Verdict rule:** A is faster than B only if A is faster in every perturbation draw. Anything else is "indistinguishable". A softer rule may be introduced only after calibration on development data.
+- **Verdict rule:** A is faster than B only if A is at least 5% faster in every perturbation draw (|log(t_A/t_B)| >= log(1.05) with the same sign in all draws). Anything else is "indistinguishable". The 5% band is the same practical band used for hardware pairs; it is fixed, not tuned. Profile perturbation cannot cover structural model error, so a draw-only rule orders pairs that differ only through modeled structure.
 
 ## 1. Problem
 
@@ -128,7 +128,7 @@ Events are per CTA phase, not per instruction or per loop iteration. The target 
 
 ### 6.2.1 Resolution through perturbation
 
-When variants are bound by different resources, profile errors do not cancel. Every measured profile field therefore carries an uncertainty. The model runs each variant against draw 0 (the nominal profile) and 32 perturbed draws (Latin hypercube within each field's uncertainty, correlated fields drawn together, dispatch policy candidates included). All variants share the same draws, so comparisons are paired. A pair is ordered only if every draw agrees; otherwise it is indistinguishable.
+When variants are bound by different resources, profile errors do not cancel. Every measured profile field therefore carries an uncertainty. The model runs each variant against draw 0 (the nominal profile) and 32 perturbed draws (Latin hypercube within each field's uncertainty, correlated fields drawn together, dispatch policy candidates included). All variants share the same draws, so comparisons are paired. A pair is ordered only if every draw agrees on the direction and on a difference of at least 5%; otherwise it is indistinguishable.
 
 ### 6.3 Output
 
