@@ -74,6 +74,8 @@ _RE_PTX_WAIT_GROUP = re.compile(r"\bcp\.async\.wait_group\s+(\d+)\s*;")
 _RE_PTX_COMMIT_GROUP = re.compile(r"\bcp\.async\.commit_group\s*;")
 _RE_PTX_MBAR_TRY_WAIT = re.compile(r"\bmbarrier\.try_wait\b")
 _RE_PTX_MBAR_ARRIVE_TX = re.compile(r"\bmbarrier\.arrive\.expect_tx\b")
+_RE_PTX_ANY_MMA = re.compile(r"\b(?:mma\.sync\.aligned|wgmma\.mma_async|tcgen05\.mma)\b")
+_RE_TTGIR_ANY_DOT = re.compile(r"\b(?:tt\.dot|ttng\.warp_group_dot)\b")
 _RE_PTX_LABEL = re.compile(r"^\s*(\$[A-Za-z0-9_]+):")
 _RE_PTX_BRA = re.compile(r"\bbra(?:\.uni)?\s+(\$[A-Za-z0-9_]+)")
 
@@ -195,10 +197,14 @@ def _derive_tma_prefetch_distance(
     Per public PTX ISA mbarrier semantics:
     - In PTX, count `mbarrier.arrive.expect_tx` before the loop's first
       `mbarrier.try_wait` (prologue prefills) versus inside the loop body
-      (steady-state refills). After `try_wait` retires the oldest barrier before
-      compute, `(prologue_arrives // loop_arrives) - 1` stages remain in flight.
+      (steady-state refills). After `try_wait` retires the oldest barrier,
+      `(prologue_arrives // loop_arrives) - 1` prefilled stages remain in flight.
+      If the loop issues the next `mbarrier.arrive.expect_tx` *before* the first
+      MMA instruction, that newly issued stage is also in flight during compute
+      (`+ 1`); if it issues *after* MMA, it is not (`+ 0`).
     - In TTGIR, cross-check using `ttng.async_tma_copy_global_to_local` counts
-      before vs. inside `scf.for` alongside `ttng.wait_barrier`.
+      before vs. inside `scf.for` alongside `ttng.wait_barrier` and relative
+      order against `tt.dot` / `ttng.warp_group_dot`.
     If neither can resolve it cleanly, emit `tma_prefetch_unresolved` in
     `unsupported_features` rather than guessing.
     """
@@ -211,9 +217,17 @@ def _derive_tma_prefetch_distance(
         before_wait = ptx[: m_wait.start()]
         after_wait = ptx[m_wait.end() :]
         pro_arrives = len(_RE_PTX_MBAR_ARRIVE_TX.findall(before_wait))
-        loop_arrives = len(_RE_PTX_MBAR_ARRIVE_TX.findall(after_wait))
-        if loop_arrives > 0 and pro_arrives >= loop_arrives and (pro_arrives % loop_arrives) == 0:
-            ptx_dist = (pro_arrives // loop_arrives) - 1
+        loop_arrive_matches = list(_RE_PTX_MBAR_ARRIVE_TX.finditer(after_wait))
+        loop_arrives = len(loop_arrive_matches)
+        m_mma = _RE_PTX_ANY_MMA.search(after_wait)
+        if (
+            m_mma is not None
+            and loop_arrives > 0
+            and pro_arrives >= loop_arrives
+            and (pro_arrives % loop_arrives) == 0
+        ):
+            issue_before_mma = 1 if loop_arrive_matches[0].start() < m_mma.start() else 0
+            ptx_dist = (pro_arrives // loop_arrives) - 1 + issue_before_mma
 
     ttgir_dist: int | None = None
     for_pos = ttgir.find("scf.for ")
@@ -221,9 +235,14 @@ def _derive_tma_prefetch_distance(
         prologue = ttgir[:for_pos]
         prologue_tma = prologue.count("ttng.async_tma_copy_global_to_local")
         loop_tma = ttgir_loop_body.count("ttng.async_tma_copy_global_to_local")
-        has_wait = "ttng.wait_barrier" in ttgir_loop_body
-        if has_wait and loop_tma > 0 and prologue_tma >= loop_tma and (prologue_tma % loop_tma) == 0:
-            ttgir_dist = (prologue_tma // loop_tma) - 1
+        wait_pos = ttgir_loop_body.find("ttng.wait_barrier")
+        if wait_pos != -1 and loop_tma > 0 and prologue_tma >= loop_tma and (prologue_tma % loop_tma) == 0:
+            after_wait_ir = ttgir_loop_body[wait_pos:]
+            m_dot = _RE_TTGIR_ANY_DOT.search(after_wait_ir)
+            first_tma_pos = after_wait_ir.find("ttng.async_tma_copy_global_to_local")
+            if m_dot is not None and first_tma_pos != -1:
+                issue_before_dot = 1 if first_tma_pos < m_dot.start() else 0
+                ttgir_dist = (prologue_tma // loop_tma) - 1 + issue_before_dot
 
     if ptx_dist is not None and ttgir_dist is not None:
         if ptx_dist != ttgir_dist:

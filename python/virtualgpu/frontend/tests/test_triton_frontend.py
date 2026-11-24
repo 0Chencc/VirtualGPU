@@ -620,6 +620,63 @@ def test_prefetch_derivation_diagnostics_and_unsupported_on_unresolved() -> None
     assert "tma_prefetch_unresolved" in s_tma.unsupported_features
 
 
+def test_tma_prefetch_accounts_for_arrive_vs_mma_order() -> None:
+    # 1 prologue stage (2 TMA copies before loop):
+    # Case A: wait -> MMA -> arrive/issue next TMA => 0 in-flight during MMA
+    tma_issue_after_mma_ir = (
+        'module attributes {"ttg.num-warps" = 4 : i32, "ttg.threads-per-warp" = 32 : i32} {\n'
+        '  %a = ttg.local_alloc : () -> !ttg.memdesc<1x64x32xf16, #shared, #smem, mutable>\n'
+        '  ttng.async_tma_copy_global_to_local %da[%x, %y] %a, %b, %p\n'
+        '  ttng.async_tma_copy_global_to_local %db[%x, %y] %a, %b, %p\n'
+        '  scf.for %i = %c0 to %c10 step %c1 {\n'
+        '    ttng.wait_barrier %b, %ph\n'
+        '    %acc = tt.dot %x, %y, %z : tensor<64x32xf16, #op0> * tensor<32x64xf16, #op1> -> tensor<64x64xf32, #mma>\n'
+        '    ttng.async_tma_copy_global_to_local %da[%x, %y] %a, %b, %p\n'
+        '    ttng.async_tma_copy_global_to_local %db[%x, %y] %a, %b, %p\n'
+        '  }\n'
+        '}\n'
+    )
+    tma_issue_after_mma_ptx = (
+        "mbarrier.arrive.expect_tx.shared::cta.b64 _, [%r0], 16384;\n"
+        "$L__loop:\n"
+        "  mbarrier.try_wait.parity.shared::cta.b64 complete, [%r0], %r1;\n"
+        "  mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 d, a, b, c;\n"
+        "  mbarrier.arrive.expect_tx.shared::cta.b64 _, [%r0], 16384;\n"
+        "  bra $L__loop;\n"
+    )
+    s_after = parse_ttgir_summary(tma_issue_after_mma_ir, tma_issue_after_mma_ptx, requested_num_stages=2, element_bytes=2)
+    assert s_after.prefetch_distance == 0
+    assert s_after.unsupported_features == []
+    assert "prefetch_distance_mismatch" not in s_after.diagnostics
+
+    # Case B: wait -> arrive/issue next TMA -> MMA => 1 in-flight during MMA
+    tma_issue_before_mma_ir = (
+        'module attributes {"ttg.num-warps" = 4 : i32, "ttg.threads-per-warp" = 32 : i32} {\n'
+        '  %a = ttg.local_alloc : () -> !ttg.memdesc<1x64x32xf16, #shared, #smem, mutable>\n'
+        '  ttng.async_tma_copy_global_to_local %da[%x, %y] %a, %b, %p\n'
+        '  ttng.async_tma_copy_global_to_local %db[%x, %y] %a, %b, %p\n'
+        '  scf.for %i = %c0 to %c10 step %c1 {\n'
+        '    ttng.wait_barrier %b, %ph\n'
+        '    ttng.async_tma_copy_global_to_local %da[%x, %y] %a, %b, %p\n'
+        '    ttng.async_tma_copy_global_to_local %db[%x, %y] %a, %b, %p\n'
+        '    %acc = tt.dot %x, %y, %z : tensor<64x32xf16, #op0> * tensor<32x64xf16, #op1> -> tensor<64x64xf32, #mma>\n'
+        '  }\n'
+        '}\n'
+    )
+    tma_issue_before_mma_ptx = (
+        "mbarrier.arrive.expect_tx.shared::cta.b64 _, [%r0], 16384;\n"
+        "$L__loop:\n"
+        "  mbarrier.try_wait.parity.shared::cta.b64 complete, [%r0], %r1;\n"
+        "  mbarrier.arrive.expect_tx.shared::cta.b64 _, [%r0], 16384;\n"
+        "  mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 d, a, b, c;\n"
+        "  bra $L__loop;\n"
+    )
+    s_before = parse_ttgir_summary(tma_issue_before_mma_ir, tma_issue_before_mma_ptx, requested_num_stages=2, element_bytes=2)
+    assert s_before.prefetch_distance == 1
+    assert s_before.unsupported_features == []
+    assert "prefetch_distance_mismatch" not in s_before.diagnostics
+
+
 def test_persistent_kernel_emits_explicit_diagnostic() -> None:
     schema = _load_schema()
     ir = extract_gemm_kernel_ir(
