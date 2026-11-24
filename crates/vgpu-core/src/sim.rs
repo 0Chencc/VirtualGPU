@@ -666,6 +666,10 @@ fn rates(ctas: &[Cta], m: &Machine, mma_per_cta: &[f64], lat: Latency, s: &mut S
 /// most this fraction of one phase.
 const COMPLETION_TOLERANCE: f64 = 1e-3;
 
+/// Bisection steps for the latency and bandwidth equilibrium of an event:
+/// DRAM utilization is resolved to 1/4096.
+const EQUILIBRIUM_STEPS: u32 = 12;
+
 /// Simulate one kernel variant at one profile draw.
 pub fn simulate<L: L2>(
     k: &Kernel,
@@ -721,21 +725,38 @@ pub fn simulate<L: L2>(
     let mut busy_sm_ns = 0.0;
     let mut events = 0u64;
     let mut bound_ns = [0.0f64; 7];
-    // Memory utilization carried between events; latency depends on it and
-    // it depends on the rates, so each event takes two damped passes.
+    // Latency depends on the DRAM and L2 utilization and the utilization on
+    // the rates, which depend on latency. DRAM utilization falls as the
+    // latency it implies rises, so the equilibrium is unique and bisection
+    // finds it even where latency is steep in load. L2 utilization, flatter
+    // and secondary, follows the last pass.
     let (dram_peak, l2_peak) = (Machine::peak(&m.dram_bw), Machine::peak(&m.l2_bw));
-    let mut util = (0.0, 0.0);
+    let mut l2_util = 0.0;
     let achieved = |ctas: &[Cta], rate: &[f64]| {
         ctas.iter().zip(rate).fold((0.0, 0.0), |(d, l), (c, &r)| {
             (d + r * c.demand.dram_bytes, l + r * c.demand.bytes)
         })
     };
     while !ctas.is_empty() {
-        for _ in 0..2 {
-            rates(&ctas, m, &mma_per_cta, m.latency(util.0, util.1), &mut s);
+        let (mut lo, mut hi) = (0.0, 1.0);
+        for _ in 0..EQUILIBRIUM_STEPS {
+            let mid = 0.5 * (lo + hi);
+            rates(&ctas, m, &mma_per_cta, m.latency(mid, l2_util), &mut s);
             let (d, l) = achieved(&ctas, &s.rate);
-            util = (0.5 * (util.0 + d / dram_peak), 0.5 * (util.1 + l / l2_peak));
+            l2_util = l / l2_peak;
+            if d / dram_peak > mid {
+                lo = mid;
+            } else {
+                hi = mid;
+            }
         }
+        rates(
+            &ctas,
+            m,
+            &mma_per_cta,
+            m.latency(0.5 * (lo + hi), l2_util),
+            &mut s,
+        );
         let dt = ctas
             .iter()
             .zip(&s.rate)

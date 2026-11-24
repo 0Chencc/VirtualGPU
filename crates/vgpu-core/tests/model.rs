@@ -315,3 +315,35 @@ fn spills_cost_local_memory_bandwidth_per_scope() {
     assert!(close(every, 64.0 * 4096.0 * 128.0), "{every}");
     assert!(run(&per_iter, m.clone()).bound_fraction[4] > 0.99);
 }
+
+#[test]
+fn steep_load_latency_settles_at_the_littles_law_equilibrium() {
+    // 46 CTAs with one 16 KiB stage in flight each, all from DRAM. With
+    // latency L(X) = L0 + (L1 - L0) X / P, delivered bandwidth X solves
+    // X L(X) = F, and the run takes one round trip per iteration.
+    let mut k = compute_only(46);
+    k.tile.per_iteration = Work {
+        loads: vec![access("load", 16384.0)],
+        ..Work::default()
+    };
+    k.tile.iterations = 256;
+    k.tile.prefetch_distance = 1;
+    let mut m = machine(&k);
+    let (l0, l1, peak) = (500.0, 20000.0, 450.0);
+    m.dram_bw = vec![(1.0, peak)];
+    m.l2_bw = vec![(1.0, 1e9)];
+    m.dram_latency_ns = l0;
+    m.dram_latency_loaded_ns = l1;
+    m.launch_overhead_ns = 0.0;
+    let f = 46.0 * 16384.0;
+    let a = (l1 - l0) / peak;
+    let x = (-l0 + (l0 * l0 + 4.0 * a * f).sqrt()) / (2.0 * a);
+    let expected = 256.0 * (l0 + a * x);
+    let p = simulate(&k, &profile(), &m, &mut ConstantHitRatio(0.0)).unwrap();
+    assert!(
+        (p.makespan_ns / expected - 1.0).abs() < 2e-3,
+        "{} vs {}",
+        p.makespan_ns,
+        expected
+    );
+}
