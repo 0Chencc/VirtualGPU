@@ -8,6 +8,7 @@ from pathlib import Path
 from virtualgpu import _core
 
 from validation.experiment import CACHE_STATES, load_case
+from validation.provenance import read_core_revision, require_formal_build, source_info
 
 
 def main():
@@ -20,9 +21,22 @@ def main():
     parser.add_argument("--cold-results", type=Path, help="Directory of replacement read-only cold sessions")
     parser.add_argument("--draws", type=int, default=32)
     parser.add_argument("--seed", type=int, default=17)
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--core-revision", type=read_core_revision, help="Expected core SHA or revision file")
+    mode.add_argument("--diagnostic", action="store_true", help="Allow unverified or dirty build provenance")
     args = parser.parse_args()
     if args.sessions < 1 or args.draws < 1:
         parser.error("Use positive session and perturbation draw counts")
+    source = source_info()
+    revision_expected = args.core_revision or source["commit"]
+    build_info = getattr(_core, "build_info", lambda: None)()
+    if not args.diagnostic:
+        try:
+            if source["commit"] != revision_expected or source["python_dirty"] or source["validation_dirty"]:
+                raise ValueError("Formal prediction requires the requested HEAD and clean Python sources")
+            require_formal_build(build_info, revision_expected, "Loaded binary")
+        except ValueError as error:
+            parser.error(str(error))
 
     raw = args.manifest.read_bytes()
     digest = hashlib.sha256(raw).hexdigest()
@@ -46,7 +60,12 @@ def main():
                         draws=args.draws, seed=args.seed,
                     )
                 except ValueError as error:
-                    record = {"status": "failed", "reason": str(error)}
+                    record = {"status": "failed", "reason": str(error), "build": build_info}
+                if args.diagnostic:
+                    build = record.get("build") or {}
+                    record["build"] = {**build, "result_class": "diagnostic"}
+                else:
+                    require_formal_build(record.get("build"), revision_expected, f"{key} {cache} {config_id}")
                 if record["status"] == "ok":
                     record["nominal_latency_ns"] = record["time_ns"]
                 records[config_id] = record
@@ -57,6 +76,8 @@ def main():
         "profile_revision": revision,
         "perturbation_draws": args.draws,
         "perturbation_seed": args.seed,
+        "result_class": "diagnostic" if args.diagnostic else "formal",
+        "source": source,
         "cases": predictions,
     }
     args.output.write_text(json.dumps(bundle, indent=2) + "\n")

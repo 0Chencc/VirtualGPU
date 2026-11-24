@@ -10,8 +10,9 @@ from unittest.mock import patch
 from virtualgpu.frontend.compiler import ARTIFACT_HASH_VERSION
 
 from validation.baseline import gemm_work, latency_ns, predict
-from validation.experiment import core_records, development_gates, load_case
+from validation.experiment import core_records, development_gates, load_case, validate_core_builds
 from validation.neusight import TileFeatures, fit, leave_one_case_out
+from validation.provenance import read_core_revision, require_formal_build
 from validation.score import check_artifact, kendall_tau_b, median_ci95, observed_pair, predicted_pair, score
 from validation.suite import development_manifest, manifest
 
@@ -229,6 +230,35 @@ class MeasurementTest(unittest.TestCase):
         self.assertEqual(data.timings["warm"]["cfg"], {("old", 0): 100})
         self.assertEqual(data.timings["cold"]["cfg"], {("new", 0): 120})
         self.assertEqual(data.matched_config_sessions, 2)
+
+
+class ProvenanceTest(unittest.TestCase):
+    revision = "a" * 40
+
+    def test_expected_revision_from_file_or_full_sha(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "expected-revision.txt"
+            path.write_text(self.revision + "\n")
+            self.assertEqual(read_core_revision(str(path)), self.revision)
+        self.assertEqual(read_core_revision(self.revision), self.revision)
+        with self.assertRaises(ValueError):
+            read_core_revision("abc")
+
+    def test_all_formal_records_require_matching_clean_builds(self):
+        clean = {"commit": self.revision, "dirty": False, "result_class": "formal"}
+        require_formal_build(clean, self.revision, "candidate")
+        rows = {"ok": {"status": "ok", "build": clean}, "failed": {"status": "failed", "build": clean}}
+        bundle = {"cases": {"decode": {"warm": rows}}}
+        validate_core_builds(bundle, self.revision)
+        for bad in (None, dict(clean, dirty=True), dict(clean, result_class="diagnostic"),
+                    dict(clean, commit="b" * 40)):
+            with self.subTest(build=bad):
+                rows["failed"]["build"] = bad
+                with self.assertRaisesRegex(ValueError, "decode warm failed"):
+                    validate_core_builds(bundle, self.revision)
+        rows["failed"]["build"] = clean
+        with self.assertRaisesRegex(ValueError, "Diagnostic prediction bundles"):
+            validate_core_builds(dict(bundle, result_class="diagnostic"), self.revision)
 
 
 if __name__ == "__main__":

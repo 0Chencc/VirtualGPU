@@ -9,10 +9,11 @@ from triton.runtime.errors import PTXASError
 from virtualgpu.frontend.compiler import MockTensor
 from virtualgpu.frontend.triton_gemm import extract_gemm_kernel_ir
 
+from validation.provenance import source_info
 from validation.runner import dense_gemm
 
 
-def compile_case(case, configs, output):
+def compile_case(case, configs, output, source):
     output.mkdir(parents=True, exist_ok=True)
     m, n, k = case["shape"]
     failures = {}
@@ -31,6 +32,7 @@ def compile_case(case, configs, output):
         except (triton.CompilationError, PTXASError, RuntimeError, ValueError) as error:
             failures[key] = {"error_type": type(error).__name__, "reason": str(error)}
             continue
+        ir["metadata"]["toolchain"]["source"] = source
         (output / f"{key}.json").write_text(json.dumps(ir) + "\n")
     (output / "failures.json").write_text(json.dumps(failures, indent=2) + "\n")
     return failures
@@ -49,9 +51,10 @@ def main():
     if not set(keys) <= development.keys():
         parser.error("Only development cases are accepted")
     configs = {config["config_id"]: config for config in suite["configs"]}
+    source = source_info()
     for key in keys:
         case = development[key]
-        failures = compile_case(case, configs, args.output / key)
+        failures = compile_case(case, configs, args.output / key, source)
         print(f"{key}: {len(case['config_ids']) - len(failures)} artifacts, {len(failures)} failures",
               flush=True)
 

@@ -23,6 +23,7 @@ from triton.backends.nvidia.compiler import get_ptxas
 from triton.runtime.errors import PTXASError
 from virtualgpu.frontend.compiler import artifact_hashes, detect_ptx_target, get_ptxas_version
 
+from validation.provenance import source_info
 from validation.score import median_ci95
 
 
@@ -224,6 +225,7 @@ def prepare_candidates(case, configs, seed):
 
 
 def measure(case, configs, input_seed, args, manifest_sha):
+    source = source_info()
     if torch.cuda.device_count() != 1:
         raise RuntimeError("The M1 runner requires exactly one visible CUDA device")
     gpu = torch.cuda.get_device_properties(0)
@@ -302,6 +304,7 @@ def measure(case, configs, input_seed, args, manifest_sha):
                      "triton": triton.__version__, "cuda": torch.version.cuda},
         "kernel_sha256": hashlib.sha256(dense_gemm.src.encode()).hexdigest(),
         "manifest_sha256": manifest_sha,
+        "source": source,
         "protocol": {"clock_policy": "record_only", "timer": "cuda_graph_single_launch",
                      "l2_bytes": l2_bytes, "cache_states": list(caches),
                      "cold_flush": "read_cg" if "cold" in caches else None,

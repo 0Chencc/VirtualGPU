@@ -46,7 +46,7 @@ resampling blocks within each session.
 python3 -m validation.baseline schemas/examples/profile_example.json \
   results/decode-16.json > results/baseline.json
 .venv/bin/python -m validation.score results/baseline.json results/decode-16.json \
-  --profile-revision 0.1.0-example --cache cold --top-k 2 --unchecked
+  --profile-revision 0.1.0-example --cache cold --top-k 2 --unchecked --diagnostic
 .venv/bin/python -m unittest validation.test_validation
 ```
 
@@ -76,6 +76,14 @@ mismatched samples remain in runner reports and are excluded from validated
 scoring. The scorer requires the current hash version for both artifacts.
 The exploratory flag skips the AOT comparison and still requires a
 current-version JIT report.
+
+For formal core scoring, pass `--core-revision` with the expected full Git
+SHA or a file containing it. Every prediction record must identify that
+same clean formal build. Use `--diagnostic` for baseline smoke checks or
+historical predictions with missing, dirty, or stale build information.
+The report records the result class. AOT IR toolchain metadata and JIT
+session reports include the generation HEAD and the dirty state of
+`python/` and `validation/`.
 
 ## Run the M2 development sweep
 
@@ -112,11 +120,14 @@ predictions for pair scoring. Pass `--core-predictions` to include the model
 comparison and the development checks from `docs/design.md`.
 
 ```sh
+git rev-parse HEAD > results/m2/candidate-core-revision.txt
 .venv/bin/python -m validation.predict results/m2/suite.json results/m2 \
-  profiles/rtx4070.json results/m2/core-predictions.json
+  profiles/rtx4070.json results/m2/core-predictions.json \
+  --core-revision results/m2/candidate-core-revision.txt
 .venv/bin/python -m validation.experiment results/m2/suite.json results/m2 \
   profiles/rtx4070.json results/m2/scores.json \
-  --core-predictions results/m2/core-predictions.json
+  --core-predictions results/m2/core-predictions.json \
+  --core-revision results/m2/candidate-core-revision.txt
 ```
 
 The prediction JSON carries `profile_revision`, `manifest_sha256`, and
@@ -124,6 +135,10 @@ The prediction JSON carries `profile_revision`, `manifest_sha256`, and
 ID to prediction records. Each successful record has draws keyed by ID,
 including draw 0 equal to `nominal_latency_ns`. The core orders a pair when
 all draws agree on a direction by at least the fixed 5% practical margin.
+Formal prediction also requires that the loaded extension matches HEAD and
+that the Python frontend and validation sources are clean. Build the extension
+from the candidate checkout before running the command. Both the prediction
+and scoring commands accept an explicit `--diagnostic` mode.
 
 Use `validation.runner --cache cold` to replace a cold measurement without
 rerunning warm trials. Keep the original sessions in place and pass the

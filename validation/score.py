@@ -10,6 +10,8 @@ import statistics
 
 from virtualgpu.frontend.compiler import ARTIFACT_HASH_VERSION
 
+from validation.provenance import read_core_revision, require_formal_build
+
 PRACTICAL_MARGIN = 0.05
 PRACTICAL_LOG_MARGIN = math.log(1 + PRACTICAL_MARGIN)
 
@@ -182,7 +184,20 @@ def main():
                       help="Require matching AOT output for every scored configuration")
     gate.add_argument("--unchecked", action="store_true",
                       help="Skip the AOT comparison for current-version JIT reports")
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--core-revision", type=read_core_revision, help="Expected core SHA or revision file")
+    mode.add_argument("--diagnostic", action="store_true", help="Allow unverified builds or baseline records")
     args = parser.parse_args()
+    if args.core_revision and args.unchecked:
+        parser.error("Formal scoring requires --aot")
+    input_predictions = json.loads(args.predictions.read_text())
+    if args.core_revision:
+        try:
+            for row in input_predictions:
+                require_formal_build(row.get("build"), args.core_revision,
+                                     f"{row['case_id']} {row['config_id']}")
+        except ValueError as error:
+            parser.error(str(error))
     artifacts = {}
     for entry in args.aot:
         key, sep, path = entry.partition("=")
@@ -223,14 +238,18 @@ def main():
                     parser.error("Duplicate timing sample")
                 per_config[block] = sample["latency_ns"]
     predictions = {}
-    for row in json.loads(args.predictions.read_text()):
+    for row in input_predictions:
         if row["case_id"] == case_id and row["profile_revision"] == args.profile_revision:
             key = row["config_id"]
             if key in predictions:
                 parser.error("Duplicate prediction record")
             predictions[key] = row
+    if args.core_revision and not predictions:
+        parser.error("No core predictions match the requested case and profile")
     report = score(timings, predictions, args.top_k) if timings else {"error": "No eligible timings"}
     report.update(case_id=case_id, cache=args.cache, profile_revision=args.profile_revision,
+                  result_class="formal" if args.core_revision else "diagnostic",
+                  expected_core_revision=args.core_revision,
                   artifact_gate="required" if artifacts else "unchecked",
                   artifact_checks=artifact_checks)
     print(json.dumps(report, indent=2))

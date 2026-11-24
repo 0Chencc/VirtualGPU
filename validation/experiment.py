@@ -11,6 +11,7 @@ import statistics
 
 from validation.baseline import predict as roofline
 from validation.neusight import fit, leave_one_case_out, tile_features
+from validation.provenance import read_core_revision, require_formal_build
 from validation.score import PRACTICAL_MARGIN, check_artifact, pair_observations, score
 
 CACHE_STATES = ("warm", "cold")
@@ -195,7 +196,17 @@ def development_gates(summary):
     return gates
 
 
-def evaluate(suite, results, profile, sessions, manifest_sha, core_predictions=None, cold_results=None):
+def validate_core_builds(predictions, expected_revision):
+    if predictions.get("result_class") == "diagnostic":
+        raise ValueError("Diagnostic prediction bundles cannot enter formal scoring")
+    for case, caches in predictions["cases"].items():
+        for cache, records in caches.items():
+            for config_id, row in records.items():
+                require_formal_build(row.get("build"), expected_revision, f"{case} {cache} {config_id}")
+
+
+def evaluate(suite, results, profile, sessions, manifest_sha, core_predictions=None,
+             cold_results=None, *, core_revision=None, diagnostic=False):
     cases = [case for case in suite["cases"] if case["split"] == "development"]
     configs = {cfg["config_id"]: cfg for cfg in suite["configs"]}
     revision = profile["provenance"]["profile_revision"]
@@ -205,6 +216,11 @@ def evaluate(suite, results, profile, sessions, manifest_sha, core_predictions=N
         or core_predictions["perturbation_draws"] < 1
     ):
         raise ValueError("Core predictions must match the manifest and profile and include perturbations")
+    formal = core_predictions is not None and core_revision is not None and not diagnostic
+    if core_predictions is not None and not formal and not diagnostic:
+        raise ValueError("Use an expected core revision for formal scoring or opt into diagnostic scoring")
+    if formal:
+        validate_core_builds(core_predictions, core_revision)
     measurements = {
         case["case_id"]: load_case(case, results, manifest_sha, sessions, cold_results)
         for case in cases
@@ -248,6 +264,8 @@ def evaluate(suite, results, profile, sessions, manifest_sha, core_predictions=N
         reports[key] = case_result
     summary = summarize(reports, core_predictions is not None)
     return {
+        "result_class": "formal" if formal else "diagnostic",
+        "expected_core_revision": core_revision if formal else None,
         "profile_revision": revision,
         "manifest_sha256": manifest_sha,
         "sessions_per_case": sessions,
@@ -274,14 +292,22 @@ def main():
     parser.add_argument("--cold-results", type=Path, help="Directory of replacement read-only cold sessions")
     parser.add_argument("--core-predictions", type=Path,
                         help="Prediction records grouped by case, cache state, and config ID")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--core-revision", type=read_core_revision, help="Expected core SHA or revision file")
+    mode.add_argument("--diagnostic", action="store_true", help="Allow unverified build provenance")
     args = parser.parse_args()
     if args.sessions < 1:
         parser.error("Use a positive session count")
+    if args.core_predictions and not (args.core_revision or args.diagnostic):
+        parser.error("Use --core-revision for formal scoring or --diagnostic for a diagnostic run")
+    if args.core_revision and not args.core_predictions:
+        parser.error("--core-revision requires --core-predictions")
     raw = args.manifest.read_bytes()
     profile = json.loads(args.profile.read_text())
     core = json.loads(args.core_predictions.read_text()) if args.core_predictions else None
     report = evaluate(json.loads(raw), args.results, profile, args.sessions,
-                      hashlib.sha256(raw).hexdigest(), core, args.cold_results)
+                      hashlib.sha256(raw).hexdigest(), core, args.cold_results,
+                      core_revision=args.core_revision, diagnostic=args.diagnostic)
     args.output.write_text(json.dumps(report, indent=2) + "\n")
 
 
