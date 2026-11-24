@@ -1,0 +1,157 @@
+//! GPU profile, schema 0.1 (see `docs/proposals/microbench-and-profile.md`).
+//!
+//! Only the fields the core reads are typed; unknown fields are ignored so the
+//! profile format can grow without breaking the core.
+
+use serde::Deserialize;
+use std::collections::BTreeMap;
+
+/// A measured quantity with its uncertainty.
+#[derive(Debug, Clone, Deserialize)]
+pub struct MeasuredValue {
+    pub value: f64,
+    #[serde(default)]
+    pub ci95_low: Option<f64>,
+    #[serde(default)]
+    pub ci95_high: Option<f64>,
+    pub rel_uncertainty: f64,
+    #[serde(default)]
+    pub unit: Option<String>,
+    #[serde(default)]
+    pub method: Option<String>,
+    #[serde(default)]
+    pub perturb_group: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct Profile {
+    pub schema_version: String,
+    pub identity: Identity,
+    #[serde(default)]
+    pub provenance: serde_json::Value,
+    pub specs: Specs,
+    pub measured: Measured,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct Identity {
+    pub vendor: String,
+    pub arch: String,
+    pub sku: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct Specs {
+    pub sm_count: u32,
+    pub warp_size: u32,
+    pub max_threads_per_sm: u32,
+    pub max_warps_per_sm: u32,
+    pub max_blocks_per_sm: u32,
+    pub max_threads_per_block: u32,
+    pub registers_per_sm: u32,
+    pub max_registers_per_thread: u32,
+    pub register_alloc_unit_regs: u32,
+    pub shared_mem_per_sm_bytes: u64,
+    pub max_shared_mem_per_block_bytes: u64,
+    #[serde(default)]
+    pub reserved_shared_mem_per_cta_bytes: u64,
+    pub shared_mem_alloc_granularity_bytes: u64,
+    #[serde(default)]
+    pub shared_mem_carveout_options_bytes: Vec<u64>,
+    pub l2_size_bytes: u64,
+    #[serde(default)]
+    pub capabilities: BTreeMap<String, bool>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct Measured {
+    pub memory: Memory,
+    pub compute: Compute,
+    #[serde(default)]
+    pub async_pipeline: BTreeMap<String, MeasuredValue>,
+    #[serde(default)]
+    pub spill: BTreeMap<String, MeasuredValue>,
+    pub overhead: Overhead,
+    pub cta_dispatch: CtaDispatch,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct BwPoint {
+    pub active_sms: u32,
+    pub bw_gbps: MeasuredValue,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct Memory {
+    pub dram_bw_by_active_sms: Vec<BwPoint>,
+    pub l2_bw_by_active_sms: Vec<BwPoint>,
+    pub l2_effective_capacity_bytes: MeasuredValue,
+    pub smem_bw_per_sm_gbps: MeasuredValue,
+    pub dram_latency_ns: MeasuredValue,
+    pub l2_latency_ns: MeasuredValue,
+    #[serde(default)]
+    pub dram_latency_loaded_ns: Option<MeasuredValue>,
+    #[serde(default)]
+    pub l2_latency_loaded_ns: Option<MeasuredValue>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct MmaPoint {
+    pub mma_warps_per_sm: u32,
+    pub tflops_per_sm: MeasuredValue,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct Compute {
+    /// Keyed by `<op_class>:<a_dtype>:<b_dtype>:<acc_dtype>:<M>x<N>x<K>`.
+    pub mma_tflops_per_sm_by_warps: BTreeMap<String, Vec<MmaPoint>>,
+    pub non_mma_issue_rate_per_sm_gips: MeasuredValue,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct Overhead {
+    pub launch_overhead_us: MeasuredValue,
+    pub per_cta_launch_latency_ns: MeasuredValue,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct CtaDispatch {
+    pub observed_policy: String,
+    #[serde(default)]
+    pub candidate_policies: Vec<String>,
+    #[serde(default)]
+    pub confidence: Option<String>,
+}
+
+impl Profile {
+    pub fn from_json(text: &str) -> Result<Self, serde_json::Error> {
+        serde_json::from_str(text)
+    }
+}
+
+/// Piecewise-linear interpolation over sorted `(x, y)` points, clamped at both ends.
+pub fn interpolate(points: &[(f64, f64)], x: f64) -> f64 {
+    let (first, last) = (points[0], points[points.len() - 1]);
+    if x <= first.0 {
+        return first.1;
+    }
+    if x >= last.0 {
+        return last.1;
+    }
+    let i = points.partition_point(|p| p.0 <= x);
+    let ((x0, y0), (x1, y1)) = (points[i - 1], points[i]);
+    y0 + (y1 - y0) * (x - x0) / (x1 - x0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn interpolate_clamps_and_interpolates() {
+        let p = [(1.0, 10.0), (3.0, 30.0)];
+        assert_eq!(interpolate(&p, 0.0), 10.0);
+        assert_eq!(interpolate(&p, 2.0), 20.0);
+        assert_eq!(interpolate(&p, 9.0), 30.0);
+    }
+}
