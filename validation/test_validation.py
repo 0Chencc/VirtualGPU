@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 import unittest
 
+from virtualgpu.frontend.compiler import ARTIFACT_HASH_VERSION
+
 from validation.baseline import gemm_work, latency_ns, predict
 from validation.score import check_artifact, kendall_tau_b, median_ci95, observed_pair, predicted_pair, score
 from validation.suite import manifest
@@ -62,20 +64,27 @@ class ScoreTest(unittest.TestCase):
         ir = {
             "metadata": {
                 "config": {},
-                "toolchain": dict(toolchain, artifact_hash_version="1",
+                "toolchain": dict(toolchain, artifact_hash_version=ARTIFACT_HASH_VERSION,
                                   ptx_sha256="matching", ttgir_sha256="aot"),
             },
             "launch": {"grid": [8, 1, 1], "dynamic_smem_bytes": 0},
             "resources": {"static_smem_bytes": 4096, "registers_per_thread": 96},
         }
         jit = {
-            "artifact_hash_version": "1", "ptx_sha256": "matching", "ttgir_sha256": "jit",
+            "artifact_hash_version": ARTIFACT_HASH_VERSION, "ptx_sha256": "matching",
+            "ttgir_sha256": "jit",
             "grid": [8], "shared_bytes": 4096, "registers_per_thread": 96,
             "toolchain": dict(toolchain, enable_fp_fusion=True, ptx_options=None,
                               disable_ptxas_opt=False),
         }
         self.assertEqual(check_artifact(jit, ir),
                          {"status": "matched", "differences": [], "ttgir_match": False})
+        jit["artifact_hash_version"] = "1"
+        ir["metadata"]["toolchain"]["artifact_hash_version"] = "1"
+        self.assertEqual(check_artifact(jit, ir)["differences"],
+                         ["artifact_hash_version", "aot_artifact_hash_version"])
+        jit["artifact_hash_version"] = ARTIFACT_HASH_VERSION
+        ir["metadata"]["toolchain"]["artifact_hash_version"] = ARTIFACT_HASH_VERSION
         jit["ptx_sha256"] = "different"
         jit["registers_per_thread"] = 100
         self.assertEqual(check_artifact(jit, ir)["differences"],

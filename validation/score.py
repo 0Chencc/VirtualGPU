@@ -8,6 +8,8 @@ from pathlib import Path
 import random
 import statistics
 
+from virtualgpu.frontend.compiler import ARTIFACT_HASH_VERSION
+
 
 def sign(value):
     return (value > 0) - (value < 0)
@@ -75,7 +77,7 @@ def check_artifact(jit, ir):
     expected_options = metadata["config"]
     resources = ir["resources"]
     expected = {
-        "artifact_hash_version": aot.get("artifact_hash_version"),
+        "artifact_hash_version": ARTIFACT_HASH_VERSION,
         "ptx_sha256": aot.get("ptx_sha256"),
         "grid": ir["launch"]["grid"],
         "registers_per_thread": resources["registers_per_thread"],
@@ -87,10 +89,12 @@ def check_artifact(jit, ir):
         "ptx_options": expected_options.get("ptx_options") or None,
         "disable_ptxas_opt": False,
     }
-    actual = {**jit, **toolchain, "grid": [*jit["grid"], 1, 1][:3]}
+    actual = {**toolchain, **jit, "grid": [*jit["grid"], 1, 1][:3]}
     differences = [key for key, value in expected.items()
                    if key not in actual or actual[key] != value]
-    if not aot.get("artifact_hash_version") or not aot.get("ptx_sha256"):
+    if aot.get("artifact_hash_version") != ARTIFACT_HASH_VERSION:
+        differences.append("aot_artifact_hash_version")
+    if not aot.get("ptx_sha256"):
         differences.append("missing_aot_hash")
     ttgir = aot.get("ttgir_sha256")
     return {
@@ -162,7 +166,7 @@ def main():
     gate.add_argument("--aot", action="append", default=[], metavar="CONFIG_ID=KERNEL_IR_JSON",
                       help="Require matching AOT output for every scored configuration")
     gate.add_argument("--unchecked", action="store_true",
-                      help="Allow unverified timings for exploratory smoke tests")
+                      help="Skip the AOT comparison for current-version JIT reports")
     args = parser.parse_args()
     artifacts = {}
     for entry in args.aot:
@@ -185,13 +189,19 @@ def main():
         for sample in session["samples"]:
             if sample["cache"] == args.cache:
                 key = sample["config_id"]
-                if artifacts:
-                    checks = artifact_checks.setdefault(session["session_id"], {})
-                    if key not in checks:
-                        checks[key] = (check_artifact(session["configs"][key], artifacts[key])
-                                       if key in artifacts else {"status": "missing_aot"})
-                    if checks[key]["status"] != "matched":
-                        continue
+                checks = artifact_checks.setdefault(session["session_id"], {})
+                if key not in checks:
+                    jit = session["configs"][key]
+                    if key in artifacts:
+                        checks[key] = check_artifact(jit, artifacts[key])
+                    elif jit.get("artifact_hash_version") != ARTIFACT_HASH_VERSION:
+                        checks[key] = {"status": "mismatch", "differences": ["artifact_hash_version"]}
+                    elif not jit.get("ptx_sha256"):
+                        checks[key] = {"status": "mismatch", "differences": ["missing_jit_hash"]}
+                    else:
+                        checks[key] = {"status": "unchecked" if args.unchecked else "missing_aot"}
+                if checks[key]["status"] not in ("matched", "unchecked"):
+                    continue
                 block = session["session_id"], sample["block"]
                 per_config = timings.setdefault(key, {})
                 if block in per_config:

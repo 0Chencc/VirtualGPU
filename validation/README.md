@@ -1,7 +1,8 @@
 # M1 GEMM validation
 
-Run commands from the repository root. The CPU scoring tools use the standard
-library. The runner uses Python 3.12, PyTorch 2.8 with CUDA 12.8, Triton 3.9,
+Run commands from the repository root. The scorer uses the installed
+VirtualGPU Python package to identify the current hash protocol. The runner
+uses Python 3.12, PyTorch 2.8 with CUDA 12.8, Triton 3.9,
 `cuda-bindings`, `nvidia-ml-py`, and the installed VirtualGPU Python package.
 Use a worktree-local `.venv` and reuse cached CUDA wheels where available.
 
@@ -42,9 +43,9 @@ resampling blocks within each session.
 ```sh
 python3 -m validation.baseline schemas/examples/profile_example.json \
   results/decode-16.json > results/baseline.json
-python3 -m validation.score results/baseline.json results/decode-16.json \
+.venv/bin/python -m validation.score results/baseline.json results/decode-16.json \
   --profile-revision 0.1.0-example --cache cold --top-k 2 --unchecked
-python3 -m unittest validation.test_validation
+.venv/bin/python -m unittest validation.test_validation
 ```
 
 The schema example is a substitute for a measured profile when checking the
@@ -70,5 +71,6 @@ extractor. It takes the tile, traversal, warp, and stage knobs in `config`.
 The scorer verifies the versioned PTX digest, toolchain, launch grid, and
 resources. It reports TTGIR digest agreement as a diagnostic. Unverified or
 mismatched samples remain in runner reports and are excluded from validated
-scoring. Reports from before the shared hash protocol can be inspected with
-the exploratory flag.
+scoring. The scorer requires the current hash version for both artifacts.
+The exploratory flag skips the AOT comparison and still requires a
+current-version JIT report.
