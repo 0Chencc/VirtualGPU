@@ -36,23 +36,26 @@ impl Default for L2Options {
 pub struct L2Profile {
     pub l2_size_bytes: u64,
     pub l2_effective_capacity_bytes: u64,
+    /// Unperturbed nominal effective L2 capacity; perturbation shifts the rescan cliff by
+    /// `l2_effective_capacity_bytes / nominal_l2_effective_capacity_bytes`.
+    pub nominal_l2_effective_capacity_bytes: u64,
     pub l2_line_bytes: u64,
     pub l2_sector_bytes: u64,
     pub l1_size_bytes: u64,
     pub l1_to_l2_spill_threshold_bytes_per_sm: u64,
-    /// Monotone non-increasing `(reuse_distance / L2_capacity, hit_rate)` curve derived from
+    /// Monotone non-increasing `(working_set_bytes, hit_rate)` curve derived from
     /// `measured.memory.l2_rescan_hit_rate_by_working_set`. Empty falls back to a step at 1.0x.
     pub rescan_hit_curve: Vec<(f64, f64)>,
 }
 
-/// Builds a sorted, monotone non-increasing `(ratio, hit_rate)` curve from measured rescan points.
-/// Enforcing a suffix-max envelope removes small-buffer ramp-up artifacts (e.g., 0.25x L2 under-utilizing
-/// peak L2 BW) while preserving the measured eviction cliff above 1.0x L2.
+/// Builds a sorted, monotone non-increasing `(working_set_bytes, hit_rate)` curve from measured
+/// rescan points. Enforcing a suffix-max envelope removes small-buffer ramp-up artifacts while
+/// preserving the measured eviction cliff.
 fn build_monotone_rescan_curve(points: &[(f64, f64)]) -> Vec<(f64, f64)> {
     let mut curve: Vec<(f64, f64)> = points
         .iter()
-        .filter(|&&(r, h)| r.is_finite() && r > 0.0 && h.is_finite())
-        .map(|&(r, h)| (r, h.clamp(0.0, 1.0)))
+        .filter(|&&(b, h)| b.is_finite() && b > 0.0 && h.is_finite())
+        .map(|&(b, h)| (b, h.clamp(0.0, 1.0)))
         .collect();
     curve.sort_by(|a, b| a.0.total_cmp(&b.0));
     for i in (1..curve.len()).rev() {
@@ -72,22 +75,24 @@ impl From<&Profile> for L2Profile {
             .get("l1_to_l2_spill_threshold_bytes_per_sm")
             .and_then(Option::as_ref)
             .map_or(s.l1_size_bytes, |v| v.value.max(0.0).round() as u64);
+        let eff_cap = p
+            .measured
+            .memory
+            .l2_effective_capacity_bytes
+            .value
+            .max(0.0)
+            .round() as u64;
         let raw_curve: Vec<(f64, f64)> = p
             .measured
             .memory
             .l2_rescan_hit_rate_by_working_set
             .iter()
-            .map(|pt| (pt.working_set_ratio_to_l2, pt.estimated_hit_rate.value))
+            .map(|pt| (pt.working_set_bytes as f64, pt.estimated_hit_rate.value))
             .collect();
         Self {
             l2_size_bytes: s.l2_size_bytes,
-            l2_effective_capacity_bytes: p
-                .measured
-                .memory
-                .l2_effective_capacity_bytes
-                .value
-                .max(0.0)
-                .round() as u64,
+            l2_effective_capacity_bytes: eff_cap,
+            nominal_l2_effective_capacity_bytes: eff_cap,
             l2_line_bytes: s.l2_line_bytes,
             l2_sector_bytes: s.l2_sector_bytes,
             l1_size_bytes: s.l1_size_bytes,
@@ -497,14 +502,23 @@ impl<'a> L2Model<'a> {
     }
 
     /// Evaluates L2 survival probability for a sequential scan of `reuse_distance_bytes`.
+    /// The rescan curve's x-axis is absolute `working_set_bytes`; when `l2_effective_capacity_bytes`
+    /// is perturbed relative to `nominal_l2_effective_capacity_bytes`, the curve x-axis scales
+    /// proportionally so the cliff shifts with the perturbed capacity.
     fn eval_rescan_hit(&self, reuse_distance_bytes: f64) -> f64 {
         let eff_cap = self.profile.l2_effective_capacity_bytes.max(1) as f64;
-        let ratio = (reuse_distance_bytes / eff_cap).max(0.0);
+        let query_bytes = reuse_distance_bytes.max(0.0);
         if !self.profile.rescan_hit_curve.is_empty() {
-            interpolate(&self.profile.rescan_hit_curve, ratio).clamp(0.0, 1.0)
+            let nom_cap = self
+                .profile
+                .nominal_l2_effective_capacity_bytes
+                .max(1) as f64;
+            let scale = eff_cap / nom_cap;
+            let scaled_query = query_bytes / scale;
+            interpolate(&self.profile.rescan_hit_curve, scaled_query).clamp(0.0, 1.0)
         } else {
             // Fallback when profile lacks an empirical rescan curve: strict capacity cliff.
-            if ratio <= 1.0 {
+            if query_bytes <= eff_cap {
                 1.0
             } else {
                 0.0
@@ -766,21 +780,67 @@ mod tests {
         );
         assert!(!prof.rescan_hit_curve.is_empty());
 
-        // Verify L2Model consumes the profile's empirical rescan curve.
+        // Verify L2Model consumes the profile's empirical rescan curve in absolute bytes.
         let ir_json = include_str!("../../../../schemas/examples/gemm_sm89.json");
         let ir = KernelIR::from_json_str(ir_json).unwrap();
         let mut l2 = L2Model::new(&ir, prof.clone(), L2InitState::Warm, L2Options::default());
         l2.begin_tile(0, 0, 0, 0.0);
         let res = l2.split(0, 0, 0, "load_A", 0, 128, false, CachePolicy::Default, 0.0);
-        let expected = interpolate(
-            &prof.rescan_hit_curve,
-            (64.0 * 1024.0 * 1024.0) / capacity as f64,
-        );
+        let expected = interpolate(&prof.rescan_hit_curve, 64.0 * 1024.0 * 1024.0);
         assert!(
             (res.hit_ratio - expected).abs() < 1e-6,
             "expected warm hit from rtx4070.json rescan curve ({}), got {}",
             expected,
             res.hit_ratio
+        );
+    }
+
+    #[test]
+    fn rescan_curve_uses_absolute_bytes_when_spec_and_effective_l2_differ() {
+        let ir_json = include_str!("../../../../schemas/examples/gemm_sm89.json");
+        let mut ir_39m = KernelIR::from_json_str(ir_json).unwrap();
+        // K=78 -> 39 MiB total read footprint.
+        ir_39m.body.pipeline_loop.trip_counts = TripCounts::Uniform(78);
+
+        let mib = 1024.0 * 1024.0;
+        // Spec L2 is 64 MiB, while effective L2 capacity is only 36 MiB (distinct from spec).
+        let base_prof = L2Profile {
+            l2_size_bytes: 64 * 1024 * 1024,
+            l2_effective_capacity_bytes: 36 * 1024 * 1024,
+            nominal_l2_effective_capacity_bytes: 36 * 1024 * 1024,
+            l2_line_bytes: 128,
+            l2_sector_bytes: 32,
+            l1_size_bytes: 128 * 1024,
+            l1_to_l2_spill_threshold_bytes_per_sm: 64 * 1024,
+            rescan_hit_curve: vec![
+                (36.0 * mib, 1.0),
+                (39.0 * mib, 0.326),
+                (45.0 * mib, 0.0),
+            ],
+        };
+
+        // 1. Unperturbed: 39 MiB query must hit the 39 MiB cliff point (0.326), NOT shifted by 64 MiB spec.
+        let mut l2_nom = L2Model::new(&ir_39m, base_prof.clone(), L2InitState::Warm, L2Options::default());
+        l2_nom.begin_tile(0, 0, 0, 0.0);
+        let r_nom = l2_nom.split(0, 0, 0, "load_A", 0, 78, false, CachePolicy::Default, 0.0);
+        assert!(
+            (r_nom.hit_ratio - 0.326).abs() < 1e-6,
+            "unperturbed 39 MiB scan should hit 0.326 regardless of 64 MiB spec L2, got {}",
+            r_nom.hit_ratio
+        );
+
+        // 2. Perturbed: halve effective L2 capacity (36 MiB -> 18 MiB); cliff shifts 39 MiB -> 19.5 MiB.
+        let mut ir_19_5m = KernelIR::from_json_str(ir_json).unwrap();
+        ir_19_5m.body.pipeline_loop.trip_counts = TripCounts::Uniform(39); // 19.5 MiB footprint
+        let mut perturbed = base_prof;
+        perturbed.l2_effective_capacity_bytes = 18 * 1024 * 1024;
+        let mut l2_pert = L2Model::new(&ir_19_5m, perturbed, L2InitState::Warm, L2Options::default());
+        l2_pert.begin_tile(0, 0, 0, 0.0);
+        let r_pert = l2_pert.split(0, 0, 0, "load_A", 0, 39, false, CachePolicy::Default, 0.0);
+        assert!(
+            (r_pert.hit_ratio - 0.326).abs() < 1e-6,
+            "halving effective L2 must shift 39 MiB cliff to 19.5 MiB (0.326), got {}",
+            r_pert.hit_ratio
         );
     }
 }
