@@ -479,6 +479,12 @@ int main(int argc, char** argv) {
   if (mode == "launch") {
     return run_launch(device, samples, warmup);
   }
+  if (mode == "latency-curve") {
+    return run_latency_curve(device, samples);
+  }
+  if (mode == "l2-rescan") {
+    return run_l2_rescan(device, samples);
+  }
   std::fprintf(stderr, "Unknown mode: %s\n", mode.c_str());
   return 2;
 }

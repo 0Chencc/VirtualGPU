@@ -21,8 +21,8 @@ sys.path.insert(0, str(REPO_ROOT / "python"))
 from virtualgpu.profile import validate_profile  # noqa: E402
 
 DEFAULT_BIN = Path(__file__).resolve().parent / "build" / "vgpu_bench"
-SUITE_VERSION = "0.2.1"
-PROFILE_REVISION = "0.2.1-m2"
+SUITE_VERSION = "0.3.0"
+PROFILE_REVISION = "0.3.0-m2"
 
 
 def find_nvidia_smi() -> str | None:
@@ -273,6 +273,8 @@ def build_profile(
     cp_async_raw: dict[str, Any],
     latency_raw: dict[str, Any],
     launch_raw: dict[str, Any],
+    lat_curve_raw: dict[str, Any],
+    l2_rescan_raw: dict[str, Any],
     smi_samples: list[dict[str, Any]],
 ) -> dict[str, Any]:
     major = int(query["major"])
@@ -492,6 +494,80 @@ def build_profile(
         throttle_events=throttle_events,
     )
 
+    # Build latency-vs-achieved-BW curves (DRAM & L2) for Little's Law concurrency model.
+    def build_lat_curve(raw_points: list[dict[str, Any]], method: str, clk_rng: list[float] | None) -> list[dict[str, Any]]:
+        pts: list[dict[str, Any]] = []
+        for pt in raw_points:
+            bw_med = float(statistics.median(pt["achieved_bw_gbps_samples"]))
+            lat_mv = make_measured(
+                pt["latency_ns_samples"],
+                unit="ns",
+                method=method,
+                perturb_group=None,
+                clock_range=clk_rng,
+                locked=False,
+                throttle_events=throttle_events,
+            )
+            pts.append({"achieved_bw_gbps": round(bw_med, 3), "latency_ns": lat_mv})
+        pts.sort(key=lambda x: x["achieved_bw_gbps"])
+        return pts
+
+    dram_lat_curve = build_lat_curve(
+        lat_curve_raw["dram_latency_by_bw"], "cuda_dram_cg_pchase_vs_bg_bw", mem_range
+    )
+    l2_lat_curve = build_lat_curve(
+        lat_curve_raw["l2_latency_by_bw"], "cuda_l2_cg_pchase_vs_bg_bw", sm_range
+    )
+
+    # Build L2 rescan hit-rate curve (0.25x to 4.0x L2).
+    # Use each working set's own cold pass-1 BW as the 0%-hit baseline (cancels launch overhead
+    # and clean-flush effects), and the peak <=0.5x L2 pass-2 BW as the 100%-hit baseline.
+    rescan_pts_raw = l2_rescan_raw["points"]
+    bw_l2_ref = max(
+        float(statistics.median(pt["pass2_bw_gbps_samples"]))
+        for pt in rescan_pts_raw
+        if pt["ratio_to_l2"] <= 0.6
+    )
+    l2_rescan_curve: list[dict[str, Any]] = []
+    for pt in rescan_pts_raw:
+        p1_med = float(statistics.median(pt["pass1_bw_gbps_samples"]))
+        p2_samples = pt["pass2_bw_gbps_samples"]
+        p2_mv = make_measured(
+            p2_samples,
+            unit="GB/s",
+            method="cuda_l2_rescan_pass2_cg_read",
+            perturb_group="l2_bw",
+            clock_range=sm_range,
+            locked=False,
+            throttle_events=throttle_events,
+        )
+        # Harmonic time model: 1/bw2 = h/bw_l2 + (1-h)/bw_cold
+        # => h = (1/bw_cold - 1/bw2) / (1/bw_cold - 1/bw_l2)
+        bw_cold = p1_med
+        denom = (1.0 / bw_cold) - (1.0 / bw_l2_ref)
+        hr_samples: list[float] = []
+        for bw2 in p2_samples:
+            if denom > 0 and bw2 > 0:
+                h = ((1.0 / bw_cold) - (1.0 / bw2)) / denom
+                hr_samples.append(max(0.0, min(1.0, h)))
+            else:
+                hr_samples.append(0.0)
+        hr_mv = make_measured(
+            hr_samples,
+            unit="ratio",
+            method="cuda_l2_rescan_harmonic_hit_rate",
+            perturb_group=None,
+            clock_range=sm_range,
+            locked=False,
+            throttle_events=throttle_events,
+        )
+        l2_rescan_curve.append({
+            "working_set_bytes": int(pt["working_set_bytes"]),
+            "working_set_ratio_to_l2": round(float(pt["ratio_to_l2"]), 4),
+            "pass2_bw_gbps": p2_mv,
+            "estimated_hit_rate": hr_mv,
+        })
+
     sm_clock_ghz = (
         (statistics.median(sm_clocks) / 1000.0)
         if sm_clocks
@@ -582,8 +658,11 @@ def build_profile(
                 "smem_bw_per_sm_gbps": smem_bw_mv,
                 "dram_latency_ns": dram_lat_mv,
                 "dram_latency_loaded_ns": dram_lat_loaded_mv,
+                "dram_latency_by_bw": dram_lat_curve,
                 "l2_latency_ns": l2_lat_mv,
                 "l2_latency_loaded_ns": l2_lat_loaded_mv,
+                "l2_latency_by_bw": l2_lat_curve,
+                "l2_rescan_hit_rate_by_working_set": l2_rescan_curve,
                 "smem_latency_ns": smem_lat_mv,
             },
             "compute": {
@@ -648,13 +727,20 @@ def main() -> int:
     launch_raw, smi_launch = run_bench_with_clock_polling(
         args.binary, "launch", args.device, ["--samples", str(args.samples)]
     )
+    lat_curve_raw, smi_lc = run_bench_with_clock_polling(
+        args.binary, "latency-curve", args.device, ["--samples", "11"]
+    )
+    l2_rescan_raw, smi_rs = run_bench_with_clock_polling(
+        args.binary, "l2-rescan", args.device, ["--samples", "11"]
+    )
     dispatch_raw, smi_disp = run_bench_with_clock_polling(
         args.binary, "cta-dispatch", args.device, ["--repeats", str(args.repeats)]
     )
-    smi_samples = smi_dram + smi_mma + smi_l2 + smi_cp + smi_lat + smi_launch + smi_disp
+    smi_samples = smi_dram + smi_mma + smi_l2 + smi_cp + smi_lat + smi_launch + smi_lc + smi_rs + smi_disp
 
     profile = build_profile(
-        query, dram_raw, dispatch_raw, mma_raw, l2_raw, cp_async_raw, latency_raw, launch_raw, smi_samples
+        query, dram_raw, dispatch_raw, mma_raw, l2_raw, cp_async_raw,
+        latency_raw, launch_raw, lat_curve_raw, l2_rescan_raw, smi_samples
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("w", encoding="utf-8") as fh:
