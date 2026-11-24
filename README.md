@@ -31,7 +31,7 @@ Triton kernel + autotuning configs
 
 Triton comes first: tile shapes, layouts, `num_warps` and `num_stages` are explicit in its IR, the same frontend serves NVIDIA and AMD, and autotuning already lives there. The first application is GPU-free autotuning.
 
-See [docs/design.md](docs/design.md) for the full design.
+See [docs/design.md](docs/design.md) for the full design. The Kernel IR is independent of language and vendor: Triton is the first frontend, and a PTX frontend follows. The model core is written in Rust with Python bindings.
 
 ## Target architectures
 
@@ -48,11 +48,14 @@ See [docs/design.md](docs/design.md) for the full design.
 
 ## Roadmap
 
-1. **First experiment** — rank the autotuning configs of a Triton GEMM and compare against a real GPU. Proves or kills the approach.
-2. **Cross-GPU prediction** — the same experiment on a GPU whose data was not used to build the model.
-3. **Microbenchmark suite and community profiles** — anyone with a GPU can contribute a profile.
-4. **Attention and MoE kernels**, then bottleneck finding across a full model.
-5. **More architectures**, including AMD.
+See [docs/roadmap.html](docs/roadmap.html) for a plain-language overview.
+
+0. **Design** (done) — [docs/design.md](docs/design.md) and the component designs in [docs/proposals/](docs/proposals/).
+1. **Prove it on one GPU** — rank the autotuning configs of a Triton GEMM on an RTX 4070 and beat two simple baselines.
+2. **Predict a GPU we did not tune on** — the same test on a DGX Spark, using only its profile.
+3. **Open the doors** — GPU-free autotuning for Triton, a shared library of GPU profiles, and a simple way to contribute one.
+4. **More kinds of kernels** — attention, mixture of experts, and whole-model bottleneck finding.
+5. **More languages, more GPUs** — a PTX frontend (CUDA, CUTLASS, TileLang, ...) and AMD support.
 
 ## Validation
 
@@ -76,7 +79,7 @@ Every calibration and validation dataset records the GPU, driver, clocks and ker
 
 ## Status
 
-Early design. Nothing runs yet.
+Design complete. Implementation of Phase 1 is next. Nothing runs yet.
 
 ## License
 

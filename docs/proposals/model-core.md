@@ -1,0 +1,223 @@
+# Proposal: Performance Model Core
+
+Status: proposal for discussion. Owner: model core. No code.
+
+## 1. Scope
+
+The model core turns one kernel description (from the frontend, via the kernel IR) and one GPU profile into a predicted execution time with a resource breakdown, and turns a set of variants into pairwise comparisons with a confidence attached.
+
+In scope:
+
+- Occupancy (CTAs resident per SM and the limiting resource).
+- Event-driven CTA dispatch onto SMs: waves and tails emerge from the simulation, they are not computed by formula.
+- Per-CTA phase model: prologue, steady-state main loop with `num_stages` overlap, drain, epilogue.
+- Sharing of SM-level (tensor pipe, issue, shared memory) and GPU-level (L2, DRAM) bandwidth among resident CTAs.
+- Persistent kernels and warp-specialized kernels.
+- Register spill penalty.
+- Launch overhead.
+- Perturbation-based resolution and pairwise verdicts.
+
+Out of scope (owned elsewhere):
+
+- Extracting kernel structure from Triton (frontend proposal).
+- The kernel IR format itself and the L2 reuse model (kernel IR and L2 proposal). The core calls the L2 model; it does not implement it.
+- Measuring profile fields (microbenchmark and profile proposal).
+- Baselines and the evaluation protocol (validation proposal). The core must not contain baseline code.
+
+Goal-dependent (pending the project goal decision):
+
+- Whether use cases 2 and 3 (algorithm comparison, full-model bottleneck finding) are first-class. They need absolute calibration per resource, which raises the bar for every measured field. This proposal designs for use case 1 and keeps the structure open for the others.
+- Which operator classes beyond GEMM the core must support in the first version (attention, MoE, normalization). The phase model below is generic, but only GEMM-shaped main loops are specified in detail.
+
+## 2. Interfaces
+
+### 2.1 Input: `KernelIR` (schema owned by the kernel IR proposal)
+
+The core consumes `KernelIR` v0.1 as defined in `kernel-ir-and-l2.md`. How the core uses each part:
+
+- `launch.grid`, `launch.num_warps`, `resources.*`: occupancy (3.3).
+- `body.outer_loop.trip_counts`: tiles per program. One for ordinary kernels, more for persistent kernels (3.6). No separate code path.
+- `launch.warp_groups`: one `unified` group, or `producer` and `consumer` groups (3.6).
+- `body.prologue`, `body.pipeline_loop`, `body.epilogue`: the phase list per tile. From `pipeline_loop` the core uses the post-pipelining `num_stages`, `async_copy`, and per-op `stage_offset`. It never reads the decorator's `num_stages`.
+- `mma` ops: `op_class`, `inst_mnk`, dtypes, and `count` select the throughput entry in the profile.
+- `gmem_load` / `gmem_store` ops: bytes per iteration, split into L2 and DRAM bytes by the L2 model.
+- `alu` / `sfu` ops: issue work.
+
+Fields added at the core's request and how the core uses them:
+
+- `resources.spill_scope`: `none` and `prologue_epilogue` are one-time costs, `inner_loop_confirmed` and `inner_loop_assumed` are per-iteration costs, and `inner_loop_assumed` gets a widened uncertainty (3.7).
+- `pipeline_loop.prefetch_distance`: the overlap depth in 3.5, instead of assuming `num_stages - 1`.
+- `epilogue.overlaps_next_tile`: epilogue and next-tile overlap for persistent kernels (3.6).
+- `launch.cluster_shape`.
+- `access_map` entries with `tile_coords` and `is_masked`: masked edge tiles are charged their valid bytes, not the full tile.
+- Top-level `unsupported_features`: any entry gives status `unsupported` with that entry as the reason.
+- Top-level `diagnostics`: the variant is still simulated, but any entry sets the `unvalidated_feature` flag (lower confidence, section 4) and is copied into the output diagnostics.
+- `alu` / `sfu` counts in `insts_per_warp_per_iter`.
+- `gmem_load.nominal_bytes_per_cta` is the full-tile size; actual bytes for masked edge tiles come from `access_map`.
+
+### 2.2 Input: GPU profile (schema owned by the microbenchmark and profile proposal)
+
+The core consumes profile v0.1 as defined in `microbench-and-profile.md`.
+
+- `specs`: used exactly, never perturbed. Occupancy uses `max_warps_per_sm`, `max_blocks_per_sm`, `registers_per_sm`, `register_alloc_unit_regs`, `shared_mem_per_sm_bytes`, `max_shared_mem_per_block_bytes`, and `shared_mem_alloc_granularity_bytes`.
+- `measured.*`: every `MeasuredValue` is perturbed within `rel_uncertainty` (section 4).
+- `measured.cta_dispatch`: selects the dispatch policy (3.2).
+
+Fields the core still needs, requested from the profile proposal:
+
+1. Shared memory carveout: the allowed carveout sizes and the per-CTA reserved shared memory. Without them occupancy is wrong whenever shared memory is the limiter.
+2. MMA throughput as a function of MMA-issuing warps per SM (a short table per key, for example 4, 8, 16, 32 warps), not one peak number. This is how `num_warps` enters the model (3.5).
+3. The same active-SM curve for L2 bandwidth that `dram_bw_by_active_sms` gives for DRAM.
+4. An optional `perturb_group` tag on `MeasuredValue`: fields with the same tag share one draw. Default: each field is drawn independently, and each curve (`*_by_active_sms`, `*_by_warps`) is scaled by one draw as a whole, so it keeps its shape.
+5. In `cta_dispatch`: a list of `candidate_policies` whenever `confidence` is not high, and the raw first-wave `(cta_id -> sm_id, start_ns)` table for each probe whenever `observed_policy` is `unknown`. The fitted enum is enough otherwise.
+6. Optional: load latency under load (latency versus achieved bandwidth). Without it the core derives a loaded latency from the bandwidth curve.
+
+### 2.3 L2 model calls (API owned by the kernel IR and L2 proposal)
+
+The core uses the online API in `kernel-ir-and-l2.md`:
+
+- `begin_tile` / `end_tile` when a tile (one outer iteration of a CTA) starts and ends, so the L2 model always knows the resident set.
+- `split(sm_id, cta_id, outer_idx, op_id, k_begin, k_end, is_write, cache_policy, t_ns)` once per (CTA, op, phase segment). The segment covers the half-open inner-step range `[k_begin, k_end)` between two changes of the resident set; prologue and epilogue pass `[0, 1)`. The result is the aggregate over the range. Calls stay per segment, never per pipeline iteration, which keeps a 4096-tile GEMM at a few calls per tile and operand.
+- `account_spill` once per CTA at dispatch, because resident threads per SM are known only then.
+
+Other points:
+
+- One `L2Model` instance per simulation run, built from the perturbed profile of that draw. No shared state, so draws can run in parallel.
+- `initial_state` comes from the validation case (cold or warm), and is echoed in the output.
+- The L2 model's discrete options, `eviction_mode` (`soft_lru` or `strict_lru`) and `cross_wave_reuse` (`true` or `false`), are sampled as extra dimensions in section 4.
+- `near_cliff = true` on any call sets the `near_l2_cliff` diagnostic on the variant. The draws already move `l2_effective_capacity_bytes`, so a ranking that depends on the cliff should flip on its own. The flag is for diagnosis, not a second verdict rule.
+
+### 2.4 Output (consumed by validation)
+
+One record per (case ID, config ID, profile revision):
+
+- `status`: `ok`, `unsupported`, or `failed`, with a `reason` string. Unsupported configs keep their row, so coverage is counted correctly.
+- `nominal_latency_ns`: the prediction at draw 0, which is the unperturbed profile.
+- `draws`: latency per draw ID. Draw IDs and the values drawn are the same for every config on the same device and profile revision, so validation can compute pairwise direction counts itself.
+- `assumptions`: initial L2 state, and the dispatch policy used in each draw.
+- `diagnostics` (nominal draw): occupancy and its limiting resource, wave count, tail efficiency, per-resource utilization and fraction of time as the bound, L2 and DRAM bytes, and flags (`spill`, `near_l2_cliff`, `dispatch_ambiguous`, `unvalidated_feature`).
+
+The core also emits its own pairwise verdicts (section 4) for users. Validation recomputes them from `draws` and does not trust the core's verdicts.
+
+## 3. Key decisions
+
+### 3.1 Event granularity: per CTA phase, not per instruction or per loop iteration
+
+Options:
+
+- Per instruction (Accel-Sim style): accurate, hours per large kernel, needs undocumented microarchitecture. Rejected.
+- Per main-loop iteration: a large GEMM has hundreds of thousands of iterations; with perturbation sampling this multiplies by tens. Too slow, and per-iteration detail adds little the steady-state model does not already capture.
+- Per CTA phase (chosen): events at CTA start, phase boundaries (prologue, steady state, drain, epilogue), and CTA end. Inside a phase, progress is a rate that is recomputed whenever the set of active phases on a shared resource changes.
+
+Cost is O(tiles x phases) events per simulation. Requirement: a 4096-tile GEMM simulates in about 1 ms, so that 50 configs x 20 shapes x 32 samples finishes in under a minute. This requirement constrains the implementation language (section 7).
+
+### 3.2 CTA dispatch
+
+The scheduler keeps a queue of programs in launch order and a slot count per SM from the occupancy computation. When a slot frees, the next program is assigned according to the profile's dispatch policy. Initial policy set:
+
+- `round_robin`: program i goes to SM (i mod SM count) in the first wave, then to whichever SM frees first.
+- `grouped`: the same, but SMs are filled in groups (for example by GPC) with a measured group order.
+- `measured_table`: the first-wave mapping is taken directly from the measured trace; later waves use first-free.
+
+Later waves always use "first SM to free a slot", because that is the behavior the trace measurement can observe directly, and it does not depend on undocumented arbitration. When the profile lists several candidate policies, the model runs each and treats the policy as one more perturbation dimension (section 4). Comparisons that flip with the policy become indistinguishable. This answers risk 6.
+
+### 3.3 Occupancy
+
+Computed analytically from the profile's allocation rules: CTAs per SM is the minimum over registers (rounded to allocation granularity), shared memory (rounded, for the carveout the runtime would pick), warps, and the CTA slot limit. The carveout choice is a known source of error: the model uses the smallest carveout that fits the maximum resident CTAs, and this rule must be checked against measurements on both test GPUs.
+
+### 3.4 Resource sharing: fluid processor sharing
+
+Each active phase demands work on one or more resources (tensor pipe, issue, shared memory bandwidth, L2 bandwidth, DRAM bandwidth). At each event the core recomputes the rate of every active phase:
+
+- SM-local resources are shared among the CTAs resident on that SM.
+- L2 and DRAM bandwidth are shared among all active phases on the GPU, with the achievable bandwidth taken from the profile table for the current number of active SMs.
+- A phase progresses at the rate of its most constrained resource (max-min fair share).
+
+Rejected alternative: a fixed per-CTA time computed in isolation and then packed into waves. It cannot represent the case where a memory-bound tail wave runs faster because fewer SMs compete for DRAM, which is exactly what distinguishes some configs.
+
+### 3.5 Steady-state pipeline overlap
+
+For one CTA in steady state with `S` stages and prefetch distance `S - 1`, the time per iteration is the maximum of:
+
+- compute time: MMA work divided by the CTA's share of tensor throughput, plus non-MMA work divided by its share of issue rate;
+- transfer time: bytes per iteration divided by the CTA's share of the bandwidth of the level that serves them (from the L2 split);
+- latency bound: load latency divided by the number of iterations in flight (`S - 1`), with the latency taken from the profile and increased under load.
+
+With several CTAs resident on one SM, latency is additionally hidden across CTAs: the latency bound applies to the SM's total iterations in flight, not to one CTA. Synchronous loads (no async copy) are modeled as `S = 1`: no overlap within the CTA, hiding only across CTAs.
+
+Prologue time is the latency plus the transfer time of the first `S - 1` stages. Drain is the last `S - 1` iterations of compute without new loads.
+
+The MMA throughput share depends on how many warps issue MMA on the SM, using the profile's measured curve. This is how `num_warps` enters the model.
+
+### 3.6 Persistent and warp-specialized kernels
+
+Persistent kernels (risk 4) need no special scheduler: the grid is the number of programs, and each program walks its tile list from the kernel IR. Each tile contributes its phases in sequence. If the kernel IR marks epilogue-to-next-tile overlap, the epilogue of tile i runs as a concurrent phase with the main loop of tile i+1 on the same CTA, sharing its resources.
+
+Warp specialization is modeled as two concurrent phases in one CTA, a producer (loads only) and a consumer (compute only), coupled by an `S`-deep buffer: the consumer cannot run ahead of the producer by more than `S` iterations and vice versa. In steady state this reduces to the same maximum as 3.5, without the latency term competing with compute warps for issue slots.
+
+Neither test GPU (sm_89, sm_121) is known to us to exercise Triton's warp specialization or Hopper-style TMA paths; what sm_121 supports must be read from official documentation before we rely on it. Until a test GPU exercises these paths, kernels that use them get the "unvalidated feature" flag.
+
+### 3.7 Register spills
+
+Risk 3. The assembler reports static spill bytes, not dynamic counts. The core uses:
+
+- `inner_loop_confirmed`: spill bytes are added as local memory traffic to every iteration, and `account_spill` decides how much of it reaches L2 and DRAM.
+- `inner_loop_assumed`: the same at draw 0. In draws 1 to `N` the per-iteration spill traffic is scaled by a factor sampled uniformly in `[0, 1]`, covering everything from a one-time cost to a per-iteration cost. A ranking that depends on where the spill code sits then becomes indistinguishable.
+- `prologue_epilogue`: added once to the prologue or epilogue.
+- `none`: no spill cost.
+
+This overestimates dynamic traffic when spill code is on a cold path. That is acceptable for ranking: a spilling config should rank below an otherwise similar non-spilling one, and the sign matters more than the magnitude. Every spilling variant carries the spill flag, and the validation must check spilling configs separately.
+
+### 3.8 Launch overhead
+
+A constant from the profile, plus per-CTA launch latency at dispatch. Matters only for small shapes, where it can dominate.
+
+## 4. Perturbation-based resolution
+
+Risk 1: when variants are bound by different resources, profile errors do not cancel. The core therefore treats the profile as uncertain and makes every comparison paired.
+
+- Draw 0 is the unperturbed profile. Draws 1 to `N` (default `N = 32`, Latin hypercube, fixed seed) sample each measured field uniformly within `+/- rel_uncertainty` of its value. `rel_uncertainty` already includes the 10% floor from the profile proposal. Grouping and curve rules are in 2.2. Specification fields are fixed. Derived quantities are recomputed from the drawn values so that they stay consistent.
+- Discrete dimensions are sampled alongside: the dispatch policy when the profile lists `candidate_policies` (3.2), and the L2 model's `eviction_mode` and `cross_wave_reuse` (2.3).
+- The same draws are used for every variant (common random numbers). An error shared by all variants moves them together, so only errors that affect the variants differently change their order. This is what makes the comparison paired.
+- Verdict for a pair (A, B): "A faster" if A is faster in every draw including draw 0; "B faster" likewise; otherwise "indistinguishable". Exact nominal ties are indistinguishable. This matches the sensitivity rule in the validation proposal. A softer rule (for example 90% of draws) can only be introduced if it is calibrated on calibration data, never on holdout data (risk 9).
+- If either variant has status `unsupported`, no verdict is given. If either has `unvalidated_feature`, the verdict is still computed, and the flag goes with it.
+- Verdicts are kept per pair, with no hard grouping, so non-transitive results are reported as they are.
+
+Cost: `N + 1` simulations per variant. This is where the 1 ms per simulation requirement in 3.1 comes from.
+
+## 5. Response to the shared risks
+
+| Risk | Response |
+|---|---|
+| 1. Errors do not cancel across bottlenecks | Section 4: perturbation with common random numbers, pairwise verdicts. |
+| 2. Swizzle as program id arithmetic | Resolved by the frontend's scalar evaluator; the core consumes tile coordinates per program (2.1). |
+| 3. Spill penalty | Section 3.7. |
+| 4. Persistent kernels and warp specialization | Section 3.6. |
+| 5. Stage structure after the pipelining pass | The core consumes stage count and prefetch distance as produced by the pass (2.1); it never infers them from `num_stages`. |
+| 6. CTA dispatch order | Section 3.2: measured policy, ambiguity becomes a perturbation dimension. |
+| 7. Baselines | Owned by validation. The core exposes its intermediate quantities (occupancy, waves, per-resource times) so a baseline can be built from the same profile without sharing code. |
+| 8. Hardware noise | Owned by validation. The core is deterministic for a fixed seed. |
+| 9. Pairwise metrics, calibration and validation split | Section 4. |
+
+## 6. Measurements the core depends on
+
+Requested from the microbenchmark suite, in priority order:
+
+1. CTA dispatch trace (`%smid`, `%globaltimer` per program) for grids of 1 to 4 waves and several occupancies, on both test GPUs.
+2. DRAM and L2 achievable bandwidth versus number of active SMs.
+3. MMA throughput per SM versus MMA-issuing warps per SM, for the instruction shapes and dtypes Triton emits on each test GPU.
+4. Load latency under increasing load (to calibrate the latency increase in 3.5).
+5. Shared memory carveout chosen by the runtime for given per-CTA shared memory, to verify 3.3.
+6. Spill traffic cost at small and large local memory footprints.
+7. Launch overhead and per-CTA launch latency.
+
+The core also needs a few end-to-end checks of its own mechanisms, separate from the ranking experiment: a single-wave kernel, a kernel with a deliberately bad tail, and a pure-bandwidth kernel, each compared against hardware. These isolate mechanism errors before rank correlation hides them.
+
+## 7. Open questions
+
+1. Implementation language. The 1 ms per simulation requirement in 3.1 rules out a pure Python event loop for large grids. Options: a compiled core (Rust or C++) with a Python binding, or Python with an analytical shortcut for waves of identical CTAs. Decision belongs to the lead.
+2. Whether identical CTAs (same phases, no L2 interaction differences) should be batched into one event stream as an optimization, and how to keep that exact.
+3. Whether a softer verdict rule than unanimity (section 4) is worth calibrating, jointly with validation.
+4. How the latency bound in 3.5 grows with load: a fixed latency plus queueing term, or a measured latency-versus-bandwidth curve from the profile.
+5. Whether the core needs a cluster level (thread block clusters, distributed shared memory) for any first-version target. Depends on what sm_121 supports and what Triton emits for it.
+6. Goal-dependent: whether non-GEMM operator classes need their own phase templates in the first version.

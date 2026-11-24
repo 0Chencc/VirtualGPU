@@ -1,0 +1,287 @@
+# Proposal: Microbenchmark Suite and GPU Profile Format
+
+Status: Draft for architecture alignment (Owner: Agent 1).
+
+## 1. Scope
+
+This proposal defines two components:
+
+1. **GPU Profile Format (`v0.1` JSON):** A versioned, self-describing hardware profile consumed by the L2 model (Agent 3), performance model core (Agent 4), and validation harness (Agent 5).
+2. **Microbenchmark Suite:** Isolated, public-API-only kernels that measure effective hardware rates, latencies, spill penalties, and CTA dispatch behavior on a target GPU to populate a profile.
+
+**Out of scope:** Reverse engineering vendor drivers, firmware, or ISA encodings; fitting parameters to target workloads (GEMM/attention/MoE); and benchmark validation datasets (owned by Agent 5).
+
+**Current hardware reality:** Initial hardware bring-up is limited to two GPUs:
+- **RTX 4070 (`sm_89`, Ada):** Discrete GDDR6X, warp-level `mma.sync.aligned`, `cp.async`, no TMA.
+- **DGX Spark GB10 (`sm_121`, consumer/workstation Blackwell):** Unified LPDDR5x memory shared with Grace CPU. Per NVIDIA PTX ISA and CUDA documentation, `sm_121` supports TMA and warp-level `mma.sync.aligned` (including block-scaled `m16n8k32`/`m16n8k64` for low-precision formats) and **does not** support `tcgen05` or Tensor Memory (TMEM).
+
+No Hopper (`sm_90`) GPU is available. Hopper `wgmma` and datacenter Blackwell `tcgen05`/TMEM are represented via capability flags in the schema, but cannot be hardware-calibrated in Phase 1.
+
+---
+
+## 2. Input and Output Interfaces
+
+### 2.1 Microbenchmark Suite Interface
+
+- **Inputs:** `device_id`, `clock_policy` (`lock` | `record_only`), `samples` (default `>= 15`), `l2_state` (`cold` | `warm`), `output_path`.
+- **Outputs:** One validated GPU Profile JSON file, plus optional raw per-sample JSONL for auditability (kept outside the profile).
+
+### 2.2 GPU Profile JSON Schema (`schema_version: "0.1"`)
+
+Every measured quantity uses a uniform **MeasuredValue** envelope:
+
+```json
+{
+  "value": 312.4,
+  "ci95_low": 308.1,
+  "ci95_high": 316.9,
+  "rel_uncertainty": 0.10,
+  "unit": "GB/s",
+  "method": "stream_read_cold_l2",
+  "perturb_group": "dram_bw"
+}
+```
+
+`rel_uncertainty` is `max(default_floor, (ci95_high - ci95_low) / (2 * value))`, where `default_floor` is `0.10` for measured fields (matching Risk #1 perturbation) and higher (TBD, e.g., `0.25`) for spec-derived estimates. `perturb_group` is optional (`null` = independent draw; fields sharing the same group name share one multiplicative draw, e.g., `dram_bw_read_gbps` and `dram_bw_write_gbps`). Curves (`*_by_active_sms`, `*_by_warps`) share a single scalar multiplier across all points so the curve shape is preserved under perturbation.
+
+Top-level structure (**note:** all GB10 numbers below—such as `sm_count`, `l2_size_bytes`, and clocks—are **illustrative placeholders only**; real profiles must populate `specs.*` from runtime API queries and `measured.*` from hardware runs):
+
+```json
+{
+  "schema_version": "0.1",
+  "identity": {
+    "vendor": "nvidia",
+    "arch": "sm_121",
+    "sku": "NVIDIA GB10",
+    "memory_type": "unified"
+  },
+  "provenance": {
+    "profile_revision": "0.1.0",
+    "calibration_run_id": "cal-20261125-gb10-001",
+    "calibration_manifest_digest": "sha256:...",
+    "source": "measured",
+    "driver_version": "575.xx",
+    "toolkit_version": "12.9",
+    "suite_version": "0.1.0",
+    "host_os": "linux",
+    "is_wsl": false,
+    "power_limit_w": null,
+    "timestamp_utc": "2026-11-25T00:00:00Z",
+    "clock_policy": {
+      "locked": false,
+      "sm_clock_locked": true,
+      "mem_clock_locked": false,
+      "sm_clock_mhz": 2400,
+      "mem_clock_mhz": 4266,
+      "observed_sm_clock_range_mhz": [2385, 2400],
+      "observed_mem_clock_range_mhz": [4266, 4266],
+      "throttle_events": 0
+    }
+  },
+  "specs": {
+    "sm_count": 48,
+    "warp_size": 32,
+    "max_threads_per_sm": 1536,
+    "max_warps_per_sm": 48,
+    "max_blocks_per_sm": 16,
+    "max_threads_per_block": 1024,
+    "registers_per_sm": 65536,
+    "max_registers_per_thread": 255,
+    "register_alloc_granularity": "warp",
+    "register_alloc_unit_regs": 256,
+    "l1_smem_unified_bytes": 131072,
+    "l1_size_bytes": 131072,
+    "shared_mem_per_sm_bytes": 131072,
+    "max_shared_mem_per_block_bytes": 101376,
+    "reserved_shared_mem_per_cta_bytes": 1024,
+    "shared_mem_alloc_granularity_bytes": 128,
+    "shared_mem_carveout_options_bytes": [0, 8192, 16384, 32768, 65536, 102400],
+    "l2_size_bytes": 25165824,
+    "l2_line_bytes": 128,
+    "l2_sector_bytes": 32,
+    "l2_partitions": 1,
+    "l1_line_bytes": 128,
+    "capabilities": {
+      "cp_async": true,
+      "tma": true,
+      "wgmma": false,
+      "tcgen05_tmem": false,
+      "cluster": false
+    },
+    "mma_shapes": [
+      { "op_class": "mma.sync", "a_dtype": "f16", "b_dtype": "f16", "acc_dtype": "f32", "m": 16, "n": 8, "k": 16 }
+    ]
+  },
+  "measured": {
+    "memory": {
+      "dram_bw_read_gbps": { "...": "MeasuredValue" },
+      "dram_bw_write_gbps": { "...": "MeasuredValue" },
+      "dram_bw_by_active_sms": [
+        { "active_sms": 1, "bw_gbps": { "...": "MeasuredValue" } }
+      ],
+      "l2_bw_read_gbps": { "...": "MeasuredValue" },
+      "l2_bw_write_gbps": { "...": "MeasuredValue" },
+      "l2_bw_by_active_sms": [
+        { "active_sms": 1, "bw_gbps": { "...": "MeasuredValue" } }
+      ],
+      "l2_effective_capacity_bytes": { "...": "MeasuredValue" },
+      "smem_bw_per_sm_gbps": { "...": "MeasuredValue" },
+      "dram_latency_ns": { "...": "MeasuredValue" },
+      "dram_latency_loaded_ns": { "...": "MeasuredValue" },
+      "l2_latency_ns": { "...": "MeasuredValue" },
+      "l2_latency_loaded_ns": { "...": "MeasuredValue" },
+      "smem_latency_ns": { "...": "MeasuredValue" }
+    },
+    "compute": {
+      "mma_tflops_per_sm_by_warps": {
+        "mma.sync:f16:f16:f32:16x8x16": [
+          { "mma_warps_per_sm": 1, "tflops_per_sm": { "...": "MeasuredValue" } },
+          { "mma_warps_per_sm": 2, "tflops_per_sm": { "...": "MeasuredValue" } },
+          { "mma_warps_per_sm": 4, "tflops_per_sm": { "...": "MeasuredValue" } },
+          { "mma_warps_per_sm": 8, "tflops_per_sm": { "...": "MeasuredValue" } }
+        ]
+      },
+      "non_mma_issue_rate_per_sm_gips": { "...": "MeasuredValue" },
+      "fp32_fma_tflops": { "...": "MeasuredValue" },
+      "sfu_tflops": { "...": "MeasuredValue" }
+    },
+    "occupancy": {
+      "smem_carveout_observed": [
+        { "requested_smem_per_cta_bytes": 32768, "chosen_carveout_bytes": 65536, "max_active_ctas_per_sm": 2 }
+      ]
+    },
+    "async_pipeline": {
+      "cp_async_bw_per_sm_gbps": { "...": "MeasuredValue" },
+      "tma_bw_per_sm_gbps": { "...": "MeasuredValue" },
+      "tma_setup_ns": { "...": "MeasuredValue" }
+    },
+    "spill": {
+      "local_mem_l1_hit_bw_per_sm_gbps": { "...": "MeasuredValue" },
+      "local_mem_l1_miss_bw_per_sm_gbps": { "...": "MeasuredValue" },
+      "local_mem_l1_hit_latency_ns": { "...": "MeasuredValue" },
+      "local_mem_l1_miss_latency_ns": { "...": "MeasuredValue" },
+      "l1_to_l2_spill_threshold_bytes_per_sm": { "...": "MeasuredValue" }
+    },
+    "overhead": {
+      "launch_overhead_us": { "...": "MeasuredValue" },
+      "per_cta_launch_latency_ns": { "...": "MeasuredValue" }
+    },
+    "cta_dispatch": {
+      "observed_policy": "round_robin",
+      "candidate_policies": ["round_robin"],
+      "policy_params": {},
+      "confidence": "high",
+      "probes": [
+        {
+          "grid_dims": [128, 1, 1],
+          "ctas_per_sm": 2,
+          "waves_approx": 1.33,
+          "order_consistency": 0.96,
+          "first_wave_trace": [
+            { "cta_id": 0, "sm_id": 0, "start_ns": 0 }
+          ]
+        }
+      ]
+    }
+  }
+}
+```
+
+### 2.3 Default `perturb_group` Assignments (RTX 4070 & DGX Spark GB10)
+
+Fields sharing a `perturb_group` receive the same multiplicative draw per perturbation sample; `null` fields are drawn independently. Every curve (`*_by_active_sms`, `*_by_warps`) is scaled by a single multiplier across all points to preserve its shape.
+
+| `perturb_group` | Fields Included | RTX 4070 (`sm_89`) | DGX Spark GB10 (`sm_121`) |
+|---|---|---|---|
+| `"dram_bw"` | `dram_bw_read_gbps`, `dram_bw_write_gbps`, `dram_bw_by_active_sms` | Shared GDDR6X memory controllers | Shared unified LPDDR5x bus |
+| `"l2_bw"` | `l2_bw_read_gbps`, `l2_bw_write_gbps`, `l2_bw_by_active_sms` | Shared L2 fabric | Shared L2 fabric |
+| `"mma_dense"` | `mma_tflops_per_sm_by_warps` for dense `f16`/`bf16`/`tf32`/`f8` `mma.sync` | Same SM tensor pipe | Same SM tensor pipe |
+| `"mma_block_scaled"` | `mma_tflops_per_sm_by_warps` for block-scaled `fp4`/`fp8` `mma.sync` | N/A | Separate group from dense MMA |
+| `"async_cp"` | `cp_async_bw_per_sm_gbps` | Independent async copy pipe | Independent async copy pipe |
+| `"async_tma"` | `tma_bw_per_sm_gbps` | N/A (`tma: false`) | Separate from `cp.async` |
+| `"spill_l1"` | `local_mem_l1_hit_bw_per_sm_gbps`, `local_mem_l1_hit_latency_ns` | SM-local L1 spill path | SM-local L1 spill path |
+| `"spill_l2"` | `local_mem_l1_miss_bw_per_sm_gbps`, `local_mem_l1_miss_latency_ns` | L2/DRAM overflow spill path | L2/DRAM overflow spill path |
+| `null` (independent) | `l2_effective_capacity_bytes`, `smem_bw_per_sm_gbps`, `dram_latency_*`, `l2_latency_*`, `smem_latency_ns`, `non_mma_issue_rate_per_sm_gips`, `fp32_fma_tflops`, `sfu_tflops`, `tma_setup_ns`, `l1_to_l2_spill_threshold_bytes_per_sm`, `launch_overhead_us`, `per_cta_launch_latency_ns` | Independent draws | Independent draws |
+
+### 2.4 Downstream Consumer Alignment
+
+- **Agent 4 (Model Core):** Reads `specs` (occupancy, carveout options, allocation granularity, MMA shape fit), `measured.*` (active-SM bandwidth curves for DRAM/L2, per-SM MMA throughput vs warp count, unloaded/loaded latency, non-MMA issue rate, spill, launch/per-CTA overhead, observed carveout, and `rel_uncertainty` for perturbation), and `cta_dispatch` (`observed_policy`, `candidate_policies`, `first_wave_trace`).
+- **Agent 3 (L2 Reuse):** Reads `specs.l2_size_bytes`, `specs.l2_line_bytes`, `specs.l2_sector_bytes`, `specs.l1_size_bytes`, `specs.l2_partitions`, `measured.memory.l2_effective_capacity_bytes`, `measured.memory.l2_bw_*` / `dram_bw_*` / `*_latency_ns`, and `cta_dispatch`.
+- **Agent 5 (Validation):** Shares the measurement hygiene protocol (Section 4, Risk #8) and inspects `provenance` (`profile_revision`, `calibration_run_id`, clock/WSL/power metadata) to enforce strict calibration/validation separation.
+
+---
+
+## 3. Key Decisions
+
+### D1. Uniform `MeasuredValue` envelope with built-in uncertainty
+- **Alternatives:** (A) Plain floats in JSON, with a hardcoded ±10% constant inside Agent 4; (B) Store raw timing arrays in the profile.
+- **Decision:** Structured `MeasuredValue` per scalar field. Keeps profiles compact, preserves observed hardware noise (CI95), and lets Agent 4 sample perturbations directly from `rel_uncertainty` (with a 10% floor for measured fields and wider bands for spec-derived or noisy fields).
+
+### D2. Runtime API queries + synthetic isolated microbenchmarks (no workload regression)
+- **Alternatives:** (A) Fit profile parameters by regressing against Triton GEMM timings; (B) Use vendor datasheet numbers only.
+- **Decision:** Query all static limits (`specs.*`) from CUDA/HIP runtime APIs (`cudaGetDeviceProperties` / `cudaDeviceGetAttribute`), and measure all effective rates (`measured.*`) using small, isolated synthetic kernels. Regression against GEMMs would leak validation data into calibration (violating Risk #9) and overfit to one operator; datasheet numbers miss achievable throughput and unified-memory effects on GB10.
+
+### D3. Capability-flagged single schema instead of per-architecture schemas
+- **Alternatives:** Separate JSON schemas per architecture (`sm_89`, `sm_121`, `sm_90`, `gfx942`).
+- **Decision:** One versioned schema with `capabilities` booleans and keyed `tensor_tflops` entries (`<op_class>:<a_dtype>:<b_dtype>:<acc_dtype>:<MxNxK>`). Cleanly handles the `sm_121` split (TMA without TMEM/`tcgen05`), `sm_89` (`cp.async` + `mma.sync`), future `sm_90`/`sm_100`, and AMD CDNA without schema forks.
+
+### D4. Compact scaling curves for DRAM/L2 concurrency, MMA warps, and L2 working set
+- **Alternatives:** Single peak DRAM/L2/MMA scalars and raw spec L2 size.
+- **Decision:** Measure `dram_bw_by_active_sms` and `l2_bw_by_active_sms` at 4–6 SM counts (1, 2, 4, 25%, 50%, 100% SMs), sweep working-set size across `0.25x` to `4x` spec L2 to locate `l2_effective_capacity_bytes`, and measure `mma_tflops_per_sm_by_warps` across `1, 2, 4, 8+` issuing warps per SM. Tail waves with few active SMs do not achieve peak bandwidth, `num_warps` enters the model through the per-SM MMA curve, and GB10's unified LPDDR5x + Ada's large L2 make effective L2 capacity decisive for ranking.
+
+### D5. Dedicated register-spill microbenchmark
+- **Alternatives:** Model register pressure purely via occupancy reduction.
+- **Decision:** Include a forced-spill kernel (allocating register-indexed thread-local arrays that compile to `LDL`/`STL` local memory traffic) across increasing local frame sizes to measure L1-hit vs L1-miss bandwidth/latency and the empirical `l1_to_l2_spill_threshold_bytes_per_sm`. Gives Agents 3 and 4 calibrated penalties for `ptxas` spill bytes.
+
+### D6. Empirical CTA dispatch probing via `%smid` and `%globaltimer`
+- **Alternatives:** Assume strict round-robin CTA-to-SM assignment.
+- **Decision:** Run lightweight probe kernels that record `(blockIdx, %smid, %globaltimer_start, %globaltimer_end)` across 1D/2D grids at 1–4 waves and multiple occupancies, repeated across launches. Classify dispatch into `round_robin`, `grouped`, `measured_table`, or `unknown`, emit `candidate_policies` when ambiguous (so Agent 4 treats policy ambiguity as a perturbation dimension), and record `order_consistency` (`0.0–1.0`) and `first_wave_trace`.
+
+### D7. Microbenchmark suite implemented in CUDA C++
+- **Alternatives:** Python + Triton, or CuPy/NVRTC.
+- **Decision:** Implement the NVIDIA microbenchmark suite in **CUDA C++** (`nvcc`), with a thin Python CLI wrapper for orchestration and JSON emission. Direct inline PTX gives exact control over `mma.sync.aligned`, `cp.async`, TMA, `%smid`, `%globaltimer`, and forced register spills without Triton compiler optimizations interfering with measurements. AMD HIP parity can reuse the same C++ harness if AMD enters scope later.
+
+### D8. Unlocked-clock degradation policy (widen `rel_uncertainty`, do not reject)
+- **Alternatives:** Reject profiles whenever `nvidia-smi` clock locking fails (common on consumer WSL2 or unified-memory SoCs).
+- **Decision:** Accept unlocked profiles, record `clock_policy.locked: false` (plus per-domain `sm_clock_locked` / `mem_clock_locked` and `observed_*_clock_range_mhz`), and automatically widen `rel_uncertainty`:
+  - Define observed clock drift half-width `drift_rel = (clock_max - clock_min) / (2 * clock_median)` over the benchmark run.
+  - For SM-clock-bound fields (`compute.*`, `l2_bw_*`, `smem_*`, `async_pipeline.*`, `spill.*`), if `sm_clock_locked == false`: `rel_uncertainty = max(0.10, half_ci_rel, drift_rel + 0.05)` (or floor `0.15` if clock telemetry is unavailable).
+  - For memory-clock-bound fields (`dram_bw_*`, `dram_latency_*`), if `mem_clock_locked == false`: apply the same formula using `observed_mem_clock_range_mhz` (or floor `0.15` if unavailable).
+  - If `throttle_events > 0`, add `+0.05` to the affected domain's `rel_uncertainty` and flag it in provenance.
+
+---
+
+## 4. Risk Responses
+
+| Risk | How This Component Addresses It |
+|---|---|
+| **#1 Cross-bottleneck error does not cancel (perturbation resolution)** | Every measured parameter carries `rel_uncertainty` (floor `0.10`). Compute, L2, DRAM, async copy, and spill are measured independently on the same locked-clock baseline so inter-resource ratios are calibrated, not guessed. |
+| **#3 Register spill penalty must be modeled** | Dedicated `measured.spill` benchmarks measure per-SM local-memory bandwidth and latency in L1-hit and L1-miss regimes, keyed directly to `ptxas` spill/local-mem metrics from Agent 2. |
+| **#6 CTA dispatch order must be measured** | `cta_dispatch` microbenchmark records `%smid` and `%globaltimer` across grids and launches, outputting an observed policy plus `order_consistency` / `confidence` so Agent 4 can lower confidence when dispatch varies. |
+| **#8 Real-GPU measurement noise** | Mandatory hygiene protocol (aligned with Agent 5): lock SM/memory clocks when permitted and restore after runs (record achieved clocks and throttle events via NVML; flag `locked: false` if unsupported; record display activity on 4070 and keep host CPU memory idle on GB10), flush L2 with a `>= 2x L2` disjoint write buffer for cold-L2 tests, run thermal warmup, collect `N >= 15` timed iterations via CUDA events / `%globaltimer`, report median + bootstrap 95% CI. |
+| **#9 Strict calibration/validation separation** | Microbenchmark suite contains zero GEMM/attention/MoE kernels and zero Triton autotune configs. `provenance` tags every dataset and profile so Agent 5 can enforce zero overlap. |
+
+---
+
+## 5. What Requires Real-Hardware Measurement
+
+To be executed on **RTX 4070 (`sm_89`)** and **DGX Spark GB10 (`sm_121`)** once implementation starts:
+
+1. **Static device query:** Verify exact `sm_count`, `registers_per_sm`, `shared_mem_per_sm_bytes`, `max_blocks_per_sm`, and `l2_size_bytes` via CUDA runtime API on both GPUs (do not rely on marketing tables).
+2. **Clock-lock & thermal behavior check:** Test whether `nvidia-smi -lgc` / `-lmc` is permitted on consumer RTX 4070 (WSL2/Windows driver) and DGX Spark GB10 (unified LPDDR5x), and measure clock drift over a 60-second run.
+3. **DRAM & L2 bandwidth vs active-SM curves:** Cold-L2 DRAM and warm-L2 streaming kernels at 1, 2, 4, 25%, 50%, 100% SMs. On GB10, check sensitivity to concurrent host CPU memory activity.
+4. **L2 effective capacity knee & sector overfetch:** Working-set sweep from `1 MB` to `4x L2` to locate `l2_effective_capacity_bytes`, plus narrow-row strided loads (`< 128B` vs `>= 128B`) to verify 32B sector vs 128B line overfetch (for Agent 3).
+5. **Memory latency hierarchy (unloaded & loaded):** Pointer-chasing kernels for shared memory, L2, and DRAM under low load and under concurrent streaming background load (for Agent 4's pipeline latency term).
+6. **Shared memory bandwidth & runtime carveout check:** Bank-conflict-free `LDS.128`/`STS.128` streaming per SM, plus `cudaOccupancyMaxActiveBlocksPerMultiprocessor` / runtime carveout sweep across per-CTA shared memory sizes.
+7. **Tensor Core & non-MMA throughput vs warp count:** Unrolled `mma.sync.aligned` register-resident loops sweeping `1, 2, 4, 8+` issuing warps per SM for each supported `(dtype, shape)` (`f16`, `bf16`, `tf32`, `f8`, plus `sm_121` block-scaled `fp4`/`fp8` shapes if emitted by Triton), plus per-SM non-MMA issue rate.
+8. **Async copy bandwidth:** `cp.async` per-SM throughput on `sm_89` and `sm_121`; TMA per-SM throughput and descriptor setup latency on `sm_121`.
+9. **Register spill penalty & L1-to-L2 cliff:** Forced-spill local-memory read/write sweep from small per-SM footprint (L1-resident) to large footprint (L1-overflow into L2/DRAM) to measure bandwidth, latency, and `l1_to_l2_spill_threshold_bytes_per_sm`.
+10. **Launch overhead & CTA dispatch probe:** Empty-kernel launch latency, per-CTA launch latency, and `%smid`/`%globaltimer` CTA-to-SM trace across 1–4 waves and multiple occupancies.
+
+---
+
+## 6. Open Questions / TBD
+
+1. **Spec-derived profiles (depends on project goals):** If predicting unshipped/unowned GPUs without measured profiles remains a core goal, we need a defined rule for deriving `measured.*` from `specs.*` (e.g., efficiency factors from same-family measured profiles + `rel_uncertainty >= 0.25`).
+2. **Profile review & versioning policy (depends on community-profile goal):** Schema migration rules and automated sanity checks for community-submitted profiles (e.g., rejecting measured BW > 1.05x theoretical spec BW).
+3. **AMD HIP runner timing (depends on project goals):** Whether the HIP microbenchmark port is scheduled for Phase 2 or deferred until an AMD target GPU is available for validation.

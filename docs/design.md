@@ -1,6 +1,27 @@
 # VirtualGPU Design
 
-Status: draft for discussion. No code exists yet.
+Status: design phase complete. No code exists yet.
+
+This document is the overview. Each component has its own detailed design in [`docs/proposals/`](proposals/):
+
+| Component | Design |
+|---|---|
+| Triton frontend | [frontend.md](proposals/frontend.md) |
+| Kernel IR and L2 reuse model | [kernel-ir-and-l2.md](proposals/kernel-ir-and-l2.md) |
+| Performance model core | [model-core.md](proposals/model-core.md) |
+| Microbenchmark suite and GPU profile format | [microbench-and-profile.md](proposals/microbench-and-profile.md) |
+| Validation and evaluation | [validation.md](proposals/validation.md) |
+
+A plain-language overview is in [roadmap.html](roadmap.html).
+
+## Decisions
+
+- **Scope:** an open-source tool for kernel developers. The first application is GPU-free autotuning for Triton.
+- **Relative, not absolute:** the product is a ranking with confidence, not a predicted time.
+- **One neutral Kernel IR:** the IR is independent of the source language and of the GPU vendor. Triton is the first frontend; a PTX frontend follows and covers CUDA, CUTLASS, TileLang and other languages that compile to PTX. AMD follows through its public ISA.
+- **Implementation:** the model core (scheduler, L2 model, perturbation) is written in Rust and exposed to Python through PyO3. Frontends are written in Python. The microbenchmark suite is written in CUDA C++ to control the exact instructions it measures.
+- **Test GPUs:** RTX 4070 (Ada, `sm_89`) for development; DGX Spark (GB10, `sm_121`) as a held-out GPU for the cross-GPU experiment.
+- **Verdict rule:** A is faster than B only if A is faster in every perturbation draw. Anything else is "indistinguishable". A softer rule may be introduced only after calibration on development data.
 
 ## 1. Problem
 
@@ -48,7 +69,19 @@ Ordered by difficulty.
 
 The most direct application of use case 1 is **GPU-free autotuning**: a drop-in replacement for the measurement step of `@triton.autotune` that ranks configs against a chosen GPU profile.
 
-## 5. Input: Triton first
+## 5. Input: one neutral IR, Triton first
+
+Kernels are written in many languages: CUDA C++, CUTLASS and CuTe, Triton, TileLang, HIP, and more. VirtualGPU does not support languages one by one. Every frontend lowers into one Kernel IR, which is independent of language and vendor, and the performance model only reads that IR.
+
+```
+Triton   CUDA C++   CUTLASS   TileLang   ...        HIP
+   |          \         |        /                   |
+   |               PTX (public)                AMD GPU ISA (public)
+   |                     \                        /
+   +----------------->  Kernel IR (neutral)  <---+
+                               |
+                       Performance model
+```
 
 | Input | Pros | Cons |
 |---|---|---|
@@ -56,7 +89,9 @@ The most direct application of use case 1 is **GPU-free autotuning**: a drop-in 
 | PTX | Public specification, covers any CUDA source | Tile structure must be recovered; misses `ptxas` decisions |
 | Vendor machine code | Closest to what runs on hardware | NVIDIA machine code is undocumented |
 
-VirtualGPU starts with Triton. The tile structure that the performance model needs is already present in the IR, and Triton is where autotuning already happens.
+VirtualGPU starts with a Triton frontend that reads TTGIR after the software pipelining pass, because the tile structure the performance model needs is explicit there, and Triton is where autotuning already happens. A PTX frontend comes later and recovers the same structure from public PTX, which covers every language that compiles to it.
+
+Closed-source libraries such as cuBLAS and cuDNN often ship machine code without PTX. VirtualGPU does not model their internals; where they matter, they are treated as measured black boxes.
 
 Register usage and spills are decided by the backend assembler, not by TTGIR. Triton can compile ahead of time for a given target without a GPU, and the vendor assembler reports per-kernel resource usage. VirtualGPU uses that report as an input.
 
@@ -77,21 +112,29 @@ Autotuning configs usually have similar arithmetic intensity. What separates the
 | L2 reuse | tile traversal order (swizzle / grouping), L2 size | DRAM traffic |
 | Tensor core shape fit | tile shape versus MMA instruction shape | Wasted MMA throughput |
 | Launch and prologue/epilogue cost | kernel size | Matters for small shapes |
+| Register spills | assembler spill report, spill location | Extra local memory traffic per iteration or once |
+| Persistent kernels and warp specialization | outer tile loop, producer/consumer warps | One CTA handles many tiles; loads and compute run in separate warps |
 
 Items such as shared memory bank conflicts and instruction scheduling are out of scope for the first model. Variants that differ only in those will be reported as indistinguishable, which is the correct answer for a model that does not contain them.
 
 ### 6.2 Structure
 
-- Per CTA: a steady-state loop of load and compute stages. Overlap is bounded by `num_stages`. Prologue and epilogue are modeled separately.
+- Per CTA: phases (prologue, steady-state loop, drain, epilogue). In steady state, time per iteration is the maximum of compute time, transfer time, and load latency divided by the iterations in flight. Stage counts come from the IR after pipelining, never from the requested `num_stages`.
 - Per SM: resident CTAs share issue, tensor core, and shared memory bandwidth.
-- Per GPU: an event-driven scheduler dispatches CTAs to SMs in hardware order and produces waves and tails naturally. L2 and DRAM bandwidth are shared across SMs.
+- Per GPU: an event-driven scheduler dispatches CTAs to SMs using the dispatch policy measured on the real GPU, and produces waves and tails naturally. L2 and DRAM bandwidth are shared among active phases by max-min fair sharing, using bandwidth curves measured against the number of active SMs.
+- L2: an online model, called by the scheduler at tile boundaries and once per phase segment, splits traffic into L2 hits and DRAM bytes from the actual set of resident tiles.
 
-Simulating events per CTA rather than per instruction keeps a large GEMM in the millisecond-to-second range on a CPU.
+Events are per CTA phase, not per instruction or per loop iteration. The target is about 1 ms per simulation of a 4096-tile GEMM, so that a full autotuning space with perturbation sampling finishes in seconds.
+
+### 6.2.1 Resolution through perturbation
+
+When variants are bound by different resources, profile errors do not cancel. Every measured profile field therefore carries an uncertainty. The model runs each variant against draw 0 (the nominal profile) and 32 perturbed draws (Latin hypercube within each field's uncertainty, correlated fields drawn together, dispatch policy candidates included). All variants share the same draws, so comparisons are paired. A pair is ordered only if every draw agrees; otherwise it is indistinguishable.
 
 ### 6.3 Output
 
 - Predicted time per variant.
-- Ranking, with variants grouped as indistinguishable when their difference is below the model's resolution.
+- Pairwise verdicts (faster, slower, indistinguishable). Verdicts are kept per pair; there is no hard grouping, because "indistinguishable" is not transitive.
+- `unsupported` with a reason, when a kernel uses a feature the model does not handle.
 - Per variant: bounding resource, utilization of each resource, wave count and tail efficiency, estimated DRAM traffic.
 
 ## 7. GPU profiles
@@ -128,14 +171,19 @@ Metrics:
 
 - **Kendall τ** between predicted and measured order, per shape.
 - **Top-k hit rate**: whether the truly fastest config is in VirtualGPU's top k.
-- **Indistinguishable accuracy**: pairs within 5% of each other on hardware should be reported as indistinguishable, not ordered.
+- **Top-k regret**: how much slower the best config in VirtualGPU's top k is than the true best.
+- **Pair accuracy**: on hardware, a pair is equivalent if its 95% interval lies within ±5%, ordered if it lies wholly outside, unresolved otherwise. Model verdicts are scored against resolved pairs.
 - Absolute error (MAPE) is recorded but is not a pass criterion.
 
-Proposed pass criteria, to be fixed before the experiment is run: median τ ≥ 0.8 and the true best config in the top 5 for at least 90% of shapes.
+VirtualGPU must beat two independent baselines built by the validation work, not by the model authors: roofline with wave quantization, and a NeuSight-style learned tile predictor. If a simple formula ranks as well, the event-driven model has no reason to exist.
+
+Proposed pass criteria, fixed before the holdout is opened: at least 0.05 higher median Kendall τ-b and at least 1 percentage point lower mean top-5 regret than each baseline.
+
+Hardware measurements use locked clocks where possible, explicit cold or warm L2 preparation, randomized repeated blocks across sessions, and 95% intervals. Calibration data (microbenchmarks), development data, and holdout data are kept strictly separate.
 
 ### 8.2 Cross-GPU experiment
 
-The real value is predicting GPUs the user does not own. The second experiment repeats 8.1 on a GPU whose measurements were not used in any model decisions, using only its profile.
+The real value is predicting GPUs the user does not own. The second experiment repeats 8.1 on a GPU whose measurements were not used in any model decisions, using only its profile. The model and baselines are frozen on the RTX 4070 before any GB10 GEMM timing is opened.
 
 ### 8.3 Dataset
 
@@ -144,7 +192,8 @@ The measured data is a deliverable in its own right: kernel source, config, shap
 ## 9. Known limits
 
 - **Data-dependent kernels.** MoE routing, sparse attention, and paged KV cache depend on runtime data. They need a workload description (expert distribution, sparsity pattern, page table) as an extra input.
-- **Non-Triton kernels.** cuBLAS, CUTLASS, and hand-written CUDA kernels are not covered by the Triton frontend. Use case 3 needs a plan for them.
+- **Non-Triton kernels.** Not covered until the PTX frontend exists. Closed-source libraries without PTX are treated as measured black boxes.
+- **Hardware coverage.** Neither test GPU has Hopper `wgmma` or data-center Blackwell `tcgen05`. Kernels using those paths carry an "unvalidated feature" flag until such hardware is available.
 - **Fine-grained effects.** Bank conflicts, instruction scheduling, power and clock throttling are not modeled.
 - **Model resolution.** Differences smaller than the model's error cannot be resolved; real hardware decides those.
 
@@ -161,9 +210,11 @@ These works establish that tile-level modeling of LLM kernels is accurate. What 
 
 ## 11. Open questions
 
-1. Implementation language for the model and CLI.
-2. How to obtain register usage for AMD targets, and whether it matters for the first experiment.
-3. How much of the L2 reuse model can be analytical before it needs simulation.
-4. How to define the model's resolution per prediction, so "indistinguishable" is principled rather than a fixed threshold.
-5. Which GPUs to use for the first and cross-GPU experiments.
-6. Profile format versioning, and how to review community-submitted profiles.
+1. How to obtain register usage and spills for AMD targets.
+2. Which Triton release line to pin first, to keep TTGIR adapters small.
+3. How to feed workload descriptions (expert routing, page tables) into data-dependent kernels.
+4. Profile format versioning, and how to review community-submitted profiles.
+5. Whether a softer verdict rule than unanimity is worth calibrating.
+6. Which clock controls are available on each test system (WSL2 for the RTX 4070, GB10's unified memory).
+
+Each component design lists its own open questions in more detail.
