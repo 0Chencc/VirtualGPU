@@ -11,7 +11,7 @@
 //!
 //! See `docs/proposals/model-core.md`, sections 3.1 to 3.5.
 
-use crate::kernel::{Access, Kernel, Spill, SpillScope};
+use crate::kernel::{Access, Kernel, Spill, SpillScope, Work};
 use crate::occupancy::{occupancy, Occupancy, OccupancyError};
 use crate::profile::{interpolate, Profile};
 
@@ -231,16 +231,6 @@ struct Demand {
 }
 
 impl Demand {
-    fn is_empty(&self) -> bool {
-        self.flops == 0.0
-            && self.warp_insts == 0.0
-            && self.smem_bytes == 0.0
-            && self.local_bytes == 0.0
-            && self.bytes == 0.0
-            && self.fixed_latency_ns == 0.0
-            && self.round_trips == 0.0
-    }
-
     /// Exposed latency given the current DRAM and L2 load latencies.
     fn latency(&self, lat: Latency) -> f64 {
         self.fixed_latency_ns
@@ -418,36 +408,68 @@ impl<'a, L: L2> Sim<'a, L> {
         }
     }
 
-    /// Move `c` to its next non-empty phase. Returns false when the CTA is done.
-    fn advance(&mut self, c: &mut Cta) -> bool {
+    /// Whether `phase` has no work at all, decided from the kernel alone so
+    /// that phase transitions never need the L2 model.
+    fn phase_empty(&self, phase: Phase) -> bool {
+        let k = self.k;
+        let tl = &k.tile;
+        let idle =
+            |w: &Work| w.mma_flops == 0.0 && w.alu_insts_per_warp == 0.0 && w.smem_bytes == 0.0;
+        let spills = |scope: SpillScope| k.spill.scope == scope && k.spill.bytes_per_thread > 0.0;
+        let d = tl.prefetch_distance.min(tl.iterations);
+        match phase {
+            Phase::Launch => self.m.cta_launch_ns == 0.0,
+            Phase::Prologue => {
+                idle(&tl.prologue)
+                    && tl.prologue.loads.is_empty()
+                    && tl.prologue.stores.is_empty()
+                    && (d == 0 || tl.per_iteration.loads.is_empty())
+                    && !spills(SpillScope::Once)
+            }
+            Phase::Main => {
+                let w = &tl.per_iteration;
+                tl.iterations == 0
+                    || (idle(w)
+                        && w.stores.is_empty()
+                        && (w.loads.is_empty() || d == tl.iterations)
+                        && !matches!(k.spill.scope, SpillScope::PerIteration { .. }))
+            }
+            Phase::Epilogue => {
+                idle(&tl.epilogue) && tl.epilogue.loads.is_empty() && tl.epilogue.stores.is_empty()
+            }
+        }
+    }
+
+    /// Move `c` to its next non-empty phase, recording tile boundaries in
+    /// `events` instead of telling the L2 model. Returns false when the CTA
+    /// is done.
+    fn step(&self, c: &mut Cta, events: &mut Vec<TileEvent>) -> bool {
         loop {
             match Self::next_phase(c.phase) {
                 Some(p) => {
                     if p == Phase::Prologue {
-                        self.l2.begin_tile(c.sm, c.program, c.tile, self.t);
+                        events.push(TileEvent::Begin(c.sm, c.program, c.tile));
                     }
                     c.phase = p;
                 }
                 None => {
-                    self.l2.end_tile(c.sm, c.program, c.tile, self.t);
+                    events.push(TileEvent::End(c.sm, c.program, c.tile));
                     c.tile += 1;
                     if c.tile == c.tiles {
                         return false;
                     }
-                    self.l2.begin_tile(c.sm, c.program, c.tile, self.t);
+                    events.push(TileEvent::Begin(c.sm, c.program, c.tile));
                     c.phase = Phase::Prologue;
                 }
             }
-            c.demand = self.demand(c.phase, c.sm, c.program, c.tile);
-            c.remaining = 1.0;
-            if !c.demand.is_empty() {
+            if !self.phase_empty(c.phase) {
                 return true;
             }
         }
     }
 
-    /// Returns `None` when the program has no work at all.
-    fn launch(&mut self, program: u32, sm: u32) -> Option<Cta> {
+    /// A new CTA in its first non-empty phase, or `None` if it has no work.
+    fn launch(&self, program: u32, sm: u32, events: &mut Vec<TileEvent>) -> Option<Cta> {
         let tiles = self.k.tiles_of(program);
         if tiles == 0 {
             return None;
@@ -461,12 +483,41 @@ impl<'a, L: L2> Sim<'a, L> {
             remaining: 1.0,
             demand: Demand::default(),
         };
-        c.demand = self.demand(Phase::Launch, sm, program, 0);
-        if c.demand.is_empty() && !self.advance(&mut c) {
+        if self.phase_empty(Phase::Launch) && !self.step(&mut c, events) {
             return None;
         }
         Some(c)
     }
+
+    /// Finish one timestamp: tell the L2 model about every tile that ended,
+    /// then every tile that began, and only then compute the demands of the
+    /// CTAs that changed phase. Every CTA of the batch sees the same resident
+    /// set, whatever order the batch was processed in.
+    fn settle(&mut self, events: &mut Vec<TileEvent>, changed: &mut Vec<Cta>, ctas: &mut Vec<Cta>) {
+        events.sort_unstable();
+        for e in events.drain(..) {
+            match e {
+                TileEvent::End(sm, program, tile) => self.l2.end_tile(sm, program, tile, self.t),
+                TileEvent::Begin(sm, program, tile) => {
+                    self.l2.begin_tile(sm, program, tile, self.t)
+                }
+            }
+        }
+        changed.sort_unstable_by_key(|c| (c.program, c.tile));
+        for mut c in changed.drain(..) {
+            c.demand = self.demand(c.phase, c.sm, c.program, c.tile);
+            c.remaining = 1.0;
+            ctas.push(c);
+        }
+    }
+}
+
+/// A tile boundary, applied to the L2 model at the end of a timestamp. Ends
+/// sort before begins.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum TileEvent {
+    End(u32, u32, u32),
+    Begin(u32, u32, u32),
 }
 
 /// Reusable buffers for the rate computation.
@@ -601,7 +652,8 @@ fn rates(ctas: &[Cta], m: &Machine, mma_per_cta: &[f64], lat: Latency, s: &mut S
         } else {
             latency.max(t_sm).max(t_mem)
         };
-        s.rate.push(1.0 / t);
+        // A phase with no demand finishes at once.
+        s.rate.push(1.0 / t.max(1e-9));
     }
 }
 
@@ -642,14 +694,17 @@ pub fn simulate<L: L2>(
 
     // First wave: breadth-first round robin over SMs. Later: first SM to free a slot.
     let mut ctas: Vec<Cta> = Vec::with_capacity(slots as usize);
+    let mut changed: Vec<Cta> = Vec::new();
+    let mut tile_events: Vec<TileEvent> = Vec::new();
     let mut next = 0;
-    while next < k.grid && (ctas.len() as u32) < slots {
-        let sm = ctas.len() as u32 % n_sm;
-        if let Some(c) = sim.launch(next, sm) {
-            ctas.push(c);
+    while next < k.grid && (changed.len() as u32) < slots {
+        let sm = changed.len() as u32 % n_sm;
+        if let Some(c) = sim.launch(next, sm, &mut tile_events) {
+            changed.push(c);
         }
         next += 1;
     }
+    sim.settle(&mut tile_events, &mut changed, &mut ctas);
 
     let warps = f64::from(k.num_warps);
     let mma_per_cta: Vec<f64> = (0..=occ.ctas_per_sm)
@@ -660,7 +715,6 @@ pub fn simulate<L: L2>(
         .collect();
     let mut s = Scratch::default();
     let mut freed: Vec<u32> = Vec::new();
-    let mut advanced: Vec<Cta> = Vec::new();
     let mut busy_sm_ns = 0.0;
     let mut events = 0u64;
     let mut bound_ns = [0.0f64; 7];
@@ -703,24 +757,26 @@ pub fn simulate<L: L2>(
                 continue;
             }
             let mut c = ctas.swap_remove(i);
-            if sim.advance(&mut c) {
-                advanced.push(c);
+            if sim.step(&mut c, &mut tile_events) {
+                changed.push(c);
             } else {
                 freed.push(c.sm);
             }
         }
-        ctas.append(&mut advanced);
         freed.sort_unstable();
         for &sm in &freed {
             while next < k.grid {
                 let program = next;
                 next += 1;
-                if let Some(c) = sim.launch(program, sm) {
-                    ctas.push(c);
+                if let Some(c) = sim.launch(program, sm, &mut tile_events) {
+                    changed.push(c);
                     break;
                 }
             }
         }
+        sim.settle(&mut tile_events, &mut changed, &mut ctas);
+        #[cfg(test)]
+        shuffle(&mut ctas, events);
     }
 
     let makespan = sim.t;
@@ -743,4 +799,57 @@ pub fn simulate<L: L2>(
             bound_ns.map(|b| if total > 0.0 { b / total } else { 0.0 })
         },
     })
+}
+
+// Tests permute the active CTAs after every event to check that results do
+// not depend on the order CTAs are stored and processed in.
+#[cfg(test)]
+thread_local! {
+    static SHUFFLE_SEED: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+#[cfg(test)]
+fn shuffle(ctas: &mut [Cta], salt: u64) {
+    let seed = SHUFFLE_SEED.with(|s| s.get());
+    if seed == 0 {
+        return;
+    }
+    let mut x = seed ^ salt.wrapping_mul(0x9e37_79b9_7f4a_7c15);
+    for i in (1..ctas.len()).rev() {
+        x ^= x << 13;
+        x ^= x >> 7;
+        x ^= x << 17;
+        ctas.swap(i, (x % (i as u64 + 1)) as usize);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::from_ir::{kernel_from_ir, IrL2};
+    use crate::ir::KernelIR;
+    use crate::l2::{L2InitState, L2Options};
+
+    fn run(ir: &KernelIR, p: &Profile, initial: L2InitState, seed: u64) -> Prediction {
+        SHUFFLE_SEED.with(|s| s.set(seed));
+        let k = kernel_from_ir(ir).unwrap();
+        let m = Machine::nominal(p, &k.mma_key).unwrap();
+        let mut l2 = IrL2::new(ir, p, initial, L2Options::default());
+        let r = simulate(&k, p, &m, &mut l2).unwrap();
+        SHUFFLE_SEED.with(|s| s.set(0));
+        r
+    }
+
+    #[test]
+    fn processing_order_within_a_timestamp_does_not_matter() {
+        let ir = KernelIR::from_json_str(include_str!("../../../schemas/examples/gemm_sm89.json"))
+            .unwrap();
+        let p = Profile::from_json(include_str!("../../../profiles/rtx4070.json")).unwrap();
+        for initial in [L2InitState::Cold, L2InitState::Warm] {
+            let base = run(&ir, &p, initial, 0);
+            for seed in [1, 2, 3] {
+                assert_eq!(run(&ir, &p, initial, seed), base, "{initial:?} seed {seed}");
+            }
+        }
+    }
 }
