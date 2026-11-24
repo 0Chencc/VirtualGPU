@@ -47,3 +47,10 @@ def test_draws_are_shared_and_include_the_nominal_draw():
     c = _core.predict(IR, PROFILE, draws=8, seed=4)
     assert c["draws"]["0"] == a["draws"]["0"]
     assert c["draws"] != a["draws"]
+
+
+def test_pair_verdict_uses_the_five_percent_band():
+    assert _core.pair_verdict([90.0, 94.0], [100.0, 100.0]) == "a_faster"
+    assert _core.pair_verdict([90.0, 96.0], [100.0, 100.0]) == "indistinguishable"
+    with pytest.raises(ValueError):
+        _core.pair_verdict([1.0], [1.0, 2.0])

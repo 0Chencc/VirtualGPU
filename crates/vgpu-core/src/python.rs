@@ -6,6 +6,7 @@ use crate::ir::KernelIR;
 use crate::kernel::Kernel;
 use crate::l2::L2InitState;
 use crate::sim::{simulate, Machine, ModelError, RESOURCES};
+use crate::verdict::{verdict, Verdict};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
@@ -132,6 +133,21 @@ fn predict<'py>(
     Ok(d)
 }
 
+/// Pairwise verdict from two variants' times under the same draws, in draw
+/// order: "a_faster", "b_faster" or "indistinguishable". A is faster only if
+/// it is at least 5% faster in every draw.
+#[pyfunction]
+fn pair_verdict(a: Vec<f64>, b: Vec<f64>) -> PyResult<&'static str> {
+    if a.len() != b.len() {
+        return Err(PyValueError::new_err("both variants need the same draws"));
+    }
+    Ok(match verdict(&a, &b) {
+        Verdict::AFaster => "a_faster",
+        Verdict::BFaster => "b_faster",
+        Verdict::Indistinguishable => "indistinguishable",
+    })
+}
+
 /// The JSON Schema contracts, embedded at build time so installed wheels have them.
 #[pyfunction]
 fn schema(name: &str) -> PyResult<&'static str> {
@@ -149,5 +165,6 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     m.add_function(wrap_pyfunction!(predict, m)?)?;
     m.add_function(wrap_pyfunction!(schema, m)?)?;
+    m.add_function(wrap_pyfunction!(pair_verdict, m)?)?;
     Ok(())
 }
