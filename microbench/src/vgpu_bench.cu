@@ -560,6 +560,12 @@ int main(int argc, char** argv) {
   if (mode == "sync-loop-multicta") {
     return run_sync_loop_multicta(device, samples, warmup);
   }
+  if (mode == "fill-vs-loop-ablation") {
+    return run_fill_vs_loop_ablation(device, samples, warmup);
+  }
+  if (mode == "sync-loop-reconcile") {
+    return run_sync_loop_reconcile(device, samples, warmup);
+  }
   std::fprintf(stderr, "Unknown mode: %s\n", mode.c_str());
   return 2;
 }

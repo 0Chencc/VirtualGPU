@@ -5066,3 +5066,519 @@ static int run_sync_loop_multicta(int device, int samples, int warmup) {
   CUDA_CHECK(cudaFree(d_sink_f));
   return 0;
 }
+
+// ---------------------------------------------------------------------------
+// 25. Post-hoc: fill-vs-loop ablation & compile-time-constant ~1 ms sync_stage_loop
+// ---------------------------------------------------------------------------
+
+__global__ void fvl_warmup_kernel(float* __restrict__ sink, int iters) {
+  float x = static_cast<float>(threadIdx.x) * 0.001f;
+  for (int i = 0; i < iters; ++i) x = x * 1.00001f + 0.00001f;
+  if (x == -1.0f) sink[blockIdx.x * blockDim.x + threadIdx.x] = x;
+}
+
+template <int STAGE_BYTES>
+__global__ void fvl_serial_fill_kernel(const uint4* __restrict__ src, uint32_t* __restrict__ sink,
+                                       size_t l2_mask, int steps, double* __restrict__ out_cyc) {
+  extern __shared__ uint4 smem[];
+  constexpr int NUM_WARPS = 4;
+  const uint32_t tid = threadIdx.x;
+  const uint32_t warp_id = tid >> 5;
+  const uint32_t lane = tid & 31u;
+  constexpr size_t STAGE_U4 = static_cast<size_t>(STAGE_BYTES) / sizeof(uint4);
+  constexpr int VECS = STAGE_BYTES / (NUM_WARPS * 32 * 16);
+  constexpr int LD_N = STAGE_BYTES / (NUM_WARPS * 512);
+  const size_t grid_stage_u4 = static_cast<size_t>(gridDim.x) * STAGE_U4;
+  size_t base = (static_cast<size_t>(blockIdx.x) * STAGE_U4) & l2_mask;
+  uint32_t acc = 0u;
+
+  uint64_t t0 = static_cast<uint64_t>(clock64());
+  for (int step = 0; step < steps; ++step) {
+    #pragma unroll
+    for (int v = 0; v < VECS; ++v) {
+      size_t off = static_cast<size_t>(v) * (NUM_WARPS * 32) + tid;
+      uint32_t saddr = static_cast<uint32_t>(__cvta_generic_to_shared(smem + off));
+      const void* gptr = src + ((base + off) & l2_mask);
+      asm volatile("cp.async.cg.shared.global [%0], [%1], 16;\n" :: "r"(saddr), "l"(gptr) : "memory");
+    }
+    asm volatile("cp.async.commit_group;\n" ::: "memory");
+    asm volatile("cp.async.wait_group 0;\n" ::: "memory");
+    asm volatile("bar.sync 0;\n" ::: "memory");
+
+    #pragma unroll
+    for (int r = 0; r < LD_N; ++r) {
+      size_t off_u4 = (static_cast<size_t>(r) * NUM_WARPS + warp_id) * 32ULL + lane;
+      uint32_t saddr = static_cast<uint32_t>(__cvta_generic_to_shared(smem + off_u4));
+      uint32_t r0, r1, r2, r3;
+      asm volatile("ldmatrix.sync.aligned.x4.m8n8.shared.b16 {%0,%1,%2,%3}, [%4];\n"
+                   : "=r"(r0), "=r"(r1), "=r"(r2), "=r"(r3) : "r"(saddr) : "memory");
+      acc ^= (r0 ^ r1 ^ r2 ^ r3);
+    }
+    asm volatile("bar.sync 0;\n" ::: "memory");
+    base = (base + grid_stage_u4) & l2_mask;
+  }
+  uint64_t t1 = static_cast<uint64_t>(clock64());
+  if (blockIdx.x == 0 && tid == 0) *out_cyc = static_cast<double>(t1 - t0) / static_cast<double>(steps);
+  uint4 tail = smem[tid & (STAGE_U4 - 1ULL)];
+  acc ^= (tail.x ^ tail.y ^ tail.z ^ tail.w);
+  if (acc == 0xdeadbeefu) sink[blockIdx.x * blockDim.x + tid] = acc;
+}
+
+template <int STAGE_BYTES, bool HAS_MMA_LOOP, bool HAS_2ND_BAR, bool ADVANCE_BASE>
+__global__ void fvl_sync_loop_kernel(const uint4* __restrict__ src, float* __restrict__ sink,
+                                     size_t buf_mask, int steps, int mma_iters, double* __restrict__ out_cyc) {
+  extern __shared__ uint4 smem[];
+  constexpr int NUM_WARPS = 4;
+  const uint32_t tid = threadIdx.x;
+  const uint32_t warp_id = tid >> 5;
+  const uint32_t lane = tid & 31u;
+  constexpr size_t STAGE_U4 = static_cast<size_t>(STAGE_BYTES) / sizeof(uint4);
+  constexpr int VECS = STAGE_BYTES / (NUM_WARPS * 32 * 16);
+  constexpr int LD_N = STAGE_BYTES / (NUM_WARPS * 512);
+  const size_t grid_stage_u4 = static_cast<size_t>(gridDim.x) * STAGE_U4;
+  size_t base = (static_cast<size_t>(blockIdx.x) * STAGE_U4) & buf_mask;
+
+  uint32_t a0 = 0x3c003c00u, a1 = 0x3c003c00u, a2 = 0x3c003c00u, a3 = 0x3c003c00u;
+  uint32_t b0 = 0x3c003c00u, b1 = 0x3c003c00u;
+  uint32_t live_acc = 0u;
+  float c00 = 0.f, c01 = 0.f, c02 = 0.f, c03 = 0.f;
+  float c10 = 0.f, c11 = 0.f, c12 = 0.f, c13 = 0.f;
+  float c20 = 0.f, c21 = 0.f, c22 = 0.f, c23 = 0.f;
+  float c30 = 0.f, c31 = 0.f, c32 = 0.f, c33 = 0.f;
+
+  uint64_t t0 = static_cast<uint64_t>(clock64());
+  for (int step = 0; step < steps; ++step) {
+    #pragma unroll
+    for (int v = 0; v < VECS; ++v) {
+      size_t off = static_cast<size_t>(v) * (NUM_WARPS * 32) + tid;
+      uint32_t saddr = static_cast<uint32_t>(__cvta_generic_to_shared(smem + off));
+      const void* gptr = src + ((base + off) & buf_mask);
+      asm volatile("cp.async.cg.shared.global [%0], [%1], 16;\n" :: "r"(saddr), "l"(gptr) : "memory");
+    }
+    asm volatile("cp.async.commit_group;\n" ::: "memory");
+    asm volatile("cp.async.wait_group 0;\n" ::: "memory");
+    asm volatile("bar.sync 0;\n" ::: "memory");
+
+    #pragma unroll
+    for (int r = 0; r < LD_N; ++r) {
+      size_t off_u4 = (static_cast<size_t>(r) * NUM_WARPS + warp_id) * 32ULL + lane;
+      uint32_t saddr = static_cast<uint32_t>(__cvta_generic_to_shared(smem + off_u4));
+      uint32_t r0, r1, r2, r3;
+      asm volatile("ldmatrix.sync.aligned.x4.m8n8.shared.b16 {%0,%1,%2,%3}, [%4];\n"
+                   : "=r"(r0), "=r"(r1), "=r"(r2), "=r"(r3) : "r"(saddr) : "memory");
+      live_acc ^= (r0 ^ r1 ^ r2 ^ r3);
+      if constexpr (HAS_MMA_LOOP) {
+        if (r == LD_N - 2) { b0 = r0; b1 = r1; }
+        else if (r == LD_N - 1) { a0 = r0; a1 = r1; a2 = r2; a3 = r3; }
+      }
+    }
+
+    if constexpr (HAS_MMA_LOOP) {
+      for (int m = 0; m < mma_iters; ++m) {
+        asm volatile("mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 {%0,%1,%2,%3}, {%4,%5,%6,%7}, {%8,%9}, {%0,%1,%2,%3};\n"
+                     : "+f"(c00), "+f"(c01), "+f"(c02), "+f"(c03) : "r"(a0), "r"(a1), "r"(a2), "r"(a3), "r"(b0), "r"(b1));
+        asm volatile("mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 {%0,%1,%2,%3}, {%4,%5,%6,%7}, {%8,%9}, {%0,%1,%2,%3};\n"
+                     : "+f"(c10), "+f"(c11), "+f"(c12), "+f"(c13) : "r"(a0), "r"(a1), "r"(a2), "r"(a3), "r"(b0), "r"(b1));
+        asm volatile("mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 {%0,%1,%2,%3}, {%4,%5,%6,%7}, {%8,%9}, {%0,%1,%2,%3};\n"
+                     : "+f"(c20), "+f"(c21), "+f"(c22), "+f"(c23) : "r"(a0), "r"(a1), "r"(a2), "r"(a3), "r"(b0), "r"(b1));
+        asm volatile("mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 {%0,%1,%2,%3}, {%4,%5,%6,%7}, {%8,%9}, {%0,%1,%2,%3};\n"
+                     : "+f"(c30), "+f"(c31), "+f"(c32), "+f"(c33) : "r"(a0), "r"(a1), "r"(a2), "r"(a3), "r"(b0), "r"(b1));
+      }
+    }
+
+    if constexpr (HAS_2ND_BAR) asm volatile("bar.sync 0;\n" ::: "memory");
+    if constexpr (ADVANCE_BASE) base = (base + grid_stage_u4) & buf_mask;
+  }
+  uint64_t t1 = static_cast<uint64_t>(clock64());
+  if (blockIdx.x == 0 && tid == 0) *out_cyc = static_cast<double>(t1 - t0) / static_cast<double>(steps);
+  float sum = c00 + c01 + c02 + c03 + c10 + c11 + c12 + c13 +
+              c20 + c21 + c22 + c23 + c30 + c31 + c32 + c33 + static_cast<float>(live_acc & 1u);
+  if (sum == -999999.0f) sink[blockIdx.x * blockDim.x + tid] = sum;
+}
+
+static int run_fill_vs_loop_ablation(int device, int samples, int warmup) {
+  cudaDeviceProp prop{};
+  CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
+  const int sm = prop.multiProcessorCount;
+  const size_t l2_bytes = 4ULL * 1024ULL * 1024ULL;
+  const size_t mask = (l2_bytes / sizeof(uint4)) - 1ULL;
+  uint4* d_l2 = nullptr; uint32_t* d_su = nullptr; float* d_sf = nullptr; double* d_cyc = nullptr;
+  CUDA_CHECK(cudaMalloc(&d_l2, l2_bytes));
+  CUDA_CHECK(cudaMemset(d_l2, 0x3c, l2_bytes));
+  CUDA_CHECK(cudaMalloc(&d_su, static_cast<size_t>(sm) * 256 * sizeof(uint32_t)));
+  CUDA_CHECK(cudaMalloc(&d_sf, static_cast<size_t>(sm) * 1024 * sizeof(float)));
+  CUDA_CHECK(cudaMalloc(&d_cyc, sizeof(double)));
+  cudaEvent_t ev_s, ev_e;
+  CUDA_CHECK(cudaEventCreate(&ev_s));
+  CUDA_CHECK(cudaEventCreate(&ev_e));
+  fvl_warmup_kernel<<<sm * 4, 256>>>(d_sf, 200000);
+  CUDA_CHECK(cudaDeviceSynchronize());
+
+  std::printf("{\n  \"device\": \"%s\",\n  \"sm_count\": %d,\n  \"l2_buffer_bytes\": %zu,\n  \"samples\": %d,\n  \"ablation\": [",
+              prop.name, sm, l2_bytes, samples);
+  bool first = true;
+
+  auto run_one = [&](int sb, const char* variant, int steps, auto fn) {
+    fvl_warmup_kernel<<<sm * 4, 256>>>(d_sf, 20000);
+    for (int w = 0; w < warmup; ++w) fn();
+    CUDA_CHECK(cudaDeviceSynchronize());
+    std::vector<double> ns_v, cyc_v;
+    ns_v.reserve(samples); cyc_v.reserve(samples);
+    for (int i = 0; i < samples; ++i) {
+      CUDA_CHECK(cudaEventRecord(ev_s));
+      fn();
+      CUDA_CHECK(cudaEventRecord(ev_e));
+      CUDA_CHECK(cudaEventSynchronize(ev_e));
+      float ms = 0.0f;
+      CUDA_CHECK(cudaEventElapsedTime(&ms, ev_s, ev_e));
+      double cyc = 0.0;
+      CUDA_CHECK(cudaMemcpy(&cyc, d_cyc, sizeof(double), cudaMemcpyDeviceToHost));
+      ns_v.push_back(static_cast<double>(ms) * 1e6 / static_cast<double>(steps));
+      cyc_v.push_back(cyc);
+    }
+    if (!first) std::printf(",");
+    first = false;
+    std::printf("\n    {\"stage_bytes\": %d, \"variant\": \"%s\", \"steps\": %d, \"event_ns_samples\": [",
+                sb, variant, steps);
+    for (size_t i = 0; i < ns_v.size(); ++i) { if (i) std::printf(", "); std::printf("%.2f", ns_v[i]); }
+    std::printf("], \"in_kernel_cycles_samples\": [");
+    for (size_t i = 0; i < cyc_v.size(); ++i) { if (i) std::printf(", "); std::printf("%.2f", cyc_v[i]); }
+    std::printf("]}");
+  };
+
+  auto sweep_sb = [&](auto sb_tag) {
+    constexpr int SB = decltype(sb_tag)::value;
+    run_one(SB, "serial_fill_4096", 4096, [&]{ fvl_serial_fill_kernel<SB><<<sm, 128, SB>>>(d_l2, d_su, mask, 4096, d_cyc); });
+    run_one(SB, "serial_fill_128", 128, [&]{ fvl_serial_fill_kernel<SB><<<sm, 128, SB>>>(d_l2, d_su, mask, 128, d_cyc); });
+    run_one(SB, "sync_loop_128_runtime_mma0", 128, [&]{ fvl_sync_loop_kernel<SB, true, true, true><<<sm, 128, SB>>>(d_l2, d_sf, mask, 128, 0, d_cyc); });
+    run_one(SB, "sync_loop_512_runtime_mma0", 512, [&]{ fvl_sync_loop_kernel<SB, true, true, true><<<sm, 128, SB>>>(d_l2, d_sf, mask, 512, 0, d_cyc); });
+    run_one(SB, "sync_loop_4096_runtime_mma0", 4096, [&]{ fvl_sync_loop_kernel<SB, true, true, true><<<sm, 128, SB>>>(d_l2, d_sf, mask, 4096, 0, d_cyc); });
+    run_one(SB, "sync_loop_4096_const_mma0", 4096, [&]{ fvl_sync_loop_kernel<SB, false, true, true><<<sm, 128, SB>>>(d_l2, d_sf, mask, 4096, 0, d_cyc); });
+    run_one(SB, "sync_loop_4096_no_2nd_bar", 4096, [&]{ fvl_sync_loop_kernel<SB, true, false, true><<<sm, 128, SB>>>(d_l2, d_sf, mask, 4096, 0, d_cyc); });
+    run_one(SB, "sync_loop_4096_fixed_addr", 4096, [&]{ fvl_sync_loop_kernel<SB, true, true, false><<<sm, 128, SB>>>(d_l2, d_sf, mask, 4096, 0, d_cyc); });
+  };
+  sweep_sb(std::integral_constant<int, 4096>{});
+  sweep_sb(std::integral_constant<int, 8192>{});
+
+  std::printf("\n  ]\n}\n");
+  CUDA_CHECK(cudaEventDestroy(ev_s));
+  CUDA_CHECK(cudaEventDestroy(ev_e));
+  CUDA_CHECK(cudaFree(d_l2));
+  CUDA_CHECK(cudaFree(d_su));
+  CUDA_CHECK(cudaFree(d_sf));
+  CUDA_CHECK(cudaFree(d_cyc));
+  return 0;
+}
+
+// Compile-time-constant MMA_ITERS sync_stage_loop kernel supporting 2 KB..32 KB stages.
+template <int STAGE_BYTES, int NUM_WARPS, bool USE_CP_ASYNC, int MMA_ITERS>
+__global__ __launch_bounds__(NUM_WARPS * 32, (NUM_WARPS == 4 && STAGE_BYTES <= 8192) ? 8 : 3)
+void sync_stage_loop_const_kernel(const uint4* __restrict__ src,
+                                  float* __restrict__ sink,
+                                  size_t buf_mask,
+                                  int steps) {
+  extern __shared__ uint4 smem[];
+  const uint32_t tid = threadIdx.x;
+  const uint32_t warp_id = tid >> 5;
+  const uint32_t lane = tid & 31u;
+  constexpr size_t STAGE_U4 = static_cast<size_t>(STAGE_BYTES) / sizeof(uint4);
+  constexpr int VECS = STAGE_BYTES / (NUM_WARPS * 32 * 16);
+  constexpr int LD_N = STAGE_BYTES / (NUM_WARPS * 512);
+  const size_t grid_stage_u4 = static_cast<size_t>(gridDim.x) * STAGE_U4;
+  size_t base = (static_cast<size_t>(blockIdx.x) * STAGE_U4) & buf_mask;
+
+  uint32_t a0 = 0x3c003c00u, a1 = 0x3c003c00u, a2 = 0x3c003c00u, a3 = 0x3c003c00u;
+  uint32_t b0 = 0x3c003c00u, b1 = 0x3c003c00u;
+  uint32_t live_acc = 0u;
+  float c00 = 0.f, c01 = 0.f, c02 = 0.f, c03 = 0.f;
+  float c10 = 0.f, c11 = 0.f, c12 = 0.f, c13 = 0.f;
+  float c20 = 0.f, c21 = 0.f, c22 = 0.f, c23 = 0.f;
+  float c30 = 0.f, c31 = 0.f, c32 = 0.f, c33 = 0.f;
+
+  for (int step = 0; step < steps; ++step) {
+    if constexpr (USE_CP_ASYNC) {
+      #pragma unroll
+      for (int v = 0; v < VECS; ++v) {
+        size_t off = static_cast<size_t>(v) * (NUM_WARPS * 32) + tid;
+        uint32_t saddr = static_cast<uint32_t>(__cvta_generic_to_shared(smem + off));
+        const void* gptr = src + ((base + off) & buf_mask);
+        asm volatile("cp.async.cg.shared.global [%0], [%1], 16;\n" :: "r"(saddr), "l"(gptr) : "memory");
+      }
+      asm volatile("cp.async.commit_group;\n" ::: "memory");
+      asm volatile("cp.async.wait_group 0;\n" ::: "memory");
+    } else {
+      // Batch up to 4 uint4 loads per thread at a time to avoid artificial register spilling on 12-32 KB stages.
+      constexpr int CHUNK = (VECS <= 4) ? VECS : 4;
+      #pragma unroll
+      for (int c = 0; c < VECS; c += CHUNK) {
+        uint4 vals[CHUNK];
+        #pragma unroll
+        for (int j = 0; j < CHUNK; ++j) {
+          if (c + j < VECS) {
+            size_t off = static_cast<size_t>(c + j) * (NUM_WARPS * 32) + tid;
+            vals[j] = ld_cg_u4(src + ((base + off) & buf_mask));
+          }
+        }
+        #pragma unroll
+        for (int j = 0; j < CHUNK; ++j) {
+          if (c + j < VECS) {
+            size_t off = static_cast<size_t>(c + j) * (NUM_WARPS * 32) + tid;
+            uint32_t saddr = static_cast<uint32_t>(__cvta_generic_to_shared(smem + off));
+            asm volatile("st.shared.v4.u32 [%0], {%1,%2,%3,%4};\n"
+                         :: "r"(saddr), "r"(vals[j].x), "r"(vals[j].y), "r"(vals[j].z), "r"(vals[j].w) : "memory");
+          }
+        }
+      }
+    }
+
+    asm volatile("bar.sync 0;\n" ::: "memory");
+
+    #pragma unroll
+    for (int r = 0; r < LD_N; ++r) {
+      size_t off_u4 = (static_cast<size_t>(r) * NUM_WARPS + warp_id) * 32ULL + lane;
+      uint32_t saddr = static_cast<uint32_t>(__cvta_generic_to_shared(smem + off_u4));
+      uint32_t r0, r1, r2, r3;
+      asm volatile("ldmatrix.sync.aligned.x4.m8n8.shared.b16 {%0,%1,%2,%3}, [%4];\n"
+                   : "=r"(r0), "=r"(r1), "=r"(r2), "=r"(r3) : "r"(saddr) : "memory");
+      live_acc ^= (r0 ^ r1 ^ r2 ^ r3);
+      if constexpr (MMA_ITERS > 0) {
+        if constexpr (LD_N == 1) {
+          a0 = r0; a1 = r1; a2 = r2; a3 = r3;
+          b0 = r0; b1 = r1;
+        } else {
+          if (r == LD_N - 2) { b0 = r0; b1 = r1; }
+          else if (r == LD_N - 1) { a0 = r0; a1 = r1; a2 = r2; a3 = r3; }
+        }
+      }
+    }
+
+    if constexpr (MMA_ITERS > 0) {
+      #pragma unroll 1
+      for (int m = 0; m < MMA_ITERS; ++m) {
+        asm volatile("mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 {%0,%1,%2,%3}, {%4,%5,%6,%7}, {%8,%9}, {%0,%1,%2,%3};\n"
+                     : "+f"(c00), "+f"(c01), "+f"(c02), "+f"(c03) : "r"(a0), "r"(a1), "r"(a2), "r"(a3), "r"(b0), "r"(b1));
+        asm volatile("mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 {%0,%1,%2,%3}, {%4,%5,%6,%7}, {%8,%9}, {%0,%1,%2,%3};\n"
+                     : "+f"(c10), "+f"(c11), "+f"(c12), "+f"(c13) : "r"(a0), "r"(a1), "r"(a2), "r"(a3), "r"(b0), "r"(b1));
+        asm volatile("mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 {%0,%1,%2,%3}, {%4,%5,%6,%7}, {%8,%9}, {%0,%1,%2,%3};\n"
+                     : "+f"(c20), "+f"(c21), "+f"(c22), "+f"(c23) : "r"(a0), "r"(a1), "r"(a2), "r"(a3), "r"(b0), "r"(b1));
+        asm volatile("mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 {%0,%1,%2,%3}, {%4,%5,%6,%7}, {%8,%9}, {%0,%1,%2,%3};\n"
+                     : "+f"(c30), "+f"(c31), "+f"(c32), "+f"(c33) : "r"(a0), "r"(a1), "r"(a2), "r"(a3), "r"(b0), "r"(b1));
+      }
+    }
+
+    asm volatile("bar.sync 0;\n" ::: "memory");
+    base = (base + grid_stage_u4) & buf_mask;
+  }
+
+  float sum = static_cast<float>(live_acc & 1u);
+  if constexpr (MMA_ITERS > 0) {
+    sum += c00 + c01 + c02 + c03 + c10 + c11 + c12 + c13 +
+           c20 + c21 + c22 + c23 + c30 + c31 + c32 + c33;
+  }
+  if (sum == -999999.0f) {
+    sink[blockIdx.x * blockDim.x + tid] = sum;
+  }
+}
+
+static int run_sync_loop_reconcile(int device, int samples, int warmup) {
+  cudaDeviceProp prop{};
+  CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
+  const int sm_count = prop.multiProcessorCount;
+
+  const size_t dram_bytes = 256ULL * 1024ULL * 1024ULL;
+  const size_t l2_bytes = 4ULL * 1024ULL * 1024ULL;
+  const size_t dram_mask = (dram_bytes / sizeof(uint4)) - 1ULL;
+  const size_t l2_mask = (l2_bytes / sizeof(uint4)) - 1ULL;
+  const size_t flush_vec4 = dram_bytes / sizeof(uint4);
+
+  uint4* d_dram = nullptr; uint4* d_flush = nullptr; uint4* d_l2 = nullptr;
+  uint4* d_sink_u4 = nullptr; float* d_sink_f = nullptr;
+  CUDA_CHECK(cudaMalloc(&d_dram, dram_bytes));
+  CUDA_CHECK(cudaMalloc(&d_flush, dram_bytes));
+  CUDA_CHECK(cudaMalloc(&d_l2, l2_bytes));
+  CUDA_CHECK(cudaMalloc(&d_sink_u4, 1024 * sizeof(uint4)));
+  CUDA_CHECK(cudaMalloc(&d_sink_f, static_cast<size_t>(sm_count) * 8 * 256 * sizeof(float)));
+  CUDA_CHECK(cudaMemset(d_dram, 0x3c, dram_bytes));
+  CUDA_CHECK(cudaMemset(d_flush, 25, dram_bytes));
+  CUDA_CHECK(cudaMemset(d_l2, 0x3c, l2_bytes));
+
+  cudaEvent_t ev_start, ev_stop;
+  CUDA_CHECK(cudaEventCreate(&ev_start));
+  CUDA_CHECK(cudaEventCreate(&ev_stop));
+
+  auto cal_mma_ns = [&](int warps, int cal_iters) -> double {
+    for (int w = 0; w < 2; ++w) mma_m16n8k16_kernel<false><<<sm_count, warps * 32>>>(d_sink_f, cal_iters);
+    CUDA_CHECK(cudaDeviceSynchronize());
+    CUDA_CHECK(cudaEventRecord(ev_start));
+    mma_m16n8k16_kernel<false><<<sm_count, warps * 32>>>(d_sink_f, cal_iters);
+    CUDA_CHECK(cudaEventRecord(ev_stop));
+    CUDA_CHECK(cudaEventSynchronize(ev_stop));
+    float ms = 1.0f;
+    CUDA_CHECK(cudaEventElapsedTime(&ms, ev_start, ev_stop));
+    return (static_cast<double>(ms) * 1e6) / static_cast<double>(cal_iters);
+  };
+  const double ns_per_iter_4w = cal_mma_ns(4, 20000);
+  const double ns_per_iter_8w = cal_mma_ns(8, 10000);
+
+  std::printf("{\n  \"samples\": %d,\n  \"sync_stage_loop\": [", samples);
+  bool first = true;
+
+  auto measure_cfg = [&](bool is_dram, int sb, int warps, bool use_cp, int mma_iters,
+                         const std::vector<int>& cps_list, auto launch_fn, int max_blocks) {
+    const char* level_name = is_dram ? "dram" : "l2";
+    const char* t_mode = use_cp ? "cp_async_s1" : "ld_st_sync";
+    const uint4* buf = is_dram ? d_dram : d_l2;
+    const size_t mask = is_dram ? dram_mask : l2_mask;
+    const double ns_per_iter = (warps == 4) ? ns_per_iter_4w : ns_per_iter_8w;
+    const double flops_per_cta_iter = static_cast<double>(warps) * 4.0 * 4096.0;
+    const int mma_chain_len = mma_iters * 4;
+    const double solo_tc_ns = static_cast<double>(mma_iters) * ns_per_iter;
+
+    for (int cps : cps_list) {
+      if (cps > max_blocks) continue;
+      const int active_ctas = sm_count * cps;
+
+      // Probe 64 steps to adapt steps so each timed kernel runs ~1.0 ms (clamped to [128, 8192]).
+      if (is_dram) l2_read_cg_kernel<<<sm_count * 4, 512>>>(d_flush, d_sink_u4, flush_vec4, 1);
+      CUDA_CHECK(cudaEventRecord(ev_start));
+      launch_fn(active_ctas, buf, mask, 64);
+      CUDA_CHECK(cudaEventRecord(ev_stop));
+      CUDA_CHECK(cudaEventSynchronize(ev_stop));
+      float probe_ms = 0.05f;
+      CUDA_CHECK(cudaEventElapsedTime(&probe_ms, ev_start, ev_stop));
+      double est_ns_per_step = std::max(50.0, (static_cast<double>(probe_ms) * 1e6) / 64.0);
+      int steps = static_cast<int>(1000000.0 / est_ns_per_step);
+      steps = ((steps + 63) / 64) * 64;
+      if (steps < 128) steps = 128;
+      if (steps > 8192) steps = 8192;
+
+      const double total_bytes = static_cast<double>(active_ctas) * static_cast<double>(sb) * steps;
+      const double total_flops_per_sm = static_cast<double>(cps) * flops_per_cta_iter * mma_iters * steps;
+
+      for (int w = 0; w < warmup; ++w) {
+        if (is_dram) l2_read_cg_kernel<<<sm_count * 4, 512>>>(d_flush, d_sink_u4, flush_vec4, 1);
+        launch_fn(active_ctas, buf, mask, steps);
+      }
+      CUDA_CHECK(cudaDeviceSynchronize());
+
+      std::vector<double> bw_s, turn_s, tf_s;
+      bw_s.reserve(samples); turn_s.reserve(samples); tf_s.reserve(samples);
+      for (int s = 0; s < samples; ++s) {
+        if (is_dram) l2_read_cg_kernel<<<sm_count * 4, 512>>>(d_flush, d_sink_u4, flush_vec4, 1);
+        CUDA_CHECK(cudaEventRecord(ev_start));
+        launch_fn(active_ctas, buf, mask, steps);
+        CUDA_CHECK(cudaEventRecord(ev_stop));
+        CUDA_CHECK(cudaEventSynchronize(ev_stop));
+        float ms = 0.0f;
+        CUDA_CHECK(cudaEventElapsedTime(&ms, ev_start, ev_stop));
+        double sec = static_cast<double>(ms) / 1e3;
+        bw_s.push_back((total_bytes / 1e9) / sec);
+        turn_s.push_back((static_cast<double>(ms) * 1e6) / static_cast<double>(steps));
+        tf_s.push_back((total_flops_per_sm / 1e12) / sec);
+      }
+
+      if (!first) std::printf(",");
+      first = false;
+      std::printf(
+          "\n    {\"mem_level\": \"%s\", \"transfer_mode\": \"%s\", \"ctas_per_sm\": %d, "
+          "\"active_ctas\": %d, \"num_warps\": %d, \"stage_bytes\": %d, "
+          "\"mma_chain_len\": %d, \"solo_compute_ns\": %.2f, \"steps\": %d, \"bw_gbps_samples\": [",
+          level_name, t_mode, cps, active_ctas, warps, sb, mma_chain_len, solo_tc_ns, steps);
+      for (size_t i = 0; i < bw_s.size(); ++i) { if (i) std::printf(", "); std::printf("%.3f", bw_s[i]); }
+      std::printf("], \"turnaround_ns_samples\": [");
+      for (size_t i = 0; i < turn_s.size(); ++i) { if (i) std::printf(", "); std::printf("%.2f", turn_s[i]); }
+      std::printf("], \"mma_tflops_per_sm_samples\": [");
+      for (size_t i = 0; i < tf_s.size(); ++i) { if (i) std::printf(", "); std::printf("%.4f", tf_s[i]); }
+      std::printf("]}");
+    }
+  };
+
+  auto run_inst = [&](bool is_dram, auto sb_c, auto w_c, auto cp_c, auto mma_c, const std::vector<int>& cps_list) {
+    constexpr int SB = decltype(sb_c)::value;
+    constexpr int W = decltype(w_c)::value;
+    constexpr bool CP = decltype(cp_c)::value;
+    constexpr int MI = decltype(mma_c)::value;
+    int max_blocks = 0;
+    CUDA_CHECK(cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+        &max_blocks, sync_stage_loop_const_kernel<SB, W, CP, MI>, W * 32, SB));
+    auto fn = [&](int grid, const uint4* b, size_t m, int st) {
+      sync_stage_loop_const_kernel<SB, W, CP, MI><<<grid, W * 32, SB>>>(b, d_sink_f, m, st);
+    };
+    measure_cfg(is_dram, SB, W, CP, MI, cps_list, fn, max_blocks);
+  };
+
+  const std::vector<int> cps_123 = {1, 2, 3};
+  const std::vector<int> cps_123468 = {1, 2, 3, 4, 6, 8};
+  const std::vector<int> cps_12468 = {1, 2, 4, 6, 8};
+
+  // Part A: Re-measure all L2 points (original 0.12.0 + multicta) with compile-time MMA_ITERS and ~1 ms duration.
+  auto run_l2_all = [&](auto cp_c) {
+    // 4-warp, 2048 B: cps 1,2,4,6,8; mma 0,8,32
+    run_inst(false, std::integral_constant<int, 2048>{}, std::integral_constant<int, 4>{}, cp_c, std::integral_constant<int, 0>{}, cps_12468);
+    run_inst(false, std::integral_constant<int, 2048>{}, std::integral_constant<int, 4>{}, cp_c, std::integral_constant<int, 2>{}, cps_12468);
+    run_inst(false, std::integral_constant<int, 2048>{}, std::integral_constant<int, 4>{}, cp_c, std::integral_constant<int, 8>{}, cps_12468);
+
+    // 4-warp, 4096 & 8192 B: cps 1,2,3,4,6,8 for mma 0,8,32; cps 1,2,3 for mma 64
+    run_inst(false, std::integral_constant<int, 4096>{}, std::integral_constant<int, 4>{}, cp_c, std::integral_constant<int, 0>{}, cps_123468);
+    run_inst(false, std::integral_constant<int, 4096>{}, std::integral_constant<int, 4>{}, cp_c, std::integral_constant<int, 2>{}, cps_123468);
+    run_inst(false, std::integral_constant<int, 4096>{}, std::integral_constant<int, 4>{}, cp_c, std::integral_constant<int, 8>{}, cps_123468);
+    run_inst(false, std::integral_constant<int, 4096>{}, std::integral_constant<int, 4>{}, cp_c, std::integral_constant<int, 16>{}, cps_123);
+
+    run_inst(false, std::integral_constant<int, 8192>{}, std::integral_constant<int, 4>{}, cp_c, std::integral_constant<int, 0>{}, cps_123468);
+    run_inst(false, std::integral_constant<int, 8192>{}, std::integral_constant<int, 4>{}, cp_c, std::integral_constant<int, 2>{}, cps_123468);
+    run_inst(false, std::integral_constant<int, 8192>{}, std::integral_constant<int, 4>{}, cp_c, std::integral_constant<int, 8>{}, cps_123468);
+    run_inst(false, std::integral_constant<int, 8192>{}, std::integral_constant<int, 4>{}, cp_c, std::integral_constant<int, 16>{}, cps_123);
+
+    // 4-warp, 16384 B: cps 1,2,3; mma 0,8,32,64
+    run_inst(false, std::integral_constant<int, 16384>{}, std::integral_constant<int, 4>{}, cp_c, std::integral_constant<int, 0>{}, cps_123);
+    run_inst(false, std::integral_constant<int, 16384>{}, std::integral_constant<int, 4>{}, cp_c, std::integral_constant<int, 2>{}, cps_123);
+    run_inst(false, std::integral_constant<int, 16384>{}, std::integral_constant<int, 4>{}, cp_c, std::integral_constant<int, 8>{}, cps_123);
+    run_inst(false, std::integral_constant<int, 16384>{}, std::integral_constant<int, 4>{}, cp_c, std::integral_constant<int, 16>{}, cps_123);
+
+    // 8-warp, 4096, 8192, 16384 B: cps 1,2,3; mma 0,8,32,64
+    for (int dummy = 0; dummy < 1; ++dummy) {
+      run_inst(false, std::integral_constant<int, 4096>{}, std::integral_constant<int, 8>{}, cp_c, std::integral_constant<int, 0>{}, cps_123);
+      run_inst(false, std::integral_constant<int, 4096>{}, std::integral_constant<int, 8>{}, cp_c, std::integral_constant<int, 2>{}, cps_123);
+      run_inst(false, std::integral_constant<int, 4096>{}, std::integral_constant<int, 8>{}, cp_c, std::integral_constant<int, 8>{}, cps_123);
+      run_inst(false, std::integral_constant<int, 4096>{}, std::integral_constant<int, 8>{}, cp_c, std::integral_constant<int, 16>{}, cps_123);
+
+      run_inst(false, std::integral_constant<int, 8192>{}, std::integral_constant<int, 8>{}, cp_c, std::integral_constant<int, 0>{}, cps_123);
+      run_inst(false, std::integral_constant<int, 8192>{}, std::integral_constant<int, 8>{}, cp_c, std::integral_constant<int, 2>{}, cps_123);
+      run_inst(false, std::integral_constant<int, 8192>{}, std::integral_constant<int, 8>{}, cp_c, std::integral_constant<int, 8>{}, cps_123);
+      run_inst(false, std::integral_constant<int, 8192>{}, std::integral_constant<int, 8>{}, cp_c, std::integral_constant<int, 16>{}, cps_123);
+
+      run_inst(false, std::integral_constant<int, 16384>{}, std::integral_constant<int, 8>{}, cp_c, std::integral_constant<int, 0>{}, cps_123);
+      run_inst(false, std::integral_constant<int, 16384>{}, std::integral_constant<int, 8>{}, cp_c, std::integral_constant<int, 2>{}, cps_123);
+      run_inst(false, std::integral_constant<int, 16384>{}, std::integral_constant<int, 8>{}, cp_c, std::integral_constant<int, 8>{}, cps_123);
+      run_inst(false, std::integral_constant<int, 16384>{}, std::integral_constant<int, 8>{}, cp_c, std::integral_constant<int, 16>{}, cps_123);
+    }
+  };
+  run_l2_all(std::false_type{});
+  run_l2_all(std::true_type{});
+
+  // Part B: Large stages (12, 24, 32 KB), 4 & 8 warps, cps 1/2/3 (subject to smem occupancy), L2 & DRAM, mma 0 & 32.
+  auto run_large = [&](bool is_dram, auto cp_c, auto w_c) {
+    run_inst(is_dram, std::integral_constant<int, 12288>{}, w_c, cp_c, std::integral_constant<int, 0>{}, cps_123);
+    run_inst(is_dram, std::integral_constant<int, 12288>{}, w_c, cp_c, std::integral_constant<int, 8>{}, cps_123);
+    run_inst(is_dram, std::integral_constant<int, 24576>{}, w_c, cp_c, std::integral_constant<int, 0>{}, cps_123);
+    run_inst(is_dram, std::integral_constant<int, 24576>{}, w_c, cp_c, std::integral_constant<int, 8>{}, cps_123);
+    run_inst(is_dram, std::integral_constant<int, 32768>{}, w_c, cp_c, std::integral_constant<int, 0>{}, cps_123);
+    run_inst(is_dram, std::integral_constant<int, 32768>{}, w_c, cp_c, std::integral_constant<int, 8>{}, cps_123);
+  };
+  for (bool is_dram : {false, true}) {
+    run_large(is_dram, std::false_type{}, std::integral_constant<int, 4>{});
+    run_large(is_dram, std::false_type{}, std::integral_constant<int, 8>{});
+    run_large(is_dram, std::true_type{}, std::integral_constant<int, 4>{});
+    run_large(is_dram, std::true_type{}, std::integral_constant<int, 8>{});
+  }
+
+  std::printf("\n  ]\n}\n");
+  CUDA_CHECK(cudaEventDestroy(ev_start));
+  CUDA_CHECK(cudaEventDestroy(ev_stop));
+  CUDA_CHECK(cudaFree(d_dram));
+  CUDA_CHECK(cudaFree(d_flush));
+  CUDA_CHECK(cudaFree(d_l2));
+  CUDA_CHECK(cudaFree(d_sink_u4));
+  CUDA_CHECK(cudaFree(d_sink_f));
+  return 0;
+}

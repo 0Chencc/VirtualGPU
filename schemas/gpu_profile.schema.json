@@ -466,6 +466,11 @@
               "minItems": 1,
               "items": { "$ref": "#/$defs/SyncStageLoopPoint" }
             },
+            "sync_stage_loop_pre_reconcile_diagnostic": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/SyncStageLoopPoint" }
+            },
             "sync_stage_loop_ablation": {
               "type": "array",
               "minItems": 1,
