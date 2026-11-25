@@ -119,7 +119,7 @@ Items such as shared memory bank conflicts and instruction scheduling are out of
 
 ### 6.2 Structure
 
-- Per CTA: phases (prologue, steady-state loop, drain, epilogue). In steady state, time per iteration is the maximum of compute time, transfer time, and load latency divided by the iterations in flight. Stage counts come from the IR after pipelining, never from the requested `num_stages`.
+- Per CTA: phases (prologue, steady-state loop, drain, epilogue). Stage counts come from the IR after pipelining, never from the requested `num_stages`. How a phase's time is computed is in 6.4.
 - Per SM: resident CTAs share issue, tensor core, and shared memory bandwidth.
 - Per GPU: an event-driven scheduler dispatches CTAs to SMs using the dispatch policy measured on the real GPU, and produces waves and tails naturally. L2 and DRAM bandwidth are shared among active phases by max-min fair sharing, using bandwidth curves measured against the number of active SMs.
 - L2: an online model, called by the scheduler at tile boundaries and once per phase segment, splits traffic into L2 hits and DRAM bytes from the actual set of resident tiles.
@@ -136,6 +136,46 @@ When variants are bound by different resources, profile errors do not cancel. Ev
 - Pairwise verdicts (faster, slower, indistinguishable). Verdicts are kept per pair; there is no hard grouping, because "indistinguishable" is not transitive.
 - `unsupported` with a reason, when a kernel uses a feature the model does not handle.
 - Per variant: bounding resource, utilization of each resource, wave count and tail efficiency, estimated DRAM traffic.
+
+### 6.4 Mechanisms in the core
+
+What the core computes, as of `3f65039`. Each mechanism was checked on its own microbenchmark before any development-set comparison; the field names are those of the GPU profile. Errors are over the microbenchmark's points unless stated, and none of those points set a parameter except where a calibration point is named.
+
+**Phase time.** Each phase of a CTA runs at the slowest of three paths: the round-trip path (launch, L2 and DRAM round trips, and the compute that cannot overlap them), the SM's shared compute path (each pipe's time with the SM's resident CTAs sharing it, plus synchronization), and the CTA's L2 and DRAM bandwidth shares. Rates change only at events: CTA phase boundaries. A phase with less than 1e-3 of its work left after an event finishes in that event, and at one timestamp all tile ends are applied before all tile starts, then the demands.
+
+**Bandwidth.** L2 and DRAM bandwidth are shared max-min fairly among active phases, against `l2_bw_by_active_sms` and `dram_bw_by_active_sms`. The L2 curve was remeasured with eight loads in flight per thread and 16 warps (`cuda_l2_cg_read_warm_ilp8_16w`, profile `0.16.0`) because the earlier one was latency bound at few SMs.
+
+**Latency from bytes in flight.** A level's load latency is Little's law on `l2_bw_by_bytes_in_flight` and `dram_bw_by_bytes_in_flight`: the bytes all CTAs keep in flight there over the bandwidth the curve gives for that many, with the curve of the kernel's issue mode (`cp_async` or `ld_global_v4`). Bytes in flight are delivered bandwidth times latency, so the DRAM latency that reproduces itself is found by bisection (12 steps). Without the curves the latency moves linearly from idle to loaded with utilization.
+
+**Pipelined loop as a closed loop.** A CTA with prefetch distance `d` (from the PTX `cp.async.wait_group`) cycles `d + 1` stage buffers: a stage arrives a round trip after its load, is computed, and only then is its buffer reloaded. Where loads and compute both exist, the stage buffers of all CTAs on an SM are a closed queueing network, one server (the SM's pipes, a stage's compute alone plus its synchronization) and one delay (the round trip), solved by exact mean value analysis. Basis `dram_closed_loop`, `l2_closed_loop` (720 points, predicted from the open-loop MLP curves alone): median error 2.6% DRAM and 6.8% L2, p90 7.3% and 16.6%. `dram_closed_loop_mma` (MMA contention, 150 points): median 1.0% to 1.9%, at most 16%. Synchronous loads are `d = 0`; while one CTA waits, the others on its SM use the pipes it leaves idle.
+
+**Miss merging.** The L2 model splits loads into resident hits (L2 latency and bandwidth), requests merged into a fill another CTA has in flight (DRAM latency, L2 bandwidth only), and fetches (DRAM latency and bandwidth). Basis `l2_merge_by_sharing` (42 points): stage turnaround median error 5.0% (p90 16.8%).
+
+**Round-trip port floor.** A round trip takes at least the level's idle latency plus its bytes, times the CTAs resident on the SM, over the L2 ceiling at one active SM. The MLP curves are indexed by bytes in flight over the whole GPU and do not see one SM receiving them all. Basis `serial_stage_fill` (one CTA, warm L2, 2 to 16 KiB per stage): MAPE 17.4% to 9.2% on the RTX 4070 and 15.8% to 8.6% on GB10 (64 points each); `sync_stage_loop` (288 points each): 7.4% to 6.0% and 13.3% to 9.7%. Multiplying by the resident CTAs fits `sync_stage_loop` at two and three CTAs per SM better than the CTA's own bytes alone.
+
+**Per-stage synchronization.** Each steady-state iteration adds `fixed_sync_ns` (commit, `wait_group` and `bar.sync` with no data, by warps and stage buffers: 12.5 to 31.5 ns on the RTX 4070) to the SM's shared compute once per resident CTA, and to a CTA's dependent chain. Not to the round trip, whose MLP latency already includes it. Basis: `dram_closed_loop_mma`, where two or three CTAs per SM with 2 us of compute per stage exceed the compute by 14 to 18 ns per stage.
+
+**A CTA's dependent chain.** An iteration's non-MMA work (softmax between attention's two MMAs, `ldmatrix` before the MMAs) depends on its MMAs or they on it, so one CTA alone takes its MMA time plus its longest other pipe. This chain replaces the longest single pipe on the round-trip path and in the queueing network's service time, and is a floor under the shared compute path, which still takes the maximum over pipes shared by the SM's CTAs. Basis `mma_softmax_chain` (72 points, 1 to 3 CTAs per SM): with the measured solo times the form's median error is -0.7%, -7.9% and +3.8% at 1, 2 and 3 CTAs per SM, against -30%, -8% and +4% for the maximum alone. The `ldmatrix` and MMA chain intercepts (`serial_stage_overhead_ns`, 4 to 60 ns per stage) are within about 10 ns of the chain's shared memory time.
+
+**Pipes.** Per SM, with the SM's CTAs sharing each:
+
+| Pipe | Charged | Rate from | Microbenchmark error |
+|---|---|---|---|
+| `mma` | MMA FLOP | `mma_tflops_per_sm_by_warps`, by MMA-issuing warps on the SM | measured curve, interpolated between points |
+| `issue` | every non-MMA instruction | `non_mma_issue_rate_per_sm_gips` (estimated) | not measured |
+| `smem` | shared memory bytes, loads and stores | `smem_bw_per_sm_gbps` | not checked on its own |
+| `local` | spill bytes that stay in L1 | `local_mem_l1_hit_bw_per_sm_gbps` (estimated) | not measured |
+| `sfu` | `ex2`-class instructions | `sfu_issue_rate_per_sm_gips`, by warps | measured points exact; leave-one-out -1% to -12% at 8 and 16 warps, -24% to -28% at the 4-warp knee |
+| `shfl` | butterfly shuffles | `shfl_issue_rate_per_sm_gips`, by warps | within 0.4% at 8 and 16 warps leave-one-out, -24% to -28% at the knee |
+| `lsu` | global load and store warp instructions, bytes over 32 times the load width | peak of `gmem_load_issue_controlled` at its narrowest width (0.952 / 0.859 Gwarp-inst/ns) | one calibration point; held-out MAPE 18.0% / 13.1% (35 points each), the rest of it from the benchmark's unsynchronized warps |
+
+`sfu` and `shfl` instructions also take issue slots. `lsu` bounds the shared path only: issuing loads overlaps the wait for those in flight. Without a measured curve `sfu` falls back to `sfu_tflops` and `shfl` to the issue rate, and kernels that use them are flagged `unvalidated_feature`.
+
+**Register spills.** Spill bytes (loads plus stores per thread, from the assembler report) are charged once or per iteration by the IR's spill scope; `inner_loop_assumed` scales by `assumed_spill_scale` (1.0). The resident threads' stack frames up to `l1_to_l2_spill_threshold_bytes_per_sm` (measured at zero carveout since profile `0.18.0`, about 128 KB on both GPUs) stay in L1 and take the `local` pipe; the part above overflows linearly to L2 and DRAM traffic. Not checked against a microbenchmark: `spill_reload_latency_by_count` shows a step at the L1 capacity rather than a linear overflow, and a step that follows the shared memory carveout (`l1_to_l2_spill_threshold_by_carveout`) is pending, as is whether the static spill bytes are all executed per iteration.
+
+**Per-tile iterations.** Pipeline trip counts can vary per program and tile (causal attention); each tile's phases use its own count.
+
+**Bottleneck attribution.** `bound_fraction` gives the share of CTA time during which each of 13 causes bound the CTA's current phase: `mma`, `issue`, `smem`, `local`, `sfu`, `shfl`, `lsu`, `sync`, `l2_latency`, `dram_latency`, `l2_bandwidth`, `dram_bandwidth`, `launch`. The cause is the largest component of the slowest path; bandwidth counts only when it binds, since an unconstrained share equals the demand the other paths set.
 
 ## 7. GPU profiles
 
