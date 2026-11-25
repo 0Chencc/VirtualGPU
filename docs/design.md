@@ -206,7 +206,7 @@ The measured data is a deliverable in its own right: kernel source, config, shap
 
 ### 9.1 Phase 1 residuals on the RTX 4070
 
-Measured with core `562fa39`, profile `0.11.0-m3`, development set only; the holdout set was not opened.
+Measured with core `18af028`, profile `0.11.0-m3`, development set only; the holdout set was not opened.
 
 **Serial large tiles.** Configs with `BLOCK_K = 64`, a 128-row tile, and no load overlap in the loop (prefetch distance 0, which includes `num_stages = 2`) have errors whose sign depends on the warp count. Warm, `decode-16`:
 
@@ -229,7 +229,19 @@ No constant per-stage correction fits both signs. Explanations ruled out, each b
 - **Tensor, issue, shared memory port, and scheduler contention between co-resident CTAs.** In the MMA-contention closed loop (`dram_closed_loop_mma`, 150 points, 4 and 8 warps, 0 to 32 KB of `ldmatrix` per stage), two CTAs per SM are never slower than one, and the model's queueing network predicts delivered bandwidth with median error 1.0% to 1.9% and at most 16%.
 - **Register spills.** `ptxas` reports no spills for any of these configs.
 
-Not yet explained: the residual of these configs is still under investigation and this section will be updated with the result.
+Not yet explained: configs with synchronous loads (`num_stages = 1`, `ld.global` into registers) have two to four times the error of the others in most cases. Median absolute error, core `18af028`:
+
+| Case | Warm: synchronous / other | Cold: synchronous / other |
+|---|---|---|
+| decode-1 | 13.1% / 4.2% | 4.2% / 2.4% |
+| decode-16 | 1.7% / 3.0% | 1.0% / 2.0% |
+| decode-32 | 6.0% / 0.9% | 5.3% / 1.5% |
+| mask-m | 12.2% / 6.8% | 10.6% / 8.6% |
+| sm-round-below | 16.2% / 5.1% | 14.5% / 5.0% |
+| sm-round-exact | 17.6% / 4.2% | 15.0% / 5.0% |
+| sm-round-above | 13.0% / 2.7% | 10.8% / 4.4% |
+
+These were also the configs whose KernelIR carried the `linear_access_fallback` diagnostic. The frontend now recovers their access map (`18af028`), but no prediction changed: for these `GROUP_M = 1` configs the fallback map equaled the recovered one. The fallback did not cause the error; the synchronous-load path is the common factor, and no microbenchmark covers it in a GEMM loop yet. The `num_stages = 2` rows of the first table use asynchronous copies and are not explained by it either.
 
 **Effect on users.** For these configs, rely on the indistinguishable verdict rather than the point prediction: autotuning keeps them in the shortlist for measurement on the real GPU instead of ruling them out.
 
