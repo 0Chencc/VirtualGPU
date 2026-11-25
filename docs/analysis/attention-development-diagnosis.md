@@ -74,4 +74,6 @@ All 188 scored predictions carry `unvalidated_feature`: the attention KernelIR h
 - Candidate 1 does depend on them. Its sum adds the largest non-MMA pipe, which can be the SFU or shuffle pipe, so its numbers will move once the measured rates are in. Its conclusion should be rechecked then, and in any case it waits for its own microbenchmark.
 - Candidate 2 does not depend on them: it is an instruction count from the compiled code.
 
+With the measured curves wired in (commit "Use the measured SFU and shuffle throughput curves by warps per SM"), all 188 predictions and all 16 scores are unchanged, and `unvalidated_feature` remains only on the 28 configs whose KernelIR carries `ptxas_only_spill`. Candidate 1's diagnostic has not been rerun on that core.
+
 Other flags: 188 configs carry `dispatch_ambiguous`, and 28 (`BM = 128`, four warps, and `m128n128-w8-s2`) carry `spill`.
