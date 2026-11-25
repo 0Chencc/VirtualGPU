@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "device": "RTX 4070",
+  "manifest_sha256": "b6c8fd089543ec8444e820993acc962f25eb3e662f9d47d3fe3bb79dbf03eaf1",
+  "manifest_materialization": {
+    "timestamp_utc": "2026-11-25T08:48:48.998112+00:00",
+    "source_manifest_sha256": "f36ecd638a0aee557c3e797a5316f3aa65528f1f514e2bcca1820d317e7d44c9",
+    "resource_profile_sha256": "f6d8926c2e7f237ef9797248cb2c80ea90fac5356085e9938bd394a37e1e1aa3",
+    "reference_ir_sha256": "06b497cfe58a111afbc89573f6179323c9602183d99e45471c20ab7f7d47fec3",
+    "reference_config_id": "m64n64k32-w4-s2-g1",
+    "resident_wave_capacity": 230,
+    "l2_bytes": 37748736
+  },
+  "audit_timestamp_utc": "2026-11-25T08:58:27.486686+00:00",
+  "reports": {
+    "l2-working-set-above-session-1.json": {
+      "sha256": "cb209b0e8a96d8a3af236d87f69b3be695f46f2d452fa6de930f906dbc9e333c",
+      "timestamp_utc": "2026-11-25T08:54:22.530272+00:00"
+    },
+    "l2-working-set-above-session-2.json": {
+      "sha256": "83f47113e79efb205b50d575de242ddb1e61e9ddc96937e89ece5986c96b48db",
+      "timestamp_utc": "2026-11-25T08:55:59.245423+00:00"
+    },
+    "l2-working-set-above-session-3.json": {
+      "sha256": "034158111cbe30f27607a9d98a7360a1f181ca27c6b8a3d537dc828be4601e33",
+      "timestamp_utc": "2026-11-25T08:57:58.056903+00:00"
+    },
+    "l2-working-set-below-session-1.json": {
+      "sha256": "20286431388fed48e83cf8ccf8cf1f71d7f2a8349987904a5c6c54dbbde31de5",
+      "timestamp_utc": "2026-11-25T08:53:33.451248+00:00"
+    },
+    "l2-working-set-below-session-2.json": {
+      "sha256": "08ac1e667b0be1e4b0e9c6f4b540c8cfc49be95a71749af5e7a79df59b5dfe9f",
+      "timestamp_utc": "2026-11-25T08:55:49.139168+00:00"
+    },
+    "l2-working-set-below-session-3.json": {
+      "sha256": "251e67c7f24cbe5e171ea7cc3508e6de8091db3f6ea7c4f4fdfe1f7a3718810a",
+      "timestamp_utc": "2026-11-25T08:57:29.328339+00:00"
+    },
+    "mask-mnk-session-1.json": {
+      "sha256": "721f7a5a6599ddcc3226214a6a962eb2e061a65f0e794af1e89e6c5b29fa7a79",
+      "timestamp_utc": "2026-11-25T08:52:03.787646+00:00"
+    },
+    "mask-mnk-session-2.json": {
+      "sha256": "81d61fd89aab417b85fbc6c10295d82a667f3cc41a0909b645d6f0e4f00d9468",
+      "timestamp_utc": "2026-11-25T08:55:09.822638+00:00"
+    },
+    "mask-mnk-session-3.json": {
+      "sha256": "8df65a9757c42aab61d25b6dca88db9573e18c4e335a0e30db6af834147f20cc",
+      "timestamp_utc": "2026-11-25T08:56:49.726650+00:00"
+    },
+    "prefill-1024-session-1.json": {
+      "sha256": "3c738eb0d684995561952a287b42ed4027280f675240339e8f1a3a82327c2fd2",
+      "timestamp_utc": "2026-11-25T08:51:02.489117+00:00"
+    },
+    "prefill-1024-session-2.json": {
+      "sha256": "c19f71413929c9bc693fe2ba6d1db7229a3de1b138d64cab84af6f3c77d9a485",
+      "timestamp_utc": "2026-11-25T08:54:44.677283+00:00"
+    },
+    "prefill-1024-session-3.json": {
+      "sha256": "d0d23ed72849f1574e453a1f1e2dc8c4a31c1f343058095bd280edf44a71c53d",
+      "timestamp_utc": "2026-11-25T08:56:23.046795+00:00"
+    },
+    "prefill-2048-session-1.json": {
+      "sha256": "1aa979051a694ee0001a897ab06f77fbe82a7aa9a058be97593bc88ef8c6b827",
+      "timestamp_utc": "2026-11-25T08:58:02.888183+00:00"
+    },
+    "prefill-2048-session-2.json": {
+      "sha256": "0e55ad77f8e8d03a8f5279c740664df104314e02b0fca7c80b98b6ca514a1bf4",
+      "timestamp_utc": "2026-11-25T08:55:19.477506+00:00"
+    },
+    "prefill-2048-session-3.json": {
+      "sha256": "8db5c4305294febce6dcc462457d8c6c602ba88f679676121eaff8680f1fb4c9",
+      "timestamp_utc": "2026-11-25T08:56:39.189385+00:00"
+    },
+    "prefill-256-session-1.json": {
+      "sha256": "9d8db5d318c473104cc59eaa31787819a5ac1485606a94b87678db0bfef0cdbd",
+      "timestamp_utc": "2026-11-25T08:50:47.448413+00:00"
+    },
+    "prefill-256-session-2.json": {
+      "sha256": "0040cbd6c3ed19000c90291044a428cd1f3e074d412afff04c2180a38ffc9a1c",
+      "timestamp_utc": "2026-11-25T08:54:32.183108+00:00"
+    },
+    "prefill-256-session-3.json": {
+      "sha256": "7b3782964af3eac84ffb028a87938a2cd595bcb6e3d8a9e02dc8c29c01683214",
+      "timestamp_utc": "2026-11-25T08:56:08.884770+00:00"
+    },
+    "resident-wave-above-session-1.json": {
+      "sha256": "01f1b6dd99f870bf1bc497a046a9307e06e73a252d6e3a15a9e3609839793e0b",
+      "timestamp_utc": "2026-11-25T08:53:24.075306+00:00"
+    },
+    "resident-wave-above-session-2.json": {
+      "sha256": "dc49a2d29add8bf8ae6cff7ea5a91de429c87532bf26d9e4b1d15dd005da36c0",
+      "timestamp_utc": "2026-11-25T08:55:39.672236+00:00"
+    },
+    "resident-wave-above-session-3.json": {
+      "sha256": "8164b5bc05fa907539c51658535799e01f2acf4175d7ac62054ca151910756e6",
+      "timestamp_utc": "2026-11-25T08:57:39.665982+00:00"
+    },
+    "resident-wave-below-session-1.json": {
+      "sha256": "355218fee8201d8ba7e4493161006de1de380d1a1b5dbe464a009fb974729b0d",
+      "timestamp_utc": "2026-11-25T08:52:13.998263+00:00"
+    },
+    "resident-wave-below-session-2.json": {
+      "sha256": "2393f453b65303199fce8d444612f4b1f46b36fe63315ae0b7d5876ee59238fc",
+      "timestamp_utc": "2026-11-25T08:55:19.837313+00:00"
+    },
+    "resident-wave-below-session-3.json": {
+      "sha256": "0c1206b5bb72a625efce8e38db0f7a3ed5513c091803f1a9c245f33c8d457c46",
+      "timestamp_utc": "2026-11-25T08:57:00.080083+00:00"
+    },
+    "resident-wave-exact-session-1.json": {
+      "sha256": "d1d316a13cb7c204891250b21198fd6f848b938a0a36b8ca72ad27e151c507d9",
+      "timestamp_utc": "2026-11-25T08:58:13.842152+00:00"
+    },
+    "resident-wave-exact-session-2.json": {
+      "sha256": "ab84b262650f0f0e8d4c178e915a5178312b577a270e9372fd9ca1c5034a3251",
+      "timestamp_utc": "2026-11-25T08:55:29.748388+00:00"
+    },
+    "resident-wave-exact-session-3.json": {
+      "sha256": "ee8a05044e649a43478df7aa2d12841f6db0290158653404a426fdf2a19d09f2",
+      "timestamp_utc": "2026-11-25T08:57:29.630263+00:00"
+    }
+  }
+}
