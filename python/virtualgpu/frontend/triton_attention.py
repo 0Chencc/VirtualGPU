@@ -272,8 +272,6 @@ def _assemble_attention_kernel_ir(
     strides_o: tuple[int, int, int, int],
 ) -> dict[str, Any]:
     """Assemble a KernelIR document for a compiled Triton forward attention kernel."""
-    block_m = int(config.get("BLOCK_M", config.get("BLOCK_SIZE_M", 64)))
-    block_n = int(config.get("BLOCK_N", config.get("BLOCK_SIZE_N", 64)))
     num_stages_req = int(config.get("num_stages", 3))
 
     elem_bits = dtype_bits(dtype)
@@ -291,6 +289,20 @@ def _assemble_attention_kernel_ir(
         requested_num_stages=num_stages_req,
         element_bytes=elem_bytes,
     )
+
+    block_m_cfg = config.get("BLOCK_M", config.get("BLOCK_SIZE_M", config.get("BM")))
+    block_n_cfg = config.get("BLOCK_N", config.get("BLOCK_SIZE_N", config.get("BN")))
+    if summary.mma_dots:
+        # Derive tile (BM, BN) directly from the compiled QK^T tt.dot in TTGIR
+        # so extraction is independent of Python constexpr parameter names.
+        block_m, block_n = summary.mma_dots[0].tile_mnk[0], summary.mma_dots[0].tile_mnk[1]
+    elif block_m_cfg is not None and block_n_cfg is not None:
+        block_m, block_n = int(block_m_cfg), int(block_n_cfg)
+    else:
+        raise ValueError(
+            "Could not determine attention tile dimensions (BM, BN) from TTGIR tt.dot "
+            "or config keys (BLOCK_M/BLOCK_SIZE_M/BM, BLOCK_N/BLOCK_SIZE_N/BN)."
+        )
 
     diagnostics = list(summary.diagnostics)
     unsupported_features = list(summary.unsupported_features)
@@ -509,16 +521,15 @@ def _assemble_attention_kernel_ir(
             "target_arch": f"sm_{parse_arch_number(artifacts.target_arch)}",
             "frontend": "triton-aot",
             "toolchain": {
-                "triton_version": artifacts.triton_version,
+                "compiler": "triton",
+                "compiler_version": artifacts.triton_version,
                 "assembler": artifacts.ptxas.assembler,
                 "assembler_version": artifacts.ptxas.assembler_version,
-                "target_sm": artifacts.ptxas.target_sm,
+                "target_sm_compiled": artifacts.ptxas.target_sm,
                 "enable_fp_fusion": artifacts.enable_fp_fusion,
+                "artifact_hash_version": ARTIFACT_HASH_VERSION,
                 "ptx_sha256": artifacts.ptx_sha256,
                 "ttgir_sha256": artifacts.ttgir_sha256,
-                "artifact_hash_version": ARTIFACT_HASH_VERSION,
-                "loop_shfl_per_warp": summary.loop_shfl_per_warp,
-                "loop_alu_per_warp": summary.loop_alu_per_warp,
             },
             "config": {
                 **config,

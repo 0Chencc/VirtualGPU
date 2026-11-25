@@ -289,3 +289,99 @@ def test_split_async_wait_flagged_unsupported() -> None:
     )
     summary = parse_ttgir_summary(fake_ttgir, "", requested_num_stages=3, element_bytes=2)
     assert "split_async_wait_unsupported" in summary.unsupported_features
+
+
+@triton.jit
+def _bm_bn_attention_fwd(
+    Q, K, V, Out,
+    sm_scale,
+    stride_qz, stride_qh, stride_qm, stride_qk,
+    stride_kz, stride_kh, stride_kn, stride_kk,
+    stride_vz, stride_vh, stride_vn, stride_vk,
+    stride_oz, stride_oh, stride_om, stride_ok,
+    Z, H, N_CTX,
+    HEAD_DIM: tl.constexpr,
+    BM: tl.constexpr,
+    BN: tl.constexpr,
+    CAUSAL: tl.constexpr,
+):
+    start_m = tl.program_id(0)
+    off_hz = tl.program_id(1)
+    off_z = off_hz // H
+    off_h = off_hz % H
+    q_offset = off_z.to(tl.int64) * stride_qz + off_h.to(tl.int64) * stride_qh
+    k_offset = off_z.to(tl.int64) * stride_kz + off_h.to(tl.int64) * stride_kh
+    v_offset = off_z.to(tl.int64) * stride_vz + off_h.to(tl.int64) * stride_vh
+    o_offset = off_z.to(tl.int64) * stride_oz + off_h.to(tl.int64) * stride_oh
+
+    offs_m = start_m * BM + tl.arange(0, BM)
+    offs_n = tl.arange(0, BN)
+    offs_d = tl.arange(0, HEAD_DIM)
+
+    q = tl.load(Q + q_offset + offs_m[:, None] * stride_qm + offs_d[None, :] * stride_qk, mask=offs_m[:, None] < N_CTX, other=0.0)
+    m_i = tl.zeros([BM], dtype=tl.float32) - float("inf")
+    l_i = tl.zeros([BM], dtype=tl.float32) + 1.0
+    acc = tl.zeros([BM, HEAD_DIM], dtype=tl.float32)
+    qk_scale = sm_scale * 1.44269504
+
+    hi = (start_m + 1) * BM if CAUSAL else N_CTX
+    for start_n in range(0, hi, BN):
+        k = tl.load(K + k_offset + (start_n + offs_n)[:, None] * stride_kn + offs_d[None, :] * stride_kk, mask=(start_n + offs_n)[:, None] < N_CTX, other=0.0)
+        qk = tl.dot(q, tl.trans(k)) * qk_scale
+        if CAUSAL:
+            qk = qk + tl.where(offs_m[:, None] >= (start_n + offs_n)[None, :], 0.0, -1.0e6)
+        m_ij = tl.maximum(m_i, tl.max(qk, 1))
+        p = tl.math.exp2(qk - m_ij[:, None])
+        l_ij = tl.sum(p, 1)
+        alpha = tl.math.exp2(m_i - m_ij)
+        l_i = l_i * alpha + l_ij
+        acc = acc * alpha[:, None]
+        v = tl.load(V + v_offset + (start_n + offs_n)[:, None] * stride_vn + offs_d[None, :] * stride_vk, mask=(start_n + offs_n)[:, None] < N_CTX, other=0.0)
+        acc = tl.dot(p.to(tl.float16), v, acc)
+        m_i = m_ij
+
+    acc = acc / l_i[:, None]
+    tl.store(Out + o_offset + offs_m[:, None] * stride_om + offs_d[None, :] * stride_ok, acc.to(tl.float16), mask=offs_m[:, None] < N_CTX)
+
+
+def test_attention_derives_tile_from_ttgir_and_matches_gemm_toolchain_keys() -> None:
+    """Kernels using BM/BN (not BLOCK_M/BLOCK_N) must derive exact grid, bytes, trips, and toolchain keys."""
+    schema = _load_schema()
+    ir_m128 = extract_attention_kernel_ir(
+        _bm_bn_attention_fwd,
+        Z=1,
+        H=4,
+        N_CTX=512,
+        D=64,
+        config={"BM": 128, "BN": 64, "num_warps": 4, "num_stages": 2},
+        target_arch="sm_89",
+        dtype="f16",
+        causal=True,
+    )
+    jsonschema.validate(instance=ir_m128, schema=schema)
+    assert ir_m128["launch"]["grid"] == [4, 4, 1]
+    assert ir_m128["body"]["pipeline_loop"]["trip_counts"][:4] == [2, 4, 6, 8]
+
+    # Toolchain keys must match triton_gemm / validation AOT-JIT verifier contract
+    tc = ir_m128["metadata"]["toolchain"]
+    assert tc["compiler"] == "triton"
+    assert isinstance(tc["compiler_version"], str) and tc["compiler_version"]
+    assert tc["target_sm_compiled"] == "sm_89"
+    assert "ptx_sha256" in tc and "ttgir_sha256" in tc and "artifact_hash_version" in tc
+
+    ir_n32 = extract_attention_kernel_ir(
+        _bm_bn_attention_fwd,
+        Z=1,
+        H=4,
+        N_CTX=512,
+        D=64,
+        config={"BM": 64, "BN": 32, "num_warps": 4, "num_stages": 2},
+        target_arch="sm_89",
+        dtype="f16",
+        causal=True,
+    )
+    jsonschema.validate(instance=ir_n32, schema=schema)
+    assert ir_n32["launch"]["grid"] == [8, 4, 1]
+    pl_ops = {op["op_id"]: op for op in ir_n32["body"]["pipeline_loop"]["ops"]}
+    assert pl_ops["load_K"]["nominal_bytes_per_cta"] == 32 * 64 * 2
+    assert pl_ops["load_V"]["nominal_bytes_per_cta"] == 32 * 64 * 2
