@@ -35,6 +35,41 @@ CPU and GPU share LPDDR5x system memory. [NVIDIA compute capability table](https
   SHA-256 digests and UTC timestamps. A change to the plan requires a reviewed
   amendment before timing. Later changes belong to a separately labeled run.
 
+## Phase 1 freeze record
+
+The annotated tag `phase1-final` has tag object `ca04403df570d46fd83bd0a3be900417ea7d66ee`
+and resolves to `129a6f55d3dcbf5c261a8397296400f91f291fe1`. The Phase 1 binary reports that full commit,
+`dirty=false`, and `result_class=formal`. The tagged frontend includes
+`18af028a26dea8b5014225a1ebdc230bd86a8207`, the single-stage access-map fix.
+
+The RTX 4070 evaluation uses profile `0.11.0-m3`, Python `3.12.9`,
+Triton `3.9.0`, bundled `ptxas` `12.9 (V12.9.86)` for `sm_89`,
+FP fusion enabled, and artifact hash protocol v2. The core was built with
+Rust `1.99.1`. The GB10 assembler and smoke environment are recorded
+separately below.
+
+| Artifact | SHA-256 | UTC recorded |
+| --- | --- | --- |
+| Formal core binary | `f94d6732bf02b9ae69c8eb95ddb82c329f7403490b017aa69040fe399d975e0f` | 2026-11-25T09:37:47.692479+00:00 |
+| RTX 4070 profile | `8ddab1c37b975aaf5390d160654ae34fd8ae04301ad64df1022c26896f3a0aa8` | 2026-11-25T09:37:47.692479+00:00 |
+| RTX 4070 development training input index | `80df250aebfd782cbcfca9bbb539cdb9edbeaf5b0b0682274913ced53598b754` | 2026-11-25T09:38:13.038675+00:00 |
+| Frozen NeuSight-style fit | `20f7b3869b8e7e79fba98a05d91d38c6c305a3a3bdfe475bd7838111a264ed72` | 2026-11-25T09:38:13.038675+00:00 |
+| RTX 4070 workload-holdout manifest | `b6c8fd089543ec8444e820993acc962f25eb3e662f9d47d3fe3bb79dbf03eaf1` | 2026-11-25T08:48:48.998112+00:00 |
+| Committed RTX 4070 holdout seal index | `14df3e947b38ea7f7cd9cda9be0ad7bcad33213b75506379ef9e47575f293ce9` | 2026-11-25T08:58:27.486686+00:00 |
+| Regenerated AOT match index | `3585245d009ec9afc6c2064c4d339bf744fb167b783bf8f1b50e3c070c8a177a` | 2026-11-25T09:41:19.024605+00:00 |
+| Three-method RTX 4070 prediction archive | `e6869636ce5f838398bd8f859bd06a671ae468f147c99f9bfabb410a027c4852` | 2026-11-25T09:41:19.024605+00:00 |
+
+The NeuSight-style fit uses all 510 config and cache-regime medians from the
+nine RTX 4070 development cases. The 324 regenerated workload AOT artifacts
+match the PTX, TTGIR, toolchain, launch grid, and resources checked against
+JIT at collection. Each method has 648 archived predictions. The core uses
+draw 0 plus 32 shared draws with seed 17 and the fixed 5% pair band.
+
+This record was prepared at 2026-11-25T09:41:37.830624+00:00. The RTX 4070 workload timings
+remained sealed at preparation. Open them only after this revision is
+published on main, the formal prediction archive digest is verified, and
+each raw report passes its committed seal digest check.
+
 ### GB10 toolchain compatibility
 
 The coordinator reported a successful correctness smoke on 2026-11-25 on
