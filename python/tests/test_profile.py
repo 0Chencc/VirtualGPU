@@ -58,7 +58,7 @@ def test_rtx4070_profile_is_valid() -> None:
     assert len(mem["l2_merge_by_sharing"]) >= 20
     assert len(mem["l2_rescan_hit_rate_by_working_set"]) >= 12
     assert len(mem["gmem_load_issue_per_sm"]) >= 24
-    assert len(mem["spill_reload_latency_by_count"]) >= 20
+    assert len(mem["spill_reload_latency_by_count"]) >= 60
     assert len(profile["measured"]["pipeline"]["stage_sync_overhead_ns"]) >= 8
     assert len(profile["measured"]["pipeline"]["fixed_sync_ns"]) >= 8
     assert profile["measured"]["pipeline"]["min_async_roundtrip_ns"]["source"] == "measured"
@@ -95,7 +95,7 @@ def test_gb10_profile_is_valid() -> None:
     assert len(mem["dram_bw_by_bytes_in_flight"]) >= 40
     assert len(mem["dram_bw_by_bytes_in_flight_strided"]) >= 40
     assert len(mem["gmem_load_issue_per_sm"]) >= 24
-    assert len(mem["spill_reload_latency_by_count"]) >= 20
+    assert len(mem["spill_reload_latency_by_count"]) >= 60
     assert len(mem["dram_closed_loop_mma"]) >= 140
     assert len(profile["measured"]["pipeline"]["serial_stage_fill"]) >= 32
     assert len(profile["measured"]["pipeline"]["sync_stage_loop"]) >= 288

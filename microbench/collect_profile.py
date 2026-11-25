@@ -983,10 +983,10 @@ def build_profile(
         })
 
     # Compute spill reload extra_ns_vs_zero and ns_per_reload relative to reload_count=0 baseline.
-    spill_zero_med: dict[tuple[str, str], float] = {}
+    spill_zero_med: dict[tuple[int, str], float] = {}
     for pt in spill_lat_raw["reload_latency_by_count"]:
         if int(pt["reload_count"]) == 0:
-            spill_zero_med[(str(pt["regime"]), str(pt["dependency_mode"]))] = float(
+            spill_zero_med[(int(pt.get("frame_bytes_per_thread", 0)), str(pt["dependency_mode"]))] = float(
                 statistics.median([float(x) for x in pt["iter_time_ns_samples"]])
             )
 
@@ -994,30 +994,35 @@ def build_profile(
     for pt in spill_lat_raw["reload_latency_by_count"]:
         regime = str(pt["regime"])
         dep_mode = str(pt["dependency_mode"])
+        fb = int(pt.get("frame_bytes_per_thread", 0))
+        res_t = int(pt.get("resident_threads_per_sm", int(pt["num_warps"]) * 32))
         rc = int(pt["reload_count"])
         raw_s = [float(x) for x in pt["iter_time_ns_samples"]]
-        base_ns = spill_zero_med.get((regime, dep_mode), 0.0)
+        base_ns = spill_zero_med.get((fb, dep_mode), 0.0)
         extra_s = [max(0.0, x - base_ns) for x in raw_s]
         per_r_s = [e / rc for e in extra_s] if rc > 0 else [0.0 for _ in extra_s]
         p_grp = "spill_l1" if regime == "l1_hit" else "spill_l2"
-        reload_latency_by_count.append({
+        entry: dict[str, Any] = {
             "regime": regime,
             "dependency_mode": dep_mode,
             "num_warps": int(pt["num_warps"]),
+            "resident_threads_per_sm": res_t,
+            "frame_bytes_per_thread": fb,
             "reload_count": rc,
             "iter_time_ns": make_measured(
-                raw_s, unit="ns", method=f"cuda_spill_reload_{regime}_{dep_mode}",
+                raw_s, unit="ns", method=f"cuda_spill_reload_uniform_{regime}_{dep_mode}",
                 perturb_group=p_grp, clock_range=sm_range, locked=False, throttle_events=throttle_events,
             ),
             "extra_ns_vs_zero": make_measured(
-                extra_s, unit="ns", method=f"cuda_spill_reload_{regime}_{dep_mode}",
+                extra_s, unit="ns", method=f"cuda_spill_reload_uniform_{regime}_{dep_mode}",
                 perturb_group=p_grp, clock_range=sm_range, locked=False, throttle_events=throttle_events,
             ),
             "ns_per_reload": make_measured(
-                per_r_s, unit="ns", method=f"cuda_spill_reload_{regime}_{dep_mode}",
+                per_r_s, unit="ns", method=f"cuda_spill_reload_uniform_{regime}_{dep_mode}",
                 perturb_group=p_grp, clock_range=sm_range, locked=False, throttle_events=throttle_events,
             ),
-        })
+        }
+        reload_latency_by_count.append(entry)
 
     dram_strided_mlp: list[dict[str, Any]] = []
     for pt in strided_mlp_raw["dram_bw_by_bytes_in_flight_strided"]:

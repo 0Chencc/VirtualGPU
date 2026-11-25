@@ -3571,36 +3571,42 @@ __global__ void spill_reload_latency_kernel(uint32_t* __restrict__ sink,
                                             int stride_u32,
                                             int steps) {
   // Runtime-indexed local array forces real .local frame allocation (LDL/STL).
+  // All 32 lanes of a warp use the SAME frame offset (warp-uniform), matching
+  // ptxas register spill reloads (LDL [R1 + imm]) which coalesce to 128 B/warp.
   uint32_t loc[FRAME_U32];
   const uint32_t tid = threadIdx.x;
+  const uint32_t warp_id = tid >> 5;
   const uint32_t mask = static_cast<uint32_t>(FRAME_U32 - 1);
 
   for (int i = 0; i < FRAME_U32; ++i) {
     loc[i] = static_cast<uint32_t>((i + stride_u32) & mask);
   }
 
-  uint32_t idx = (tid * 7u) & mask;
-  float dep = 1.0f + static_cast<float>(tid & 7u) * 0.01f;
+  // Warp-uniform starting offset (identical across all 32 lanes of the warp).
+  uint32_t idx = (warp_id * 7u) & mask;
+  float dep = 1.0f + static_cast<float>(warp_id & 7u) * 0.01f;
 
   for (int s = 0; s < steps; ++s) {
+    // Guarantee warp-uniform index at iteration boundary.
+    idx = __shfl_sync(0xffffffffu, idx, 0);
     uint32_t r_acc = 0u;
     if constexpr (SERIAL_CHAIN) {
-      // Each local reload feeds the next reload's address (strict critical-path chain).
+      // Each local reload feeds the next reload's warp-uniform frame offset.
       for (int k = 0; k < reload_count; ++k) {
         uint32_t v = loc[idx];
         r_acc ^= v;
         idx = (v + static_cast<uint32_t>(stride_u32)) & mask;
       }
     } else {
-      // All reloads issued as a batch before feeding the loop-carried dependency.
+      // All reloads issued as a coalesced warp-uniform batch before dependent compute.
       uint32_t base_idx = idx;
       for (int k = 0; k < reload_count; ++k) {
         r_acc ^= loc[(base_idx + static_cast<uint32_t>(k * stride_u32)) & mask];
       }
-      idx = (base_idx + static_cast<uint32_t>(stride_u32) + (r_acc & 1u)) & mask;
+      idx = (base_idx + static_cast<uint32_t>(reload_count * stride_u32) + (r_acc & 1u)) & mask;
     }
 
-    // Small dependent FP32 compute chain consuming r_acc.
+    // Small dependent FP32 compute chain consuming warp-uniform r_acc.
     dep = dep * 0.9999f + static_cast<float>(r_acc & 15u) * 0.001f;
     #pragma unroll
     for (int f = 0; f < 8; ++f) {
@@ -3614,41 +3620,56 @@ __global__ void spill_reload_latency_kernel(uint32_t* __restrict__ sink,
   }
 }
 
+template <bool SERIAL_CHAIN>
+static void dispatch_spill_frame(int frame_bytes, int sm_count, uint32_t* d_sink,
+                                 int rc, int stride_u32, int steps) {
+  switch (frame_bytes) {
+    case 128:  spill_reload_latency_kernel<32, SERIAL_CHAIN><<<sm_count, 128>>>(d_sink, rc, stride_u32, steps); break;
+    case 256:  spill_reload_latency_kernel<64, SERIAL_CHAIN><<<sm_count, 128>>>(d_sink, rc, stride_u32, steps); break;
+    case 512:  spill_reload_latency_kernel<128, SERIAL_CHAIN><<<sm_count, 128>>>(d_sink, rc, stride_u32, steps); break;
+    case 1024: spill_reload_latency_kernel<256, SERIAL_CHAIN><<<sm_count, 128>>>(d_sink, rc, stride_u32, steps); break;
+    case 2048: spill_reload_latency_kernel<512, SERIAL_CHAIN><<<sm_count, 128>>>(d_sink, rc, stride_u32, steps); break;
+    case 4096: spill_reload_latency_kernel<1024, SERIAL_CHAIN><<<sm_count, 128>>>(d_sink, rc, stride_u32, steps); break;
+    default: break;
+  }
+}
+
 static int run_spill_latency(int device, int samples, int warmup) {
   cudaDeviceProp prop{};
   CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
   const int sm_count = prop.multiProcessorCount;
+  const int resident_threads_per_sm = 128;  // 4 warps/CTA x 1 CTA/SM
 
   uint32_t* d_sink = nullptr;
-  CUDA_CHECK(cudaMalloc(&d_sink, static_cast<size_t>(sm_count) * 128 * sizeof(uint32_t)));
+  CUDA_CHECK(cudaMalloc(&d_sink, static_cast<size_t>(sm_count) * resident_threads_per_sm * sizeof(uint32_t)));
 
   cudaEvent_t ev_start, ev_stop;
   CUDA_CHECK(cudaEventCreate(&ev_start));
   CUDA_CHECK(cudaEventCreate(&ev_stop));
 
-  // 4 warps/CTA (128 threads/SM):
-  //   l1_hit:   FRAME_U32 = 128  (512 B/thread x 128 = 64 KB < 128 KB L1)
-  //   l2_spill: FRAME_U32 = 1024 (4096 B/thread x 128 = 512 KB >> 128 KB L1, << L2)
+  // Sweep frame_bytes_per_thread from 128 B to 4096 B (16 KB to 512 KB/SM at 128 resident threads/SM),
+  // crossing the 128 KB L1 boundary cleanly. stride_u32=1 visits every 128 B warp-coalesced line.
+  const std::vector<int> frame_bytes_list = {128, 256, 512, 1024, 2048, 4096};
   const std::vector<int> reload_counts = {0, 8, 32, 68, 128};
 
-  std::printf("{\n  \"samples\": %d,\n  \"reload_latency_by_count\": [", samples);
+  std::printf("{\n  \"samples\": %d,\n  \"resident_threads_per_sm\": %d,\n  \"reload_latency_by_count\": [",
+              samples, resident_threads_per_sm);
   bool first = true;
 
-  for (bool is_l2 : {false, true}) {
-    const char* regime = is_l2 ? "l2_spill" : "l1_hit";
-    // Stride 32 uint32 = 128 B (1 cache line) in l2_spill to force L1 misses; stride 1 in l1_hit.
-    const int stride_u32 = is_l2 ? 33 : 1;
+  for (int fb : frame_bytes_list) {
+    const int total_sm_bytes = fb * resident_threads_per_sm;
+    const char* regime = (total_sm_bytes <= 65536) ? "l1_hit" : ((total_sm_bytes >= 262144) ? "l2_spill" : "l1_boundary");
+    const int stride_u32 = 1;
     for (bool serial : {true, false}) {
       const char* dep_mode = serial ? "serial_chain" : "batch_before_dep";
       for (int rc : reload_counts) {
-        int est_ns = 30 + rc * (is_l2 ? (serial ? 150 : 30) : (serial ? 25 : 4));
-        int steps = std::max(64, std::min(4096, 400000 / est_ns));
+        bool likely_l2 = (total_sm_bytes >= 131072);
+        int est_ns = 30 + rc * (likely_l2 ? (serial ? 120 : 20) : (serial ? 20 : 3));
+        int steps = std::max(128, std::min(4096, 400000 / est_ns));
 
         auto launch_once = [&]() {
-          if (!is_l2 && serial) spill_reload_latency_kernel<128, true><<<sm_count, 128>>>(d_sink, rc, stride_u32, steps);
-          else if (!is_l2 && !serial) spill_reload_latency_kernel<128, false><<<sm_count, 128>>>(d_sink, rc, stride_u32, steps);
-          else if (is_l2 && serial) spill_reload_latency_kernel<1024, true><<<sm_count, 128>>>(d_sink, rc, stride_u32, steps);
-          else spill_reload_latency_kernel<1024, false><<<sm_count, 128>>>(d_sink, rc, stride_u32, steps);
+          if (serial) dispatch_spill_frame<true>(fb, sm_count, d_sink, rc, stride_u32, steps);
+          else dispatch_spill_frame<false>(fb, sm_count, d_sink, rc, stride_u32, steps);
         };
 
         for (int w = 0; w < warmup; ++w) launch_once();
@@ -3670,8 +3691,9 @@ static int run_spill_latency(int device, int samples, int warmup) {
         first = false;
         std::printf(
             "\n    {\"regime\": \"%s\", \"dependency_mode\": \"%s\", \"num_warps\": 4, "
+            "\"resident_threads_per_sm\": %d, \"frame_bytes_per_thread\": %d, "
             "\"reload_count\": %d, \"iter_time_ns_samples\": [",
-            regime, dep_mode, rc);
+            regime, dep_mode, resident_threads_per_sm, fb, rc);
         for (size_t i = 0; i < ns_samples.size(); ++i) { if (i) std::printf(", "); std::printf("%.3f", ns_samples[i]); }
         std::printf("]}");
       }
