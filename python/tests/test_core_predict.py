@@ -61,3 +61,17 @@ def test_predictions_carry_the_build():
     assert set(info) == {"commit", "dirty", "result_class"}
     assert info["result_class"] == ("diagnostic" if info["dirty"] else "formal")
     assert _core.predict(IR, PROFILE, draws=0)["build"] == info
+
+
+def test_predict_batch_matches_predict_exactly():
+    too_big = json.loads(IR)
+    too_big["resources"]["static_smem_bytes"] = 131 * 1024
+    irs = [IR, json.dumps(too_big), IR]
+    batch = _core.predict_batch(irs, PROFILE, l2_state="warm", draws=4, seed=5)
+    assert batch == [_core.predict(ir, PROFILE, l2_state="warm", draws=4, seed=5) for ir in irs]
+    assert [r["status"] for r in batch] == ["ok", "unsupported", "ok"]
+
+
+def test_predict_batch_names_a_malformed_variant():
+    with pytest.raises(ValueError, match="variant 1"):
+        _core.predict_batch([IR, "{}"], PROFILE)

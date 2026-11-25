@@ -5,7 +5,7 @@ use crate::from_ir::{kernel_from_ir, IrL2};
 use crate::ir::KernelIR;
 use crate::kernel::Kernel;
 use crate::l2::L2InitState;
-use crate::sim::{simulate, Machine, ModelError, RESOURCES};
+use crate::sim::{simulate, Machine, ModelError, Prediction, RESOURCES};
 use crate::verdict::{verdict, Verdict};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
@@ -15,76 +15,80 @@ fn err(e: impl std::fmt::Debug) -> PyErr {
     PyValueError::new_err(format!("{e:?}"))
 }
 
-/// Map `f` over the draws on all available cores, keeping the draw order.
-fn parallel_times<F>(draws: &[Draw], f: F) -> Result<Vec<f64>, ModelError>
-where
-    F: Fn(&Draw) -> Result<f64, ModelError> + Sync,
-{
+/// Map `f` over `items` on all available cores, keeping their order.
+fn parallel_map<T: Sync, R: Send>(items: &[T], f: impl Fn(&T) -> R + Sync) -> Vec<R> {
     let threads = std::thread::available_parallelism().map_or(1, |n| n.get());
-    let chunk = draws.len().div_ceil(threads).max(1);
+    let chunk = items.len().div_ceil(threads).max(1);
     std::thread::scope(|scope| {
-        let handles: Vec<_> = draws
+        let handles: Vec<_> = items
             .chunks(chunk)
-            .map(|part| scope.spawn(|| part.iter().map(&f).collect::<Result<Vec<_>, _>>()))
+            .map(|part| scope.spawn(|| part.iter().map(&f).collect::<Vec<_>>()))
             .collect();
-        let mut out = Vec::with_capacity(draws.len());
-        for h in handles {
-            out.extend(h.join().expect("draw thread panicked")?);
-        }
-        Ok(out)
+        handles
+            .into_iter()
+            .flat_map(|h| h.join().expect("prediction thread panicked"))
+            .collect()
     })
 }
 
-/// Predict one kernel variant on one GPU profile under perturbation draws.
-///
-/// Takes the KernelIR and profile as JSON strings, `l2_state` as "cold" or
-/// "warm", the number of perturbed draws and their seed. Returns a dict with
-/// `status`: "ok" with the draw 0 (unperturbed) prediction and diagnostics
-/// plus `draws`, the time per draw ID including "0"; or "unsupported" with a
-/// `reason` (for example a CTA that does not fit on an SM). Draws depend only
-/// on the profile, `draws` and `seed`, so variants predicted with the same
-/// arguments share them. Malformed input raises `ValueError`.
-#[pyfunction]
-#[pyo3(signature = (kernel_ir_json, profile_json, l2_state = "cold", draws = 32, seed = 17))]
-fn predict<'py>(
-    py: Python<'py>,
-    kernel_ir_json: &str,
-    profile_json: &str,
-    l2_state: &str,
-    draws: usize,
-    seed: u64,
-) -> PyResult<Bound<'py, PyDict>> {
-    let initial = match l2_state {
-        "cold" => L2InitState::Cold,
-        "warm" => L2InitState::Warm,
-        other => {
-            return Err(PyValueError::new_err(format!(
-                "l2_state must be cold or warm, got {other}"
-            )))
-        }
-    };
-    let ir = KernelIR::from_json_str(kernel_ir_json).map_err(err)?;
-    ir.validate().map_err(err)?;
-    let all = draw_profiles(profile_json, draws, seed).map_err(err)?;
-    let nominal = &all[0].profile;
+fn initial_state(l2_state: &str) -> PyResult<L2InitState> {
+    match l2_state {
+        "cold" => Ok(L2InitState::Cold),
+        "warm" => Ok(L2InitState::Warm),
+        other => Err(PyValueError::new_err(format!(
+            "l2_state must be cold or warm, got {other}"
+        ))),
+    }
+}
 
+fn parse_ir(json: &str) -> PyResult<KernelIR> {
+    let ir = KernelIR::from_json_str(json).map_err(err)?;
+    ir.validate().map_err(err)?;
+    Ok(ir)
+}
+
+/// Draw 0's prediction and the time under every draw, in draw order.
+type Evaluation = Result<(Prediction, Vec<f64>), ModelError>;
+
+fn simulate_draw(
+    ir: &KernelIR,
+    k: &Kernel,
+    draw: &Draw,
+    initial: L2InitState,
+) -> Result<Prediction, ModelError> {
+    let mut m = Machine::nominal(&draw.profile, &k.mma_key)?;
+    m.assumed_spill_scale = draw.assumed_spill_scale;
+    let mut l2 = IrL2::new(ir, &draw.profile, initial, draw.l2);
+    simulate(k, &draw.profile, &m, &mut l2)
+}
+
+/// Simulate one variant under all draws, spreading the draws over cores if
+/// `parallel`.
+fn evaluate(ir: &KernelIR, all: &[Draw], initial: L2InitState, parallel: bool) -> Evaluation {
+    let k = kernel_from_ir(ir)?;
+    let r = simulate_draw(ir, &k, &all[0], initial)?;
+    let one = |draw: &Draw| simulate_draw(ir, &k, draw, initial).map(|p| p.time_ns);
+    let rest: Result<Vec<f64>, ModelError> = if parallel {
+        parallel_map(&all[1..], one).into_iter().collect()
+    } else {
+        all[1..].iter().map(one).collect()
+    };
+    let mut times = vec![r.time_ns];
+    times.extend(rest?);
+    Ok((r, times))
+}
+
+fn record<'py>(
+    py: Python<'py>,
+    ir: &KernelIR,
+    all: &[Draw],
+    l2_state: &str,
+    result: Evaluation,
+) -> PyResult<Bound<'py, PyDict>> {
     let d = PyDict::new(py);
     d.set_item("build", build_info(py)?)?;
     d.set_item("l2_state", l2_state)?;
     d.set_item("dispatch_policy", "round_robin")?;
-    let one = |k: &Kernel, draw: &Draw| {
-        let mut m = Machine::nominal(&draw.profile, &k.mma_key)?;
-        m.assumed_spill_scale = draw.assumed_spill_scale;
-        let mut l2 = IrL2::new(&ir, &draw.profile, initial, draw.l2);
-        simulate(k, &draw.profile, &m, &mut l2)
-    };
-    let result = kernel_from_ir(&ir).and_then(|k| {
-        let r = one(&k, &all[0])?;
-        let rest = py.detach(|| parallel_times(&all[1..], |draw| one(&k, draw).map(|p| p.time_ns)));
-        let mut times = vec![r.time_ns];
-        times.extend(rest?);
-        Ok((r, times))
-    });
     let (r, times) = match result {
         Ok(x) => x,
         Err(ModelError::EmptyCurve(name)) => {
@@ -126,13 +130,68 @@ fn predict<'py>(
     if !ir.diagnostics.is_empty() {
         flags.push("unvalidated_feature".into());
     }
-    let dispatch = &nominal.measured.cta_dispatch;
+    let dispatch = &all[0].profile.measured.cta_dispatch;
     if dispatch.candidate_policies.len() > 1 || dispatch.confidence.as_deref() != Some("high") {
         flags.push("dispatch_ambiguous".into());
     }
     d.set_item("flags", flags)?;
     d.set_item("diagnostics", ir.diagnostics.clone())?;
     Ok(d)
+}
+
+/// Predict one kernel variant on one GPU profile under perturbation draws.
+///
+/// Takes the KernelIR and profile as JSON strings, `l2_state` as "cold" or
+/// "warm", the number of perturbed draws and their seed. Returns a dict with
+/// `status`: "ok" with the draw 0 (unperturbed) prediction and diagnostics
+/// plus `draws`, the time per draw ID including "0"; or "unsupported" with a
+/// `reason` (for example a CTA that does not fit on an SM). Draws depend only
+/// on the profile, `draws` and `seed`, so variants predicted with the same
+/// arguments share them. Malformed input raises `ValueError`.
+#[pyfunction]
+#[pyo3(signature = (kernel_ir_json, profile_json, l2_state = "cold", draws = 32, seed = 17))]
+fn predict<'py>(
+    py: Python<'py>,
+    kernel_ir_json: &str,
+    profile_json: &str,
+    l2_state: &str,
+    draws: usize,
+    seed: u64,
+) -> PyResult<Bound<'py, PyDict>> {
+    let initial = initial_state(l2_state)?;
+    let ir = parse_ir(kernel_ir_json)?;
+    let all = draw_profiles(profile_json, draws, seed).map_err(err)?;
+    let result = py.detach(|| evaluate(&ir, &all, initial, true));
+    record(py, &ir, &all, l2_state, result)
+}
+
+/// Predict many kernel variants on one GPU profile, as `predict` does for
+/// each, but parsing the profile and sampling the draws once and spreading
+/// the variants over cores. Returns one dict per variant, in order, each
+/// identical to what `predict` returns for it. A malformed variant raises
+/// `ValueError` naming its index.
+#[pyfunction]
+#[pyo3(signature = (kernel_ir_jsons, profile_json, l2_state = "cold", draws = 32, seed = 17))]
+fn predict_batch<'py>(
+    py: Python<'py>,
+    kernel_ir_jsons: Vec<String>,
+    profile_json: &str,
+    l2_state: &str,
+    draws: usize,
+    seed: u64,
+) -> PyResult<Vec<Bound<'py, PyDict>>> {
+    let initial = initial_state(l2_state)?;
+    let irs = kernel_ir_jsons
+        .iter()
+        .enumerate()
+        .map(|(i, j)| parse_ir(j).map_err(|e| PyValueError::new_err(format!("variant {i}: {e}"))))
+        .collect::<PyResult<Vec<_>>>()?;
+    let all = draw_profiles(profile_json, draws, seed).map_err(err)?;
+    let results = py.detach(|| parallel_map(&irs, |ir| evaluate(ir, &all, initial, false)));
+    irs.iter()
+        .zip(results)
+        .map(|(ir, r)| record(py, ir, &all, l2_state, r))
+        .collect()
 }
 
 /// Pairwise verdict from two variants' times under the same draws, in draw
@@ -185,6 +244,7 @@ fn schema(name: &str) -> PyResult<&'static str> {
 fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     m.add_function(wrap_pyfunction!(predict, m)?)?;
+    m.add_function(wrap_pyfunction!(predict_batch, m)?)?;
     m.add_function(wrap_pyfunction!(schema, m)?)?;
     m.add_function(wrap_pyfunction!(pair_verdict, m)?)?;
     m.add_function(wrap_pyfunction!(build_info, m)?)?;
