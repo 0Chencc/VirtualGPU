@@ -79,7 +79,15 @@ Every calibration and validation dataset records the GPU, driver, clocks and ker
 
 ## Status
 
-Phase 1 is in progress on an RTX 4070. The full pipeline runs end to end: Triton kernel, ahead-of-time compilation, Kernel IR, GPU profile, performance model, and scoring against measured hardware. On the development set (cold L2), VirtualGPU ranks configs better than a learned baseline trained on the same GPU, without using any GEMM timing. The workload holdout is still sealed.
+**Phase 1 (RTX 4070) is complete, and it formally failed its preregistered criteria.** The model was frozen as `phase1-final`, predictions were archived, and only then was the sealed workload holdout opened. Full results: [validation/phase1-holdout-report.md](validation/phase1-holdout-report.md).
+
+| Holdout (9 unseen shapes) | VirtualGPU | Learned baseline (NeuSight-style) | Roofline + wave |
+|---|---:|---:|---:|
+| Kendall tau-b, warm / cold | **0.787 / 0.750** | 0.387 / 0.476 | 0.512 / 0.514 |
+| Mean top-5 regret, warm / cold | 3.11% / 3.02% | **1.19% / 1.24%** | 9.30% / 9.25% |
+
+- Ranking passed by a wide margin: the learned baseline, trained on RTX 4070 GEMM timings, did not generalize to new shapes; VirtualGPU uses no GEMM timings at all.
+- The shortlist criteria failed. Six of nine shapes have 0% top-5 regret; the mean is dominated by one shape with M, N and K all unaligned (24% warm, 22% cold). Masked edge tiles are a known weakness, see [docs/design.md](docs/design.md) section 9.
 
 GPU-free autotuning works today:
 
@@ -88,7 +96,7 @@ virtualgpu autotune --kernel my_module:matmul --shape 2048 8192 4096 \
     --profile profiles/rtx4070.json --cache cold
 ```
 
-The Phase 2 cross-GPU evaluation on DGX Spark is preregistered in [validation/phase2-preregistration.md](validation/phase2-preregistration.md).
+Phase 2, profile-only transfer to a DGX Spark (GB10), is preregistered in [validation/phase2-preregistration.md](validation/phase2-preregistration.md) and uses the same frozen `phase1-final` snapshot.
 
 ## License
 
