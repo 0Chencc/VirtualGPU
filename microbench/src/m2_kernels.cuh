@@ -4779,3 +4779,290 @@ static int run_l1_carveout(int device, int samples, int warmup) {
   CUDA_CHECK(cudaFree(d_out));
   return 0;
 }
+
+// ---------------------------------------------------------------------------
+// 24. Post-hoc: Multi-CTA sync_stage_loop (ctas_per_sm = 1, 2, 4, 6, 8)
+// ---------------------------------------------------------------------------
+
+template <int STAGE_BYTES, bool USE_CP_ASYNC>
+__global__ __launch_bounds__(128, 8)
+void sync_stage_loop_multicta_kernel(const uint4* __restrict__ src,
+                                     float* __restrict__ sink,
+                                     size_t buf_mask,
+                                     int steps,
+                                     int mma_iters) {
+  extern __shared__ uint4 smem[];
+  constexpr int NUM_WARPS = 4;
+  const uint32_t tid = threadIdx.x;
+  const uint32_t warp_id = tid >> 5;
+  const uint32_t lane = tid & 31u;
+  constexpr size_t STAGE_U4 = static_cast<size_t>(STAGE_BYTES) / sizeof(uint4);
+  constexpr int VECS = STAGE_BYTES / (NUM_WARPS * 32 * 16);
+  constexpr int LD_N = STAGE_BYTES / (NUM_WARPS * 512);
+  const size_t grid_stage_u4 = static_cast<size_t>(gridDim.x) * STAGE_U4;
+  size_t base = (static_cast<size_t>(blockIdx.x) * STAGE_U4) & buf_mask;
+
+  uint32_t a0 = 0x3c003c00u, a1 = 0x3c003c00u, a2 = 0x3c003c00u, a3 = 0x3c003c00u;
+  uint32_t b0 = 0x3c003c00u, b1 = 0x3c003c00u;
+  uint32_t live_acc = 0u;
+  float c00 = 0.f, c01 = 0.f, c02 = 0.f, c03 = 0.f;
+  float c10 = 0.f, c11 = 0.f, c12 = 0.f, c13 = 0.f;
+  float c20 = 0.f, c21 = 0.f, c22 = 0.f, c23 = 0.f;
+  float c30 = 0.f, c31 = 0.f, c32 = 0.f, c33 = 0.f;
+
+  for (int step = 0; step < steps; ++step) {
+    if constexpr (USE_CP_ASYNC) {
+      #pragma unroll
+      for (int v = 0; v < VECS; ++v) {
+        size_t off = static_cast<size_t>(v) * (NUM_WARPS * 32) + tid;
+        uint32_t saddr = static_cast<uint32_t>(__cvta_generic_to_shared(smem + off));
+        const void* gptr = src + ((base + off) & buf_mask);
+        asm volatile("cp.async.cg.shared.global [%0], [%1], 16;\n" :: "r"(saddr), "l"(gptr) : "memory");
+      }
+      asm volatile("cp.async.commit_group;\n" ::: "memory");
+      asm volatile("cp.async.wait_group 0;\n" ::: "memory");
+    } else {
+      uint4 vals[VECS];
+      #pragma unroll
+      for (int v = 0; v < VECS; ++v) {
+        size_t off = static_cast<size_t>(v) * (NUM_WARPS * 32) + tid;
+        vals[v] = ld_cg_u4(src + ((base + off) & buf_mask));
+      }
+      #pragma unroll
+      for (int v = 0; v < VECS; ++v) {
+        size_t off = static_cast<size_t>(v) * (NUM_WARPS * 32) + tid;
+        uint32_t saddr = static_cast<uint32_t>(__cvta_generic_to_shared(smem + off));
+        asm volatile("st.shared.v4.u32 [%0], {%1,%2,%3,%4};\n"
+                     :: "r"(saddr), "r"(vals[v].x), "r"(vals[v].y), "r"(vals[v].z), "r"(vals[v].w) : "memory");
+      }
+    }
+
+    asm volatile("bar.sync 0;\n" ::: "memory");
+
+    #pragma unroll
+    for (int r = 0; r < LD_N; ++r) {
+      size_t off_u4 = (static_cast<size_t>(r) * NUM_WARPS + warp_id) * 32ULL + lane;
+      uint32_t saddr = static_cast<uint32_t>(__cvta_generic_to_shared(smem + off_u4));
+      uint32_t r0, r1, r2, r3;
+      asm volatile("ldmatrix.sync.aligned.x4.m8n8.shared.b16 {%0,%1,%2,%3}, [%4];\n"
+                   : "=r"(r0), "=r"(r1), "=r"(r2), "=r"(r3) : "r"(saddr) : "memory");
+      live_acc ^= (r0 ^ r1 ^ r2 ^ r3);
+      if constexpr (LD_N == 1) {
+        a0 = r0; a1 = r1; a2 = r2; a3 = r3;
+        b0 = r0; b1 = r1;
+      } else {
+        if (r == LD_N - 2) {
+          b0 = r0; b1 = r1;
+        } else if (r == LD_N - 1) {
+          a0 = r0; a1 = r1; a2 = r2; a3 = r3;
+        }
+      }
+    }
+
+    for (int m = 0; m < mma_iters; ++m) {
+      asm volatile(
+          "mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 "
+          "{%0,%1,%2,%3}, {%4,%5,%6,%7}, {%8,%9}, {%0,%1,%2,%3};\n"
+          : "+f"(c00), "+f"(c01), "+f"(c02), "+f"(c03)
+          : "r"(a0), "r"(a1), "r"(a2), "r"(a3), "r"(b0), "r"(b1));
+      asm volatile(
+          "mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 "
+          "{%0,%1,%2,%3}, {%4,%5,%6,%7}, {%8,%9}, {%0,%1,%2,%3};\n"
+          : "+f"(c10), "+f"(c11), "+f"(c12), "+f"(c13)
+          : "r"(a0), "r"(a1), "r"(a2), "r"(a3), "r"(b0), "r"(b1));
+      asm volatile(
+          "mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 "
+          "{%0,%1,%2,%3}, {%4,%5,%6,%7}, {%8,%9}, {%0,%1,%2,%3};\n"
+          : "+f"(c20), "+f"(c21), "+f"(c22), "+f"(c23)
+          : "r"(a0), "r"(a1), "r"(a2), "r"(a3), "r"(b0), "r"(b1));
+      asm volatile(
+          "mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 "
+          "{%0,%1,%2,%3}, {%4,%5,%6,%7}, {%8,%9}, {%0,%1,%2,%3};\n"
+          : "+f"(c30), "+f"(c31), "+f"(c32), "+f"(c33)
+          : "r"(a0), "r"(a1), "r"(a2), "r"(a3), "r"(b0), "r"(b1));
+    }
+
+    asm volatile("bar.sync 0;\n" ::: "memory");
+    base = (base + grid_stage_u4) & buf_mask;
+  }
+
+  float sum = c00 + c01 + c02 + c03 + c10 + c11 + c12 + c13 +
+              c20 + c21 + c22 + c23 + c30 + c31 + c32 + c33 + static_cast<float>(live_acc & 1u);
+  if (sum == -999999.0f) {
+    sink[blockIdx.x * blockDim.x + tid] = sum;
+  }
+}
+
+template <bool USE_CP_ASYNC>
+static void dispatch_sync_loop_multicta(int stage_bytes, int grid, const uint4* d_buf,
+                                        float* d_sink, size_t buf_mask, int steps, int mma_iters) {
+  const size_t dyn_smem = static_cast<size_t>(stage_bytes);
+  switch (stage_bytes) {
+    case 2048:
+      sync_stage_loop_multicta_kernel<2048, USE_CP_ASYNC>
+          <<<grid, 128, dyn_smem>>>(d_buf, d_sink, buf_mask, steps, mma_iters);
+      break;
+    case 4096:
+      sync_stage_loop_multicta_kernel<4096, USE_CP_ASYNC>
+          <<<grid, 128, dyn_smem>>>(d_buf, d_sink, buf_mask, steps, mma_iters);
+      break;
+    case 8192:
+      sync_stage_loop_multicta_kernel<8192, USE_CP_ASYNC>
+          <<<grid, 128, dyn_smem>>>(d_buf, d_sink, buf_mask, steps, mma_iters);
+      break;
+    default:
+      break;
+  }
+}
+
+template <int STAGE_BYTES, bool USE_CP_ASYNC>
+static void query_multicta_occ(int& max_blocks, int& num_regs, size_t& local_bytes) {
+  cudaFuncAttributes attr{};
+  CUDA_CHECK(cudaFuncGetAttributes(&attr, sync_stage_loop_multicta_kernel<STAGE_BYTES, USE_CP_ASYNC>));
+  CUDA_CHECK(cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+      &max_blocks, sync_stage_loop_multicta_kernel<STAGE_BYTES, USE_CP_ASYNC>, 128, STAGE_BYTES));
+  num_regs = attr.numRegs;
+  local_bytes = attr.localSizeBytes;
+}
+
+static int run_sync_loop_multicta(int device, int samples, int warmup) {
+  cudaDeviceProp prop{};
+  CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
+  const int sm_count = prop.multiProcessorCount;
+
+  const size_t dram_bytes = 256ULL * 1024ULL * 1024ULL;
+  const size_t l2_bytes = 4ULL * 1024ULL * 1024ULL;
+  const size_t dram_mask = (dram_bytes / sizeof(uint4)) - 1ULL;
+  const size_t l2_mask = (l2_bytes / sizeof(uint4)) - 1ULL;
+  const size_t flush_vec4 = dram_bytes / sizeof(uint4);
+
+  uint4* d_dram = nullptr;
+  uint4* d_flush = nullptr;
+  uint4* d_l2 = nullptr;
+  uint4* d_sink_u4 = nullptr;
+  float* d_sink_f = nullptr;
+  CUDA_CHECK(cudaMalloc(&d_dram, dram_bytes));
+  CUDA_CHECK(cudaMalloc(&d_flush, dram_bytes));
+  CUDA_CHECK(cudaMalloc(&d_l2, l2_bytes));
+  CUDA_CHECK(cudaMalloc(&d_sink_u4, 1024 * sizeof(uint4)));
+  CUDA_CHECK(cudaMalloc(&d_sink_f, static_cast<size_t>(sm_count) * 8 * 128 * sizeof(float)));
+  CUDA_CHECK(cudaMemset(d_dram, 0x3c, dram_bytes));
+  CUDA_CHECK(cudaMemset(d_flush, 25, dram_bytes));
+  CUDA_CHECK(cudaMemset(d_l2, 0x3c, l2_bytes));
+
+  cudaEvent_t ev_start, ev_stop;
+  CUDA_CHECK(cudaEventCreate(&ev_start));
+  CUDA_CHECK(cudaEventCreate(&ev_stop));
+
+  auto cal_mma_ns = [&](int warps, int cal_iters) -> double {
+    for (int w = 0; w < 2; ++w) mma_m16n8k16_kernel<false><<<sm_count, warps * 32>>>(d_sink_f, cal_iters);
+    CUDA_CHECK(cudaDeviceSynchronize());
+    CUDA_CHECK(cudaEventRecord(ev_start));
+    mma_m16n8k16_kernel<false><<<sm_count, warps * 32>>>(d_sink_f, cal_iters);
+    CUDA_CHECK(cudaEventRecord(ev_stop));
+    CUDA_CHECK(cudaEventSynchronize(ev_stop));
+    float ms = 1.0f;
+    CUDA_CHECK(cudaEventElapsedTime(&ms, ev_start, ev_stop));
+    return (static_cast<double>(ms) * 1e6) / static_cast<double>(cal_iters);
+  };
+  const double ns_per_iter_4w = cal_mma_ns(4, 20000);
+  const double flops_per_cta_iter = 4.0 * 4.0 * 4096.0;
+
+  std::printf("{\n  \"samples\": %d,\n  \"occupancy_check\": [", samples);
+  bool first_occ = true;
+  auto emit_occ = [&](const char* mode, int sb, int mb, int regs, size_t lbytes) {
+    if (!first_occ) std::printf(",");
+    first_occ = false;
+    std::printf("\n    {\"transfer_mode\": \"%s\", \"stage_bytes\": %d, \"max_active_ctas_per_sm\": %d, \"num_regs\": %d, \"local_bytes\": %zu}",
+                mode, sb, mb, regs, lbytes);
+  };
+  {
+    int mb, regs; size_t lb;
+    query_multicta_occ<2048, false>(mb, regs, lb); emit_occ("ld_st_sync", 2048, mb, regs, lb);
+    query_multicta_occ<4096, false>(mb, regs, lb); emit_occ("ld_st_sync", 4096, mb, regs, lb);
+    query_multicta_occ<8192, false>(mb, regs, lb); emit_occ("ld_st_sync", 8192, mb, regs, lb);
+    query_multicta_occ<2048, true>(mb, regs, lb);  emit_occ("cp_async_s1", 2048, mb, regs, lb);
+    query_multicta_occ<4096, true>(mb, regs, lb);  emit_occ("cp_async_s1", 4096, mb, regs, lb);
+    query_multicta_occ<8192, true>(mb, regs, lb);  emit_occ("cp_async_s1", 8192, mb, regs, lb);
+  }
+  std::printf("\n  ],\n  \"sync_stage_loop\": [");
+
+  const std::vector<int> bytes_list = {2048, 4096, 8192};
+  const std::vector<int> cps_list = {1, 2, 4, 6, 8};
+  const std::vector<int> mma_iters_list = {0, 2, 8};  // 0, 8, 32 MMAs per warp per stage
+
+  bool first = true;
+  for (bool is_dram : {true, false}) {
+    const char* level_name = is_dram ? "dram" : "l2";
+    const uint4* buf = is_dram ? d_dram : d_l2;
+    const size_t mask = is_dram ? dram_mask : l2_mask;
+    const int steps = is_dram ? 128 : 512;
+    for (bool use_cp : {false, true}) {
+      const char* t_mode = use_cp ? "cp_async_s1" : "ld_st_sync";
+      for (int sb : bytes_list) {
+        for (int cps : cps_list) {
+          const int active_ctas = sm_count * cps;
+          for (int mma_iters : mma_iters_list) {
+            const int mma_chain_len = mma_iters * 4;
+            const double solo_tc_ns = static_cast<double>(mma_iters) * ns_per_iter_4w;
+            const double total_bytes = static_cast<double>(active_ctas) * static_cast<double>(sb) * steps;
+            const double total_flops_per_sm = static_cast<double>(cps) * flops_per_cta_iter * mma_iters * steps;
+
+            auto launch_once = [&]() {
+              if (use_cp) dispatch_sync_loop_multicta<true>(sb, active_ctas, buf, d_sink_f, mask, steps, mma_iters);
+              else dispatch_sync_loop_multicta<false>(sb, active_ctas, buf, d_sink_f, mask, steps, mma_iters);
+            };
+
+            for (int w = 0; w < warmup; ++w) {
+              if (is_dram) l2_read_cg_kernel<<<sm_count * 4, 512>>>(d_flush, d_sink_u4, flush_vec4, 1);
+              launch_once();
+            }
+            CUDA_CHECK(cudaDeviceSynchronize());
+
+            std::vector<double> bw_s, turn_s, tf_s;
+            bw_s.reserve(samples);
+            turn_s.reserve(samples);
+            tf_s.reserve(samples);
+            for (int s = 0; s < samples; ++s) {
+              if (is_dram) l2_read_cg_kernel<<<sm_count * 4, 512>>>(d_flush, d_sink_u4, flush_vec4, 1);
+              CUDA_CHECK(cudaEventRecord(ev_start));
+              launch_once();
+              CUDA_CHECK(cudaEventRecord(ev_stop));
+              CUDA_CHECK(cudaEventSynchronize(ev_stop));
+              float ms = 0.0f;
+              CUDA_CHECK(cudaEventElapsedTime(&ms, ev_start, ev_stop));
+              double sec = static_cast<double>(ms) / 1e3;
+              bw_s.push_back((total_bytes / 1e9) / sec);
+              turn_s.push_back((static_cast<double>(ms) * 1e6) / static_cast<double>(steps));
+              tf_s.push_back((total_flops_per_sm / 1e12) / sec);
+            }
+
+            if (!first) std::printf(",");
+            first = false;
+            std::printf(
+                "\n    {\"mem_level\": \"%s\", \"transfer_mode\": \"%s\", \"ctas_per_sm\": %d, "
+                "\"active_ctas\": %d, \"num_warps\": 4, \"stage_bytes\": %d, "
+                "\"mma_chain_len\": %d, \"solo_compute_ns\": %.2f, \"bw_gbps_samples\": [",
+                level_name, t_mode, cps, active_ctas, sb, mma_chain_len, solo_tc_ns);
+            for (size_t i = 0; i < bw_s.size(); ++i) { if (i) std::printf(", "); std::printf("%.3f", bw_s[i]); }
+            std::printf("], \"turnaround_ns_samples\": [");
+            for (size_t i = 0; i < turn_s.size(); ++i) { if (i) std::printf(", "); std::printf("%.2f", turn_s[i]); }
+            std::printf("], \"mma_tflops_per_sm_samples\": [");
+            for (size_t i = 0; i < tf_s.size(); ++i) { if (i) std::printf(", "); std::printf("%.4f", tf_s[i]); }
+            std::printf("]}");
+          }
+        }
+      }
+    }
+  }
+  std::printf("\n  ]\n}\n");
+
+  CUDA_CHECK(cudaEventDestroy(ev_start));
+  CUDA_CHECK(cudaEventDestroy(ev_stop));
+  CUDA_CHECK(cudaFree(d_dram));
+  CUDA_CHECK(cudaFree(d_flush));
+  CUDA_CHECK(cudaFree(d_l2));
+  CUDA_CHECK(cudaFree(d_sink_u4));
+  CUDA_CHECK(cudaFree(d_sink_f));
+  return 0;
+}

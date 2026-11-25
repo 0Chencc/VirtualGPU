@@ -557,6 +557,9 @@ int main(int argc, char** argv) {
   if (mode == "l1-carveout") {
     return run_l1_carveout(device, samples, warmup);
   }
+  if (mode == "sync-loop-multicta") {
+    return run_sync_loop_multicta(device, samples, warmup);
+  }
   std::fprintf(stderr, "Unknown mode: %s\n", mode.c_str());
   return 2;
 }

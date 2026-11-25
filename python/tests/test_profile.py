@@ -71,7 +71,7 @@ def test_rtx4070_profile_is_valid() -> None:
     assert len(profile["measured"]["pipeline"]["fixed_sync_ns"]) >= 8
     assert profile["measured"]["pipeline"]["min_async_roundtrip_ns"]["source"] == "measured"
     assert len(profile["measured"]["pipeline"]["serial_stage_fill"]) >= 32
-    assert len(profile["measured"]["pipeline"]["sync_stage_loop"]) >= 288
+    assert len(profile["measured"]["pipeline"]["sync_stage_loop"]) >= 420
     assert len(profile["measured"]["pipeline"]["sync_stage_loop_ablation"]) >= 64
     assert profile["measured"]["async_pipeline"]["cp_async_bw_per_sm_gbps"]["source"] == "measured"
     assert profile["measured"]["overhead"]["launch_overhead_us"]["source"] == "measured"
@@ -115,7 +115,7 @@ def test_gb10_profile_is_valid() -> None:
     assert profile["measured"]["spill"]["l1_to_l2_spill_threshold_bytes_per_sm"]["source"] == "measured"
     assert len(mem["dram_closed_loop_mma"]) >= 140
     assert len(profile["measured"]["pipeline"]["serial_stage_fill"]) >= 32
-    assert len(profile["measured"]["pipeline"]["sync_stage_loop"]) >= 288
+    assert len(profile["measured"]["pipeline"]["sync_stage_loop"]) >= 420
     assert len(profile["measured"]["pipeline"]["sync_stage_loop_ablation"]) >= 64
     assert len(profile["measured"]["compute"]["mma_chain_latency"]) >= 128
 

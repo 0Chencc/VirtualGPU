@@ -21,8 +21,8 @@ sys.path.insert(0, str(REPO_ROOT / "python"))
 from virtualgpu.profile import validate_profile  # noqa: E402
 
 DEFAULT_BIN = Path(__file__).resolve().parent / "build" / "vgpu_bench"
-SUITE_VERSION = "0.18.0"
-PROFILE_REVISION = "0.18.0-posthoc"
+SUITE_VERSION = "0.19.0"
+PROFILE_REVISION = "0.19.0-posthoc"
 
 
 def find_nvidia_smi() -> str | None:
@@ -298,6 +298,7 @@ def build_profile(
     sync_abl_raw: dict[str, Any],
     gmem_ctrl_raw: dict[str, Any],
     l1_carve_raw: dict[str, Any],
+    sync_multicta_raw: dict[str, Any],
     smi_samples: list[dict[str, Any]],
 ) -> dict[str, Any]:
     major = int(query["major"])
@@ -914,13 +915,14 @@ def build_profile(
             ),
         })
 
-    sync_stage_loop: list[dict[str, Any]] = []
-    for pt in sync_loop_raw["sync_stage_loop"]:
+    sync_stage_loop_map: dict[tuple[str, str, int, int, int, int], dict[str, Any]] = {}
+    for pt in list(sync_loop_raw["sync_stage_loop"]) + list(sync_multicta_raw["sync_stage_loop"]):
         level = str(pt["mem_level"])
         t_mode = str(pt["transfer_mode"])
         clk_rng = mem_range if level == "dram" else sm_range
         p_grp = "dram_bw" if level == "dram" else "l2_bw"
-        sync_stage_loop.append({
+        key = (level, t_mode, int(pt["ctas_per_sm"]), int(pt["num_warps"]), int(pt["stage_bytes"]), int(pt["mma_chain_len"]))
+        sync_stage_loop_map[key] = {
             "mem_level": level,
             "transfer_mode": t_mode,
             "ctas_per_sm": int(pt["ctas_per_sm"]),
@@ -956,7 +958,8 @@ def build_profile(
                 locked=False,
                 throttle_events=throttle_events,
             ),
-        })
+        }
+    sync_stage_loop = list(sync_stage_loop_map.values())
 
     gmem_load_issue_per_sm: list[dict[str, Any]] = []
     for pt in gmem_issue_raw["gmem_load_issue_per_sm"]:
@@ -1446,11 +1449,14 @@ def main() -> int:
     l1_carve_raw, smi_l1c = run_bench_with_clock_polling(
         args.binary, "l1-carveout", args.device, ["--samples", "7", "--warmup", "1"]
     )
+    sync_multicta_raw, smi_slm = run_bench_with_clock_polling(
+        args.binary, "sync-loop-multicta", args.device, ["--samples", "7", "--warmup", "2"]
+    )
     dispatch_raw, smi_disp = run_bench_with_clock_polling(
         args.binary, "cta-dispatch", args.device, ["--repeats", str(args.repeats)]
     )
     smi_samples = (
-        smi_dram + smi_mma + smi_l2 + smi_cp + smi_lat + smi_launch + smi_lc + smi_rs + smi_mlp + smi_cl + smi_mg + smi_so + smi_clm + smi_mc + smi_sf + smi_sl + smi_gi + smi_sp + smi_sm + smi_ss + smi_ms + smi_sa + smi_gc + smi_l1c + smi_disp
+        smi_dram + smi_mma + smi_l2 + smi_cp + smi_lat + smi_launch + smi_lc + smi_rs + smi_mlp + smi_cl + smi_mg + smi_so + smi_clm + smi_mc + smi_sf + smi_sl + smi_gi + smi_sp + smi_sm + smi_ss + smi_ms + smi_sa + smi_gc + smi_l1c + smi_slm + smi_disp
     )
 
     profile = build_profile(
@@ -1459,7 +1465,7 @@ def main() -> int:
         closed_loop_raw, l2_merge_raw, stage_oh_raw, closed_loop_mma_raw,
         mma_chain_raw, serial_fill_raw, sync_loop_raw, gmem_issue_raw,
         spill_lat_raw, strided_mlp_raw, sfu_shfl_raw, mma_sf_raw,
-        sync_abl_raw, gmem_ctrl_raw, l1_carve_raw, smi_samples
+        sync_abl_raw, gmem_ctrl_raw, l1_carve_raw, sync_multicta_raw, smi_samples
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("w", encoding="utf-8") as fh:
