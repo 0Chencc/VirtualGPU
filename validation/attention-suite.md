@@ -3,7 +3,10 @@
 [attention-suite.json](attention-suite.json) enumerates forward fused
 scaled dot-product attention on RTX 4070 (`sm_89`). Inputs and output are
 FP16 in contiguous BHSD layout. The kernel uses FP32 softmax reductions and
-accumulators. Each case has equal logical query and KV sequence lengths.
+accumulators. The suite covers prefill forward attention, with equal query
+and KV sequence lengths. Decode with one query token and a long KV cache
+uses flash-decoding kernels and will have a separate suite.
+
 GQA maps query head `h` to KV head `h // (query_heads / kv_heads)`
 without expanding K or V. Causal cases include the diagonal. The runner
 checks the FP16 output and FP32 base-2 log-sum-exp against a chunked FP32
@@ -24,11 +27,12 @@ hardware resource failures.
 The development and workload-holdout splits each have eight cases and
 228 eligible case/config combinations. Each split has two cases per
 causality and grouping combination, covering both 64- and 128-element
-heads. Development cases use aligned lengths. The holdout pairs aligned
-longer or wider workloads with odd sequence lengths that exercise tail
-masking. Splits are by full workload shape across all configs and both
-cache states. Only development timings may be opened while developing the
-attention predictor or an attention baseline.
+heads. Development includes a 1,021-token noncausal GQA case and a
+1,025-token causal MHA case so both modes exercise tail masking. The
+holdout uses different odd lengths and includes longer aligned workloads
+at 2,560, 3,072, and 4,096 tokens. Splits are by full workload shape
+across all configs and both cache states. Only development timings may be
+opened while developing the attention predictor or an attention baseline.
 
 ## Label protocol
 
