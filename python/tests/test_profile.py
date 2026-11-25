@@ -60,6 +60,8 @@ def test_rtx4070_profile_is_valid() -> None:
     assert len(mem["gmem_load_issue_per_sm"]) >= 24
     assert len(mem["gmem_load_issue_controlled"]) >= 36
     assert len(mem["spill_reload_latency_by_count"]) >= 60
+    assert len(mem["l1_to_l2_spill_threshold_by_carveout"]) >= 6
+    assert profile["measured"]["spill"]["l1_to_l2_spill_threshold_bytes_per_sm"]["source"] == "measured"
     assert len(profile["measured"]["pipeline"]["stage_sync_overhead_ns"]) >= 8
     assert len(profile["measured"]["pipeline"]["fixed_sync_ns"]) >= 8
     assert profile["measured"]["pipeline"]["min_async_roundtrip_ns"]["source"] == "measured"
@@ -99,6 +101,8 @@ def test_gb10_profile_is_valid() -> None:
     assert len(mem["gmem_load_issue_per_sm"]) >= 24
     assert len(mem["gmem_load_issue_controlled"]) >= 36
     assert len(mem["spill_reload_latency_by_count"]) >= 60
+    assert len(mem["l1_to_l2_spill_threshold_by_carveout"]) >= 6
+    assert profile["measured"]["spill"]["l1_to_l2_spill_threshold_bytes_per_sm"]["source"] == "measured"
     assert len(mem["dram_closed_loop_mma"]) >= 140
     assert len(profile["measured"]["pipeline"]["serial_stage_fill"]) >= 32
     assert len(profile["measured"]["pipeline"]["sync_stage_loop"]) >= 288

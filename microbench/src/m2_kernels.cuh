@@ -4644,3 +4644,138 @@ static int run_gmem_issue_controlled(int device, int samples, int warmup) {
   CUDA_CHECK(cudaFree(d_sink));
   return 0;
 }
+
+// ---------------------------------------------------------------------------
+// 23. Post-hoc: Usable L1 capacity vs shared memory carveout (ld.global.ca pchase)
+// ---------------------------------------------------------------------------
+
+template <int Tag>
+__global__ void l1_carveout_pchase_kernel(const uint32_t* __restrict__ next_idx,
+                                          uint32_t* __restrict__ sink,
+                                          int smem_bytes,
+                                          int warmup_steps,
+                                          int timed_steps,
+                                          double* __restrict__ out_cycles) {
+  extern __shared__ uint32_t l1c_smem[];
+  if (threadIdx.x == 0) {
+    uint32_t smem_touch = 0u;
+    if (smem_bytes >= 4) {
+      l1c_smem[0] = 1u;
+      smem_touch = l1c_smem[0];
+    }
+    uint32_t cur = 0u;
+    for (int i = 0; i < warmup_steps; ++i) {
+      asm volatile("ld.global.ca.u32 %0, [%1];\n" : "=r"(cur) : "l"(next_idx + cur));
+    }
+    uint64_t t0 = static_cast<uint64_t>(clock64());
+    for (int i = 0; i < timed_steps; ++i) {
+      asm volatile("ld.global.ca.u32 %0, [%1];\n" : "=r"(cur) : "l"(next_idx + cur));
+    }
+    uint64_t t1 = static_cast<uint64_t>(clock64());
+    *out_cycles = static_cast<double>(t1 - t0) / static_cast<double>(timed_steps);
+    if ((cur ^ smem_touch) == 0xdeadbeefu) {
+      sink[0] = cur;
+    }
+  }
+}
+
+template <int Tag>
+static void run_l1_carveout_one(int smem_req,
+                                int samples,
+                                int warmup,
+                                double cycles_per_ns,
+                                const std::vector<int>& ws_kb_list,
+                                std::vector<uint32_t>& h_ring,
+                                uint32_t* d_ring,
+                                uint32_t* d_sink,
+                                double* d_out) {
+  if (smem_req > 49152) {
+    CUDA_CHECK(cudaFuncSetAttribute(
+        l1_carveout_pchase_kernel<Tag>, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_req));
+  }
+  const int stride_u32 = 32;  // 128 B = 1 L1 cache line
+  std::printf("\n    {\"smem_carveout_bytes\": %d, \"points\": [", smem_req);
+  bool first_w = true;
+  for (int ws_kb : ws_kb_list) {
+    int lines = (ws_kb * 1024) / 128;
+    for (int i = 0; i < lines; ++i) {
+      int next_line = (i + 1) % lines;
+      h_ring[static_cast<size_t>(i) * stride_u32] = static_cast<uint32_t>(next_line * stride_u32);
+    }
+    CUDA_CHECK(cudaMemcpy(d_ring, h_ring.data(), static_cast<size_t>(ws_kb) * 1024ULL, cudaMemcpyHostToDevice));
+
+    int w_steps = lines * 3;
+    int t_steps = std::max(lines * 4, 2048);
+    // Use 1024 threads (1 CTA/SM max) so the driver selects the SM carveout
+    // matching this single CTA's smem request rather than scaling for multi-CTA occupancy.
+    for (int w = 0; w < warmup; ++w) {
+      l1_carveout_pchase_kernel<Tag><<<1, 1024, static_cast<size_t>(smem_req)>>>(
+          d_ring, d_sink, smem_req, w_steps, t_steps, d_out);
+    }
+    CUDA_CHECK(cudaDeviceSynchronize());
+
+    std::vector<double> lat_ns;
+    lat_ns.reserve(samples);
+    for (int s = 0; s < samples; ++s) {
+      l1_carveout_pchase_kernel<Tag><<<1, 1024, static_cast<size_t>(smem_req)>>>(
+          d_ring, d_sink, smem_req, w_steps, t_steps, d_out);
+      CUDA_CHECK(cudaDeviceSynchronize());
+      double cyc = 0.0;
+      CUDA_CHECK(cudaMemcpy(&cyc, d_out, sizeof(double), cudaMemcpyDeviceToHost));
+      lat_ns.push_back(cyc / cycles_per_ns);
+    }
+
+    if (!first_w) std::printf(",");
+    first_w = false;
+    std::printf("\n      {\"ws_bytes\": %d, \"latency_ns_samples\": [", ws_kb * 1024);
+    for (size_t k = 0; k < lat_ns.size(); ++k) { if (k) std::printf(", "); std::printf("%.2f", lat_ns[k]); }
+    std::printf("]}");
+  }
+  std::printf("\n    ]}");
+}
+
+static int run_l1_carveout(int device, int samples, int warmup) {
+  cudaDeviceProp prop{};
+  CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
+  const int max_optin = static_cast<int>(prop.sharedMemPerBlockOptin);
+
+  const size_t max_ws_bytes = 176ULL * 1024ULL;
+  const size_t max_u32 = max_ws_bytes / sizeof(uint32_t);
+  uint32_t* d_ring = nullptr;
+  uint32_t* d_sink = nullptr;
+  double* d_out = nullptr;
+  CUDA_CHECK(cudaMalloc(&d_ring, max_ws_bytes));
+  CUDA_CHECK(cudaMalloc(&d_sink, sizeof(uint32_t)));
+  CUDA_CHECK(cudaMalloc(&d_out, sizeof(double)));
+
+  cudaEvent_t ev_start, ev_stop;
+  CUDA_CHECK(cudaEventCreate(&ev_start));
+  CUDA_CHECK(cudaEventCreate(&ev_stop));
+  const double cycles_per_ns = measure_cycles_per_ns(ev_start, ev_stop);
+
+  std::vector<int> ws_kb_list;
+  for (int kb = 8; kb <= 160; kb += 4) ws_kb_list.push_back(kb);
+  std::vector<uint32_t> h_ring(max_u32, 0u);
+
+  std::printf("{\n  \"samples\": %d,\n  \"cycles_per_ns\": %.4f,\n  \"l1_carveout_sweep\": [",
+              samples, cycles_per_ns);
+  run_l1_carveout_one<0>(0, samples, warmup, cycles_per_ns, ws_kb_list, h_ring, d_ring, d_sink, d_out);
+  std::printf(",");
+  run_l1_carveout_one<1>(16384, samples, warmup, cycles_per_ns, ws_kb_list, h_ring, d_ring, d_sink, d_out);
+  std::printf(",");
+  run_l1_carveout_one<2>(32768, samples, warmup, cycles_per_ns, ws_kb_list, h_ring, d_ring, d_sink, d_out);
+  std::printf(",");
+  run_l1_carveout_one<3>(49152, samples, warmup, cycles_per_ns, ws_kb_list, h_ring, d_ring, d_sink, d_out);
+  std::printf(",");
+  run_l1_carveout_one<4>(65536, samples, warmup, cycles_per_ns, ws_kb_list, h_ring, d_ring, d_sink, d_out);
+  std::printf(",");
+  run_l1_carveout_one<5>(std::min(102400, max_optin), samples, warmup, cycles_per_ns, ws_kb_list, h_ring, d_ring, d_sink, d_out);
+  std::printf("\n  ]\n}\n");
+
+  CUDA_CHECK(cudaEventDestroy(ev_start));
+  CUDA_CHECK(cudaEventDestroy(ev_stop));
+  CUDA_CHECK(cudaFree(d_ring));
+  CUDA_CHECK(cudaFree(d_sink));
+  CUDA_CHECK(cudaFree(d_out));
+  return 0;
+}

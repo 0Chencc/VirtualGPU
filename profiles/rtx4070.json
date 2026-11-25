@@ -7,13 +7,13 @@
     "memory_type": "discrete"
   },
   "provenance": {
-    "profile_revision": "0.17.0-posthoc",
+    "profile_revision": "0.18.0-posthoc",
     "calibration_run_id": "cal-20261124T220249Z-sm_89",
     "calibration_manifest_digest": null,
     "source": "partial",
     "driver_version": "610.88",
     "toolkit_version": "13.5",
-    "suite_version": "0.17.0",
+    "suite_version": "0.18.0",
     "host_os": "linux",
     "is_wsl": true,
     "power_limit_w": 200.0,
@@ -37270,6 +37270,86 @@
             "perturb_group": "l2_bw"
           }
         }
+      ],
+      "l1_to_l2_spill_threshold_by_carveout": [
+        {
+          "smem_carveout_bytes": 0,
+          "threshold_bytes_per_sm": {
+            "value": 128652.0,
+            "ci95_low": 127974.0,
+            "ci95_high": 129566.0,
+            "rel_uncertainty": 0.1082,
+            "unit": "bytes",
+            "method": "cuda_l1_ca_pchase_carveout_cliff",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "smem_carveout_bytes": 16384,
+          "threshold_bytes_per_sm": {
+            "value": 104867.0,
+            "ci95_low": 104599.0,
+            "ci95_high": 106499.0,
+            "rel_uncertainty": 0.1082,
+            "unit": "bytes",
+            "method": "cuda_l1_ca_pchase_carveout_cliff",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "smem_carveout_bytes": 32768,
+          "threshold_bytes_per_sm": {
+            "value": 74144.0,
+            "ci95_low": 74072.0,
+            "ci95_high": 74146.0,
+            "rel_uncertainty": 0.1082,
+            "unit": "bytes",
+            "method": "cuda_l1_ca_pchase_carveout_cliff",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "smem_carveout_bytes": 49152,
+          "threshold_bytes_per_sm": {
+            "value": 74143.0,
+            "ci95_low": 74072.0,
+            "ci95_high": 74147.0,
+            "rel_uncertainty": 0.1082,
+            "unit": "bytes",
+            "method": "cuda_l1_ca_pchase_carveout_cliff",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "smem_carveout_bytes": 65536,
+          "threshold_bytes_per_sm": {
+            "value": 27908.0,
+            "ci95_low": 27877.0,
+            "ci95_high": 27984.0,
+            "rel_uncertainty": 0.1082,
+            "unit": "bytes",
+            "method": "cuda_l1_ca_pchase_carveout_cliff",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "smem_carveout_bytes": 101376,
+          "threshold_bytes_per_sm": {
+            "value": 27981.0,
+            "ci95_low": 27923.0,
+            "ci95_high": 27983.0,
+            "rel_uncertainty": 0.1082,
+            "unit": "bytes",
+            "method": "cuda_l1_ca_pchase_carveout_cliff",
+            "source": "measured",
+            "perturb_group": null
+          }
+        }
       ]
     },
     "compute": {
@@ -57089,13 +57169,13 @@
         "perturb_group": "spill_l2"
       },
       "l1_to_l2_spill_threshold_bytes_per_sm": {
-        "value": 65536.0,
-        "ci95_low": null,
-        "ci95_high": null,
-        "rel_uncertainty": 0.3,
+        "value": 128652.0,
+        "ci95_low": 127974.0,
+        "ci95_high": 129566.0,
+        "rel_uncertainty": 0.1082,
         "unit": "bytes",
-        "method": "m2_estimated",
-        "source": "estimated",
+        "method": "cuda_l1_ca_pchase_carveout_cliff",
+        "source": "measured",
         "perturb_group": null
       }
     },

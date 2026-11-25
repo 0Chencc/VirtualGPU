@@ -554,6 +554,9 @@ int main(int argc, char** argv) {
   if (mode == "gmem-issue-controlled") {
     return run_gmem_issue_controlled(device, samples, warmup);
   }
+  if (mode == "l1-carveout") {
+    return run_l1_carveout(device, samples, warmup);
+  }
   std::fprintf(stderr, "Unknown mode: %s\n", mode.c_str());
   return 2;
 }

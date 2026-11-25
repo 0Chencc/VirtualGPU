@@ -21,8 +21,8 @@ sys.path.insert(0, str(REPO_ROOT / "python"))
 from virtualgpu.profile import validate_profile  # noqa: E402
 
 DEFAULT_BIN = Path(__file__).resolve().parent / "build" / "vgpu_bench"
-SUITE_VERSION = "0.17.0"
-PROFILE_REVISION = "0.17.0-posthoc"
+SUITE_VERSION = "0.18.0"
+PROFILE_REVISION = "0.18.0-posthoc"
 
 
 def find_nvidia_smi() -> str | None:
@@ -297,6 +297,7 @@ def build_profile(
     mma_sf_raw: dict[str, Any],
     sync_abl_raw: dict[str, Any],
     gmem_ctrl_raw: dict[str, Any],
+    l1_carve_raw: dict[str, Any],
     smi_samples: list[dict[str, Any]],
 ) -> dict[str, Any]:
     major = int(query["major"])
@@ -1152,6 +1153,38 @@ def build_profile(
             ),
         })
 
+    l1_to_l2_spill_threshold_by_carveout: list[dict[str, Any]] = []
+    for entry in l1_carve_raw["l1_carveout_sweep"]:
+        smem_b = int(entry["smem_carveout_bytes"])
+        pts = sorted(entry["points"], key=lambda p: int(p["ws_bytes"]))
+        n_samp = min(len(p["latency_ns_samples"]) for p in pts)
+        thresh_samples: list[float] = []
+        for si in range(n_samp):
+            lats = [float(p["latency_ns_samples"][si]) for p in pts]
+            wss = [float(p["ws_bytes"]) for p in pts]
+            l1_lat = statistics.median(lats[:3])
+            l2_lat = statistics.median(lats[-4:])
+            mid = 0.5 * (l1_lat + l2_lat)
+            knee = wss[0]
+            for i in range(1, len(pts)):
+                if lats[i - 1] <= mid <= lats[i] and lats[i] > lats[i - 1]:
+                    frac = (mid - lats[i - 1]) / (lats[i] - lats[i - 1])
+                    knee = wss[i - 1] + frac * (wss[i] - wss[i - 1])
+                    break
+            else:
+                if lats[-1] <= mid:
+                    knee = wss[-1]
+            thresh_samples.append(float(round(knee)))
+        l1_to_l2_spill_threshold_by_carveout.append({
+            "smem_carveout_bytes": smem_b,
+            "threshold_bytes_per_sm": make_measured(
+                thresh_samples, unit="bytes", method="cuda_l1_ca_pchase_carveout_cliff",
+                perturb_group=None, clock_range=sm_range, locked=False, throttle_events=throttle_events,
+            ),
+        })
+    l1_to_l2_spill_threshold_by_carveout.sort(key=lambda x: x["smem_carveout_bytes"])
+    l1_spill_thresh_mv = l1_to_l2_spill_threshold_by_carveout[0]["threshold_bytes_per_sm"]
+
     sm_clock_ghz = (
         (statistics.median(sm_clocks) / 1000.0)
         if sm_clocks
@@ -1258,6 +1291,7 @@ def build_profile(
                 "gmem_load_issue_per_sm": gmem_load_issue_per_sm,
                 "gmem_load_issue_controlled": gmem_load_issue_controlled,
                 "spill_reload_latency_by_count": reload_latency_by_count,
+                "l1_to_l2_spill_threshold_by_carveout": l1_to_l2_spill_threshold_by_carveout,
             },
             "compute": {
                 "mma_tflops_per_sm_by_warps": mma_curves,
@@ -1294,7 +1328,7 @@ def build_profile(
                 "local_mem_l1_miss_bw_per_sm_gbps": make_estimated(40.0, "GB/s", "m2_estimated", "spill_l2"),
                 "local_mem_l1_hit_latency_ns": make_estimated(25.0, "ns", "m2_estimated", "spill_l1"),
                 "local_mem_l1_miss_latency_ns": make_estimated(160.0, "ns", "m2_estimated", "spill_l2"),
-                "l1_to_l2_spill_threshold_bytes_per_sm": make_estimated(65536.0, "bytes", "m2_estimated", None),
+                "l1_to_l2_spill_threshold_bytes_per_sm": l1_spill_thresh_mv,
             },
             "overhead": {
                 "launch_overhead_us": launch_oh_mv,
@@ -1388,11 +1422,14 @@ def main() -> int:
     gmem_ctrl_raw, smi_gc = run_bench_with_clock_polling(
         args.binary, "gmem-issue-controlled", args.device, ["--samples", "11", "--warmup", "2"]
     )
+    l1_carve_raw, smi_l1c = run_bench_with_clock_polling(
+        args.binary, "l1-carveout", args.device, ["--samples", "7", "--warmup", "1"]
+    )
     dispatch_raw, smi_disp = run_bench_with_clock_polling(
         args.binary, "cta-dispatch", args.device, ["--repeats", str(args.repeats)]
     )
     smi_samples = (
-        smi_dram + smi_mma + smi_l2 + smi_cp + smi_lat + smi_launch + smi_lc + smi_rs + smi_mlp + smi_cl + smi_mg + smi_so + smi_clm + smi_mc + smi_sf + smi_sl + smi_gi + smi_sp + smi_sm + smi_ss + smi_ms + smi_sa + smi_gc + smi_disp
+        smi_dram + smi_mma + smi_l2 + smi_cp + smi_lat + smi_launch + smi_lc + smi_rs + smi_mlp + smi_cl + smi_mg + smi_so + smi_clm + smi_mc + smi_sf + smi_sl + smi_gi + smi_sp + smi_sm + smi_ss + smi_ms + smi_sa + smi_gc + smi_l1c + smi_disp
     )
 
     profile = build_profile(
@@ -1401,7 +1438,7 @@ def main() -> int:
         closed_loop_raw, l2_merge_raw, stage_oh_raw, closed_loop_mma_raw,
         mma_chain_raw, serial_fill_raw, sync_loop_raw, gmem_issue_raw,
         spill_lat_raw, strided_mlp_raw, sfu_shfl_raw, mma_sf_raw,
-        sync_abl_raw, gmem_ctrl_raw, smi_samples
+        sync_abl_raw, gmem_ctrl_raw, l1_carve_raw, smi_samples
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("w", encoding="utf-8") as fh:
