@@ -799,3 +799,31 @@ def test_transfer_width_bytes_from_ptx_aligned_vs_unaligned() -> None:
         assert pl_u["load_A"]["transfer_width_bytes"] == 2
         assert pl_u["load_B"]["transfer_width_bytes"] == 2
         assert ep_u["store_C"]["transfer_width_bytes"] == 2
+
+
+def test_mock_tensor_dtype_singleton_survives_gc_and_mixed_specialization() -> None:
+    """Alternating mixed-dtype MockTensor specializations with gc.collect() must always match exact signatures."""
+    import gc
+
+    combos = [
+        ("f16", "f32", "bf16", "*fp16", "*fp32", "*bf16"),
+        ("f32", "bf16", "f16", "*fp32", "*bf16", "*fp16"),
+        ("bf16", "f16", "f32", "*bf16", "*fp16", "*fp32"),
+    ]
+    kw = {"BLOCK_SIZE_M": 64, "BLOCK_SIZE_N": 64, "BLOCK_SIZE_K": 32, "GROUP_SIZE_M": 4, "num_warps": 4, "num_stages": 3}
+    for i in range(60):
+        da, db, dc, ea, eb, ec = combos[i % len(combos)]
+        args = (
+            MockTensor(da, 0x10000),
+            MockTensor(db, 0x200000),
+            MockTensor(dc, 0x400000),
+            128, 128, 128,
+            128, 1, 128, 1, 128, 1,
+        )
+        _, sig, _, _ = specialize_triton_call(_matmul_kernel, "sm_89", args, kw)
+        assert sig["a_ptr"] == ea, f"iter {i}: expected a_ptr={ea}, got {sig['a_ptr']}"
+        assert sig["b_ptr"] == eb, f"iter {i}: expected b_ptr={eb}, got {sig['b_ptr']}"
+        assert sig["c_ptr"] == ec, f"iter {i}: expected c_ptr={ec}, got {sig['c_ptr']}"
+        del args
+        if i % 3 == 0:
+            gc.collect()
