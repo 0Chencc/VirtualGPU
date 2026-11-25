@@ -27,7 +27,7 @@ from virtualgpu.frontend.compiler import (
 from virtualgpu.frontend.scalar_eval import evaluate_ttgir_cta_offsets
 from virtualgpu.frontend.ttgir import dtype_bits, parse_ttgir_summary
 
-KERNEL_IR_CACHE_VERSION = "3"
+KERNEL_IR_CACHE_VERSION = "4"
 _IR_MEMORY_CACHE: dict[str, tuple[dict[str, Any], str]] = {}
 
 
@@ -375,7 +375,7 @@ def _assemble_gemm_kernel_ir(
     tile_bytes_c = block_m * block_n * elem_bytes
 
     prologue_ops: list[dict[str, Any]] = []
-    smem_load_bytes = summary.smem_load_bytes_per_iter or (tile_bytes_a + tile_bytes_b)
+    smem_load_bytes = (summary.smem_load_bytes_per_iter or (tile_bytes_a + tile_bytes_b)) + summary.loop_ptx_ld_shared_bytes
     pipeline_ops: list[dict[str, Any]] = [
         {
             "op_id": "load_A",
@@ -405,12 +405,21 @@ def _assemble_gemm_kernel_ir(
             "bytes_per_cta": smem_load_bytes,
         },
     ]
+    if summary.loop_ptx_st_shared_bytes > 0:
+        pipeline_ops.append({
+            "op_id": "smem_store_AB",
+            "kind": "smem_store",
+            "warp_group_id": 0,
+            "stage_offset": 0,
+            "bytes_per_cta": summary.loop_ptx_st_shared_bytes,
+        })
 
     if summary.mma is not None:
         im, in_, ik = summary.mma.inst_mnk
-        mma_count = max(
-            1,
-            math.ceil(block_m / im) * math.ceil(block_n / in_) * math.ceil(block_k / ik),
+        mma_count = (
+            sum(d.count for d in summary.mma_dots)
+            if summary.mma_dots
+            else max(1, math.ceil(block_m / im) * math.ceil(block_n / in_) * math.ceil(block_k / ik))
         )
         pipeline_ops.append({
             "op_id": "mma_0",
@@ -426,13 +435,14 @@ def _assemble_gemm_kernel_ir(
             "count": mma_count,
         })
 
-    if summary.loop_barriers > 0:
+    barrier_count = summary.loop_ptx_barriers or summary.loop_barriers
+    if barrier_count > 0:
         pipeline_ops.append({
             "op_id": "stage_sync",
             "kind": "barrier",
             "warp_group_id": 0,
             "stage_offset": 0,
-            "count": summary.loop_barriers,
+            "count": barrier_count,
         })
 
     epilogue_ops: list[dict[str, Any]] = [

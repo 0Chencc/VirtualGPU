@@ -385,3 +385,44 @@ def test_attention_derives_tile_from_ttgir_and_matches_gemm_toolchain_keys() -> 
     pl_ops = {op["op_id"]: op for op in ir_n32["body"]["pipeline_loop"]["ops"]}
     assert pl_ops["load_K"]["nominal_bytes_per_cta"] == 32 * 64 * 2
     assert pl_ops["load_V"]["nominal_bytes_per_cta"] == 32 * 64 * 2
+
+
+@pytest.mark.parametrize(
+    ("bm", "num_warps", "expected_mma", "expect_override", "expect_smem_store"),
+    [
+        (64, 4, 256, False, True),
+        (64, 8, 384, True, True),
+        (128, 4, 512, False, False),
+        (128, 8, 512, False, False),
+    ],
+)
+def test_attention_ptx_ground_truth_mma_barriers_and_smem(
+    bm: int,
+    num_warps: int,
+    expected_mma: int,
+    expect_override: bool,
+    expect_smem_store: bool,
+) -> None:
+    """BM=64/128 x 4/8 warps: MMA, barrier, and smem counts must match PTX loop ground truth."""
+    schema = _load_schema()
+    ir = extract_attention_kernel_ir(
+        _bm_bn_attention_fwd,
+        Z=2,
+        H=4,
+        N_CTX=512,
+        D=128,
+        config={"BM": bm, "BN": 32, "num_warps": num_warps, "num_stages": 3},
+        target_arch="sm_89",
+        dtype="f16",
+        causal=False,
+    )
+    jsonschema.validate(instance=ir, schema=schema)
+    ops = {op["op_id"]: op for op in ir["body"]["pipeline_loop"]["ops"]}
+    assert ops["mma_qk"]["count"] + ops["mma_pv"]["count"] == expected_mma
+    assert ("mma_count_ptx_override" in ir["diagnostics"]) is expect_override
+    if expect_smem_store:
+        assert ops["sync_loop"]["count"] >= 6
+        assert "smem_store_loop" in ops and ops["smem_store_loop"]["bytes_per_cta"] > 0
+    else:
+        assert ops["sync_loop"]["count"] == 2
+        assert "smem_store_loop" not in ops

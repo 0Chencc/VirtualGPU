@@ -53,6 +53,9 @@ class TtgirSummary:
     loop_shfl_per_warp: int = 0
     prologue_smem_store_bytes: int = 0
     num_top_level_loops: int = 0
+    loop_ptx_barriers: int = 0
+    loop_ptx_st_shared_bytes: int = 0
+    loop_ptx_ld_shared_bytes: int = 0
 
 
 _DTYPE_BITS: dict[str, int] = {
@@ -116,6 +119,13 @@ _RE_PTX_CP_ASYNC_SIZE = re.compile(
     r"\bcp\.async\.(?:ca|cg)\.shared(?:\.global|::cta\.global)[^;]*,\s*(0x[0-9a-fA-F]+|\d+)\b"
 )
 _RE_PTX_TMA_BULK = re.compile(r"\bcp\.async\.bulk\.tensor\b")
+_RE_PTX_BAR_SYNC = re.compile(r"\bbar\.sync\b")
+_RE_PTX_ST_SHARED = re.compile(
+    r"\bst\.shared(?:\.[a-z0-9_:]+)*?(?:\.(v[24]))?\.(?:b|u|s|f)(8|16|32|64)\b"
+)
+_RE_PTX_LD_SHARED = re.compile(
+    r"\bld\.shared(?:\.[a-z0-9_:]+)*?(?:\.(v[24]))?\.(?:b|u|s|f)(8|16|32|64)\b"
+)
 
 
 def dtype_bits(dtype: str) -> int:
@@ -420,11 +430,41 @@ def _extract_mma(ttgir: str, ptx: str) -> MmaInfo | None:
     return None
 
 
-def _extract_all_dots(loop_body: str, ttgir: str, ptx: str) -> list[MmaDotInfo]:
-    """Extract all tt.dot operations inside the loop body with tile shapes and instruction counts."""
+def _extract_ptx_loop_sync_and_smem(
+    ptx_loop: str,
+    num_warps: int,
+    warp_size: int,
+) -> tuple[int, int, int]:
+    """Count (bar.sync, st.shared bytes/CTA, ld.shared bytes/CTA) inside the PTX loop body."""
+    if not ptx_loop:
+        return 0, 0, 0
+    bars = len(_RE_PTX_BAR_SYNC.findall(ptx_loop))
+    threads = num_warps * warp_size
+    st_bytes = 0
+    for m in _RE_PTX_ST_SHARED.finditer(ptx_loop):
+        vec = 4 if m.group(1) == "v4" else (2 if m.group(1) == "v2" else 1)
+        st_bytes += vec * (int(m.group(2)) // 8) * threads
+    ld_bytes = 0
+    for m in _RE_PTX_LD_SHARED.finditer(ptx_loop):
+        vec = 4 if m.group(1) == "v4" else (2 if m.group(1) == "v2" else 1)
+        ld_bytes += vec * (int(m.group(2)) // 8) * threads
+    return bars, st_bytes, ld_bytes
+
+
+def _extract_all_dots(
+    loop_body: str,
+    ttgir: str,
+    ptx: str,
+    ptx_loop: str = "",
+    num_warps: int = 4,
+) -> tuple[list[MmaDotInfo], bool]:
+    """Extract all tt.dot operations inside the loop body with PTX-verified instruction counts.
+
+    Returns (dots, ptx_overrode_tile_count).
+    """
     base_mma = _extract_mma(ttgir, ptx)
     if base_mma is None:
-        return []
+        return [], False
     im, in_, ik = base_mma.inst_mnk
     dots: list[MmaDotInfo] = []
     source = loop_body if loop_body else ttgir
@@ -447,7 +487,73 @@ def _extract_all_dots(loop_body: str, ttgir: str, ptx: str) -> list[MmaDotInfo]:
                 count=count,
             )
         )
-    return dots
+
+    # Override analytical counts with actual PTX loop mma.sync counts * num_warps
+    # so warp-replicated layouts (e.g. BM=64, 8 warps) reflect real hardware issue.
+    overrode = False
+    if dots and ptx_loop and base_mma.op_class == "mma.sync":
+        lines = ptx_loop.splitlines()
+        mma_idxs = [i for i, ln in enumerate(lines) if "mma.sync.aligned" in ln]
+        if mma_idxs:
+            total_ptx = len(mma_idxs) * num_warps
+            analytical_total = sum(d.count for d in dots)
+            if len(dots) == 2:
+                ex2_idxs = [i for i, ln in enumerate(lines) if "ex2.approx" in ln]
+                if ex2_idxs:
+                    split = ex2_idxs[0]
+                    before = sum(1 for i in mma_idxs if i < split) * num_warps
+                    after = sum(1 for i in mma_idxs if i > split) * num_warps
+                    if before > 0 and after > 0:
+                        overrode = (before != dots[0].count) or (after != dots[1].count)
+                        dots[0] = MmaDotInfo(
+                            op_class=dots[0].op_class,
+                            tile_mnk=dots[0].tile_mnk,
+                            inst_mnk=dots[0].inst_mnk,
+                            a_dtype=dots[0].a_dtype,
+                            b_dtype=dots[0].b_dtype,
+                            acc_dtype=dots[0].acc_dtype,
+                            count=before,
+                        )
+                        dots[1] = MmaDotInfo(
+                            op_class=dots[1].op_class,
+                            tile_mnk=dots[1].tile_mnk,
+                            inst_mnk=dots[1].inst_mnk,
+                            a_dtype=dots[1].a_dtype,
+                            b_dtype=dots[1].b_dtype,
+                            acc_dtype=dots[1].acc_dtype,
+                            count=after,
+                        )
+                        return dots, overrode
+            if len(dots) == 1:
+                overrode = total_ptx != analytical_total
+                dots[0] = MmaDotInfo(
+                    op_class=dots[0].op_class,
+                    tile_mnk=dots[0].tile_mnk,
+                    inst_mnk=dots[0].inst_mnk,
+                    a_dtype=dots[0].a_dtype,
+                    b_dtype=dots[0].b_dtype,
+                    acc_dtype=dots[0].acc_dtype,
+                    count=total_ptx,
+                )
+            elif total_ptx != analytical_total and analytical_total > 0:
+                overrode = True
+                remaining = total_ptx
+                for idx, d in enumerate(dots):
+                    if idx == len(dots) - 1:
+                        scaled = max(1, remaining)
+                    else:
+                        scaled = max(1, round(total_ptx * d.count / analytical_total))
+                        remaining -= scaled
+                    dots[idx] = MmaDotInfo(
+                        op_class=d.op_class,
+                        tile_mnk=d.tile_mnk,
+                        inst_mnk=d.inst_mnk,
+                        a_dtype=d.a_dtype,
+                        b_dtype=d.b_dtype,
+                        acc_dtype=d.acc_dtype,
+                        count=scaled,
+                    )
+    return dots, overrode
 
 
 def parse_ttgir_summary(
@@ -551,9 +657,13 @@ def parse_ttgir_summary(
         loop_barriers = 1
 
     mma = _extract_mma(ttgir, ptx)
-    mma_dots = _extract_all_dots(loop_body, ttgir, ptx)
-    ptx_loop = _extract_ptx_loop_body(ptx)
+    mma_dots, mma_overrode = _extract_all_dots(loop_body, ttgir, ptx, ptx_loop=ptx_loop, num_warps=num_warps)
+    if mma_overrode:
+        diagnostics.append("mma_count_ptx_override")
     loop_alu_per_warp, loop_sfu_per_warp, loop_shfl_per_warp = _count_ptx_loop_scalar_ops(ptx_loop)
+    loop_ptx_barriers, loop_ptx_st_shared_bytes, loop_ptx_ld_shared_bytes = _extract_ptx_loop_sync_and_smem(
+        ptx_loop, num_warps, warp_size
+    )
 
     return TtgirSummary(
         num_warps=num_warps,
@@ -575,4 +685,7 @@ def parse_ttgir_summary(
         loop_shfl_per_warp=loop_shfl_per_warp,
         prologue_smem_store_bytes=prologue_smem_store_bytes,
         num_top_level_loops=num_top_level_loops,
+        loop_ptx_barriers=loop_ptx_barriers,
+        loop_ptx_st_shared_bytes=loop_ptx_st_shared_bytes,
+        loop_ptx_ld_shared_bytes=loop_ptx_ld_shared_bytes,
     )

@@ -402,7 +402,10 @@ def _assemble_attention_kernel_ir(
             }
         )
 
-    smem_load_bytes = summary.smem_load_bytes_per_iter or (tile_bytes_q + tile_bytes_k + tile_bytes_v)
+    smem_load_bytes = (
+        (summary.smem_load_bytes_per_iter or (tile_bytes_q + tile_bytes_k + tile_bytes_v))
+        + summary.loop_ptx_ld_shared_bytes
+    )
     pipeline_ops: list[dict[str, Any]] = [
         {
             "op_id": "load_K",
@@ -432,6 +435,16 @@ def _assemble_attention_kernel_ir(
             "bytes_per_cta": smem_load_bytes,
         },
     ]
+    if summary.loop_ptx_st_shared_bytes > 0:
+        pipeline_ops.append(
+            {
+                "op_id": "smem_store_loop",
+                "kind": "smem_store",
+                "warp_group_id": 0,
+                "stage_offset": 0,
+                "bytes_per_cta": summary.loop_ptx_st_shared_bytes,
+            }
+        )
 
     dot_names = ("mma_qk", "mma_pv")
     for idx, dot in enumerate(summary.mma_dots):
@@ -494,7 +507,7 @@ def _assemble_attention_kernel_ir(
             "kind": "barrier",
             "warp_group_id": 0,
             "stage_offset": 0,
-            "count": max(1, summary.loop_barriers),
+            "count": max(1, summary.loop_ptx_barriers or summary.loop_barriers),
         }
     )
 
