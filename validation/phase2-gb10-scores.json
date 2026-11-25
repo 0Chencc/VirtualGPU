@@ -1,0 +1,4484 @@
+{
+  "cohorts": {
+    "diagnostic": {
+      "cases": {
+        "gb10-tma": {
+          "candidate_session_status_counts": {
+            "ok": 9
+          },
+          "complete": true,
+          "cache": {
+            "warm": {
+              "core": {
+                "kendall_tau_b": -0.3333333333333333,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k32-w4-s3-g1",
+                  "m128n128k32-w4-s4-g1",
+                  "m128n128k32-w4-s2-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 3,
+                "measured_configs": 3,
+                "configs": {
+                  "m128n128k32-w4-s2-g1": {
+                    "measured_median_ns": 20287.999883294106,
+                    "measured_median_ci95_ns": [
+                      20287.999883294106,
+                      20320.000126957893
+                    ],
+                    "relative_ci95_half_width": 0.0007886495427806571,
+                    "gap_to_measured_best": 0.0,
+                    "nominal_latency_ns": 20090.15545658501,
+                    "prediction_status": "ok"
+                  },
+                  "m128n128k32-w4-s3-g1": {
+                    "measured_median_ns": 20352.00037062168,
+                    "measured_median_ci95_ns": [
+                      20320.000126957893,
+                      20463.99936079979
+                    ],
+                    "relative_ci95_half_width": 0.003537716961959189,
+                    "gap_to_measured_best": 0.0031545981711227356,
+                    "nominal_latency_ns": 19619.986635428344,
+                    "prediction_status": "ok"
+                  },
+                  "m128n128k32-w4-s4-g1": {
+                    "measured_median_ns": 22255.999967455864,
+                    "measured_median_ci95_ns": [
+                      22144.00004595518,
+                      22336.000576615334
+                    ],
+                    "relative_ci95_half_width": 0.004313455493819819,
+                    "gap_to_measured_best": 0.09700315928049097,
+                    "nominal_latency_ns": 20082.253570670342,
+                    "prediction_status": "ok"
+                  }
+                },
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "indistinguishable": 1
+                  },
+                  "a_faster": {
+                    "indistinguishable": 2
+                  }
+                },
+                "mean_absolute_relative_error": 0.0477965267657194
+              }
+            },
+            "cold": {
+              "core": {
+                "kendall_tau_b": 0.8164965809277261,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k32-w4-s3-g1",
+                  "m128n128k32-w4-s4-g1",
+                  "m128n128k32-w4-s2-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 3,
+                "measured_configs": 3,
+                "configs": {
+                  "m128n128k32-w4-s2-g1": {
+                    "measured_median_ns": 24415.9996509552,
+                    "measured_median_ci95_ns": [
+                      24383.999407291412,
+                      24480.000138282776
+                    ],
+                    "relative_ci95_half_width": 0.0019659389818923057,
+                    "gap_to_measured_best": 0.09312316532251175,
+                    "nominal_latency_ns": 24330.282334292984,
+                    "prediction_status": "ok"
+                  },
+                  "m128n128k32-w4-s3-g1": {
+                    "measured_median_ns": 22336.000576615334,
+                    "measured_median_ci95_ns": [
+                      22336.000576615334,
+                      22368.00082027912
+                    ],
+                    "relative_ci95_half_width": 0.0007163378142390111,
+                    "gap_to_measured_best": 0.0,
+                    "nominal_latency_ns": 20122.699264082134,
+                    "prediction_status": "ok"
+                  },
+                  "m128n128k32-w4-s4-g1": {
+                    "measured_median_ns": 22336.000576615334,
+                    "measured_median_ci95_ns": [
+                      22336.000576615334,
+                      22399.99920129776
+                    ],
+                    "relative_ci95_half_width": 0.0014326339324469257,
+                    "gap_to_measured_best": 0.0,
+                    "nominal_latency_ns": 20309.2231697295,
+                    "prediction_status": "ok"
+                  }
+                },
+                "pair_confusion": {
+                  "b_faster": {
+                    "indistinguishable": 2
+                  },
+                  "indistinguishable": {
+                    "indistinguishable": 1
+                  }
+                },
+                "mean_absolute_relative_error": 0.06444743412974141
+              }
+            }
+          }
+        }
+      }
+    },
+    "primary": {
+      "cases": {
+        "decode-1": {
+          "candidate_session_status_counts": {
+            "ok": 108
+          },
+          "complete": true,
+          "cache": {
+            "warm": {
+              "core": {
+                "kendall_tau_b": 0.5733164961430681,
+                "k": 5,
+                "shortlist": [
+                  "m16n64k32-w4-s4-g1",
+                  "m16n64k32-w8-s4-g1",
+                  "m32n64k32-w4-s4-g1",
+                  "m32n64k32-w8-s4-g1",
+                  "m64n64k32-w4-s4-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.010432537709912593,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "unresolved": {
+                    "indistinguishable": 94,
+                    "a_faster": 4
+                  },
+                  "b_faster": {
+                    "indistinguishable": 75,
+                    "a_faster": 2,
+                    "b_faster": 108
+                  },
+                  "indistinguishable": {
+                    "indistinguishable": 171,
+                    "a_faster": 11,
+                    "b_faster": 6
+                  },
+                  "a_faster": {
+                    "indistinguishable": 52,
+                    "a_faster": 107
+                  }
+                },
+                "mean_absolute_relative_error": 0.0714277724832279
+              },
+              "neusight_style": {
+                "kendall_tau_b": 0.4463861614599607,
+                "k": 5,
+                "shortlist": [
+                  "m16n64k32-w4-s4-g1",
+                  "m32n64k32-w4-s4-g1",
+                  "m16n64k32-w8-s4-g1",
+                  "m64n64k32-w4-s4-g1",
+                  "m32n64k32-w8-s4-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.010432537709912593,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "unresolved": {
+                    "b_faster": 55,
+                    "indistinguishable": 14,
+                    "a_faster": 29
+                  },
+                  "b_faster": {
+                    "b_faster": 159,
+                    "indistinguishable": 6,
+                    "a_faster": 20
+                  },
+                  "indistinguishable": {
+                    "indistinguishable": 66,
+                    "b_faster": 92,
+                    "a_faster": 30
+                  },
+                  "a_faster": {
+                    "a_faster": 107,
+                    "indistinguishable": 20,
+                    "b_faster": 32
+                  }
+                },
+                "mean_absolute_relative_error": 0.5672682888716533
+              },
+              "roofline_wave": {
+                "kendall_tau_b": 0.15118365057797895,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k64-w4-s4-g1",
+                  "m128n128k64-w8-s4-g1",
+                  "m128n64k64-w4-s4-g1",
+                  "m128n64k64-w8-s1-g1",
+                  "m128n64k64-w8-s2-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.014886914612151969,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "unresolved": {
+                    "indistinguishable": 15,
+                    "a_faster": 57,
+                    "b_faster": 26
+                  },
+                  "b_faster": {
+                    "b_faster": 97,
+                    "a_faster": 66,
+                    "indistinguishable": 22
+                  },
+                  "indistinguishable": {
+                    "indistinguishable": 36,
+                    "a_faster": 76,
+                    "b_faster": 76
+                  },
+                  "a_faster": {
+                    "a_faster": 113,
+                    "indistinguishable": 23,
+                    "b_faster": 23
+                  }
+                },
+                "mean_absolute_relative_error": 2.2276908224445693
+              }
+            },
+            "cold": {
+              "core": {
+                "kendall_tau_b": 0.5650028525797663,
+                "k": 5,
+                "shortlist": [
+                  "m16n64k32-w4-s4-g1",
+                  "m16n64k32-w8-s4-g1",
+                  "m32n64k32-w4-s4-g1",
+                  "m32n64k32-w8-s4-g1",
+                  "m64n64k32-w4-s4-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "indistinguishable": 201,
+                    "a_faster": 10,
+                    "b_faster": 6
+                  },
+                  "b_faster": {
+                    "indistinguishable": 73,
+                    "b_faster": 108,
+                    "a_faster": 1
+                  },
+                  "unresolved": {
+                    "indistinguishable": 76,
+                    "a_faster": 4
+                  },
+                  "a_faster": {
+                    "indistinguishable": 43,
+                    "a_faster": 108
+                  }
+                },
+                "mean_absolute_relative_error": 0.08203518395894542
+              },
+              "neusight_style": {
+                "kendall_tau_b": 0.5764360442487823,
+                "k": 5,
+                "shortlist": [
+                  "m16n64k32-w4-s4-g1",
+                  "m32n64k32-w4-s4-g1",
+                  "m16n64k32-w8-s4-g1",
+                  "m64n64k32-w4-s4-g1",
+                  "m32n64k32-w8-s4-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "b_faster": 88,
+                    "indistinguishable": 81,
+                    "a_faster": 48
+                  },
+                  "b_faster": {
+                    "b_faster": 152,
+                    "indistinguishable": 8,
+                    "a_faster": 22
+                  },
+                  "unresolved": {
+                    "b_faster": 33,
+                    "indistinguishable": 10,
+                    "a_faster": 37
+                  },
+                  "a_faster": {
+                    "a_faster": 106,
+                    "indistinguishable": 22,
+                    "b_faster": 23
+                  }
+                },
+                "mean_absolute_relative_error": 0.32357315131542586
+              },
+              "roofline_wave": {
+                "kendall_tau_b": 0.14988014380826842,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k64-w4-s4-g1",
+                  "m128n128k64-w8-s4-g1",
+                  "m128n64k64-w4-s4-g1",
+                  "m128n64k64-w8-s1-g1",
+                  "m128n64k64-w8-s2-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.0036280927010181596,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "indistinguishable": 38,
+                    "a_faster": 89,
+                    "b_faster": 90
+                  },
+                  "b_faster": {
+                    "b_faster": 97,
+                    "a_faster": 62,
+                    "indistinguishable": 23
+                  },
+                  "unresolved": {
+                    "indistinguishable": 13,
+                    "a_faster": 52,
+                    "b_faster": 15
+                  },
+                  "a_faster": {
+                    "a_faster": 109,
+                    "indistinguishable": 22,
+                    "b_faster": 20
+                  }
+                },
+                "mean_absolute_relative_error": 2.1527105957472648
+              }
+            }
+          }
+        },
+        "decode-16": {
+          "candidate_session_status_counts": {
+            "ok": 108
+          },
+          "complete": true,
+          "cache": {
+            "warm": {
+              "core": {
+                "kendall_tau_b": 0.23211476074889537,
+                "k": 5,
+                "shortlist": [
+                  "m32n64k32-w8-s4-g1",
+                  "m64n128k32-w8-s4-g1",
+                  "m32n64k32-w4-s4-g1",
+                  "m128n64k64-w4-s2-g1",
+                  "m16n64k32-w4-s4-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.0033749620748955156,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "indistinguishable": 352
+                  },
+                  "a_faster": {
+                    "indistinguishable": 68
+                  },
+                  "unresolved": {
+                    "indistinguishable": 73
+                  },
+                  "b_faster": {
+                    "indistinguishable": 137
+                  }
+                },
+                "mean_absolute_relative_error": 0.08625773738788108
+              },
+              "neusight_style": {
+                "kendall_tau_b": 0.23211476074889537,
+                "k": 5,
+                "shortlist": [
+                  "m64n64k32-w4-s4-g1",
+                  "m64n64k32-w8-s4-g1",
+                  "m32n64k32-w4-s4-g1",
+                  "m128n64k64-w4-s2-g1",
+                  "m16n64k32-w4-s4-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.011131479981776105,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "b_faster": 175,
+                    "indistinguishable": 69,
+                    "a_faster": 108
+                  },
+                  "a_faster": {
+                    "b_faster": 12,
+                    "indistinguishable": 8,
+                    "a_faster": 48
+                  },
+                  "unresolved": {
+                    "b_faster": 38,
+                    "indistinguishable": 8,
+                    "a_faster": 27
+                  },
+                  "b_faster": {
+                    "b_faster": 104,
+                    "a_faster": 17,
+                    "indistinguishable": 16
+                  }
+                },
+                "mean_absolute_relative_error": 0.12468766904359724
+              },
+              "roofline_wave": {
+                "kendall_tau_b": -0.057538919127898276,
+                "k": 5,
+                "shortlist": [
+                  "m128n64k64-w4-s1-g1",
+                  "m128n64k64-w4-s2-g1",
+                  "m128n64k64-w4-s4-g1",
+                  "m128n64k64-w8-s4-g1",
+                  "m128n128k64-w4-s1-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.07543370824088935,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "indistinguishable": 38,
+                    "b_faster": 125,
+                    "a_faster": 189
+                  },
+                  "a_faster": {
+                    "a_faster": 45,
+                    "b_faster": 17,
+                    "indistinguishable": 6
+                  },
+                  "unresolved": {
+                    "a_faster": 46,
+                    "indistinguishable": 9,
+                    "b_faster": 18
+                  },
+                  "b_faster": {
+                    "indistinguishable": 21,
+                    "a_faster": 54,
+                    "b_faster": 62
+                  }
+                },
+                "mean_absolute_relative_error": 1.147416203133873
+              }
+            },
+            "cold": {
+              "core": {
+                "kendall_tau_b": 0.23529441500572953,
+                "k": 5,
+                "shortlist": [
+                  "m64n128k32-w8-s4-g1",
+                  "m32n64k32-w8-s4-g1",
+                  "m32n64k32-w4-s4-g1",
+                  "m128n64k64-w4-s2-g1",
+                  "m64n64k32-w4-s4-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.004919615878055117,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "indistinguishable": 372
+                  },
+                  "a_faster": {
+                    "indistinguishable": 63
+                  },
+                  "unresolved": {
+                    "indistinguishable": 80
+                  },
+                  "b_faster": {
+                    "indistinguishable": 115
+                  }
+                },
+                "mean_absolute_relative_error": 0.07729363876614778
+              },
+              "neusight_style": {
+                "kendall_tau_b": 0.25119268628990044,
+                "k": 5,
+                "shortlist": [
+                  "m64n64k32-w4-s4-g1",
+                  "m64n64k32-w8-s4-g1",
+                  "m32n64k32-w4-s4-g1",
+                  "m128n64k64-w4-s2-g1",
+                  "m16n64k32-w4-s4-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.009479229880948958,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "b_faster": 185,
+                    "indistinguishable": 70,
+                    "a_faster": 117
+                  },
+                  "a_faster": {
+                    "b_faster": 12,
+                    "indistinguishable": 8,
+                    "a_faster": 43
+                  },
+                  "unresolved": {
+                    "b_faster": 47,
+                    "a_faster": 24,
+                    "indistinguishable": 9
+                  },
+                  "b_faster": {
+                    "b_faster": 85,
+                    "a_faster": 16,
+                    "indistinguishable": 14
+                  }
+                },
+                "mean_absolute_relative_error": 0.37459404502569166
+              },
+              "roofline_wave": {
+                "kendall_tau_b": -0.0406157076196929,
+                "k": 5,
+                "shortlist": [
+                  "m128n64k64-w4-s1-g1",
+                  "m128n64k64-w4-s2-g1",
+                  "m128n64k64-w4-s4-g1",
+                  "m128n64k64-w8-s4-g1",
+                  "m128n128k64-w4-s1-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.08837288930531817,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "indistinguishable": 40,
+                    "b_faster": 132,
+                    "a_faster": 200
+                  },
+                  "a_faster": {
+                    "a_faster": 42,
+                    "b_faster": 17,
+                    "indistinguishable": 4
+                  },
+                  "unresolved": {
+                    "indistinguishable": 14,
+                    "a_faster": 43,
+                    "b_faster": 23
+                  },
+                  "b_faster": {
+                    "a_faster": 49,
+                    "indistinguishable": 16,
+                    "b_faster": 50
+                  }
+                },
+                "mean_absolute_relative_error": 1.1625603369034778
+              }
+            }
+          }
+        },
+        "decode-32": {
+          "candidate_session_status_counts": {
+            "ok": 108
+          },
+          "complete": true,
+          "cache": {
+            "warm": {
+              "core": {
+                "kendall_tau_b": 0.5011947448335865,
+                "k": 5,
+                "shortlist": [
+                  "m64n64k32-w4-s4-g1",
+                  "m64n64k32-w8-s4-g1",
+                  "m16n64k32-w4-s4-g1",
+                  "m32n64k32-w8-s4-g1",
+                  "m16n64k32-w8-s4-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.013448038314785471,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "unresolved": {
+                    "indistinguishable": 74,
+                    "a_faster": 6
+                  },
+                  "b_faster": {
+                    "indistinguishable": 109,
+                    "b_faster": 106
+                  },
+                  "indistinguishable": {
+                    "indistinguishable": 161,
+                    "a_faster": 12,
+                    "b_faster": 6
+                  },
+                  "a_faster": {
+                    "indistinguishable": 51,
+                    "a_faster": 105
+                  }
+                },
+                "mean_absolute_relative_error": 0.09421381948793218
+              },
+              "neusight_style": {
+                "kendall_tau_b": 0.3904761904761905,
+                "k": 5,
+                "shortlist": [
+                  "m16n64k32-w4-s4-g1",
+                  "m16n64k32-w8-s4-g1",
+                  "m16n64k32-w8-s2-g1",
+                  "m16n64k32-w4-s2-g1",
+                  "m32n64k32-w4-s4-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.013448038314785471,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "unresolved": {
+                    "b_faster": 37,
+                    "indistinguishable": 18,
+                    "a_faster": 25
+                  },
+                  "b_faster": {
+                    "b_faster": 156,
+                    "indistinguishable": 27,
+                    "a_faster": 32
+                  },
+                  "indistinguishable": {
+                    "b_faster": 65,
+                    "a_faster": 86,
+                    "indistinguishable": 28
+                  },
+                  "a_faster": {
+                    "a_faster": 99,
+                    "indistinguishable": 25,
+                    "b_faster": 32
+                  }
+                },
+                "mean_absolute_relative_error": 0.17563732143138505
+              },
+              "roofline_wave": {
+                "kendall_tau_b": 0.15648596685067692,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k64-w4-s4-g1",
+                  "m128n128k64-w8-s2-g1",
+                  "m128n128k64-w8-s4-g1",
+                  "m128n64k64-w4-s4-g1",
+                  "m128n64k64-w8-s1-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "unresolved": {
+                    "indistinguishable": 6,
+                    "a_faster": 57,
+                    "b_faster": 17
+                  },
+                  "b_faster": {
+                    "b_faster": 85,
+                    "a_faster": 113,
+                    "indistinguishable": 17
+                  },
+                  "indistinguishable": {
+                    "b_faster": 77,
+                    "indistinguishable": 37,
+                    "a_faster": 65
+                  },
+                  "a_faster": {
+                    "a_faster": 118,
+                    "indistinguishable": 23,
+                    "b_faster": 15
+                  }
+                },
+                "mean_absolute_relative_error": 3.104996799759574
+              }
+            },
+            "cold": {
+              "core": {
+                "kendall_tau_b": 0.49164817826532764,
+                "k": 5,
+                "shortlist": [
+                  "m64n64k32-w4-s4-g1",
+                  "m64n64k32-w8-s4-g1",
+                  "m16n64k32-w4-s4-g1",
+                  "m32n64k32-w8-s4-g1",
+                  "m16n64k32-w8-s4-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.00914363297373777,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "unresolved": {
+                    "indistinguishable": 96,
+                    "b_faster": 1,
+                    "a_faster": 4
+                  },
+                  "b_faster": {
+                    "indistinguishable": 103,
+                    "b_faster": 105
+                  },
+                  "indistinguishable": {
+                    "indistinguishable": 154,
+                    "a_faster": 16,
+                    "b_faster": 6
+                  },
+                  "a_faster": {
+                    "indistinguishable": 42,
+                    "a_faster": 103
+                  }
+                },
+                "mean_absolute_relative_error": 0.09317625370405123
+              },
+              "neusight_style": {
+                "kendall_tau_b": 0.34285714285714286,
+                "k": 5,
+                "shortlist": [
+                  "m16n64k32-w4-s4-g1",
+                  "m16n64k32-w8-s4-g1",
+                  "m16n64k32-w8-s2-g1",
+                  "m16n64k32-w4-s2-g1",
+                  "m32n64k32-w4-s4-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.009401180954642596,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "unresolved": {
+                    "b_faster": 46,
+                    "indistinguishable": 20,
+                    "a_faster": 35
+                  },
+                  "b_faster": {
+                    "b_faster": 151,
+                    "indistinguishable": 27,
+                    "a_faster": 30
+                  },
+                  "indistinguishable": {
+                    "b_faster": 63,
+                    "a_faster": 85,
+                    "indistinguishable": 28
+                  },
+                  "a_faster": {
+                    "a_faster": 92,
+                    "indistinguishable": 23,
+                    "b_faster": 30
+                  }
+                },
+                "mean_absolute_relative_error": 0.2808282775824099
+              },
+              "roofline_wave": {
+                "kendall_tau_b": 0.13342487699899822,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k64-w4-s4-g1",
+                  "m128n128k64-w8-s2-g1",
+                  "m128n128k64-w8-s4-g1",
+                  "m128n64k64-w4-s4-g1",
+                  "m128n64k64-w8-s1-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "unresolved": {
+                    "indistinguishable": 7,
+                    "a_faster": 68,
+                    "b_faster": 26
+                  },
+                  "b_faster": {
+                    "b_faster": 86,
+                    "a_faster": 103,
+                    "indistinguishable": 19
+                  },
+                  "indistinguishable": {
+                    "b_faster": 73,
+                    "indistinguishable": 34,
+                    "a_faster": 69
+                  },
+                  "a_faster": {
+                    "a_faster": 113,
+                    "indistinguishable": 23,
+                    "b_faster": 9
+                  }
+                },
+                "mean_absolute_relative_error": 3.1083865731434015
+              }
+            }
+          }
+        },
+        "mask-m": {
+          "candidate_session_status_counts": {
+            "ok": 108
+          },
+          "complete": true,
+          "cache": {
+            "warm": {
+              "core": {
+                "kendall_tau_b": 0.6899841017488076,
+                "k": 5,
+                "shortlist": [
+                  "m64n64k32-w8-s4-g1",
+                  "m64n64k32-w4-s4-g1",
+                  "m64n128k32-w8-s4-g1",
+                  "m64n128k32-w4-s4-g1",
+                  "m128n64k64-w4-s1-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "indistinguishable": 83,
+                    "b_faster": 2
+                  },
+                  "a_faster": {
+                    "a_faster": 122,
+                    "indistinguishable": 75
+                  },
+                  "unresolved": {
+                    "a_faster": 3,
+                    "b_faster": 6,
+                    "indistinguishable": 28
+                  },
+                  "b_faster": {
+                    "indistinguishable": 95,
+                    "b_faster": 216
+                  }
+                },
+                "mean_absolute_relative_error": 0.15085828935690762
+              },
+              "neusight_style": {
+                "kendall_tau_b": 0.671962086468197,
+                "k": 5,
+                "shortlist": [
+                  "m64n128k32-w4-s4-g1",
+                  "m64n128k32-w8-s4-g1",
+                  "m64n64k32-w4-s4-g1",
+                  "m64n64k32-w8-s4-g1",
+                  "m64n64k32-w8-s2-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "b_faster": 69,
+                    "indistinguishable": 11,
+                    "a_faster": 5
+                  },
+                  "a_faster": {
+                    "b_faster": 30,
+                    "indistinguishable": 35,
+                    "a_faster": 132
+                  },
+                  "unresolved": {
+                    "b_faster": 26,
+                    "indistinguishable": 11
+                  },
+                  "b_faster": {
+                    "b_faster": 293,
+                    "indistinguishable": 9,
+                    "a_faster": 9
+                  }
+                },
+                "mean_absolute_relative_error": 0.3797907133462275
+              },
+              "roofline_wave": {
+                "kendall_tau_b": 0.4677347325408089,
+                "k": 5,
+                "shortlist": [
+                  "m64n128k32-w4-s4-g1",
+                  "m64n128k32-w8-s4-g1",
+                  "m128n64k64-w4-s1-g1",
+                  "m128n64k64-w4-s2-g1",
+                  "m128n64k64-w4-s4-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "indistinguishable": 19,
+                    "a_faster": 25,
+                    "b_faster": 41
+                  },
+                  "a_faster": {
+                    "indistinguishable": 37,
+                    "a_faster": 160
+                  },
+                  "unresolved": {
+                    "indistinguishable": 11,
+                    "a_faster": 19,
+                    "b_faster": 7
+                  },
+                  "b_faster": {
+                    "indistinguishable": 33,
+                    "b_faster": 194,
+                    "a_faster": 84
+                  }
+                },
+                "mean_absolute_relative_error": 3.3044136029151465
+              }
+            },
+            "cold": {
+              "core": {
+                "kendall_tau_b": 0.6984886856321533,
+                "k": 5,
+                "shortlist": [
+                  "m64n64k32-w8-s4-g1",
+                  "m64n64k32-w4-s4-g1",
+                  "m64n128k32-w8-s4-g1",
+                  "m64n128k32-w4-s4-g1",
+                  "m128n64k64-w4-s1-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "indistinguishable": 78,
+                    "b_faster": 1
+                  },
+                  "a_faster": {
+                    "a_faster": 125,
+                    "indistinguishable": 78
+                  },
+                  "b_faster": {
+                    "indistinguishable": 96,
+                    "b_faster": 220
+                  },
+                  "unresolved": {
+                    "b_faster": 2,
+                    "indistinguishable": 30
+                  }
+                },
+                "mean_absolute_relative_error": 0.15750751747390157
+              },
+              "neusight_style": {
+                "kendall_tau_b": 0.11351009927911067,
+                "k": 5,
+                "shortlist": [
+                  "m64n64k32-w4-s4-g1",
+                  "m64n64k32-w8-s4-g1",
+                  "m32n64k32-w4-s2-g1",
+                  "m64n64k32-w8-s2-g1",
+                  "m32n64k32-w4-s4-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.054266830746447337,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "b_faster": 55,
+                    "indistinguishable": 15,
+                    "a_faster": 9
+                  },
+                  "a_faster": {
+                    "b_faster": 139,
+                    "indistinguishable": 33,
+                    "a_faster": 31
+                  },
+                  "b_faster": {
+                    "b_faster": 208,
+                    "a_faster": 63,
+                    "indistinguishable": 45
+                  },
+                  "unresolved": {
+                    "b_faster": 18,
+                    "indistinguishable": 7,
+                    "a_faster": 7
+                  }
+                },
+                "mean_absolute_relative_error": 0.2457644943479018
+              },
+              "roofline_wave": {
+                "kendall_tau_b": 0.466452896389902,
+                "k": 5,
+                "shortlist": [
+                  "m64n128k32-w4-s4-g1",
+                  "m64n128k32-w8-s4-g1",
+                  "m128n64k64-w4-s1-g1",
+                  "m128n64k64-w4-s2-g1",
+                  "m128n64k64-w4-s4-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "indistinguishable": 19,
+                    "a_faster": 21,
+                    "b_faster": 39
+                  },
+                  "a_faster": {
+                    "indistinguishable": 41,
+                    "a_faster": 162
+                  },
+                  "b_faster": {
+                    "indistinguishable": 34,
+                    "b_faster": 194,
+                    "a_faster": 88
+                  },
+                  "unresolved": {
+                    "indistinguishable": 6,
+                    "a_faster": 17,
+                    "b_faster": 9
+                  }
+                },
+                "mean_absolute_relative_error": 3.2611858974386325
+              }
+            }
+          }
+        },
+        "swizzle-320": {
+          "candidate_session_status_counts": {
+            "ok": 6
+          },
+          "complete": true,
+          "cache": {
+            "warm": {
+              "core": {
+                "kendall_tau_b": 1.0,
+                "k": 5,
+                "shortlist": [
+                  "m64n64k32-w4-s2-g8",
+                  "m64n64k32-w4-s2-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 2,
+                "measured_configs": 2,
+                "pair_confusion": {
+                  "b_faster": {
+                    "indistinguishable": 1
+                  }
+                },
+                "mean_absolute_relative_error": 0.19908031125771175
+              },
+              "neusight_style": {
+                "kendall_tau_b": 1.0,
+                "k": 5,
+                "shortlist": [
+                  "m64n64k32-w4-s2-g8",
+                  "m64n64k32-w4-s2-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 2,
+                "measured_configs": 2,
+                "pair_confusion": {
+                  "b_faster": {
+                    "b_faster": 1
+                  }
+                },
+                "mean_absolute_relative_error": 0.224246258402717
+              },
+              "roofline_wave": {
+                "kendall_tau_b": null,
+                "k": 5,
+                "shortlist": [
+                  "m64n64k32-w4-s2-g1",
+                  "m64n64k32-w4-s2-g8"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 2,
+                "measured_configs": 2,
+                "pair_confusion": {
+                  "b_faster": {
+                    "indistinguishable": 1
+                  }
+                },
+                "mean_absolute_relative_error": 6.014809351521054
+              }
+            },
+            "cold": {
+              "core": {
+                "kendall_tau_b": 1.0,
+                "k": 5,
+                "shortlist": [
+                  "m64n64k32-w4-s2-g8",
+                  "m64n64k32-w4-s2-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 2,
+                "measured_configs": 2,
+                "pair_confusion": {
+                  "b_faster": {
+                    "indistinguishable": 1
+                  }
+                },
+                "mean_absolute_relative_error": 0.1553813901606434
+              },
+              "neusight_style": {
+                "kendall_tau_b": 1.0,
+                "k": 5,
+                "shortlist": [
+                  "m64n64k32-w4-s2-g8",
+                  "m64n64k32-w4-s2-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 2,
+                "measured_configs": 2,
+                "pair_confusion": {
+                  "b_faster": {
+                    "b_faster": 1
+                  }
+                },
+                "mean_absolute_relative_error": 0.3916096989523839
+              },
+              "roofline_wave": {
+                "kendall_tau_b": null,
+                "k": 5,
+                "shortlist": [
+                  "m64n64k32-w4-s2-g1",
+                  "m64n64k32-w4-s2-g8"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 2,
+                "measured_configs": 2,
+                "pair_confusion": {
+                  "b_faster": {
+                    "indistinguishable": 1
+                  }
+                },
+                "mean_absolute_relative_error": 5.71325963564305
+              }
+            }
+          }
+        },
+        "m1-cube": {
+          "candidate_session_status_counts": {
+            "ok": 3
+          },
+          "complete": true,
+          "cache": {
+            "warm": {
+              "core": {
+                "kendall_tau_b": null,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k32-w4-s3-g8"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 1,
+                "measured_configs": 1,
+                "pair_confusion": {},
+                "mean_absolute_relative_error": 0.0651267349405964
+              },
+              "neusight_style": {
+                "kendall_tau_b": null,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k32-w4-s3-g8"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 1,
+                "measured_configs": 1,
+                "pair_confusion": {},
+                "mean_absolute_relative_error": 0.31770558697570084
+              },
+              "roofline_wave": {
+                "kendall_tau_b": null,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k32-w4-s3-g8"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 1,
+                "measured_configs": 1,
+                "pair_confusion": {},
+                "mean_absolute_relative_error": 5.367831062264899
+              }
+            },
+            "cold": {
+              "core": {
+                "kendall_tau_b": null,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k32-w4-s3-g8"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 1,
+                "measured_configs": 1,
+                "pair_confusion": {},
+                "mean_absolute_relative_error": 0.04146280563707494
+              },
+              "neusight_style": {
+                "kendall_tau_b": null,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k32-w4-s3-g8"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 1,
+                "measured_configs": 1,
+                "pair_confusion": {},
+                "mean_absolute_relative_error": 0.032043219023254244
+              },
+              "roofline_wave": {
+                "kendall_tau_b": null,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k32-w4-s3-g8"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 1,
+                "measured_configs": 1,
+                "pair_confusion": {},
+                "mean_absolute_relative_error": 5.225859047284355
+              }
+            }
+          }
+        },
+        "sm-round-below": {
+          "candidate_session_status_counts": {
+            "ok": 108
+          },
+          "complete": true,
+          "cache": {
+            "warm": {
+              "core": {
+                "kendall_tau_b": 0.3913368218055212,
+                "k": 5,
+                "shortlist": [
+                  "m64n64k32-w4-s4-g1",
+                  "m64n64k32-w8-s4-g1",
+                  "m128n64k64-w8-s4-g1",
+                  "m128n64k64-w4-s4-g1",
+                  "m64n128k32-w4-s4-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.03885929477635597,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "b_faster": {
+                    "indistinguishable": 176,
+                    "b_faster": 101
+                  },
+                  "indistinguishable": {
+                    "indistinguishable": 50,
+                    "b_faster": 1
+                  },
+                  "a_faster": {
+                    "indistinguishable": 232,
+                    "a_faster": 36
+                  },
+                  "unresolved": {
+                    "indistinguishable": 34
+                  }
+                },
+                "mean_absolute_relative_error": 0.40299313978902185
+              },
+              "neusight_style": {
+                "kendall_tau_b": 0.12549646532148362,
+                "k": 5,
+                "shortlist": [
+                  "m64n128k32-w4-s4-g1",
+                  "m64n128k32-w8-s4-g1",
+                  "m128n64k64-w4-s4-g1",
+                  "m128n64k64-w8-s4-g1",
+                  "m64n128k32-w4-s2-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.03885929477635597,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "b_faster": {
+                    "b_faster": 214,
+                    "a_faster": 43,
+                    "indistinguishable": 20
+                  },
+                  "indistinguishable": {
+                    "indistinguishable": 13,
+                    "b_faster": 33,
+                    "a_faster": 5
+                  },
+                  "a_faster": {
+                    "indistinguishable": 25,
+                    "b_faster": 155,
+                    "a_faster": 88
+                  },
+                  "unresolved": {
+                    "b_faster": 23,
+                    "a_faster": 7,
+                    "indistinguishable": 4
+                  }
+                },
+                "mean_absolute_relative_error": 0.32870136627927476
+              },
+              "roofline_wave": {
+                "kendall_tau_b": 0.24212697162888788,
+                "k": 5,
+                "shortlist": [
+                  "m128n64k64-w4-s4-g1",
+                  "m128n64k64-w8-s4-g1",
+                  "m128n128k64-w4-s4-g1",
+                  "m128n128k64-w8-s1-g1",
+                  "m128n128k64-w8-s2-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.03885929477635597,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "b_faster": {
+                    "indistinguishable": 33,
+                    "b_faster": 95,
+                    "a_faster": 149
+                  },
+                  "indistinguishable": {
+                    "b_faster": 17,
+                    "a_faster": 20,
+                    "indistinguishable": 14
+                  },
+                  "a_faster": {
+                    "b_faster": 29,
+                    "a_faster": 221,
+                    "indistinguishable": 18
+                  },
+                  "unresolved": {
+                    "a_faster": 18,
+                    "indistinguishable": 3,
+                    "b_faster": 13
+                  }
+                },
+                "mean_absolute_relative_error": 8.02061895124349
+              }
+            },
+            "cold": {
+              "core": {
+                "kendall_tau_b": 0.631504690403407,
+                "k": 5,
+                "shortlist": [
+                  "m128n64k64-w4-s4-g1",
+                  "m128n64k64-w8-s4-g1",
+                  "m16n64k32-w4-s4-g1",
+                  "m16n64k32-w8-s4-g1",
+                  "m32n64k32-w4-s4-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "indistinguishable": 109,
+                    "a_faster": 1
+                  },
+                  "b_faster": {
+                    "b_faster": 131,
+                    "indistinguishable": 103
+                  },
+                  "a_faster": {
+                    "indistinguishable": 118,
+                    "a_faster": 124
+                  },
+                  "unresolved": {
+                    "indistinguishable": 40,
+                    "a_faster": 4
+                  }
+                },
+                "mean_absolute_relative_error": 0.17412001647391773
+              },
+              "neusight_style": {
+                "kendall_tau_b": 0.4908659213207397,
+                "k": 5,
+                "shortlist": [
+                  "m16n64k32-w4-s4-g1",
+                  "m16n64k32-w8-s4-g1",
+                  "m16n64k32-w8-s2-g1",
+                  "m16n64k32-w4-s2-g1",
+                  "m16n64k32-w8-s1-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.03728140959776671,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "b_faster": 49,
+                    "indistinguishable": 21,
+                    "a_faster": 40
+                  },
+                  "b_faster": {
+                    "b_faster": 184,
+                    "indistinguishable": 14,
+                    "a_faster": 36
+                  },
+                  "a_faster": {
+                    "indistinguishable": 31,
+                    "a_faster": 165,
+                    "b_faster": 46
+                  },
+                  "unresolved": {
+                    "b_faster": 25,
+                    "indistinguishable": 6,
+                    "a_faster": 13
+                  }
+                },
+                "mean_absolute_relative_error": 0.21866096715753494
+              },
+              "roofline_wave": {
+                "kendall_tau_b": 0.2535789229897137,
+                "k": 5,
+                "shortlist": [
+                  "m128n64k64-w4-s4-g1",
+                  "m128n64k64-w8-s4-g1",
+                  "m128n128k64-w4-s4-g1",
+                  "m128n128k64-w8-s1-g1",
+                  "m128n128k64-w8-s2-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "indistinguishable": 20,
+                    "a_faster": 61,
+                    "b_faster": 29
+                  },
+                  "b_faster": {
+                    "b_faster": 82,
+                    "indistinguishable": 27,
+                    "a_faster": 125
+                  },
+                  "a_faster": {
+                    "b_faster": 31,
+                    "indistinguishable": 20,
+                    "a_faster": 191
+                  },
+                  "unresolved": {
+                    "b_faster": 12,
+                    "a_faster": 31,
+                    "indistinguishable": 1
+                  }
+                },
+                "mean_absolute_relative_error": 4.513918960755324
+              }
+            }
+          }
+        },
+        "sm-round-exact": {
+          "candidate_session_status_counts": {
+            "ok": 108
+          },
+          "complete": true,
+          "cache": {
+            "warm": {
+              "core": {
+                "kendall_tau_b": 0.32931728460771265,
+                "k": 5,
+                "shortlist": [
+                  "m64n64k32-w4-s4-g1",
+                  "m64n64k32-w8-s4-g1",
+                  "m128n64k64-w8-s4-g1",
+                  "m128n64k64-w4-s4-g1",
+                  "m64n128k32-w4-s4-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.00642015239464877,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "b_faster": {
+                    "indistinguishable": 164,
+                    "b_faster": 102
+                  },
+                  "indistinguishable": {
+                    "indistinguishable": 74,
+                    "b_faster": 1
+                  },
+                  "unresolved": {
+                    "indistinguishable": 34
+                  },
+                  "a_faster": {
+                    "indistinguishable": 220,
+                    "a_faster": 35
+                  }
+                },
+                "mean_absolute_relative_error": 0.45348536618070884
+              },
+              "neusight_style": {
+                "kendall_tau_b": 0.12420445152321828,
+                "k": 5,
+                "shortlist": [
+                  "m64n128k32-w4-s4-g1",
+                  "m128n64k64-w4-s4-g1",
+                  "m64n128k32-w8-s4-g1",
+                  "m128n64k64-w8-s4-g1",
+                  "m64n128k32-w4-s2-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.00642015239464877,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "b_faster": {
+                    "b_faster": 202,
+                    "a_faster": 45,
+                    "indistinguishable": 19
+                  },
+                  "indistinguishable": {
+                    "indistinguishable": 18,
+                    "b_faster": 40,
+                    "a_faster": 17
+                  },
+                  "unresolved": {
+                    "b_faster": 21,
+                    "indistinguishable": 4,
+                    "a_faster": 9
+                  },
+                  "a_faster": {
+                    "b_faster": 157,
+                    "a_faster": 76,
+                    "indistinguishable": 22
+                  }
+                },
+                "mean_absolute_relative_error": 0.3838587342386678
+              },
+              "roofline_wave": {
+                "kendall_tau_b": 0.23122709529844226,
+                "k": 5,
+                "shortlist": [
+                  "m128n64k64-w4-s4-g1",
+                  "m128n64k64-w8-s4-g1",
+                  "m128n128k64-w4-s4-g1",
+                  "m128n128k64-w8-s1-g1",
+                  "m128n128k64-w8-s2-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.00642015239464877,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "b_faster": {
+                    "indistinguishable": 32,
+                    "b_faster": 91,
+                    "a_faster": 143
+                  },
+                  "indistinguishable": {
+                    "b_faster": 23,
+                    "a_faster": 36,
+                    "indistinguishable": 16
+                  },
+                  "unresolved": {
+                    "a_faster": 21,
+                    "b_faster": 11,
+                    "indistinguishable": 2
+                  },
+                  "a_faster": {
+                    "a_faster": 208,
+                    "indistinguishable": 18,
+                    "b_faster": 29
+                  }
+                },
+                "mean_absolute_relative_error": 7.1767304058938475
+              }
+            },
+            "cold": {
+              "core": {
+                "kendall_tau_b": 0.6089813969842056,
+                "k": 5,
+                "shortlist": [
+                  "m128n64k64-w4-s4-g1",
+                  "m128n64k64-w8-s4-g1",
+                  "m16n64k32-w4-s4-g1",
+                  "m16n64k32-w8-s4-g1",
+                  "m32n64k32-w4-s4-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "unresolved": {
+                    "indistinguishable": 47,
+                    "a_faster": 4
+                  },
+                  "b_faster": {
+                    "b_faster": 133,
+                    "indistinguishable": 102
+                  },
+                  "a_faster": {
+                    "indistinguishable": 111,
+                    "a_faster": 122
+                  },
+                  "indistinguishable": {
+                    "indistinguishable": 109,
+                    "a_faster": 2
+                  }
+                },
+                "mean_absolute_relative_error": 0.16227753664931333
+              },
+              "neusight_style": {
+                "kendall_tau_b": 0.5107413114018452,
+                "k": 5,
+                "shortlist": [
+                  "m16n64k32-w4-s4-g1",
+                  "m16n64k32-w8-s4-g1",
+                  "m16n64k32-w8-s2-g1",
+                  "m16n64k32-w4-s2-g1",
+                  "m16n64k32-w8-s1-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.018799822966066415,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "unresolved": {
+                    "b_faster": 32,
+                    "indistinguishable": 4,
+                    "a_faster": 15
+                  },
+                  "b_faster": {
+                    "b_faster": 185,
+                    "indistinguishable": 13,
+                    "a_faster": 37
+                  },
+                  "a_faster": {
+                    "indistinguishable": 30,
+                    "a_faster": 161,
+                    "b_faster": 42
+                  },
+                  "indistinguishable": {
+                    "b_faster": 44,
+                    "indistinguishable": 25,
+                    "a_faster": 42
+                  }
+                },
+                "mean_absolute_relative_error": 0.23349366067694233
+              },
+              "roofline_wave": {
+                "kendall_tau_b": 0.2605374339372853,
+                "k": 5,
+                "shortlist": [
+                  "m128n64k64-w4-s4-g1",
+                  "m128n64k64-w8-s4-g1",
+                  "m128n128k64-w4-s4-g1",
+                  "m128n128k64-w8-s1-g1",
+                  "m128n128k64-w8-s2-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "unresolved": {
+                    "indistinguishable": 5,
+                    "a_faster": 36,
+                    "b_faster": 10
+                  },
+                  "b_faster": {
+                    "b_faster": 85,
+                    "indistinguishable": 26,
+                    "a_faster": 124
+                  },
+                  "a_faster": {
+                    "b_faster": 28,
+                    "a_faster": 187,
+                    "indistinguishable": 18
+                  },
+                  "indistinguishable": {
+                    "b_faster": 31,
+                    "a_faster": 61,
+                    "indistinguishable": 19
+                  }
+                },
+                "mean_absolute_relative_error": 4.527987042313279
+              }
+            }
+          }
+        },
+        "sm-round-above": {
+          "candidate_session_status_counts": {
+            "ok": 108
+          },
+          "complete": true,
+          "cache": {
+            "warm": {
+              "core": {
+                "kendall_tau_b": 0.3550229433749045,
+                "k": 5,
+                "shortlist": [
+                  "m64n64k32-w4-s4-g1",
+                  "m64n64k32-w8-s4-g1",
+                  "m128n64k64-w8-s4-g1",
+                  "m128n64k64-w4-s4-g1",
+                  "m64n128k32-w4-s4-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.02601875082202354,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "unresolved": {
+                    "indistinguishable": 38
+                  },
+                  "b_faster": {
+                    "b_faster": 103,
+                    "indistinguishable": 176
+                  },
+                  "indistinguishable": {
+                    "indistinguishable": 70
+                  },
+                  "a_faster": {
+                    "indistinguishable": 208,
+                    "a_faster": 35
+                  }
+                },
+                "mean_absolute_relative_error": 0.37966789717757443
+              },
+              "neusight_style": {
+                "kendall_tau_b": 0.13545924239123128,
+                "k": 5,
+                "shortlist": [
+                  "m64n128k32-w4-s4-g1",
+                  "m128n64k64-w4-s4-g1",
+                  "m64n128k32-w8-s4-g1",
+                  "m128n64k64-w8-s4-g1",
+                  "m64n128k32-w4-s2-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.03949844047265061,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "unresolved": {
+                    "b_faster": 22,
+                    "indistinguishable": 5,
+                    "a_faster": 11
+                  },
+                  "b_faster": {
+                    "b_faster": 217,
+                    "a_faster": 41,
+                    "indistinguishable": 21
+                  },
+                  "indistinguishable": {
+                    "b_faster": 36,
+                    "indistinguishable": 17,
+                    "a_faster": 17
+                  },
+                  "a_faster": {
+                    "a_faster": 75,
+                    "indistinguishable": 18,
+                    "b_faster": 150
+                  }
+                },
+                "mean_absolute_relative_error": 0.29306076640299167
+              },
+              "roofline_wave": {
+                "kendall_tau_b": 0.21335858436417673,
+                "k": 5,
+                "shortlist": [
+                  "m128n64k64-w4-s4-g1",
+                  "m128n64k64-w8-s4-g1",
+                  "m128n128k64-w4-s4-g1",
+                  "m128n128k64-w8-s1-g1",
+                  "m128n128k64-w8-s2-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.03949844047265061,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "unresolved": {
+                    "indistinguishable": 3,
+                    "a_faster": 23,
+                    "b_faster": 12
+                  },
+                  "b_faster": {
+                    "b_faster": 96,
+                    "indistinguishable": 32,
+                    "a_faster": 151
+                  },
+                  "indistinguishable": {
+                    "b_faster": 18,
+                    "a_faster": 37,
+                    "indistinguishable": 15
+                  },
+                  "a_faster": {
+                    "indistinguishable": 18,
+                    "a_faster": 197,
+                    "b_faster": 28
+                  }
+                },
+                "mean_absolute_relative_error": 8.301028401925175
+              }
+            },
+            "cold": {
+              "core": {
+                "kendall_tau_b": 0.584671250690868,
+                "k": 5,
+                "shortlist": [
+                  "m128n64k64-w4-s4-g1",
+                  "m128n64k64-w8-s4-g1",
+                  "m16n64k32-w4-s4-g1",
+                  "m16n64k32-w8-s4-g1",
+                  "m32n64k32-w4-s4-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "indistinguishable": 116,
+                    "a_faster": 4
+                  },
+                  "b_faster": {
+                    "b_faster": 126,
+                    "indistinguishable": 117
+                  },
+                  "a_faster": {
+                    "indistinguishable": 114,
+                    "a_faster": 114
+                  },
+                  "unresolved": {
+                    "indistinguishable": 32,
+                    "a_faster": 7
+                  }
+                },
+                "mean_absolute_relative_error": 0.15543658350720138
+              },
+              "neusight_style": {
+                "kendall_tau_b": 0.5468998410174881,
+                "k": 5,
+                "shortlist": [
+                  "m16n64k32-w4-s4-g1",
+                  "m16n64k32-w8-s4-g1",
+                  "m16n64k32-w8-s2-g1",
+                  "m16n64k32-w4-s2-g1",
+                  "m16n64k32-w8-s1-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.014176023958039963,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "b_faster": 44,
+                    "indistinguishable": 27,
+                    "a_faster": 49
+                  },
+                  "b_faster": {
+                    "b_faster": 193,
+                    "indistinguishable": 13,
+                    "a_faster": 37
+                  },
+                  "a_faster": {
+                    "b_faster": 38,
+                    "indistinguishable": 26,
+                    "a_faster": 164
+                  },
+                  "unresolved": {
+                    "b_faster": 29,
+                    "a_faster": 6,
+                    "indistinguishable": 4
+                  }
+                },
+                "mean_absolute_relative_error": 0.238074097704948
+              },
+              "roofline_wave": {
+                "kendall_tau_b": 0.2470349507835275,
+                "k": 5,
+                "shortlist": [
+                  "m128n64k64-w4-s4-g1",
+                  "m128n64k64-w8-s4-g1",
+                  "m128n128k64-w4-s4-g1",
+                  "m128n128k64-w8-s1-g1",
+                  "m128n128k64-w8-s2-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "indistinguishable": 21,
+                    "a_faster": 69,
+                    "b_faster": 30
+                  },
+                  "b_faster": {
+                    "b_faster": 85,
+                    "indistinguishable": 27,
+                    "a_faster": 131
+                  },
+                  "a_faster": {
+                    "b_faster": 29,
+                    "indistinguishable": 18,
+                    "a_faster": 181
+                  },
+                  "unresolved": {
+                    "b_faster": 10,
+                    "a_faster": 27,
+                    "indistinguishable": 2
+                  }
+                },
+                "mean_absolute_relative_error": 4.469244787035396
+              }
+            }
+          }
+        }
+      },
+      "summary": {
+        "warm": {
+          "roofline_wave": {
+            "cases_with_tau_b": 7,
+            "median_tau_b": 0.21335858436417673,
+            "cases_with_top_5_regret": 9,
+            "mean_top_5_regret": 0.01945539005518852,
+            "measured_configs": 255,
+            "scored_configs": 255,
+            "pair_confusion": {
+              "unresolved": {
+                "indistinguishable": 49,
+                "a_faster": 241,
+                "b_faster": 104
+              },
+              "b_faster": {
+                "b_faster": 720,
+                "a_faster": 760,
+                "indistinguishable": 191
+              },
+              "indistinguishable": {
+                "indistinguishable": 175,
+                "a_faster": 448,
+                "b_faster": 377
+              },
+              "a_faster": {
+                "a_faster": 1062,
+                "indistinguishable": 143,
+                "b_faster": 141
+              }
+            }
+          },
+          "neusight_style": {
+            "cases_with_tau_b": 8,
+            "median_tau_b": 0.3112954756125429,
+            "cases_with_top_5_regret": 9,
+            "mean_top_5_regret": 0.01330999373890328,
+            "measured_configs": 255,
+            "scored_configs": 255,
+            "pair_confusion": {
+              "unresolved": {
+                "b_faster": 222,
+                "indistinguishable": 64,
+                "a_faster": 108
+              },
+              "b_faster": {
+                "b_faster": 1346,
+                "indistinguishable": 118,
+                "a_faster": 207
+              },
+              "indistinguishable": {
+                "indistinguishable": 222,
+                "b_faster": 510,
+                "a_faster": 268
+              },
+              "a_faster": {
+                "a_faster": 625,
+                "indistinguishable": 153,
+                "b_faster": 568
+              }
+            }
+          },
+          "core": {
+            "cases_with_tau_b": 8,
+            "median_tau_b": 0.44626578331955385,
+            "cases_with_top_5_regret": 9,
+            "mean_top_5_regret": 0.010950415121402428,
+            "measured_configs": 255,
+            "scored_configs": 255,
+            "pair_confusion": {
+              "unresolved": {
+                "indistinguishable": 375,
+                "a_faster": 13,
+                "b_faster": 6
+              },
+              "b_faster": {
+                "indistinguishable": 933,
+                "a_faster": 2,
+                "b_faster": 736
+              },
+              "indistinguishable": {
+                "indistinguishable": 961,
+                "a_faster": 23,
+                "b_faster": 16
+              },
+              "a_faster": {
+                "indistinguishable": 906,
+                "a_faster": 440
+              }
+            }
+          }
+        },
+        "cold": {
+          "roofline_wave": {
+            "cases_with_tau_b": 7,
+            "median_tau_b": 0.2470349507835275,
+            "cases_with_top_5_regret": 9,
+            "mean_top_5_regret": 0.01022233133403737,
+            "measured_configs": 255,
+            "scored_configs": 255,
+            "pair_confusion": {
+              "indistinguishable": {
+                "indistinguishable": 191,
+                "a_faster": 570,
+                "b_faster": 424
+              },
+              "b_faster": {
+                "b_faster": 679,
+                "a_faster": 682,
+                "indistinguishable": 173
+              },
+              "unresolved": {
+                "indistinguishable": 48,
+                "a_faster": 274,
+                "b_faster": 105
+              },
+              "a_faster": {
+                "a_faster": 985,
+                "indistinguishable": 146,
+                "b_faster": 134
+              }
+            }
+          },
+          "neusight_style": {
+            "cases_with_tau_b": 8,
+            "median_tau_b": 0.5008036163612924,
+            "cases_with_top_5_regret": 9,
+            "mean_top_5_regret": 0.015933833122656886,
+            "measured_configs": 255,
+            "scored_configs": 255,
+            "pair_confusion": {
+              "indistinguishable": {
+                "b_faster": 528,
+                "indistinguishable": 267,
+                "a_faster": 390
+              },
+              "b_faster": {
+                "b_faster": 1159,
+                "indistinguishable": 134,
+                "a_faster": 241
+              },
+              "unresolved": {
+                "b_faster": 230,
+                "indistinguishable": 60,
+                "a_faster": 137
+              },
+              "a_faster": {
+                "a_faster": 762,
+                "indistinguishable": 173,
+                "b_faster": 330
+              }
+            }
+          },
+          "core": {
+            "cases_with_tau_b": 8,
+            "median_tau_b": 0.5968263238375369,
+            "cases_with_top_5_regret": 9,
+            "mean_top_5_regret": 0.0015625832057547652,
+            "measured_configs": 255,
+            "scored_configs": 255,
+            "pair_confusion": {
+              "indistinguishable": {
+                "indistinguishable": 1139,
+                "a_faster": 33,
+                "b_faster": 13
+              },
+              "b_faster": {
+                "indistinguishable": 710,
+                "b_faster": 823,
+                "a_faster": 1
+              },
+              "unresolved": {
+                "indistinguishable": 401,
+                "a_faster": 23,
+                "b_faster": 3
+              },
+              "a_faster": {
+                "indistinguishable": 569,
+                "a_faster": 696
+              }
+            }
+          }
+        }
+      },
+      "gates": {
+        "warm": {
+          "absolute_regret_pass": false,
+          "baselines": {
+            "roofline_wave": {
+              "median_tau_b_gain": 0.23290719895537712,
+              "mean_top_5_regret_excess": -0.008504974933786092,
+              "ranking_pass": true,
+              "non_inferiority_pass": true
+            },
+            "neusight_style": {
+              "median_tau_b_gain": 0.13497030770701096,
+              "mean_top_5_regret_excess": -0.002359578617500852,
+              "ranking_pass": true,
+              "non_inferiority_pass": true
+            }
+          },
+          "pass": false,
+          "complete": true,
+          "all_cases_have_shortlists": true
+        },
+        "cold": {
+          "absolute_regret_pass": true,
+          "baselines": {
+            "roofline_wave": {
+              "median_tau_b_gain": 0.34979137305400937,
+              "mean_top_5_regret_excess": -0.008659748128282605,
+              "ranking_pass": true,
+              "non_inferiority_pass": true
+            },
+            "neusight_style": {
+              "median_tau_b_gain": 0.09602270747624442,
+              "mean_top_5_regret_excess": -0.014371249916902121,
+              "ranking_pass": true,
+              "non_inferiority_pass": true
+            }
+          },
+          "pass": true,
+          "complete": true,
+          "all_cases_have_shortlists": true
+        }
+      },
+      "pass": false
+    },
+    "secondary": {
+      "cases": {
+        "prefill-256": {
+          "candidate_session_status_counts": {
+            "ok": 108
+          },
+          "complete": true,
+          "cache": {
+            "warm": {
+              "core": {
+                "kendall_tau_b": 0.7653164198887463,
+                "k": 5,
+                "shortlist": [
+                  "m128n64k64-w4-s1-g1",
+                  "m128n128k64-w8-s1-g1",
+                  "m128n128k64-w4-s1-g1",
+                  "m64n64k32-w4-s1-g1",
+                  "m128n64k64-w4-s2-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "unresolved": {
+                    "indistinguishable": 29,
+                    "a_faster": 3,
+                    "b_faster": 3
+                  },
+                  "a_faster": {
+                    "a_faster": 246,
+                    "indistinguishable": 77
+                  },
+                  "b_faster": {
+                    "indistinguishable": 54,
+                    "b_faster": 177
+                  },
+                  "indistinguishable": {
+                    "a_faster": 5,
+                    "indistinguishable": 34,
+                    "b_faster": 2
+                  }
+                },
+                "mean_absolute_relative_error": 0.19153968630718118
+              },
+              "neusight_style": {
+                "kendall_tau_b": 0.6349206349206349,
+                "k": 5,
+                "shortlist": [
+                  "m64n128k32-w8-s2-g1",
+                  "m128n64k64-w4-s2-g1",
+                  "m128n128k64-w4-s2-g1",
+                  "m128n128k64-w4-s4-g1",
+                  "m128n64k64-w4-s4-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.008403385503742644,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "unresolved": {
+                    "b_faster": 22,
+                    "indistinguishable": 5,
+                    "a_faster": 8
+                  },
+                  "a_faster": {
+                    "indistinguishable": 38,
+                    "b_faster": 23,
+                    "a_faster": 262
+                  },
+                  "b_faster": {
+                    "indistinguishable": 16,
+                    "b_faster": 198,
+                    "a_faster": 17
+                  },
+                  "indistinguishable": {
+                    "indistinguishable": 12,
+                    "a_faster": 12,
+                    "b_faster": 17
+                  }
+                },
+                "mean_absolute_relative_error": 0.31063776143271604
+              },
+              "roofline_wave": {
+                "kendall_tau_b": 0.6196168702544053,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k64-w4-s1-g1",
+                  "m128n128k64-w4-s2-g1",
+                  "m128n128k64-w4-s4-g1",
+                  "m128n128k64-w8-s1-g1",
+                  "m128n128k64-w8-s2-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.0967244229884785,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "unresolved": {
+                    "indistinguishable": 10,
+                    "a_faster": 14,
+                    "b_faster": 11
+                  },
+                  "a_faster": {
+                    "indistinguishable": 28,
+                    "a_faster": 278,
+                    "b_faster": 17
+                  },
+                  "b_faster": {
+                    "a_faster": 40,
+                    "indistinguishable": 20,
+                    "b_faster": 171
+                  },
+                  "indistinguishable": {
+                    "indistinguishable": 16,
+                    "a_faster": 15,
+                    "b_faster": 10
+                  }
+                },
+                "mean_absolute_relative_error": 4.038181367032655
+              }
+            },
+            "cold": {
+              "core": {
+                "kendall_tau_b": 0.7748629864570051,
+                "k": 5,
+                "shortlist": [
+                  "m128n64k64-w4-s1-g1",
+                  "m128n128k64-w8-s1-g1",
+                  "m128n128k64-w4-s1-g1",
+                  "m64n64k32-w4-s1-g1",
+                  "m128n64k64-w4-s2-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "unresolved": {
+                    "indistinguishable": 27,
+                    "a_faster": 1
+                  },
+                  "a_faster": {
+                    "a_faster": 252,
+                    "indistinguishable": 75
+                  },
+                  "b_faster": {
+                    "indistinguishable": 63,
+                    "b_faster": 182
+                  },
+                  "indistinguishable": {
+                    "indistinguishable": 29,
+                    "a_faster": 1
+                  }
+                },
+                "mean_absolute_relative_error": 0.19408428893533425
+              },
+              "neusight_style": {
+                "kendall_tau_b": 0.2041490672935874,
+                "k": 5,
+                "shortlist": [
+                  "m64n64k32-w4-s1-g1",
+                  "m64n64k32-w4-s4-g1",
+                  "m64n64k32-w8-s4-g1",
+                  "m32n64k32-w4-s4-g1",
+                  "m32n64k32-w8-s4-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.3544099365945321,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "unresolved": {
+                    "b_faster": 17,
+                    "indistinguishable": 6,
+                    "a_faster": 5
+                  },
+                  "a_faster": {
+                    "b_faster": 169,
+                    "indistinguishable": 57,
+                    "a_faster": 101
+                  },
+                  "b_faster": {
+                    "b_faster": 203,
+                    "a_faster": 18,
+                    "indistinguishable": 24
+                  },
+                  "indistinguishable": {
+                    "a_faster": 3,
+                    "indistinguishable": 11,
+                    "b_faster": 16
+                  }
+                },
+                "mean_absolute_relative_error": 0.30893197106011216
+              },
+              "roofline_wave": {
+                "kendall_tau_b": 0.6196168702544053,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k64-w4-s1-g1",
+                  "m128n128k64-w4-s2-g1",
+                  "m128n128k64-w4-s4-g1",
+                  "m128n128k64-w8-s1-g1",
+                  "m128n128k64-w8-s2-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.12645949409711377,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "unresolved": {
+                    "indistinguishable": 7,
+                    "a_faster": 13,
+                    "b_faster": 8
+                  },
+                  "a_faster": {
+                    "indistinguishable": 31,
+                    "a_faster": 278,
+                    "b_faster": 18
+                  },
+                  "b_faster": {
+                    "a_faster": 46,
+                    "indistinguishable": 24,
+                    "b_faster": 175
+                  },
+                  "indistinguishable": {
+                    "indistinguishable": 12,
+                    "a_faster": 10,
+                    "b_faster": 8
+                  }
+                },
+                "mean_absolute_relative_error": 3.982770566600677
+              }
+            }
+          }
+        },
+        "prefill-1024": {
+          "candidate_session_status_counts": {
+            "ok": 108
+          },
+          "complete": true,
+          "cache": {
+            "warm": {
+              "core": {
+                "kendall_tau_b": 0.7990471146418513,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k64-w8-s1-g1",
+                  "m128n128k64-w4-s1-g1",
+                  "m128n128k64-w4-s2-g1",
+                  "m64n128k32-w4-s2-g1",
+                  "m64n128k32-w4-s1-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "unresolved": {
+                    "indistinguishable": 37,
+                    "b_faster": 5
+                  },
+                  "a_faster": {
+                    "indistinguishable": 122,
+                    "a_faster": 227,
+                    "b_faster": 5
+                  },
+                  "b_faster": {
+                    "indistinguishable": 64,
+                    "b_faster": 158
+                  },
+                  "indistinguishable": {
+                    "indistinguishable": 12
+                  }
+                },
+                "mean_absolute_relative_error": 0.3806453264211917
+              },
+              "neusight_style": {
+                "kendall_tau_b": 0.6063492063492063,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k64-w4-s2-g1",
+                  "m128n128k64-w4-s4-g1",
+                  "m128n128k64-w8-s4-g1",
+                  "m64n128k32-w4-s2-g1",
+                  "m64n128k32-w4-s4-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.0802251410466508,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "unresolved": {
+                    "b_faster": 17,
+                    "indistinguishable": 8,
+                    "a_faster": 17
+                  },
+                  "a_faster": {
+                    "b_faster": 42,
+                    "indistinguishable": 51,
+                    "a_faster": 261
+                  },
+                  "b_faster": {
+                    "indistinguishable": 13,
+                    "a_faster": 27,
+                    "b_faster": 182
+                  },
+                  "indistinguishable": {
+                    "indistinguishable": 6,
+                    "a_faster": 3,
+                    "b_faster": 3
+                  }
+                },
+                "mean_absolute_relative_error": 0.4056268420668313
+              },
+              "roofline_wave": {
+                "kendall_tau_b": 0.6474765187894748,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k64-w4-s1-g1",
+                  "m128n128k64-w4-s2-g1",
+                  "m128n128k64-w4-s4-g1",
+                  "m128n128k64-w8-s1-g1",
+                  "m128n128k64-w8-s2-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "unresolved": {
+                    "indistinguishable": 15,
+                    "a_faster": 17,
+                    "b_faster": 10
+                  },
+                  "a_faster": {
+                    "indistinguishable": 59,
+                    "a_faster": 276,
+                    "b_faster": 19
+                  },
+                  "b_faster": {
+                    "indistinguishable": 21,
+                    "a_faster": 39,
+                    "b_faster": 162
+                  },
+                  "indistinguishable": {
+                    "indistinguishable": 6,
+                    "a_faster": 6
+                  }
+                },
+                "mean_absolute_relative_error": 2.8451267932905946
+              }
+            },
+            "cold": {
+              "core": {
+                "kendall_tau_b": 0.7768072347114618,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k64-w8-s1-g1",
+                  "m128n128k64-w4-s1-g1",
+                  "m128n128k64-w4-s2-g1",
+                  "m64n128k32-w4-s2-g1",
+                  "m64n128k32-w4-s1-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "unresolved": {
+                    "indistinguishable": 38,
+                    "a_faster": 1,
+                    "b_faster": 6
+                  },
+                  "a_faster": {
+                    "indistinguishable": 121,
+                    "a_faster": 226,
+                    "b_faster": 4
+                  },
+                  "b_faster": {
+                    "indistinguishable": 60,
+                    "b_faster": 158
+                  },
+                  "indistinguishable": {
+                    "indistinguishable": 16
+                  }
+                },
+                "mean_absolute_relative_error": 0.3817861978186158
+              },
+              "neusight_style": {
+                "kendall_tau_b": 0.601476149730097,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k64-w4-s2-g1",
+                  "m128n128k64-w4-s4-g1",
+                  "m128n128k64-w8-s4-g1",
+                  "m64n128k32-w4-s2-g1",
+                  "m64n128k32-w4-s4-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.07157849365754854,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "unresolved": {
+                    "b_faster": 21,
+                    "indistinguishable": 10,
+                    "a_faster": 14
+                  },
+                  "a_faster": {
+                    "b_faster": 34,
+                    "indistinguishable": 63,
+                    "a_faster": 254
+                  },
+                  "b_faster": {
+                    "a_faster": 26,
+                    "b_faster": 177,
+                    "indistinguishable": 15
+                  },
+                  "indistinguishable": {
+                    "a_faster": 7,
+                    "indistinguishable": 7,
+                    "b_faster": 2
+                  }
+                },
+                "mean_absolute_relative_error": 0.510789910103095
+              },
+              "roofline_wave": {
+                "kendall_tau_b": 0.6341264874742278,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k64-w4-s1-g1",
+                  "m128n128k64-w4-s2-g1",
+                  "m128n128k64-w4-s4-g1",
+                  "m128n128k64-w8-s1-g1",
+                  "m128n128k64-w8-s2-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "unresolved": {
+                    "indistinguishable": 21,
+                    "a_faster": 16,
+                    "b_faster": 8
+                  },
+                  "a_faster": {
+                    "indistinguishable": 58,
+                    "a_faster": 275,
+                    "b_faster": 18
+                  },
+                  "b_faster": {
+                    "indistinguishable": 19,
+                    "a_faster": 37,
+                    "b_faster": 162
+                  },
+                  "indistinguishable": {
+                    "a_faster": 10,
+                    "indistinguishable": 3,
+                    "b_faster": 3
+                  }
+                },
+                "mean_absolute_relative_error": 2.838465837388831
+              }
+            }
+          }
+        },
+        "prefill-2048": {
+          "candidate_session_status_counts": {
+            "ok": 108
+          },
+          "complete": true,
+          "cache": {
+            "warm": {
+              "core": {
+                "kendall_tau_b": 0.6825396825396826,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k64-w8-s4-g1",
+                  "m128n128k64-w4-s4-g1",
+                  "m128n128k64-w8-s2-g1",
+                  "m128n64k64-w8-s1-g1",
+                  "m128n128k64-w8-s1-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "indistinguishable": 25
+                  },
+                  "a_faster": {
+                    "indistinguishable": 103,
+                    "a_faster": 250,
+                    "b_faster": 2
+                  },
+                  "unresolved": {
+                    "indistinguishable": 38,
+                    "a_faster": 1,
+                    "b_faster": 1
+                  },
+                  "b_faster": {
+                    "indistinguishable": 49,
+                    "b_faster": 161
+                  }
+                },
+                "mean_absolute_relative_error": 0.47791778988106365
+              },
+              "neusight_style": {
+                "kendall_tau_b": 0.5650793650793651,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k64-w4-s2-g1",
+                  "m128n128k64-w4-s4-g1",
+                  "m128n128k64-w8-s4-g1",
+                  "m64n128k32-w4-s2-g1",
+                  "m64n128k32-w4-s4-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.04859016068001076,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "b_faster": 8,
+                    "indistinguishable": 9,
+                    "a_faster": 8
+                  },
+                  "a_faster": {
+                    "b_faster": 49,
+                    "indistinguishable": 50,
+                    "a_faster": 256
+                  },
+                  "unresolved": {
+                    "indistinguishable": 3,
+                    "a_faster": 23,
+                    "b_faster": 14
+                  },
+                  "b_faster": {
+                    "a_faster": 23,
+                    "b_faster": 176,
+                    "indistinguishable": 11
+                  }
+                },
+                "mean_absolute_relative_error": 0.5150731869610294
+              },
+              "roofline_wave": {
+                "kendall_tau_b": 0.6241423934087977,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k64-w4-s1-g1",
+                  "m128n128k64-w4-s2-g1",
+                  "m128n128k64-w4-s4-g1",
+                  "m128n128k64-w8-s1-g1",
+                  "m128n128k64-w8-s2-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "indistinguishable": 17,
+                    "a_faster": 7,
+                    "b_faster": 1
+                  },
+                  "a_faster": {
+                    "indistinguishable": 71,
+                    "a_faster": 274,
+                    "b_faster": 10
+                  },
+                  "unresolved": {
+                    "a_faster": 20,
+                    "indistinguishable": 11,
+                    "b_faster": 9
+                  },
+                  "b_faster": {
+                    "indistinguishable": 26,
+                    "a_faster": 23,
+                    "b_faster": 161
+                  }
+                },
+                "mean_absolute_relative_error": 1.593017906588849
+              }
+            },
+            "cold": {
+              "core": {
+                "kendall_tau_b": 0.6888888888888889,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k64-w8-s4-g1",
+                  "m128n128k64-w4-s4-g1",
+                  "m128n128k64-w8-s2-g1",
+                  "m128n64k64-w8-s1-g1",
+                  "m128n128k64-w8-s1-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "indistinguishable": 25
+                  },
+                  "a_faster": {
+                    "indistinguishable": 113,
+                    "a_faster": 248,
+                    "b_faster": 2
+                  },
+                  "b_faster": {
+                    "indistinguishable": 47,
+                    "b_faster": 160
+                  },
+                  "unresolved": {
+                    "indistinguishable": 30,
+                    "a_faster": 3,
+                    "b_faster": 2
+                  }
+                },
+                "mean_absolute_relative_error": 0.48283065438064604
+              },
+              "neusight_style": {
+                "kendall_tau_b": 0.6189357325087782,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k64-w4-s2-g1",
+                  "m128n128k64-w4-s4-g1",
+                  "m128n128k64-w8-s4-g1",
+                  "m64n128k32-w4-s2-g1",
+                  "m64n128k32-w4-s4-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.022375343334395392,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "b_faster": 9,
+                    "indistinguishable": 7,
+                    "a_faster": 9
+                  },
+                  "a_faster": {
+                    "b_faster": 45,
+                    "indistinguishable": 56,
+                    "a_faster": 262
+                  },
+                  "b_faster": {
+                    "a_faster": 20,
+                    "b_faster": 176,
+                    "indistinguishable": 11
+                  },
+                  "unresolved": {
+                    "a_faster": 17,
+                    "indistinguishable": 5,
+                    "b_faster": 13
+                  }
+                },
+                "mean_absolute_relative_error": 0.6151497661252596
+              },
+              "roofline_wave": {
+                "kendall_tau_b": 0.6607587471554471,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k64-w4-s1-g1",
+                  "m128n128k64-w4-s2-g1",
+                  "m128n128k64-w4-s4-g1",
+                  "m128n128k64-w8-s1-g1",
+                  "m128n128k64-w8-s2-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "indistinguishable": 16,
+                    "a_faster": 8,
+                    "b_faster": 1
+                  },
+                  "a_faster": {
+                    "indistinguishable": 74,
+                    "a_faster": 279,
+                    "b_faster": 10
+                  },
+                  "b_faster": {
+                    "indistinguishable": 23,
+                    "a_faster": 21,
+                    "b_faster": 163
+                  },
+                  "unresolved": {
+                    "a_faster": 16,
+                    "indistinguishable": 12,
+                    "b_faster": 7
+                  }
+                },
+                "mean_absolute_relative_error": 1.5622412393709009
+              }
+            }
+          }
+        },
+        "mask-mnk": {
+          "candidate_session_status_counts": {
+            "ok": 108
+          },
+          "complete": true,
+          "cache": {
+            "warm": {
+              "core": {
+                "kendall_tau_b": 0.7944613465542746,
+                "k": 5,
+                "shortlist": [
+                  "m64n128k32-w4-s1-g1",
+                  "m64n128k32-w4-s2-g1",
+                  "m64n128k32-w4-s4-g1",
+                  "m128n128k64-w8-s1-g1",
+                  "m128n128k64-w8-s2-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "indistinguishable": 66
+                  },
+                  "b_faster": {
+                    "indistinguishable": 252,
+                    "b_faster": 135
+                  },
+                  "a_faster": {
+                    "indistinguishable": 92,
+                    "a_faster": 72
+                  },
+                  "unresolved": {
+                    "indistinguishable": 13
+                  }
+                },
+                "mean_absolute_relative_error": 0.5085459283312503
+              },
+              "neusight_style": {
+                "kendall_tau_b": 0.23174603174603176,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k64-w4-s4-g1",
+                  "m128n64k64-w4-s4-g1",
+                  "m128n64k64-w8-s4-g1",
+                  "m64n128k32-w4-s4-g1",
+                  "m64n128k32-w8-s4-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.0019991283977771612,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "b_faster": 47,
+                    "indistinguishable": 9,
+                    "a_faster": 10
+                  },
+                  "b_faster": {
+                    "a_faster": 143,
+                    "indistinguishable": 49,
+                    "b_faster": 195
+                  },
+                  "a_faster": {
+                    "a_faster": 115,
+                    "b_faster": 25,
+                    "indistinguishable": 24
+                  },
+                  "unresolved": {
+                    "b_faster": 4,
+                    "indistinguishable": 2,
+                    "a_faster": 7
+                  }
+                },
+                "mean_absolute_relative_error": 0.6081085212534005
+              },
+              "roofline_wave": {
+                "kendall_tau_b": 0.19272482233188631,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k64-w4-s1-g1",
+                  "m128n128k64-w4-s2-g1",
+                  "m128n128k64-w4-s4-g1",
+                  "m128n128k64-w8-s1-g1",
+                  "m128n128k64-w8-s2-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.1724844849982783,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "indistinguishable": 35,
+                    "a_faster": 22,
+                    "b_faster": 9
+                  },
+                  "b_faster": {
+                    "indistinguishable": 9,
+                    "a_faster": 198,
+                    "b_faster": 180
+                  },
+                  "a_faster": {
+                    "a_faster": 137,
+                    "b_faster": 27
+                  },
+                  "unresolved": {
+                    "indistinguishable": 1,
+                    "a_faster": 12
+                  }
+                },
+                "mean_absolute_relative_error": 1.6987486614452851
+              }
+            },
+            "cold": {
+              "core": {
+                "kendall_tau_b": 0.7813837935245747,
+                "k": 5,
+                "shortlist": [
+                  "m64n128k32-w4-s1-g1",
+                  "m64n128k32-w4-s2-g1",
+                  "m64n128k32-w4-s4-g1",
+                  "m128n128k64-w8-s1-g1",
+                  "m128n128k64-w8-s2-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "indistinguishable": 55
+                  },
+                  "b_faster": {
+                    "indistinguishable": 251,
+                    "b_faster": 135
+                  },
+                  "a_faster": {
+                    "indistinguishable": 99,
+                    "a_faster": 63
+                  },
+                  "unresolved": {
+                    "indistinguishable": 27
+                  }
+                },
+                "mean_absolute_relative_error": 0.5141853943165122
+              },
+              "neusight_style": {
+                "kendall_tau_b": 0.20016789116946276,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k64-w4-s4-g1",
+                  "m128n64k64-w4-s4-g1",
+                  "m128n64k64-w8-s4-g1",
+                  "m64n128k32-w4-s4-g1",
+                  "m64n128k32-w8-s4-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.024162685627153735,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "b_faster": 33,
+                    "indistinguishable": 14,
+                    "a_faster": 8
+                  },
+                  "b_faster": {
+                    "a_faster": 137,
+                    "indistinguishable": 52,
+                    "b_faster": 197
+                  },
+                  "a_faster": {
+                    "a_faster": 112,
+                    "b_faster": 24,
+                    "indistinguishable": 26
+                  },
+                  "unresolved": {
+                    "b_faster": 11,
+                    "indistinguishable": 5,
+                    "a_faster": 11
+                  }
+                },
+                "mean_absolute_relative_error": 0.6860009587217194
+              },
+              "roofline_wave": {
+                "kendall_tau_b": 0.17954705670235563,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k64-w4-s1-g1",
+                  "m128n128k64-w4-s2-g1",
+                  "m128n128k64-w4-s4-g1",
+                  "m128n128k64-w8-s1-g1",
+                  "m128n128k64-w8-s2-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.18231632265604825,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "indistinguishable": 35,
+                    "a_faster": 17,
+                    "b_faster": 3
+                  },
+                  "b_faster": {
+                    "indistinguishable": 9,
+                    "a_faster": 197,
+                    "b_faster": 180
+                  },
+                  "a_faster": {
+                    "a_faster": 135,
+                    "b_faster": 27
+                  },
+                  "unresolved": {
+                    "a_faster": 20,
+                    "b_faster": 6,
+                    "indistinguishable": 1
+                  }
+                },
+                "mean_absolute_relative_error": 1.6626233096625964
+              }
+            }
+          }
+        },
+        "resident-wave-below": {
+          "candidate_session_status_counts": {
+            "ok": 108
+          },
+          "complete": true,
+          "cache": {
+            "warm": {
+              "core": {
+                "kendall_tau_b": 0.7619047619047619,
+                "k": 5,
+                "shortlist": [
+                  "m64n128k32-w4-s2-g1",
+                  "m64n64k32-w4-s2-g1",
+                  "m64n128k32-w8-s2-g1",
+                  "m128n64k64-w4-s2-g1",
+                  "m128n64k64-w4-s4-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "indistinguishable": 139,
+                    "b_faster": 2
+                  },
+                  "b_faster": {
+                    "indistinguishable": 104,
+                    "b_faster": 167
+                  },
+                  "a_faster": {
+                    "indistinguishable": 47,
+                    "a_faster": 143
+                  },
+                  "unresolved": {
+                    "indistinguishable": 25,
+                    "a_faster": 3
+                  }
+                },
+                "mean_absolute_relative_error": 0.1118363952763876
+              },
+              "neusight_style": {
+                "kendall_tau_b": -0.33015873015873015,
+                "k": 5,
+                "shortlist": [
+                  "m16n64k32-w4-s2-g1",
+                  "m32n64k32-w4-s4-g1",
+                  "m32n64k32-w8-s4-g1",
+                  "m16n64k32-w4-s4-g1",
+                  "m16n64k32-w4-s1-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 1.047657215840335,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "b_faster": 85,
+                    "indistinguishable": 32,
+                    "a_faster": 24
+                  },
+                  "b_faster": {
+                    "b_faster": 84,
+                    "indistinguishable": 24,
+                    "a_faster": 163
+                  },
+                  "a_faster": {
+                    "indistinguishable": 15,
+                    "b_faster": 153,
+                    "a_faster": 22
+                  },
+                  "unresolved": {
+                    "b_faster": 20,
+                    "a_faster": 6,
+                    "indistinguishable": 2
+                  }
+                },
+                "mean_absolute_relative_error": 0.5805978916094343
+              },
+              "roofline_wave": {
+                "kendall_tau_b": 0.5234133161216042,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k64-w4-s4-g1",
+                  "m128n128k64-w8-s1-g1",
+                  "m128n128k64-w8-s2-g1",
+                  "m128n128k64-w8-s4-g1",
+                  "m64n128k32-w8-s1-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.02519278672351044,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "indistinguishable": 40,
+                    "b_faster": 34,
+                    "a_faster": 67
+                  },
+                  "b_faster": {
+                    "b_faster": 179,
+                    "indistinguishable": 34,
+                    "a_faster": 58
+                  },
+                  "a_faster": {
+                    "b_faster": 10,
+                    "a_faster": 169,
+                    "indistinguishable": 11
+                  },
+                  "unresolved": {
+                    "a_faster": 20,
+                    "indistinguishable": 5,
+                    "b_faster": 3
+                  }
+                },
+                "mean_absolute_relative_error": 1.1309681011602946
+              }
+            },
+            "cold": {
+              "core": {
+                "kendall_tau_b": 0.746031746031746,
+                "k": 5,
+                "shortlist": [
+                  "m64n128k32-w4-s2-g1",
+                  "m64n64k32-w4-s2-g1",
+                  "m64n128k32-w8-s2-g1",
+                  "m128n64k64-w4-s2-g1",
+                  "m128n64k64-w4-s4-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "indistinguishable": 114,
+                    "b_faster": 2,
+                    "a_faster": 2
+                  },
+                  "b_faster": {
+                    "indistinguishable": 110,
+                    "b_faster": 167
+                  },
+                  "a_faster": {
+                    "indistinguishable": 54,
+                    "a_faster": 142
+                  },
+                  "unresolved": {
+                    "indistinguishable": 37,
+                    "a_faster": 2
+                  }
+                },
+                "mean_absolute_relative_error": 0.110940296338852
+              },
+              "neusight_style": {
+                "kendall_tau_b": -0.30793650793650795,
+                "k": 5,
+                "shortlist": [
+                  "m16n64k32-w4-s2-g1",
+                  "m32n64k32-w4-s4-g1",
+                  "m32n64k32-w8-s4-g1",
+                  "m16n64k32-w4-s4-g1",
+                  "m16n64k32-w4-s1-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 1.0430396992686748,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "b_faster": 73,
+                    "indistinguishable": 29,
+                    "a_faster": 16
+                  },
+                  "b_faster": {
+                    "b_faster": 89,
+                    "indistinguishable": 23,
+                    "a_faster": 165
+                  },
+                  "a_faster": {
+                    "indistinguishable": 17,
+                    "b_faster": 158,
+                    "a_faster": 21
+                  },
+                  "unresolved": {
+                    "b_faster": 21,
+                    "a_faster": 10,
+                    "indistinguishable": 8
+                  }
+                },
+                "mean_absolute_relative_error": 0.47758496211693735
+              },
+              "roofline_wave": {
+                "kendall_tau_b": 0.5032820347323117,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k64-w4-s4-g1",
+                  "m128n128k64-w8-s1-g1",
+                  "m128n128k64-w8-s2-g1",
+                  "m128n128k64-w8-s4-g1",
+                  "m64n128k32-w8-s1-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.014958934398455082,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "indistinguishable": 34,
+                    "a_faster": 58,
+                    "b_faster": 26
+                  },
+                  "b_faster": {
+                    "b_faster": 180,
+                    "indistinguishable": 36,
+                    "a_faster": 61
+                  },
+                  "a_faster": {
+                    "b_faster": 11,
+                    "a_faster": 174,
+                    "indistinguishable": 11
+                  },
+                  "unresolved": {
+                    "b_faster": 9,
+                    "indistinguishable": 9,
+                    "a_faster": 21
+                  }
+                },
+                "mean_absolute_relative_error": 1.133661897271532
+              }
+            }
+          }
+        },
+        "resident-wave-exact": {
+          "candidate_session_status_counts": {
+            "ok": 108
+          },
+          "complete": true,
+          "cache": {
+            "warm": {
+              "core": {
+                "kendall_tau_b": 0.7301587301587301,
+                "k": 5,
+                "shortlist": [
+                  "m64n128k32-w8-s2-g1",
+                  "m64n64k32-w4-s2-g1",
+                  "m64n128k32-w4-s2-g1",
+                  "m128n64k64-w4-s2-g1",
+                  "m128n64k64-w4-s4-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "indistinguishable": 121,
+                    "b_faster": 2
+                  },
+                  "b_faster": {
+                    "indistinguishable": 104,
+                    "b_faster": 166
+                  },
+                  "a_faster": {
+                    "indistinguishable": 52,
+                    "a_faster": 143
+                  },
+                  "unresolved": {
+                    "indistinguishable": 39,
+                    "a_faster": 3
+                  }
+                },
+                "mean_absolute_relative_error": 0.11550014124335257
+              },
+              "neusight_style": {
+                "kendall_tau_b": -0.3523809523809524,
+                "k": 5,
+                "shortlist": [
+                  "m16n64k32-w4-s2-g1",
+                  "m32n64k32-w4-s4-g1",
+                  "m32n64k32-w8-s4-g1",
+                  "m16n64k32-w4-s4-g1",
+                  "m16n64k32-w4-s1-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 1.0396349825339724,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "b_faster": 80,
+                    "indistinguishable": 28,
+                    "a_faster": 15
+                  },
+                  "b_faster": {
+                    "b_faster": 76,
+                    "indistinguishable": 21,
+                    "a_faster": 173
+                  },
+                  "a_faster": {
+                    "indistinguishable": 17,
+                    "b_faster": 159,
+                    "a_faster": 19
+                  },
+                  "unresolved": {
+                    "b_faster": 27,
+                    "a_faster": 11,
+                    "indistinguishable": 4
+                  }
+                },
+                "mean_absolute_relative_error": 0.5783963461450682
+              },
+              "roofline_wave": {
+                "kendall_tau_b": 0.47976017985013114,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k64-w4-s4-g1",
+                  "m128n128k64-w8-s1-g1",
+                  "m128n128k64-w8-s2-g1",
+                  "m128n128k64-w8-s4-g1",
+                  "m64n128k32-w8-s1-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.01292587887147345,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "indistinguishable": 39,
+                    "a_faster": 58,
+                    "b_faster": 26
+                  },
+                  "b_faster": {
+                    "b_faster": 181,
+                    "indistinguishable": 33,
+                    "a_faster": 56
+                  },
+                  "a_faster": {
+                    "b_faster": 11,
+                    "a_faster": 174,
+                    "indistinguishable": 10
+                  },
+                  "unresolved": {
+                    "b_faster": 8,
+                    "indistinguishable": 8,
+                    "a_faster": 26
+                  }
+                },
+                "mean_absolute_relative_error": 1.1117956557731323
+              }
+            },
+            "cold": {
+              "core": {
+                "kendall_tau_b": 0.7365079365079366,
+                "k": 5,
+                "shortlist": [
+                  "m64n128k32-w8-s2-g1",
+                  "m64n64k32-w4-s2-g1",
+                  "m64n128k32-w4-s2-g1",
+                  "m128n64k64-w4-s2-g1",
+                  "m128n64k64-w4-s4-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "indistinguishable": 122,
+                    "b_faster": 2,
+                    "a_faster": 2
+                  },
+                  "b_faster": {
+                    "indistinguishable": 106,
+                    "b_faster": 165
+                  },
+                  "a_faster": {
+                    "indistinguishable": 61,
+                    "a_faster": 143
+                  },
+                  "unresolved": {
+                    "indistinguishable": 27,
+                    "a_faster": 1,
+                    "b_faster": 1
+                  }
+                },
+                "mean_absolute_relative_error": 0.11222787995719893
+              },
+              "neusight_style": {
+                "kendall_tau_b": -0.346031746031746,
+                "k": 5,
+                "shortlist": [
+                  "m16n64k32-w4-s2-g1",
+                  "m32n64k32-w4-s4-g1",
+                  "m32n64k32-w8-s4-g1",
+                  "m16n64k32-w4-s4-g1",
+                  "m16n64k32-w4-s1-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 1.087214254746962,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "b_faster": 82,
+                    "indistinguishable": 30,
+                    "a_faster": 14
+                  },
+                  "b_faster": {
+                    "b_faster": 78,
+                    "indistinguishable": 21,
+                    "a_faster": 172
+                  },
+                  "a_faster": {
+                    "indistinguishable": 20,
+                    "b_faster": 162,
+                    "a_faster": 22
+                  },
+                  "unresolved": {
+                    "b_faster": 19,
+                    "a_faster": 7,
+                    "indistinguishable": 3
+                  }
+                },
+                "mean_absolute_relative_error": 0.4799109090933935
+              },
+              "roofline_wave": {
+                "kendall_tau_b": 0.4930868515126348,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k64-w4-s4-g1",
+                  "m128n128k64-w8-s1-g1",
+                  "m128n128k64-w8-s2-g1",
+                  "m128n128k64-w8-s4-g1",
+                  "m64n128k32-w8-s1-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.015120852641345772,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "indistinguishable": 41,
+                    "a_faster": 57,
+                    "b_faster": 28
+                  },
+                  "b_faster": {
+                    "b_faster": 180,
+                    "indistinguishable": 33,
+                    "a_faster": 58
+                  },
+                  "a_faster": {
+                    "b_faster": 12,
+                    "a_faster": 182,
+                    "indistinguishable": 10
+                  },
+                  "unresolved": {
+                    "a_faster": 17,
+                    "indistinguishable": 6,
+                    "b_faster": 6
+                  }
+                },
+                "mean_absolute_relative_error": 1.1195983019908258
+              }
+            }
+          }
+        },
+        "resident-wave-above": {
+          "candidate_session_status_counts": {
+            "ok": 108
+          },
+          "complete": true,
+          "cache": {
+            "warm": {
+              "core": {
+                "kendall_tau_b": 0.7619047619047619,
+                "k": 5,
+                "shortlist": [
+                  "m64n128k32-w4-s2-g1",
+                  "m64n128k32-w8-s2-g1",
+                  "m64n64k32-w4-s2-g1",
+                  "m128n64k64-w4-s2-g1",
+                  "m128n64k64-w4-s4-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "indistinguishable": 123
+                  },
+                  "unresolved": {
+                    "indistinguishable": 50,
+                    "b_faster": 1,
+                    "a_faster": 1
+                  },
+                  "a_faster": {
+                    "indistinguishable": 43,
+                    "a_faster": 146
+                  },
+                  "b_faster": {
+                    "indistinguishable": 100,
+                    "b_faster": 166
+                  }
+                },
+                "mean_absolute_relative_error": 0.13718894119199104
+              },
+              "neusight_style": {
+                "kendall_tau_b": -0.3047619047619048,
+                "k": 5,
+                "shortlist": [
+                  "m16n64k32-w4-s2-g1",
+                  "m32n64k32-w4-s4-g1",
+                  "m32n64k32-w8-s4-g1",
+                  "m16n64k32-w4-s4-g1",
+                  "m16n64k32-w4-s1-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 1.0378770067166712,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "b_faster": 79,
+                    "indistinguishable": 28,
+                    "a_faster": 16
+                  },
+                  "unresolved": {
+                    "b_faster": 29,
+                    "a_faster": 16,
+                    "indistinguishable": 7
+                  },
+                  "a_faster": {
+                    "indistinguishable": 15,
+                    "b_faster": 155,
+                    "a_faster": 19
+                  },
+                  "b_faster": {
+                    "b_faster": 79,
+                    "indistinguishable": 22,
+                    "a_faster": 165
+                  }
+                },
+                "mean_absolute_relative_error": 0.551959889123166
+              },
+              "roofline_wave": {
+                "kendall_tau_b": 0.5066372482971938,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k64-w4-s4-g1",
+                  "m128n128k64-w8-s1-g1",
+                  "m128n128k64-w8-s2-g1",
+                  "m128n128k64-w8-s4-g1",
+                  "m64n128k32-w8-s1-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.011254028908205704,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "indistinguishable": 37,
+                    "a_faster": 58,
+                    "b_faster": 28
+                  },
+                  "unresolved": {
+                    "b_faster": 12,
+                    "indistinguishable": 8,
+                    "a_faster": 32
+                  },
+                  "a_faster": {
+                    "b_faster": 9,
+                    "a_faster": 171,
+                    "indistinguishable": 9
+                  },
+                  "b_faster": {
+                    "indistinguishable": 36,
+                    "b_faster": 177,
+                    "a_faster": 53
+                  }
+                },
+                "mean_absolute_relative_error": 1.04964237591678
+              }
+            },
+            "cold": {
+              "core": {
+                "kendall_tau_b": 0.7492063492063492,
+                "k": 5,
+                "shortlist": [
+                  "m64n128k32-w4-s2-g1",
+                  "m64n128k32-w8-s2-g1",
+                  "m64n64k32-w4-s2-g1",
+                  "m128n64k64-w4-s2-g1",
+                  "m128n64k64-w4-s4-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "indistinguishable": 118,
+                    "a_faster": 1
+                  },
+                  "unresolved": {
+                    "indistinguishable": 50,
+                    "b_faster": 1,
+                    "a_faster": 1
+                  },
+                  "a_faster": {
+                    "indistinguishable": 45,
+                    "a_faster": 145
+                  },
+                  "b_faster": {
+                    "indistinguishable": 103,
+                    "b_faster": 166
+                  }
+                },
+                "mean_absolute_relative_error": 0.1339468350272494
+              },
+              "neusight_style": {
+                "kendall_tau_b": -0.306592630468941,
+                "k": 5,
+                "shortlist": [
+                  "m16n64k32-w4-s2-g1",
+                  "m32n64k32-w4-s4-g1",
+                  "m32n64k32-w8-s4-g1",
+                  "m16n64k32-w4-s4-g1",
+                  "m16n64k32-w4-s1-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 1.060317300158891,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "b_faster": 76,
+                    "indistinguishable": 29,
+                    "a_faster": 14
+                  },
+                  "unresolved": {
+                    "b_faster": 29,
+                    "a_faster": 14,
+                    "indistinguishable": 9
+                  },
+                  "a_faster": {
+                    "indistinguishable": 14,
+                    "b_faster": 159,
+                    "a_faster": 17
+                  },
+                  "b_faster": {
+                    "b_faster": 77,
+                    "indistinguishable": 24,
+                    "a_faster": 168
+                  }
+                },
+                "mean_absolute_relative_error": 0.452802942621125
+              },
+              "roofline_wave": {
+                "kendall_tau_b": 0.4965716076025476,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k64-w4-s4-g1",
+                  "m128n128k64-w8-s1-g1",
+                  "m128n128k64-w8-s2-g1",
+                  "m128n128k64-w8-s4-g1",
+                  "m64n128k32-w8-s1-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.011330222704443393,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "indistinguishable": {
+                    "indistinguishable": 36,
+                    "a_faster": 55,
+                    "b_faster": 28
+                  },
+                  "unresolved": {
+                    "b_faster": 10,
+                    "indistinguishable": 10,
+                    "a_faster": 32
+                  },
+                  "a_faster": {
+                    "b_faster": 9,
+                    "a_faster": 172,
+                    "indistinguishable": 9
+                  },
+                  "b_faster": {
+                    "b_faster": 179,
+                    "indistinguishable": 35,
+                    "a_faster": 55
+                  }
+                },
+                "mean_absolute_relative_error": 1.0576429899199529
+              }
+            }
+          }
+        },
+        "l2-working-set-below": {
+          "candidate_session_status_counts": {
+            "ok": 108
+          },
+          "complete": true,
+          "cache": {
+            "warm": {
+              "core": {
+                "kendall_tau_b": 0.5116557113704026,
+                "k": 5,
+                "shortlist": [
+                  "m64n128k32-w8-s4-g1",
+                  "m64n128k32-w4-s4-g1",
+                  "m64n64k32-w4-s4-g1",
+                  "m64n64k32-w8-s4-g1",
+                  "m64n64k32-w8-s2-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "b_faster": {
+                    "indistinguishable": 121,
+                    "b_faster": 134,
+                    "a_faster": 3
+                  },
+                  "unresolved": {
+                    "indistinguishable": 69,
+                    "a_faster": 8,
+                    "b_faster": 10
+                  },
+                  "a_faster": {
+                    "a_faster": 97,
+                    "indistinguishable": 98,
+                    "b_faster": 13
+                  },
+                  "indistinguishable": {
+                    "indistinguishable": 71,
+                    "b_faster": 6
+                  }
+                },
+                "mean_absolute_relative_error": 0.26632791915526977
+              },
+              "neusight_style": {
+                "kendall_tau_b": 0.5047619047619047,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k64-w4-s4-g1",
+                  "m128n128k64-w8-s4-g1",
+                  "m64n128k32-w4-s4-g1",
+                  "m64n128k32-w8-s4-g1",
+                  "m128n128k64-w8-s2-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.038841697653893226,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "b_faster": {
+                    "b_faster": 206,
+                    "indistinguishable": 28,
+                    "a_faster": 24
+                  },
+                  "unresolved": {
+                    "b_faster": 27,
+                    "a_faster": 50,
+                    "indistinguishable": 10
+                  },
+                  "a_faster": {
+                    "a_faster": 179,
+                    "indistinguishable": 10,
+                    "b_faster": 19
+                  },
+                  "indistinguishable": {
+                    "indistinguishable": 18,
+                    "b_faster": 28,
+                    "a_faster": 31
+                  }
+                },
+                "mean_absolute_relative_error": 0.2533220799962792
+              },
+              "roofline_wave": {
+                "kendall_tau_b": 0.39834438670154815,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k64-w4-s4-g1",
+                  "m128n128k64-w8-s1-g1",
+                  "m128n128k64-w8-s2-g1",
+                  "m128n128k64-w8-s4-g1",
+                  "m128n64k64-w4-s4-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.05254031064621434,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "b_faster": {
+                    "indistinguishable": 37,
+                    "b_faster": 176,
+                    "a_faster": 45
+                  },
+                  "unresolved": {
+                    "b_faster": 29,
+                    "a_faster": 51,
+                    "indistinguishable": 7
+                  },
+                  "a_faster": {
+                    "a_faster": 172,
+                    "indistinguishable": 14,
+                    "b_faster": 22
+                  },
+                  "indistinguishable": {
+                    "b_faster": 26,
+                    "a_faster": 35,
+                    "indistinguishable": 16
+                  }
+                },
+                "mean_absolute_relative_error": 5.61227373551324
+              }
+            },
+            "cold": {
+              "core": {
+                "kendall_tau_b": 0.6570846272298742,
+                "k": 5,
+                "shortlist": [
+                  "m64n128k32-w4-s4-g1",
+                  "m64n128k32-w8-s4-g1",
+                  "m64n64k32-w4-s4-g1",
+                  "m64n64k32-w8-s4-g1",
+                  "m128n64k64-w8-s4-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.0009290050709493958,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "unresolved": {
+                    "indistinguishable": 63,
+                    "a_faster": 12,
+                    "b_faster": 2
+                  },
+                  "b_faster": {
+                    "indistinguishable": 49,
+                    "b_faster": 178
+                  },
+                  "indistinguishable": {
+                    "indistinguishable": 107,
+                    "a_faster": 8,
+                    "b_faster": 3
+                  },
+                  "a_faster": {
+                    "a_faster": 150,
+                    "indistinguishable": 58
+                  }
+                },
+                "mean_absolute_relative_error": 0.1219891854947898
+              },
+              "neusight_style": {
+                "kendall_tau_b": -0.1942677622163746,
+                "k": 5,
+                "shortlist": [
+                  "m16n64k32-w4-s4-g1",
+                  "m16n64k32-w8-s2-g1",
+                  "m16n64k32-w8-s4-g1",
+                  "m32n64k32-w4-s2-g1",
+                  "m16n64k32-w4-s2-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.18752488792688626,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "unresolved": {
+                    "b_faster": 54,
+                    "indistinguishable": 8,
+                    "a_faster": 15
+                  },
+                  "b_faster": {
+                    "b_faster": 95,
+                    "indistinguishable": 26,
+                    "a_faster": 106
+                  },
+                  "indistinguishable": {
+                    "b_faster": 86,
+                    "indistinguishable": 12,
+                    "a_faster": 20
+                  },
+                  "a_faster": {
+                    "b_faster": 149,
+                    "a_faster": 39,
+                    "indistinguishable": 20
+                  }
+                },
+                "mean_absolute_relative_error": 0.330084567826759
+              },
+              "roofline_wave": {
+                "kendall_tau_b": 0.5194171191272754,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k64-w4-s4-g1",
+                  "m128n128k64-w8-s1-g1",
+                  "m128n128k64-w8-s2-g1",
+                  "m128n128k64-w8-s4-g1",
+                  "m128n64k64-w4-s4-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "unresolved": {
+                    "indistinguishable": 8,
+                    "b_faster": 20,
+                    "a_faster": 49
+                  },
+                  "b_faster": {
+                    "b_faster": 176,
+                    "a_faster": 19,
+                    "indistinguishable": 32
+                  },
+                  "indistinguishable": {
+                    "b_faster": 43,
+                    "a_faster": 57,
+                    "indistinguishable": 18
+                  },
+                  "a_faster": {
+                    "a_faster": 178,
+                    "indistinguishable": 16,
+                    "b_faster": 14
+                  }
+                },
+                "mean_absolute_relative_error": 4.324063663726271
+              }
+            }
+          }
+        },
+        "l2-working-set-above": {
+          "candidate_session_status_counts": {
+            "ok": 108
+          },
+          "complete": true,
+          "cache": {
+            "warm": {
+              "core": {
+                "kendall_tau_b": 0.7324877910343642,
+                "k": 5,
+                "shortlist": [
+                  "m64n128k32-w4-s4-g1",
+                  "m64n128k32-w8-s4-g1",
+                  "m64n64k32-w4-s4-g1",
+                  "m64n64k32-w8-s4-g1",
+                  "m128n64k64-w8-s4-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.01220760930955822,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "unresolved": {
+                    "indistinguishable": 53,
+                    "a_faster": 4,
+                    "b_faster": 1
+                  },
+                  "b_faster": {
+                    "indistinguishable": 57,
+                    "b_faster": 180
+                  },
+                  "indistinguishable": {
+                    "indistinguishable": 102,
+                    "a_faster": 10
+                  },
+                  "a_faster": {
+                    "a_faster": 163,
+                    "indistinguishable": 60
+                  }
+                },
+                "mean_absolute_relative_error": 0.13613279476914628
+              },
+              "neusight_style": {
+                "kendall_tau_b": 0.43174603174603177,
+                "k": 5,
+                "shortlist": [
+                  "m64n64k32-w4-s4-g1",
+                  "m64n64k32-w8-s4-g1",
+                  "m64n64k32-w8-s2-g1",
+                  "m64n64k32-w4-s2-g1",
+                  "m64n128k32-w4-s4-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.01220760930955822,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "unresolved": {
+                    "b_faster": 44,
+                    "indistinguishable": 3,
+                    "a_faster": 11
+                  },
+                  "b_faster": {
+                    "b_faster": 224,
+                    "indistinguishable": 10,
+                    "a_faster": 3
+                  },
+                  "indistinguishable": {
+                    "b_faster": 87,
+                    "indistinguishable": 18,
+                    "a_faster": 7
+                  },
+                  "a_faster": {
+                    "a_faster": 109,
+                    "b_faster": 71,
+                    "indistinguishable": 43
+                  }
+                },
+                "mean_absolute_relative_error": 0.2638114369158863
+              },
+              "roofline_wave": {
+                "kendall_tau_b": 0.5269785353013103,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k64-w4-s4-g1",
+                  "m128n128k64-w8-s1-g1",
+                  "m128n128k64-w8-s2-g1",
+                  "m128n128k64-w8-s4-g1",
+                  "m128n64k64-w4-s4-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "unresolved": {
+                    "indistinguishable": 12,
+                    "a_faster": 25,
+                    "b_faster": 21
+                  },
+                  "b_faster": {
+                    "b_faster": 177,
+                    "a_faster": 24,
+                    "indistinguishable": 36
+                  },
+                  "indistinguishable": {
+                    "b_faster": 37,
+                    "a_faster": 59,
+                    "indistinguishable": 16
+                  },
+                  "a_faster": {
+                    "a_faster": 194,
+                    "indistinguishable": 18,
+                    "b_faster": 11
+                  }
+                },
+                "mean_absolute_relative_error": 4.120860436185943
+              }
+            },
+            "cold": {
+              "core": {
+                "kendall_tau_b": 0.7568087184866558,
+                "k": 5,
+                "shortlist": [
+                  "m64n128k32-w4-s4-g1",
+                  "m64n128k32-w8-s4-g1",
+                  "m64n64k32-w4-s4-g1",
+                  "m64n64k32-w8-s4-g1",
+                  "m128n64k64-w8-s4-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.010671214539131446,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "unresolved": {
+                    "indistinguishable": 59,
+                    "b_faster": 2,
+                    "a_faster": 3
+                  },
+                  "b_faster": {
+                    "indistinguishable": 60,
+                    "b_faster": 178
+                  },
+                  "indistinguishable": {
+                    "indistinguishable": 90,
+                    "a_faster": 7,
+                    "b_faster": 1
+                  },
+                  "a_faster": {
+                    "a_faster": 167,
+                    "indistinguishable": 63
+                  }
+                },
+                "mean_absolute_relative_error": 0.1193501430342337
+              },
+              "neusight_style": {
+                "kendall_tau_b": -0.30756981875521583,
+                "k": 5,
+                "shortlist": [
+                  "m16n64k32-w4-s4-g1",
+                  "m16n64k32-w8-s2-g1",
+                  "m16n64k32-w8-s4-g1",
+                  "m16n64k32-w8-s1-g1",
+                  "m32n64k32-w4-s2-g1"
+                ],
+                "top_k_hit": false,
+                "top_k_regret": 0.21725313712541028,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "unresolved": {
+                    "b_faster": 47,
+                    "a_faster": 13,
+                    "indistinguishable": 4
+                  },
+                  "b_faster": {
+                    "b_faster": 90,
+                    "indistinguishable": 27,
+                    "a_faster": 121
+                  },
+                  "indistinguishable": {
+                    "b_faster": 68,
+                    "indistinguishable": 12,
+                    "a_faster": 18
+                  },
+                  "a_faster": {
+                    "b_faster": 176,
+                    "a_faster": 32,
+                    "indistinguishable": 22
+                  }
+                },
+                "mean_absolute_relative_error": 0.34418620650144616
+              },
+              "roofline_wave": {
+                "kendall_tau_b": 0.5825904689472595,
+                "k": 5,
+                "shortlist": [
+                  "m128n128k64-w4-s4-g1",
+                  "m128n128k64-w8-s1-g1",
+                  "m128n128k64-w8-s2-g1",
+                  "m128n128k64-w8-s4-g1",
+                  "m128n64k64-w4-s4-g1"
+                ],
+                "top_k_hit": true,
+                "top_k_regret": 0.0,
+                "scored_configs": 36,
+                "measured_configs": 36,
+                "pair_confusion": {
+                  "unresolved": {
+                    "indistinguishable": 13,
+                    "a_faster": 33,
+                    "b_faster": 18
+                  },
+                  "b_faster": {
+                    "b_faster": 178,
+                    "a_faster": 21,
+                    "indistinguishable": 39
+                  },
+                  "indistinguishable": {
+                    "b_faster": 39,
+                    "a_faster": 46,
+                    "indistinguishable": 13
+                  },
+                  "a_faster": {
+                    "a_faster": 202,
+                    "indistinguishable": 17,
+                    "b_faster": 11
+                  }
+                },
+                "mean_absolute_relative_error": 4.121467633154026
+              }
+            }
+          }
+        }
+      },
+      "summary": {
+        "warm": {
+          "roofline_wave": {
+            "cases_with_tau_b": 9,
+            "median_tau_b": 0.5234133161216042,
+            "cases_with_top_5_regret": 9,
+            "mean_top_5_regret": 0.04123576812624008,
+            "measured_configs": 324,
+            "scored_configs": 324,
+            "pair_confusion": {
+              "unresolved": {
+                "indistinguishable": 77,
+                "a_faster": 217,
+                "b_faster": 103
+              },
+              "a_faster": {
+                "indistinguishable": 220,
+                "a_faster": 1845,
+                "b_faster": 136
+              },
+              "b_faster": {
+                "a_faster": 536,
+                "indistinguishable": 252,
+                "b_faster": 1564
+              },
+              "indistinguishable": {
+                "indistinguishable": 222,
+                "a_faster": 327,
+                "b_faster": 171
+              }
+            }
+          },
+          "neusight_style": {
+            "cases_with_tau_b": 9,
+            "median_tau_b": 0.43174603174603177,
+            "cases_with_top_5_regret": 9,
+            "mean_top_5_regret": 0.3683818141869568,
+            "measured_configs": 324,
+            "scored_configs": 324,
+            "pair_confusion": {
+              "unresolved": {
+                "b_faster": 204,
+                "indistinguishable": 44,
+                "a_faster": 149
+              },
+              "a_faster": {
+                "indistinguishable": 263,
+                "b_faster": 696,
+                "a_faster": 1242
+              },
+              "b_faster": {
+                "indistinguishable": 194,
+                "b_faster": 1420,
+                "a_faster": 738
+              },
+              "indistinguishable": {
+                "indistinguishable": 160,
+                "a_faster": 126,
+                "b_faster": 434
+              }
+            }
+          },
+          "core": {
+            "cases_with_tau_b": 9,
+            "median_tau_b": 0.7619047619047619,
+            "cases_with_top_5_regret": 9,
+            "mean_top_5_regret": 0.0013564010343953578,
+            "measured_configs": 324,
+            "scored_configs": 324,
+            "pair_confusion": {
+              "unresolved": {
+                "indistinguishable": 353,
+                "a_faster": 23,
+                "b_faster": 21
+              },
+              "a_faster": {
+                "a_faster": 1487,
+                "indistinguishable": 694,
+                "b_faster": 20
+              },
+              "b_faster": {
+                "indistinguishable": 905,
+                "b_faster": 1444,
+                "a_faster": 3
+              },
+              "indistinguishable": {
+                "a_faster": 15,
+                "indistinguishable": 693,
+                "b_faster": 12
+              }
+            }
+          }
+        },
+        "cold": {
+          "roofline_wave": {
+            "cases_with_tau_b": 9,
+            "median_tau_b": 0.5194171191272754,
+            "cases_with_top_5_regret": 9,
+            "mean_top_5_regret": 0.03890953627748958,
+            "measured_configs": 324,
+            "scored_configs": 324,
+            "pair_confusion": {
+              "unresolved": {
+                "indistinguishable": 87,
+                "a_faster": 217,
+                "b_faster": 92
+              },
+              "a_faster": {
+                "indistinguishable": 226,
+                "a_faster": 1875,
+                "b_faster": 130
+              },
+              "b_faster": {
+                "a_faster": 515,
+                "indistinguishable": 250,
+                "b_faster": 1573
+              },
+              "indistinguishable": {
+                "indistinguishable": 208,
+                "a_faster": 318,
+                "b_faster": 179
+              }
+            }
+          },
+          "neusight_style": {
+            "cases_with_tau_b": 9,
+            "median_tau_b": -0.1942677622163746,
+            "cases_with_top_5_regret": 9,
+            "mean_top_5_regret": 0.45198619316005045,
+            "measured_configs": 324,
+            "scored_configs": 324,
+            "pair_confusion": {
+              "unresolved": {
+                "b_faster": 232,
+                "indistinguishable": 58,
+                "a_faster": 106
+              },
+              "a_faster": {
+                "b_faster": 1076,
+                "indistinguishable": 295,
+                "a_faster": 860
+              },
+              "b_faster": {
+                "b_faster": 1182,
+                "a_faster": 933,
+                "indistinguishable": 223
+              },
+              "indistinguishable": {
+                "a_faster": 109,
+                "indistinguishable": 151,
+                "b_faster": 445
+              }
+            }
+          },
+          "core": {
+            "cases_with_tau_b": 9,
+            "median_tau_b": 0.7492063492063492,
+            "cases_with_top_5_regret": 9,
+            "mean_top_5_regret": 0.0012889132900089824,
+            "measured_configs": 324,
+            "scored_configs": 324,
+            "pair_confusion": {
+              "unresolved": {
+                "indistinguishable": 358,
+                "a_faster": 24,
+                "b_faster": 14
+              },
+              "a_faster": {
+                "a_faster": 1536,
+                "indistinguishable": 689,
+                "b_faster": 6
+              },
+              "b_faster": {
+                "indistinguishable": 849,
+                "b_faster": 1489
+              },
+              "indistinguishable": {
+                "indistinguishable": 676,
+                "a_faster": 21,
+                "b_faster": 8
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "profile_revision": "0.11.0-m3",
+  "prediction_archive_sha256": "8d1744a806d7b45a1e2e4b86dd74a43dce3c9eca599ca3ee43a808ffc172b635",
+  "seal_sha256": "d9a883e0335932673ae93692d65c19eb4ea87f67de9eac5a66e80d08be09651c",
+  "release_started_utc": "2026-11-25T13:02:20.744904+00:00",
+  "all_report_digests_verified_utc": "2026-11-25T13:02:20.807458+00:00",
+  "scored_utc": "2026-11-25T13:03:28.564642+00:00"
+}
