@@ -21,8 +21,8 @@ sys.path.insert(0, str(REPO_ROOT / "python"))
 from virtualgpu.profile import validate_profile  # noqa: E402
 
 DEFAULT_BIN = Path(__file__).resolve().parent / "build" / "vgpu_bench"
-SUITE_VERSION = "0.9.0"
-PROFILE_REVISION = "0.9.0-m3"
+SUITE_VERSION = "0.10.0"
+PROFILE_REVISION = "0.10.0-m3"
 
 
 def find_nvidia_smi() -> str | None:
@@ -288,6 +288,7 @@ def build_profile(
     stage_oh_raw: dict[str, Any],
     closed_loop_mma_raw: dict[str, Any],
     mma_chain_raw: dict[str, Any],
+    serial_fill_raw: dict[str, Any],
     smi_samples: list[dict[str, Any]],
 ) -> dict[str, Any]:
     major = int(query["major"])
@@ -873,6 +874,36 @@ def build_profile(
             "r_squared": round(r2, 6),
         })
 
+    serial_stage_fill: list[dict[str, Any]] = []
+    for pt in serial_fill_raw["serial_stage_fill"]:
+        t_mode = str(pt["transfer_mode"])
+        r_mode = str(pt["read_mode"])
+        serial_stage_fill.append({
+            "transfer_mode": t_mode,
+            "read_mode": r_mode,
+            "num_warps": int(pt["num_warps"]),
+            "stage_bytes": int(pt["stage_bytes"]),
+            "active_ctas": int(pt["active_ctas"]),
+            "stage_time_ns": make_measured(
+                [float(x) for x in pt["stage_time_ns_samples"]],
+                unit="ns",
+                method=f"cuda_serial_fill_{t_mode}_{r_mode}",
+                perturb_group="l2_bw",
+                clock_range=sm_range,
+                locked=False,
+                throttle_events=throttle_events,
+            ),
+            "effective_bytes_per_ns_per_cta": make_measured(
+                [float(x) for x in pt["effective_bytes_per_ns_samples"]],
+                unit="B/ns",
+                method=f"cuda_serial_fill_{t_mode}_{r_mode}",
+                perturb_group="l2_bw",
+                clock_range=sm_range,
+                locked=False,
+                throttle_events=throttle_events,
+            ),
+        })
+
     sm_clock_ghz = (
         (statistics.median(sm_clocks) / 1000.0)
         if sm_clocks
@@ -996,6 +1027,7 @@ def build_profile(
                 "stage_sync_overhead_ns": stage_sync_overhead_ns,
                 "fixed_sync_ns": fixed_sync_ns,
                 "min_async_roundtrip_ns": min_async_rt_mv,
+                "serial_stage_fill": serial_stage_fill,
             },
             "spill": {
                 "local_mem_l1_hit_bw_per_sm_gbps": make_estimated(150.0, "GB/s", "m2_estimated", "spill_l1"),
@@ -1069,18 +1101,21 @@ def main() -> int:
     mma_chain_raw, smi_mc = run_bench_with_clock_polling(
         args.binary, "mma-chain", args.device, ["--samples", "9", "--warmup", "2"]
     )
+    serial_fill_raw, smi_sf = run_bench_with_clock_polling(
+        args.binary, "serial-fill", args.device, ["--samples", "11", "--warmup", "2"]
+    )
     dispatch_raw, smi_disp = run_bench_with_clock_polling(
         args.binary, "cta-dispatch", args.device, ["--repeats", str(args.repeats)]
     )
     smi_samples = (
-        smi_dram + smi_mma + smi_l2 + smi_cp + smi_lat + smi_launch + smi_lc + smi_rs + smi_mlp + smi_cl + smi_mg + smi_so + smi_clm + smi_mc + smi_disp
+        smi_dram + smi_mma + smi_l2 + smi_cp + smi_lat + smi_launch + smi_lc + smi_rs + smi_mlp + smi_cl + smi_mg + smi_so + smi_clm + smi_mc + smi_sf + smi_disp
     )
 
     profile = build_profile(
         query, dram_raw, dispatch_raw, mma_raw, l2_raw, cp_async_raw,
         latency_raw, launch_raw, lat_curve_raw, l2_rescan_raw, mlp_raw,
         closed_loop_raw, l2_merge_raw, stage_oh_raw, closed_loop_mma_raw,
-        mma_chain_raw, smi_samples
+        mma_chain_raw, serial_fill_raw, smi_samples
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("w", encoding="utf-8") as fh:

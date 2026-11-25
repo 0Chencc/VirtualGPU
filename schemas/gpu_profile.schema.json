@@ -394,6 +394,11 @@
             },
             "min_async_roundtrip_ns": {
               "oneOf": [{ "$ref": "#/$defs/MeasuredValue" }, { "type": "null" }]
+            },
+            "serial_stage_fill": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/SerialStageFillPoint" }
             }
           }
         },
@@ -725,6 +730,34 @@
         "intercept_ns": { "$ref": "#/$defs/MeasuredValue" },
         "slope_ns_per_mma": { "$ref": "#/$defs/MeasuredValue" },
         "r_squared": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "SerialStageFillPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "transfer_mode",
+        "read_mode",
+        "num_warps",
+        "stage_bytes",
+        "active_ctas",
+        "stage_time_ns",
+        "effective_bytes_per_ns_per_cta"
+      ],
+      "properties": {
+        "transfer_mode": {
+          "type": "string",
+          "enum": ["cp_async", "ld_st"]
+        },
+        "read_mode": {
+          "type": "string",
+          "enum": ["fill_only", "fill_and_ldmatrix"]
+        },
+        "num_warps": { "type": "integer", "minimum": 1 },
+        "stage_bytes": { "type": "integer", "minimum": 1 },
+        "active_ctas": { "type": "integer", "minimum": 1 },
+        "stage_time_ns": { "$ref": "#/$defs/MeasuredValue" },
+        "effective_bytes_per_ns_per_cta": { "$ref": "#/$defs/MeasuredValue" }
       }
     }
   }

@@ -2694,3 +2694,227 @@ static int run_mma_chain(int device, int samples, int warmup) {
   CUDA_CHECK(cudaFree(d_sink));
   return 0;
 }
+
+// ---------------------------------------------------------------------------
+// 14. Serial stage fill & ldmatrix read (1 CTA/SM, hot L2, S=1, no MMA)
+// ---------------------------------------------------------------------------
+
+template <int STAGE_BYTES, int NUM_WARPS, bool USE_CP_ASYNC, bool WITH_LDMATRIX>
+__global__ void serial_stage_fill_kernel(const uint4* __restrict__ src,
+                                         uint32_t* __restrict__ sink,
+                                         size_t l2_mask,
+                                         int steps) {
+  extern __shared__ uint4 smem[];
+  const uint32_t tid = threadIdx.x;
+  const uint32_t warp_id = tid >> 5;
+  const uint32_t lane = tid & 31u;
+  constexpr size_t STAGE_U4 = static_cast<size_t>(STAGE_BYTES) / sizeof(uint4);
+  const size_t grid_stage_u4 = static_cast<size_t>(gridDim.x) * STAGE_U4;
+  size_t base = (static_cast<size_t>(blockIdx.x) * STAGE_U4) & l2_mask;
+  uint32_t acc = 0u;
+
+  for (int step = 0; step < steps; ++step) {
+    if constexpr (USE_CP_ASYNC) {
+      if constexpr (STAGE_BYTES == 2048 && NUM_WARPS == 8) {
+        if (tid < 128) {
+          uint32_t saddr = static_cast<uint32_t>(__cvta_generic_to_shared(smem + tid));
+          const void* gptr = src + ((base + tid) & l2_mask);
+          asm volatile("cp.async.cg.shared.global [%0], [%1], 16;\n" :: "r"(saddr), "l"(gptr) : "memory");
+        }
+      } else {
+        constexpr int VECS = STAGE_BYTES / (NUM_WARPS * 32 * 16);
+        #pragma unroll
+        for (int v = 0; v < VECS; ++v) {
+          size_t off = static_cast<size_t>(v) * (NUM_WARPS * 32) + tid;
+          uint32_t saddr = static_cast<uint32_t>(__cvta_generic_to_shared(smem + off));
+          const void* gptr = src + ((base + off) & l2_mask);
+          asm volatile("cp.async.cg.shared.global [%0], [%1], 16;\n" :: "r"(saddr), "l"(gptr) : "memory");
+        }
+      }
+      asm volatile("cp.async.commit_group;\n" ::: "memory");
+      asm volatile("cp.async.wait_group 0;\n" ::: "memory");
+    } else {
+      if constexpr (STAGE_BYTES == 2048 && NUM_WARPS == 8) {
+        if (tid < 128) {
+          uint4 val = ld_cg_u4(src + ((base + tid) & l2_mask));
+          uint32_t saddr = static_cast<uint32_t>(__cvta_generic_to_shared(smem + tid));
+          asm volatile("st.shared.v4.u32 [%0], {%1,%2,%3,%4};\n"
+                       :: "r"(saddr), "r"(val.x), "r"(val.y), "r"(val.z), "r"(val.w) : "memory");
+        }
+      } else {
+        constexpr int VECS = STAGE_BYTES / (NUM_WARPS * 32 * 16);
+        uint4 vals[VECS];
+        #pragma unroll
+        for (int v = 0; v < VECS; ++v) {
+          size_t off = static_cast<size_t>(v) * (NUM_WARPS * 32) + tid;
+          vals[v] = ld_cg_u4(src + ((base + off) & l2_mask));
+        }
+        #pragma unroll
+        for (int v = 0; v < VECS; ++v) {
+          size_t off = static_cast<size_t>(v) * (NUM_WARPS * 32) + tid;
+          uint32_t saddr = static_cast<uint32_t>(__cvta_generic_to_shared(smem + off));
+          asm volatile("st.shared.v4.u32 [%0], {%1,%2,%3,%4};\n"
+                       :: "r"(saddr), "r"(vals[v].x), "r"(vals[v].y), "r"(vals[v].z), "r"(vals[v].w) : "memory");
+        }
+      }
+    }
+
+    asm volatile("bar.sync 0;\n" ::: "memory");
+
+    if constexpr (WITH_LDMATRIX) {
+      if constexpr (STAGE_BYTES == 2048 && NUM_WARPS == 8) {
+        if (warp_id < 4) {
+          size_t off_u4 = static_cast<size_t>(warp_id) * 32ULL + lane;
+          uint32_t saddr = static_cast<uint32_t>(__cvta_generic_to_shared(smem + off_u4));
+          uint32_t r0, r1, r2, r3;
+          asm volatile("ldmatrix.sync.aligned.x4.m8n8.shared.b16 {%0,%1,%2,%3}, [%4];\n"
+                       : "=r"(r0), "=r"(r1), "=r"(r2), "=r"(r3) : "r"(saddr) : "memory");
+          acc ^= (r0 ^ r1 ^ r2 ^ r3);
+        }
+      } else {
+        constexpr int LD_N = STAGE_BYTES / (NUM_WARPS * 512);
+        #pragma unroll
+        for (int r = 0; r < LD_N; ++r) {
+          size_t off_u4 = (static_cast<size_t>(r) * NUM_WARPS + warp_id) * 32ULL + lane;
+          uint32_t saddr = static_cast<uint32_t>(__cvta_generic_to_shared(smem + off_u4));
+          uint32_t r0, r1, r2, r3;
+          asm volatile("ldmatrix.sync.aligned.x4.m8n8.shared.b16 {%0,%1,%2,%3}, [%4];\n"
+                       : "=r"(r0), "=r"(r1), "=r"(r2), "=r"(r3) : "r"(saddr) : "memory");
+          acc ^= (r0 ^ r1 ^ r2 ^ r3);
+        }
+      }
+      asm volatile("bar.sync 0;\n" ::: "memory");
+    }
+
+    base = (base + grid_stage_u4) & l2_mask;
+  }
+
+  uint4 tail = smem[tid & (STAGE_U4 - 1ULL)];
+  acc ^= (tail.x ^ tail.y ^ tail.z ^ tail.w);
+  if (acc == 0xdeadbeefu) {
+    sink[blockIdx.x * blockDim.x + tid] = acc;
+  }
+}
+
+template <int NUM_WARPS, bool USE_CP_ASYNC, bool WITH_LDMATRIX>
+static void dispatch_serial_fill_bytes(int stage_bytes, int grid, const uint4* d_l2,
+                                       uint32_t* d_sink, size_t l2_mask, int steps) {
+  const int threads = NUM_WARPS * 32;
+  const size_t dyn_smem = static_cast<size_t>(stage_bytes);
+  switch (stage_bytes) {
+    case 2048:
+      serial_stage_fill_kernel<2048, NUM_WARPS, USE_CP_ASYNC, WITH_LDMATRIX>
+          <<<grid, threads, dyn_smem>>>(d_l2, d_sink, l2_mask, steps);
+      break;
+    case 4096:
+      serial_stage_fill_kernel<4096, NUM_WARPS, USE_CP_ASYNC, WITH_LDMATRIX>
+          <<<grid, threads, dyn_smem>>>(d_l2, d_sink, l2_mask, steps);
+      break;
+    case 8192:
+      serial_stage_fill_kernel<8192, NUM_WARPS, USE_CP_ASYNC, WITH_LDMATRIX>
+          <<<grid, threads, dyn_smem>>>(d_l2, d_sink, l2_mask, steps);
+      break;
+    case 16384:
+      serial_stage_fill_kernel<16384, NUM_WARPS, USE_CP_ASYNC, WITH_LDMATRIX>
+          <<<grid, threads, dyn_smem>>>(d_l2, d_sink, l2_mask, steps);
+      break;
+    default:
+      break;
+  }
+}
+
+static int run_serial_fill(int device, int samples, int warmup) {
+  cudaDeviceProp prop{};
+  CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
+  const int sm_count = prop.multiProcessorCount;
+
+  // 4 MiB working set (<< 36 MiB L2 on RTX 4070), pre-warmed in L2 before timing.
+  const size_t l2_bytes = 4ULL * 1024ULL * 1024ULL;
+  const size_t l2_mask = (l2_bytes / sizeof(uint4)) - 1ULL;
+  uint4* d_l2 = nullptr;
+  uint32_t* d_sink = nullptr;
+  CUDA_CHECK(cudaMalloc(&d_l2, l2_bytes));
+  CUDA_CHECK(cudaMalloc(&d_sink, static_cast<size_t>(sm_count) * 256 * sizeof(uint32_t)));
+  CUDA_CHECK(cudaMemset(d_l2, 0x3c, l2_bytes));
+
+  cudaEvent_t ev_start, ev_stop;
+  CUDA_CHECK(cudaEventCreate(&ev_start));
+  CUDA_CHECK(cudaEventCreate(&ev_stop));
+
+  const std::vector<int> grid_list = {1, sm_count};
+  const std::vector<int> warp_list = {4, 8};
+  const std::vector<int> bytes_list = {2048, 4096, 8192, 16384};
+  const int steps = 4096;
+
+  std::printf("{\n  \"samples\": %d,\n  \"serial_stage_fill\": [", samples);
+  bool first = true;
+
+  for (int grid : grid_list) {
+    for (bool use_cp : {true, false}) {
+      const char* t_mode = use_cp ? "cp_async" : "ld_st";
+      for (bool with_ldm : {false, true}) {
+        const char* r_mode = with_ldm ? "fill_and_ldmatrix" : "fill_only";
+        for (int warps : warp_list) {
+          for (int sb : bytes_list) {
+            auto launch_once = [&]() {
+              if (warps == 4) {
+                if (use_cp && !with_ldm) dispatch_serial_fill_bytes<4, true, false>(sb, grid, d_l2, d_sink, l2_mask, steps);
+                else if (use_cp && with_ldm) dispatch_serial_fill_bytes<4, true, true>(sb, grid, d_l2, d_sink, l2_mask, steps);
+                else if (!use_cp && !with_ldm) dispatch_serial_fill_bytes<4, false, false>(sb, grid, d_l2, d_sink, l2_mask, steps);
+                else dispatch_serial_fill_bytes<4, false, true>(sb, grid, d_l2, d_sink, l2_mask, steps);
+              } else {
+                if (use_cp && !with_ldm) dispatch_serial_fill_bytes<8, true, false>(sb, grid, d_l2, d_sink, l2_mask, steps);
+                else if (use_cp && with_ldm) dispatch_serial_fill_bytes<8, true, true>(sb, grid, d_l2, d_sink, l2_mask, steps);
+                else if (!use_cp && !with_ldm) dispatch_serial_fill_bytes<8, false, false>(sb, grid, d_l2, d_sink, l2_mask, steps);
+                else dispatch_serial_fill_bytes<8, false, true>(sb, grid, d_l2, d_sink, l2_mask, steps);
+              }
+            };
+
+            for (int w = 0; w < warmup; ++w) launch_once();
+            CUDA_CHECK(cudaDeviceSynchronize());
+
+            std::vector<double> ns_samples;
+            std::vector<double> bpns_samples;
+            ns_samples.reserve(samples);
+            bpns_samples.reserve(samples);
+            for (int s = 0; s < samples; ++s) {
+              CUDA_CHECK(cudaEventRecord(ev_start));
+              launch_once();
+              CUDA_CHECK(cudaEventRecord(ev_stop));
+              CUDA_CHECK(cudaEventSynchronize(ev_stop));
+              float ms = 0.0f;
+              CUDA_CHECK(cudaEventElapsedTime(&ms, ev_start, ev_stop));
+              double stage_ns = (static_cast<double>(ms) * 1e6) / static_cast<double>(steps);
+              ns_samples.push_back(stage_ns);
+              bpns_samples.push_back(static_cast<double>(sb) / stage_ns);
+            }
+
+            if (!first) std::printf(",");
+            first = false;
+            std::printf(
+                "\n    {\"transfer_mode\": \"%s\", \"read_mode\": \"%s\", \"num_warps\": %d, "
+                "\"stage_bytes\": %d, \"active_ctas\": %d, \"stage_time_ns_samples\": [",
+                t_mode, r_mode, warps, sb, grid);
+            for (size_t i = 0; i < ns_samples.size(); ++i) {
+              if (i) std::printf(", ");
+              std::printf("%.3f", ns_samples[i]);
+            }
+            std::printf("], \"effective_bytes_per_ns_samples\": [");
+            for (size_t i = 0; i < bpns_samples.size(); ++i) {
+              if (i) std::printf(", ");
+              std::printf("%.3f", bpns_samples[i]);
+            }
+            std::printf("]}");
+          }
+        }
+      }
+    }
+  }
+  std::printf("\n  ]\n}\n");
+
+  CUDA_CHECK(cudaEventDestroy(ev_start));
+  CUDA_CHECK(cudaEventDestroy(ev_stop));
+  CUDA_CHECK(cudaFree(d_l2));
+  CUDA_CHECK(cudaFree(d_sink));
+  return 0;
+}

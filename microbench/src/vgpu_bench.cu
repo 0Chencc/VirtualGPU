@@ -527,6 +527,9 @@ int main(int argc, char** argv) {
   if (mode == "mma-chain") {
     return run_mma_chain(device, samples, warmup);
   }
+  if (mode == "serial-fill") {
+    return run_serial_fill(device, samples, warmup);
+  }
   std::fprintf(stderr, "Unknown mode: %s\n", mode.c_str());
   return 2;
 }
