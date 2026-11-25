@@ -78,6 +78,7 @@ class CompiledArtifacts:
     static_smem_bytes: int
     requested_num_warps: int
     requested_num_stages: int
+    enable_fp_fusion: bool
     ptxas: PtxasReport
 
 
@@ -183,11 +184,14 @@ def specialize_triton_call(
     args: tuple[Any, ...],
     kwargs: dict[str, Any],
     warp_size: int = 32,
+    enable_fp_fusion: bool = True,
 ) -> tuple[dict[str, Any], dict[str, str], dict[Any, Any], dict[Any, Any]]:
     """Derive (options, signature, constexprs, attrs) using Triton's own runtime binder.
 
     Guarantees AOT specialization (16B divisibility, equal-to-1 constexprs,
     do_not_specialize, integer bit widths) matches runtime JIT identically.
+    Always passes `enable_fp_fusion` explicitly rather than relying on Triton's
+    version-dependent default.
     """
     from triton.backends.compiler import GPUTarget
     from triton.compiler import make_backend
@@ -197,9 +201,11 @@ def specialize_triton_call(
     target = GPUTarget("cuda", arch_num, warp_size)
     backend = make_backend(target)
     binder = create_function_from_signature(fn.signature, fn.params, backend)
-    bound_args, specialization, options = binder(*args, **kwargs)
+    call_kwargs = dict(kwargs)
+    call_kwargs.setdefault("enable_fp_fusion", enable_fp_fusion)
+    bound_args, specialization, options = binder(*args, **call_kwargs)
     options_obj, signature, constexprs, attrs = fn._pack_args(
-        backend, kwargs, bound_args, specialization, options
+        backend, call_kwargs, bound_args, specialization, options
     )
     return dict(options_obj.__dict__), signature, constexprs, attrs
 
@@ -441,6 +447,7 @@ def _artifacts_to_dict(art: CompiledArtifacts) -> dict[str, Any]:
         "static_smem_bytes": art.static_smem_bytes,
         "requested_num_warps": art.requested_num_warps,
         "requested_num_stages": art.requested_num_stages,
+        "enable_fp_fusion": art.enable_fp_fusion,
         "ptxas": asdict(art.ptxas),
     }
 
@@ -457,6 +464,7 @@ def _artifacts_from_dict(data: dict[str, Any]) -> CompiledArtifacts:
         static_smem_bytes=int(data["static_smem_bytes"]),
         requested_num_warps=int(data["requested_num_warps"]),
         requested_num_stages=int(data["requested_num_stages"]),
+        enable_fp_fusion=bool(data.get("enable_fp_fusion", True)),
         ptxas=PtxasReport(**data["ptxas"]),
     )
 
@@ -471,6 +479,7 @@ def compile_triton_aot(
     attrs: dict[Any, Any] | None = None,
     options: dict[str, Any] | None = None,
     warp_size: int = 32,
+    enable_fp_fusion: bool = True,
     cache_dir: str | Path | None = None,
     use_cache: bool = True,
 ) -> CompiledArtifacts:
@@ -483,6 +492,8 @@ def compile_triton_aot(
     compile_options = dict(options) if options is not None else {}
     compile_options.setdefault("num_warps", num_warps)
     compile_options.setdefault("num_stages", num_stages)
+    compile_options.setdefault("enable_fp_fusion", enable_fp_fusion)
+    resolved_fp_fusion = bool(compile_options["enable_fp_fusion"])
 
     cache_key: str | None = None
     disk_path: Path | None = None
@@ -531,6 +542,7 @@ def compile_triton_aot(
         static_smem_bytes=int(getattr(compiled.metadata, "shared", 0) or 0),
         requested_num_warps=num_warps,
         requested_num_stages=num_stages,
+        enable_fp_fusion=resolved_fp_fusion,
         ptxas=ptxas_report,
     )
 

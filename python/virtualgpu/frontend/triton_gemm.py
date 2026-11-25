@@ -220,6 +220,7 @@ def extract_gemm_kernel_ir(
     ptr_offset_a: int = 0x10000,
     ptr_offset_b: int | None = None,
     ptr_offset_c: int | None = None,
+    enable_fp_fusion: bool = True,
     cache_dir: str | Path | None = None,
     use_cache: bool = True,
 ) -> dict[str, Any]:
@@ -263,11 +264,13 @@ def extract_gemm_kernel_ir(
         )
 
     call_kwargs = dict(config)
+    call_kwargs.setdefault("enable_fp_fusion", enable_fp_fusion)
     options_dict, signature, constexprs, attrs = specialize_triton_call(
         fn=fn,
         target_arch=target_arch,
         args=call_args,
         kwargs=call_kwargs,
+        enable_fp_fusion=enable_fp_fusion,
     )
 
     artifacts = compile_triton_aot(
@@ -279,6 +282,7 @@ def extract_gemm_kernel_ir(
         num_stages=num_stages,
         attrs=attrs,
         options=options_dict,
+        enable_fp_fusion=enable_fp_fusion,
         cache_dir=cache_dir,
         use_cache=use_cache,
     )
@@ -443,6 +447,7 @@ def extract_gemm_kernel_ir(
                 "assembler": artifacts.ptxas.assembler,
                 "assembler_version": artifacts.ptxas.assembler_version,
                 "target_sm_compiled": artifacts.ptxas.target_sm,
+                "enable_fp_fusion": artifacts.enable_fp_fusion,
                 "artifact_hash_version": ARTIFACT_HASH_VERSION,
                 "ptx_sha256": artifacts.ptx_sha256,
                 "ttgir_sha256": artifacts.ttgir_sha256,

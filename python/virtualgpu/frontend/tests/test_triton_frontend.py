@@ -182,6 +182,7 @@ def test_extract_gemm_validates_against_schema(target_arch: str) -> None:
     assert ir["body"]["pipeline_loop"]["num_stages"] == 2
     assert ir["body"]["pipeline_loop"]["prefetch_distance"] == 1
     assert ir["unsupported_features"] == []
+    assert ir["metadata"]["toolchain"]["enable_fp_fusion"] is True
     assert len(ir["metadata"]["toolchain"]["ptx_sha256"]) == 64
     assert len(ir["metadata"]["toolchain"]["ttgir_sha256"]) == 64
 
