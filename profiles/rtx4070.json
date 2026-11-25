@@ -37275,80 +37275,3134 @@
         {
           "smem_carveout_bytes": 0,
           "threshold_bytes_per_sm": {
-            "value": 128652.0,
-            "ci95_low": 127974.0,
-            "ci95_high": 129566.0,
+            "value": 128145.0,
+            "ci95_low": 126102.0,
+            "ci95_high": 129029.0,
             "rel_uncertainty": 0.1082,
             "unit": "bytes",
             "method": "cuda_l1_ca_pchase_carveout_cliff",
             "source": "measured",
             "perturb_group": null
-          }
+          },
+          "miss_rate_by_working_set": [
+            {
+              "working_set_bytes": 8192,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 12288,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 16384,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 20480,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 24576,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 28672,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 32768,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 36864,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 40960,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 45056,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 49152,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 53248,
+              "estimated_miss_rate": {
+                "value": 0.0001,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0001,
+                "rel_uncertainty": 0.8308,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 57344,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 61440,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 65536,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 69632,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 73728,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 77824,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 81920,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 86016,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 90112,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 94208,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 98304,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 102400,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 106496,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 110592,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 114688,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 118784,
+              "estimated_miss_rate": {
+                "value": 0.1731,
+                "ci95_low": 0.1731,
+                "ci95_high": 0.1731,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 122880,
+              "estimated_miss_rate": {
+                "value": 0.2678,
+                "ci95_low": 0.2674,
+                "ci95_high": 0.268,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 126976,
+              "estimated_miss_rate": {
+                "value": 0.3908,
+                "ci95_low": 0.3276,
+                "ci95_high": 0.5631,
+                "rel_uncertainty": 0.3013,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 131072,
+              "estimated_miss_rate": {
+                "value": 0.7735,
+                "ci95_low": 0.6715,
+                "ci95_high": 0.7737,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 135168,
+              "estimated_miss_rate": {
+                "value": 0.6792,
+                "ci95_low": 0.6586,
+                "ci95_high": 0.7466,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 139264,
+              "estimated_miss_rate": {
+                "value": 0.8261,
+                "ci95_low": 0.7359,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1598,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 143360,
+              "estimated_miss_rate": {
+                "value": 0.8661,
+                "ci95_low": 0.8554,
+                "ci95_high": 0.8679,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 147456,
+              "estimated_miss_rate": {
+                "value": 0.8847,
+                "ci95_low": 0.8797,
+                "ci95_high": 0.8921,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 151552,
+              "estimated_miss_rate": {
+                "value": 0.9135,
+                "ci95_low": 0.8953,
+                "ci95_high": 0.9222,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 155648,
+              "estimated_miss_rate": {
+                "value": 0.9966,
+                "ci95_low": 0.9966,
+                "ci95_high": 0.9966,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 159744,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 1.0,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 163840,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 1.0,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            }
+          ]
         },
         {
           "smem_carveout_bytes": 16384,
           "threshold_bytes_per_sm": {
-            "value": 104867.0,
-            "ci95_low": 104599.0,
-            "ci95_high": 106499.0,
+            "value": 105299.0,
+            "ci95_low": 104890.0,
+            "ci95_high": 107514.0,
             "rel_uncertainty": 0.1082,
             "unit": "bytes",
             "method": "cuda_l1_ca_pchase_carveout_cliff",
             "source": "measured",
             "perturb_group": null
-          }
+          },
+          "miss_rate_by_working_set": [
+            {
+              "working_set_bytes": 8192,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 12288,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 16384,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 20480,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 24576,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 28672,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 32768,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 36864,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 40960,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 45056,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 49152,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 53248,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 57344,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 61440,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 65536,
+              "estimated_miss_rate": {
+                "value": 0.0001,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0001,
+                "rel_uncertainty": 0.6636,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 69632,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 73728,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 77824,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 81920,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 86016,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 90112,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 94208,
+              "estimated_miss_rate": {
+                "value": 0.1974,
+                "ci95_low": 0.1959,
+                "ci95_high": 0.1975,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 98304,
+              "estimated_miss_rate": {
+                "value": 0.3324,
+                "ci95_low": 0.3324,
+                "ci95_high": 0.3325,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 102400,
+              "estimated_miss_rate": {
+                "value": 0.3377,
+                "ci95_low": 0.3224,
+                "ci95_high": 0.3738,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 106496,
+              "estimated_miss_rate": {
+                "value": 0.5619,
+                "ci95_low": 0.4629,
+                "ci95_high": 0.6143,
+                "rel_uncertainty": 0.1347,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 110592,
+              "estimated_miss_rate": {
+                "value": 0.6704,
+                "ci95_low": 0.6356,
+                "ci95_high": 0.6746,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 114688,
+              "estimated_miss_rate": {
+                "value": 0.8555,
+                "ci95_low": 0.8252,
+                "ci95_high": 0.8566,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 118784,
+              "estimated_miss_rate": {
+                "value": 0.821,
+                "ci95_low": 0.7485,
+                "ci95_high": 0.8295,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 122880,
+              "estimated_miss_rate": {
+                "value": 0.8343,
+                "ci95_low": 0.7833,
+                "ci95_high": 0.839,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 126976,
+              "estimated_miss_rate": {
+                "value": 0.9991,
+                "ci95_low": 0.9964,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 131072,
+              "estimated_miss_rate": {
+                "value": 0.9998,
+                "ci95_low": 0.998,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 135168,
+              "estimated_miss_rate": {
+                "value": 0.9993,
+                "ci95_low": 0.9974,
+                "ci95_high": 0.9994,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 139264,
+              "estimated_miss_rate": {
+                "value": 0.9998,
+                "ci95_low": 0.9979,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 143360,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 0.9982,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 147456,
+              "estimated_miss_rate": {
+                "value": 0.9998,
+                "ci95_low": 0.998,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 151552,
+              "estimated_miss_rate": {
+                "value": 0.9995,
+                "ci95_low": 0.9977,
+                "ci95_high": 0.9997,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 155648,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 0.9999,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 159744,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 0.9984,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 163840,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 0.9999,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            }
+          ]
         },
         {
           "smem_carveout_bytes": 32768,
           "threshold_bytes_per_sm": {
-            "value": 74144.0,
-            "ci95_low": 74072.0,
-            "ci95_high": 74146.0,
+            "value": 74135.0,
+            "ci95_low": 74060.0,
+            "ci95_high": 74139.0,
             "rel_uncertainty": 0.1082,
             "unit": "bytes",
             "method": "cuda_l1_ca_pchase_carveout_cliff",
             "source": "measured",
             "perturb_group": null
-          }
+          },
+          "miss_rate_by_working_set": [
+            {
+              "working_set_bytes": 8192,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 12288,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 16384,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 20480,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 24576,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 28672,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 32768,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 36864,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 40960,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 45056,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 49152,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 53248,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 57344,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0001,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 61440,
+              "estimated_miss_rate": {
+                "value": 0.1882,
+                "ci95_low": 0.1839,
+                "ci95_high": 0.1921,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 65536,
+              "estimated_miss_rate": {
+                "value": 0.491,
+                "ci95_low": 0.4909,
+                "ci95_high": 0.4911,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 69632,
+              "estimated_miss_rate": {
+                "value": 0.4701,
+                "ci95_low": 0.4697,
+                "ci95_high": 0.4706,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 73728,
+              "estimated_miss_rate": {
+                "value": 0.4624,
+                "ci95_low": 0.4623,
+                "ci95_high": 0.4709,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 77824,
+              "estimated_miss_rate": {
+                "value": 0.8375,
+                "ci95_low": 0.8259,
+                "ci95_high": 0.8399,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 81920,
+              "estimated_miss_rate": {
+                "value": 0.7982,
+                "ci95_low": 0.7822,
+                "ci95_high": 0.7994,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 86016,
+              "estimated_miss_rate": {
+                "value": 0.763,
+                "ci95_low": 0.7436,
+                "ci95_high": 0.7631,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 90112,
+              "estimated_miss_rate": {
+                "value": 0.9258,
+                "ci95_low": 0.8877,
+                "ci95_high": 0.9531,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 94208,
+              "estimated_miss_rate": {
+                "value": 0.9989,
+                "ci95_low": 0.9986,
+                "ci95_high": 0.9991,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 98304,
+              "estimated_miss_rate": {
+                "value": 0.9997,
+                "ci95_low": 0.9994,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 102400,
+              "estimated_miss_rate": {
+                "value": 0.9865,
+                "ci95_low": 0.9581,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 106496,
+              "estimated_miss_rate": {
+                "value": 0.9215,
+                "ci95_low": 0.9174,
+                "ci95_high": 0.9217,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 110592,
+              "estimated_miss_rate": {
+                "value": 0.8981,
+                "ci95_low": 0.8978,
+                "ci95_high": 0.8992,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 114688,
+              "estimated_miss_rate": {
+                "value": 0.9853,
+                "ci95_low": 0.9487,
+                "ci95_high": 0.9877,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 118784,
+              "estimated_miss_rate": {
+                "value": 0.9995,
+                "ci95_low": 0.9991,
+                "ci95_high": 0.9996,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 122880,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 0.9999,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 126976,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 1.0,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 131072,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 0.9997,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 135168,
+              "estimated_miss_rate": {
+                "value": 0.9994,
+                "ci95_low": 0.9992,
+                "ci95_high": 0.9995,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 139264,
+              "estimated_miss_rate": {
+                "value": 0.9999,
+                "ci95_low": 0.9995,
+                "ci95_high": 0.9999,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 143360,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 1.0,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 147456,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 0.9995,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 151552,
+              "estimated_miss_rate": {
+                "value": 0.9995,
+                "ci95_low": 0.9992,
+                "ci95_high": 0.9997,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 155648,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 0.9997,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 159744,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 1.0,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 163840,
+              "estimated_miss_rate": {
+                "value": 0.9999,
+                "ci95_low": 0.9998,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            }
+          ]
         },
         {
           "smem_carveout_bytes": 49152,
           "threshold_bytes_per_sm": {
-            "value": 74143.0,
-            "ci95_low": 74072.0,
-            "ci95_high": 74147.0,
+            "value": 74132.0,
+            "ci95_low": 74057.0,
+            "ci95_high": 74138.0,
             "rel_uncertainty": 0.1082,
             "unit": "bytes",
             "method": "cuda_l1_ca_pchase_carveout_cliff",
             "source": "measured",
             "perturb_group": null
-          }
+          },
+          "miss_rate_by_working_set": [
+            {
+              "working_set_bytes": 8192,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 12288,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 16384,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 20480,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 24576,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 28672,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 32768,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 36864,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 40960,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 45056,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 49152,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 53248,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 57344,
+              "estimated_miss_rate": {
+                "value": 0.0001,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0001,
+                "rel_uncertainty": 0.5001,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 61440,
+              "estimated_miss_rate": {
+                "value": 0.1885,
+                "ci95_low": 0.1851,
+                "ci95_high": 0.1922,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 65536,
+              "estimated_miss_rate": {
+                "value": 0.4915,
+                "ci95_low": 0.4509,
+                "ci95_high": 0.4916,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 69632,
+              "estimated_miss_rate": {
+                "value": 0.4707,
+                "ci95_low": 0.4701,
+                "ci95_high": 0.473,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 73728,
+              "estimated_miss_rate": {
+                "value": 0.4681,
+                "ci95_low": 0.4625,
+                "ci95_high": 0.4714,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 77824,
+              "estimated_miss_rate": {
+                "value": 0.8376,
+                "ci95_low": 0.8264,
+                "ci95_high": 0.8405,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 81920,
+              "estimated_miss_rate": {
+                "value": 0.7825,
+                "ci95_low": 0.7823,
+                "ci95_high": 0.7994,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 86016,
+              "estimated_miss_rate": {
+                "value": 0.7631,
+                "ci95_low": 0.7488,
+                "ci95_high": 0.7633,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 90112,
+              "estimated_miss_rate": {
+                "value": 0.8961,
+                "ci95_low": 0.8861,
+                "ci95_high": 0.9489,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 94208,
+              "estimated_miss_rate": {
+                "value": 0.9991,
+                "ci95_low": 0.9989,
+                "ci95_high": 0.9992,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 98304,
+              "estimated_miss_rate": {
+                "value": 0.9997,
+                "ci95_low": 0.9995,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 102400,
+              "estimated_miss_rate": {
+                "value": 0.9591,
+                "ci95_low": 0.959,
+                "ci95_high": 0.9596,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 106496,
+              "estimated_miss_rate": {
+                "value": 0.9217,
+                "ci95_low": 0.9203,
+                "ci95_high": 0.922,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 110592,
+              "estimated_miss_rate": {
+                "value": 0.8961,
+                "ci95_low": 0.8949,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 114688,
+              "estimated_miss_rate": {
+                "value": 0.9697,
+                "ci95_low": 0.9576,
+                "ci95_high": 0.9735,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 118784,
+              "estimated_miss_rate": {
+                "value": 0.9995,
+                "ci95_low": 0.9993,
+                "ci95_high": 0.9995,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 122880,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 1.0,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 126976,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 1.0,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 131072,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 1.0,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 135168,
+              "estimated_miss_rate": {
+                "value": 0.9995,
+                "ci95_low": 0.9993,
+                "ci95_high": 0.9995,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 139264,
+              "estimated_miss_rate": {
+                "value": 0.9999,
+                "ci95_low": 0.9998,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 143360,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 1.0,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 147456,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 0.9999,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 151552,
+              "estimated_miss_rate": {
+                "value": 0.9997,
+                "ci95_low": 0.9995,
+                "ci95_high": 0.9997,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 155648,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 0.9999,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 159744,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 1.0,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 163840,
+              "estimated_miss_rate": {
+                "value": 0.9999,
+                "ci95_low": 0.9998,
+                "ci95_high": 0.9999,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            }
+          ]
         },
         {
           "smem_carveout_bytes": 65536,
           "threshold_bytes_per_sm": {
-            "value": 27908.0,
-            "ci95_low": 27877.0,
-            "ci95_high": 27984.0,
+            "value": 27930.0,
+            "ci95_low": 27902.0,
+            "ci95_high": 27965.0,
             "rel_uncertainty": 0.1082,
             "unit": "bytes",
             "method": "cuda_l1_ca_pchase_carveout_cliff",
             "source": "measured",
             "perturb_group": null
-          }
+          },
+          "miss_rate_by_working_set": [
+            {
+              "working_set_bytes": 8192,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 12288,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 16384,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 20480,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 24576,
+              "estimated_miss_rate": {
+                "value": 0.3021,
+                "ci95_low": 0.3021,
+                "ci95_high": 0.3021,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 28672,
+              "estimated_miss_rate": {
+                "value": 0.5437,
+                "ci95_low": 0.5413,
+                "ci95_high": 0.5458,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 32768,
+              "estimated_miss_rate": {
+                "value": 0.6693,
+                "ci95_low": 0.6642,
+                "ci95_high": 0.6727,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 36864,
+              "estimated_miss_rate": {
+                "value": 0.861,
+                "ci95_low": 0.8591,
+                "ci95_high": 0.8633,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 40960,
+              "estimated_miss_rate": {
+                "value": 0.8312,
+                "ci95_low": 0.8302,
+                "ci95_high": 0.8323,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 45056,
+              "estimated_miss_rate": {
+                "value": 0.9882,
+                "ci95_low": 0.9881,
+                "ci95_high": 0.9886,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 49152,
+              "estimated_miss_rate": {
+                "value": 0.9999,
+                "ci95_low": 0.9984,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 53248,
+              "estimated_miss_rate": {
+                "value": 0.9989,
+                "ci95_low": 0.9989,
+                "ci95_high": 0.999,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 57344,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 1.0,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 61440,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 1.0,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 65536,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 0.9999,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 69632,
+              "estimated_miss_rate": {
+                "value": 0.9526,
+                "ci95_low": 0.9521,
+                "ci95_high": 0.954,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 73728,
+              "estimated_miss_rate": {
+                "value": 0.9999,
+                "ci95_low": 0.9998,
+                "ci95_high": 0.9999,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 77824,
+              "estimated_miss_rate": {
+                "value": 0.9993,
+                "ci95_low": 0.9992,
+                "ci95_high": 0.9993,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 81920,
+              "estimated_miss_rate": {
+                "value": 0.9999,
+                "ci95_low": 0.9999,
+                "ci95_high": 0.9999,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 86016,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 1.0,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 90112,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 1.0,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 94208,
+              "estimated_miss_rate": {
+                "value": 0.9993,
+                "ci95_low": 0.9992,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 98304,
+              "estimated_miss_rate": {
+                "value": 0.9998,
+                "ci95_low": 0.9998,
+                "ci95_high": 0.9999,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 102400,
+              "estimated_miss_rate": {
+                "value": 0.9992,
+                "ci95_low": 0.9991,
+                "ci95_high": 0.9992,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 106496,
+              "estimated_miss_rate": {
+                "value": 0.9999,
+                "ci95_low": 0.9998,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 110592,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 1.0,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 114688,
+              "estimated_miss_rate": {
+                "value": 0.9999,
+                "ci95_low": 0.9999,
+                "ci95_high": 0.9999,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 118784,
+              "estimated_miss_rate": {
+                "value": 0.9995,
+                "ci95_low": 0.9994,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 122880,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 1.0,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 126976,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 1.0,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 131072,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 0.9999,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 135168,
+              "estimated_miss_rate": {
+                "value": 0.9994,
+                "ci95_low": 0.9994,
+                "ci95_high": 0.9995,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 139264,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 0.9999,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 143360,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 1.0,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 147456,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 0.9999,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 151552,
+              "estimated_miss_rate": {
+                "value": 0.9997,
+                "ci95_low": 0.9995,
+                "ci95_high": 0.9997,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 155648,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 1.0,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 159744,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 1.0,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 163840,
+              "estimated_miss_rate": {
+                "value": 0.9998,
+                "ci95_low": 0.9998,
+                "ci95_high": 0.9999,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            }
+          ]
         },
         {
           "smem_carveout_bytes": 101376,
           "threshold_bytes_per_sm": {
-            "value": 27981.0,
-            "ci95_low": 27923.0,
-            "ci95_high": 27983.0,
+            "value": 27930.0,
+            "ci95_low": 27902.0,
+            "ci95_high": 28123.0,
             "rel_uncertainty": 0.1082,
             "unit": "bytes",
             "method": "cuda_l1_ca_pchase_carveout_cliff",
             "source": "measured",
             "perturb_group": null
-          }
+          },
+          "miss_rate_by_working_set": [
+            {
+              "working_set_bytes": 8192,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 12288,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 16384,
+              "estimated_miss_rate": {
+                "value": 0.0001,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0001,
+                "rel_uncertainty": 0.5,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 20480,
+              "estimated_miss_rate": {
+                "value": 0.0,
+                "ci95_low": 0.0,
+                "ci95_high": 0.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 24576,
+              "estimated_miss_rate": {
+                "value": 0.3021,
+                "ci95_low": 0.3019,
+                "ci95_high": 0.3021,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 28672,
+              "estimated_miss_rate": {
+                "value": 0.5438,
+                "ci95_low": 0.5306,
+                "ci95_high": 0.5458,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 32768,
+              "estimated_miss_rate": {
+                "value": 0.6706,
+                "ci95_low": 0.6622,
+                "ci95_high": 0.6725,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 36864,
+              "estimated_miss_rate": {
+                "value": 0.8608,
+                "ci95_low": 0.8605,
+                "ci95_high": 0.862,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 40960,
+              "estimated_miss_rate": {
+                "value": 0.8309,
+                "ci95_low": 0.8303,
+                "ci95_high": 0.8319,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 45056,
+              "estimated_miss_rate": {
+                "value": 0.9882,
+                "ci95_low": 0.9868,
+                "ci95_high": 0.9889,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 49152,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 1.0,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 53248,
+              "estimated_miss_rate": {
+                "value": 0.999,
+                "ci95_low": 0.9989,
+                "ci95_high": 0.999,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 57344,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 1.0,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 61440,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 1.0,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 65536,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 1.0,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 69632,
+              "estimated_miss_rate": {
+                "value": 0.9513,
+                "ci95_low": 0.9503,
+                "ci95_high": 0.9524,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 73728,
+              "estimated_miss_rate": {
+                "value": 0.9999,
+                "ci95_low": 0.9999,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 77824,
+              "estimated_miss_rate": {
+                "value": 0.9993,
+                "ci95_low": 0.9991,
+                "ci95_high": 0.9993,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 81920,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 0.9999,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 86016,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 1.0,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 90112,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 1.0,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 94208,
+              "estimated_miss_rate": {
+                "value": 0.9992,
+                "ci95_low": 0.9991,
+                "ci95_high": 0.9993,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 98304,
+              "estimated_miss_rate": {
+                "value": 0.9997,
+                "ci95_low": 0.9995,
+                "ci95_high": 0.9999,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 102400,
+              "estimated_miss_rate": {
+                "value": 0.9992,
+                "ci95_low": 0.999,
+                "ci95_high": 0.9992,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 106496,
+              "estimated_miss_rate": {
+                "value": 0.9998,
+                "ci95_low": 0.9997,
+                "ci95_high": 0.9999,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 110592,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 1.0,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 114688,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 0.9998,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 118784,
+              "estimated_miss_rate": {
+                "value": 0.9995,
+                "ci95_low": 0.9994,
+                "ci95_high": 0.9997,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 122880,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 1.0,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 126976,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 1.0,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 131072,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 1.0,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 135168,
+              "estimated_miss_rate": {
+                "value": 0.9995,
+                "ci95_low": 0.9994,
+                "ci95_high": 0.9995,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 139264,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 0.9999,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 143360,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 1.0,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 147456,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 0.9999,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 151552,
+              "estimated_miss_rate": {
+                "value": 0.9996,
+                "ci95_low": 0.9995,
+                "ci95_high": 0.9998,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 155648,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 1.0,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 159744,
+              "estimated_miss_rate": {
+                "value": 1.0,
+                "ci95_low": 1.0,
+                "ci95_high": 1.0,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            },
+            {
+              "working_set_bytes": 163840,
+              "estimated_miss_rate": {
+                "value": 0.9999,
+                "ci95_low": 0.9998,
+                "ci95_high": 0.9999,
+                "rel_uncertainty": 0.1082,
+                "unit": "fraction",
+                "method": "cuda_l1_ca_pchase_carveout_miss_rate",
+                "source": "measured",
+                "perturb_group": null
+              }
+            }
+          ]
         }
       ]
     },
@@ -57169,9 +60223,9 @@
         "perturb_group": "spill_l2"
       },
       "l1_to_l2_spill_threshold_bytes_per_sm": {
-        "value": 128652.0,
-        "ci95_low": 127974.0,
-        "ci95_high": 129566.0,
+        "value": 128145.0,
+        "ci95_low": 126102.0,
+        "ci95_high": 129029.0,
         "rel_uncertainty": 0.1082,
         "unit": "bytes",
         "method": "cuda_l1_ca_pchase_carveout_cliff",

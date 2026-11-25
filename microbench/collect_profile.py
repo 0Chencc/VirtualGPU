@@ -1159,11 +1159,16 @@ def build_profile(
         pts = sorted(entry["points"], key=lambda p: int(p["ws_bytes"]))
         n_samp = min(len(p["latency_ns_samples"]) for p in pts)
         thresh_samples: list[float] = []
+        miss_samples_by_pt: list[list[float]] = [[] for _ in pts]
         for si in range(n_samp):
             lats = [float(p["latency_ns_samples"][si]) for p in pts]
             wss = [float(p["ws_bytes"]) for p in pts]
             l1_lat = statistics.median(lats[:3])
             l2_lat = statistics.median(lats[-4:])
+            denom = max(l2_lat - l1_lat, 1e-6)
+            for pi, lat in enumerate(lats):
+                miss = max(0.0, min(1.0, (lat - l1_lat) / denom))
+                miss_samples_by_pt[pi].append(miss)
             mid = 0.5 * (l1_lat + l2_lat)
             knee = wss[0]
             for i in range(1, len(pts)):
@@ -1175,12 +1180,28 @@ def build_profile(
                 if lats[-1] <= mid:
                     knee = wss[-1]
             thresh_samples.append(float(round(knee)))
+        miss_curve = [
+            {
+                "working_set_bytes": int(p["ws_bytes"]),
+                "estimated_miss_rate": make_measured(
+                    miss_samples_by_pt[pi],
+                    unit="fraction",
+                    method="cuda_l1_ca_pchase_carveout_miss_rate",
+                    perturb_group=None,
+                    clock_range=sm_range,
+                    locked=False,
+                    throttle_events=throttle_events,
+                ),
+            }
+            for pi, p in enumerate(pts)
+        ]
         l1_to_l2_spill_threshold_by_carveout.append({
             "smem_carveout_bytes": smem_b,
             "threshold_bytes_per_sm": make_measured(
                 thresh_samples, unit="bytes", method="cuda_l1_ca_pchase_carveout_cliff",
                 perturb_group=None, clock_range=sm_range, locked=False, throttle_events=throttle_events,
             ),
+            "miss_rate_by_working_set": miss_curve,
         })
     l1_to_l2_spill_threshold_by_carveout.sort(key=lambda x: x["smem_carveout_bytes"])
     l1_spill_thresh_mv = l1_to_l2_spill_threshold_by_carveout[0]["threshold_bytes_per_sm"]
