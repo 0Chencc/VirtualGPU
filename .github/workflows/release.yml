@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - "v*"
+      - "v*.*.*"
   workflow_dispatch:
 
 permissions:
@@ -102,7 +102,7 @@ jobs:
   release:
     name: Publish GitHub Release
     needs: [linux-wheels, sdist, verify-wheel]
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
