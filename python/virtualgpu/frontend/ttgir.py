@@ -18,6 +18,19 @@ class MmaInfo:
 
 
 @dataclass(frozen=True)
+class MmaDotInfo:
+    """Per-tt.dot MMA operation extracted from a pipeline loop body."""
+
+    op_class: str
+    tile_mnk: tuple[int, int, int]
+    inst_mnk: tuple[int, int, int]
+    a_dtype: str
+    b_dtype: str
+    acc_dtype: str
+    count: int
+
+
+@dataclass(frozen=True)
 class TtgirSummary:
     """Structured summary extracted from post-pipelining TTGIR + PTX."""
 
@@ -34,6 +47,12 @@ class TtgirSummary:
     diagnostics: list[str] = field(default_factory=list)
     unsupported_features: list[str] = field(default_factory=list)
     store_transfer_width_bytes: int | None = None
+    mma_dots: list[MmaDotInfo] = field(default_factory=list)
+    loop_alu_per_warp: int = 0
+    loop_sfu_per_warp: int = 0
+    loop_shfl_per_warp: int = 0
+    prologue_smem_store_bytes: int = 0
+    num_top_level_loops: int = 0
 
 
 _DTYPE_BITS: dict[str, int] = {
@@ -65,10 +84,13 @@ _RE_PTX_WGMMA = re.compile(r"wgmma\.mma_async\.sync\.aligned\.m(\d+)n(\d+)k(\d+)
 _RE_PTX_TCGEN05 = re.compile(r"tcgen05\.mma\.")
 _RE_TTGIR_MMA_LAYOUT = re.compile(r"#ttg\.nvidia_mma<[^>]*instrShape\s*=\s*\[(\d+),\s*(\d+)\]")
 _RE_TT_DOT = re.compile(
-    r"tt\.dot\s+[^:]+:\s*tensor<(\d+)x(\d+)x([a-zA-Z0-9_]+),\s*[^>]+>\s*\*\s*tensor<(\d+)x(\d+)x([a-zA-Z0-9_]+),\s*[^>]+>\s*->\s*tensor<(\d+)x(\d+)x([a-zA-Z0-9_]+)"
+    r"tt\.dot\s+[^:]+:\s*tensor<(\d+)x(\d+)x([a-zA-Z0-9_]+),\s*(?:<[^>]*>|[^>])+>\s*\*\s*tensor<(\d+)x(\d+)x([a-zA-Z0-9_]+),\s*(?:<[^>]*>|[^>])+>\s*->\s*tensor<(\d+)x(\d+)x([a-zA-Z0-9_]+)"
 )
 _RE_LOCAL_LOAD = re.compile(
     r"ttg\.local_load\b[^:]*:\s*!ttg\.memdesc<(\d+)x(\d+)x([a-zA-Z0-9_]+)"
+)
+_RE_PROLOGUE_LOCAL_ALLOC_VAL = re.compile(
+    r"ttg\.local_alloc\s+%[A-Za-z0-9_]+\s*:\s*\([^)]+\)\s*->\s*!ttg\.memdesc<(\d+)x(\d+)x([a-zA-Z0-9_]+)"
 )
 _RE_TTGIR_WAIT_NUM = re.compile(r"ttg\.async_wait\b[^{]*\{\s*num\s*=\s*(\d+)")
 _RE_PTX_WAIT_GROUP = re.compile(r"\bcp\.async\.wait_group\s+(\d+)\s*;")
@@ -76,6 +98,11 @@ _RE_PTX_COMMIT_GROUP = re.compile(r"\bcp\.async\.commit_group\s*;")
 _RE_PTX_MBAR_TRY_WAIT = re.compile(r"\bmbarrier\.try_wait\b")
 _RE_PTX_MBAR_ARRIVE_TX = re.compile(r"\bmbarrier\.arrive\.expect_tx\b")
 _RE_PTX_ANY_MMA = re.compile(r"\b(?:mma\.sync\.aligned|wgmma\.mma_async|tcgen05\.mma)\b")
+_RE_PTX_SFU = re.compile(r"\b(?:ex2|lg2|rcp|rsqrt|sin|cos|sqrt)\.approx\b")
+_RE_PTX_SHFL = re.compile(r"\bshfl\.sync\b")
+_RE_PTX_FP_ALU = re.compile(
+    r"^\s*(?:@!?%p\d+\s+)?(?:fma\.rn|mul\.(?:rn\.)?f|add\.(?:rn\.)?f|sub\.(?:rn\.)?f|max\.f|min\.f|cvt\.|selp\.|setp\.)"
+)
 _RE_TTGIR_ANY_DOT = re.compile(r"\b(?:tt\.dot|ttng\.warp_group_dot)\b")
 _RE_PTX_LABEL = re.compile(r"^\s*(\$[A-Za-z0-9_]+):")
 _RE_PTX_BRA = re.compile(r"\bbra(?:\.uni)?\s+(\$[A-Za-z0-9_]+)")
@@ -98,29 +125,55 @@ def dtype_bits(dtype: str) -> int:
     raise ValueError(f"Unknown dtype: {dtype!r}")
 
 
+def _extract_loop_bodies(ttgir: str) -> list[str]:
+    """Return text inside each top-level scf.for loop body in tt.func."""
+    lines = ttgir.splitlines()
+    bodies: list[str] = []
+    i = 0
+    n = len(lines)
+    while i < n:
+        line = lines[i]
+        if "scf.for " in line and line.rstrip().endswith("{"):
+            body_lines: list[str] = []
+            depth = 1
+            i += 1
+            while i < n:
+                cur = lines[i]
+                stripped = cur.strip()
+                if stripped.endswith("{"):
+                    depth += 1
+                if stripped.startswith("}"):
+                    depth -= 1
+                    if depth == 0:
+                        break
+                body_lines.append(cur)
+                i += 1
+            bodies.append("\n".join(body_lines))
+        i += 1
+    return bodies
+
+
 def _extract_loop_body(ttgir: str) -> str:
     """Return the text inside the primary scf.for loop, or empty string if none."""
-    lines = ttgir.splitlines()
-    start_idx = -1
-    for i, line in enumerate(lines):
-        if "scf.for " in line and line.rstrip().endswith("{"):
-            start_idx = i
-            break
-    if start_idx == -1:
-        return ""
-    body_lines: list[str] = []
-    depth = 1
-    for line in lines[start_idx + 1 :]:
-        # Track block braces at line boundaries (ignore attribute braces like #ttg.dot_op<{...}>)
-        stripped = line.strip()
-        if stripped.endswith("{"):
-            depth += 1
-        if stripped.startswith("}"):
-            depth -= 1
-            if depth == 0:
-                break
-        body_lines.append(line)
-    return "\n".join(body_lines)
+    bodies = _extract_loop_bodies(ttgir)
+    return bodies[0] if bodies else ""
+
+
+def _count_ptx_loop_scalar_ops(ptx_loop: str) -> tuple[int, int, int]:
+    """Count (alu_per_warp, sfu_per_warp, shfl_per_warp) inside a PTX loop body."""
+    if not ptx_loop:
+        return 0, 0, 0
+    alu = 0
+    sfu = 0
+    shfl = 0
+    for line in ptx_loop.splitlines():
+        if _RE_PTX_SFU.search(line):
+            sfu += 1
+        elif _RE_PTX_SHFL.search(line):
+            shfl += 1
+        elif _RE_PTX_FP_ALU.match(line):
+            alu += 1
+    return alu, sfu, shfl
 
 
 def _extract_ptx_loop_body(ptx: str) -> str:
@@ -176,14 +229,20 @@ def _derive_cp_async_prefetch_distance(
     if ptx_loop:
         ptx_waits = [int(m.group(1)) for m in _RE_PTX_WAIT_GROUP.finditer(ptx_loop)]
         ptx_commits = len(_RE_PTX_COMMIT_GROUP.findall(ptx_loop))
+        if len(set(ptx_waits)) > 1:
+            unsupported.append("split_async_wait_unsupported")
+            return 0, diags, unsupported
         if ptx_waits and ptx_commits > 0:
-            ptx_dist = min(ptx_waits) // ptx_commits
+            ptx_dist = ptx_waits[0] // ptx_commits
 
     ttgir_dist: int | None = None
     ttgir_waits = [int(m.group(1)) for m in _RE_TTGIR_WAIT_NUM.finditer(ttgir_loop_body)]
     ttgir_commits = ttgir_loop_body.count("ttg.async_commit_group")
+    if len(set(ttgir_waits)) > 1:
+        unsupported.append("split_async_wait_unsupported")
+        return 0, diags, unsupported
     if ttgir_waits and ttgir_commits > 0:
-        ttgir_dist = min(ttgir_waits) // ttgir_commits
+        ttgir_dist = ttgir_waits[0] // ttgir_commits
 
     if ptx_dist is not None and ttgir_dist is not None:
         if ptx_dist != ttgir_dist:
@@ -361,6 +420,36 @@ def _extract_mma(ttgir: str, ptx: str) -> MmaInfo | None:
     return None
 
 
+def _extract_all_dots(loop_body: str, ttgir: str, ptx: str) -> list[MmaDotInfo]:
+    """Extract all tt.dot operations inside the loop body with tile shapes and instruction counts."""
+    base_mma = _extract_mma(ttgir, ptx)
+    if base_mma is None:
+        return []
+    im, in_, ik = base_mma.inst_mnk
+    dots: list[MmaDotInfo] = []
+    source = loop_body if loop_body else ttgir
+    for m_dot in _RE_TT_DOT.finditer(source):
+        tm = int(m_dot.group(1))
+        tk = int(m_dot.group(2))
+        a_dt = m_dot.group(3)
+        tn = int(m_dot.group(5))
+        b_dt = m_dot.group(6)
+        acc_dt = m_dot.group(9)
+        count = max(1, (tm // im) * (tn // in_) * (tk // ik))
+        dots.append(
+            MmaDotInfo(
+                op_class=base_mma.op_class,
+                tile_mnk=(tm, tn, tk),
+                inst_mnk=base_mma.inst_mnk,
+                a_dtype=a_dt,
+                b_dtype=b_dt,
+                acc_dtype=acc_dt,
+                count=count,
+            )
+        )
+    return dots
+
+
 def parse_ttgir_summary(
     ttgir: str,
     ptx: str,
@@ -395,7 +484,9 @@ def parse_ttgir_summary(
     else:
         async_copy = "none"
 
-    loop_body = _extract_loop_body(ttgir)
+    loop_bodies = _extract_loop_bodies(ttgir)
+    loop_body = loop_bodies[0] if loop_bodies else ""
+    num_top_level_loops = len(loop_bodies)
 
     # Extract materialized multi-buffer depth from 3D SMEM memdesc allocations
     # (excluding 1-element i64 mbarrier arrays).
@@ -442,6 +533,14 @@ def parse_ttgir_summary(
         rows, cols, dt = int(m.group(1)), int(m.group(2)), m.group(3)
         smem_load_bytes += (rows * cols * dtype_bits(dt)) // 8
 
+    # Count prologue SMEM staging writes (e.g. Q staged via ttg.local_alloc %q before scf.for).
+    first_for = ttgir.find("scf.for ")
+    prologue_text = ttgir[:first_for] if first_for != -1 else ttgir
+    prologue_smem_store_bytes = 0
+    for m in _RE_PROLOGUE_LOCAL_ALLOC_VAL.finditer(prologue_text):
+        rows, cols, dt = int(m.group(1)), int(m.group(2)), m.group(3)
+        prologue_smem_store_bytes += (rows * cols * dtype_bits(dt)) // 8
+
     # Count synchronization points inside the pipelined loop.
     loop_barriers = (
         loop_body.count("ttg.async_wait")
@@ -452,6 +551,9 @@ def parse_ttgir_summary(
         loop_barriers = 1
 
     mma = _extract_mma(ttgir, ptx)
+    mma_dots = _extract_all_dots(loop_body, ttgir, ptx)
+    ptx_loop = _extract_ptx_loop_body(ptx)
+    loop_alu_per_warp, loop_sfu_per_warp, loop_shfl_per_warp = _count_ptx_loop_scalar_ops(ptx_loop)
 
     return TtgirSummary(
         num_warps=num_warps,
@@ -467,4 +569,10 @@ def parse_ttgir_summary(
         diagnostics=diagnostics,
         unsupported_features=unsupported,
         store_transfer_width_bytes=store_transfer_width_bytes,
+        mma_dots=mma_dots,
+        loop_alu_per_warp=loop_alu_per_warp,
+        loop_sfu_per_warp=loop_sfu_per_warp,
+        loop_shfl_per_warp=loop_shfl_per_warp,
+        prologue_smem_store_bytes=prologue_smem_store_bytes,
+        num_top_level_loops=num_top_level_loops,
     )

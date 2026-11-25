@@ -13,6 +13,7 @@ from virtualgpu.frontend.compiler import (
     specialize_triton_call,
 )
 from virtualgpu.frontend.scalar_eval import ScalarEvalResult, evaluate_ttgir_cta_offsets
+from virtualgpu.frontend.triton_attention import extract_attention_kernel_ir
 from virtualgpu.frontend.triton_gemm import extract_gemm_kernel_ir
 
 __all__ = [
@@ -28,5 +29,6 @@ __all__ = [
     "hash_ttgir",
     "parse_ptxas_verbose",
     "specialize_triton_call",
+    "extract_attention_kernel_ir",
     "extract_gemm_kernel_ir",
 ]

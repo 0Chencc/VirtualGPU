@@ -25,6 +25,8 @@ class ScalarEvalResult:
     tma_coords: dict[int, list[tuple[int, int]]]
     data_dependent: bool = False
     has_nested_loop: bool = False
+    # Optional per-CTA total trip count summed across top-level scf.for loops
+    loop_trip_counts: list[int] | None = None
 
 
 _RE_FUNC_HEADER = re.compile(r"tt\.func\s+[^{]+\((.*)\)\s*(?:attributes\s*\{[^}]*\}\s*)?\{")
@@ -45,7 +47,7 @@ _RE_SELECT = re.compile(
     r"^arith\.select\s+(%[A-Za-z0-9_]+),\s*(%[A-Za-z0-9_]+),\s*(%[A-Za-z0-9_]+)\b"
 )
 _RE_UNARY_PASS = re.compile(
-    r"^(?:arith\.(?:extsi|extui|trunci|index_cast)|tt\.(?:splat|expand_dims|broadcast|bitcast)|ttg\.convert_layout)\s+(%[A-Za-z0-9_]+)\b"
+    r"^(?:arith\.(?:extsi|extui|trunci|index_cast)|tt\.(?:splat|expand_dims|broadcast|bitcast|reshape)|ttg\.convert_layout)\s+(%[A-Za-z0-9_]+)\b"
 )
 _RE_ADDPTR = re.compile(
     r"^tt\.addptr\s+(%[A-Za-z0-9_]+),\s*(%[A-Za-z0-9_]+)\b"
@@ -64,6 +66,9 @@ _RE_LOAD_USE = re.compile(
 )
 _RE_STORE_USE = re.compile(r"tt\.store\s+(%[A-Za-z0-9_]+)\b")
 _RE_SCF_FOR_IV = re.compile(r"scf\.for\s+(%[A-Za-z0-9_]+)\s*=\s*(%[A-Za-z0-9_]+)\b")
+_RE_SCF_FOR_BOUNDS = re.compile(
+    r"scf\.for\s+(%[A-Za-z0-9_]+)\s*=\s*(%[A-Za-z0-9_]+)\s+to\s+(%[A-Za-z0-9_]+)\s+step\s+(%[A-Za-z0-9_]+)\b"
+)
 _RE_SCF_FOR_ITER_ARGS = re.compile(r"iter_args\(([^)]*)\)")
 _RE_ITER_BIND = re.compile(r"(%[A-Za-z0-9_]+)\s*=\s*(%[A-Za-z0-9_]+)")
 
@@ -115,18 +120,18 @@ def _parse_func_params(ttgir: str) -> list[tuple[str, bool]]:
     return params
 
 
-def _extract_top_level_lines(ttgir: str) -> tuple[list[str], list[str], str | None]:
-    """Split tt.func body into top-level lines (outside scf.for), inner-loop lines, and the scf.for header."""
+def _extract_top_level_lines(ttgir: str) -> tuple[list[str], list[str], list[str]]:
+    """Split tt.func body into top-level lines (outside scf.for), inner-loop lines, and scf.for headers."""
     func_pos = ttgir.find("tt.func ")
     if func_pos == -1:
-        return [], [], None
+        return [], [], []
     body_start = ttgir.find("{", func_pos)
     if body_start == -1:
-        return [], [], None
+        return [], [], []
 
     top_lines: list[str] = []
     loop_lines: list[str] = []
-    loop_header: str | None = None
+    loop_headers: list[str] = []
     depth = 0
     in_loop = False
     for raw in ttgir[body_start + 1 :].splitlines():
@@ -139,8 +144,7 @@ def _extract_top_level_lines(ttgir: str) -> tuple[list[str], list[str], str | No
             break
         if depth == 0 and "scf.for " in line:
             in_loop = True
-            if loop_header is None:
-                loop_header = line
+            loop_headers.append(line)
             depth += opens - closes
             continue
         if in_loop:
@@ -153,22 +157,31 @@ def _extract_top_level_lines(ttgir: str) -> tuple[list[str], list[str], str | No
         else:
             top_lines.append(line)
             depth += opens - closes
-    return top_lines, loop_lines, loop_header
+    return top_lines, loop_lines, loop_headers
 
 
-def _parse_scf_for_bindings(loop_header: str | None) -> list[tuple[str, ...]]:
-    """Bind scf.for induction variable and iter_args to their iteration-0 values."""
-    if not loop_header:
-        return []
+def _parse_scf_for_bindings(loop_headers: list[str]) -> list[tuple[str, ...]]:
+    """Bind each scf.for induction variable and iter_args to their iteration-0 values."""
     bindings: list[tuple[str, ...]] = []
-    m_iv = _RE_SCF_FOR_IV.search(loop_header)
-    if m_iv:
-        bindings.append(("pass", m_iv.group(1), m_iv.group(2)))
-    m_iter = _RE_SCF_FOR_ITER_ARGS.search(loop_header)
-    if m_iter:
-        for dst, src in _RE_ITER_BIND.findall(m_iter.group(1)):
-            bindings.append(("pass", dst, src))
+    for header in loop_headers:
+        m_iv = _RE_SCF_FOR_IV.search(header)
+        if m_iv:
+            bindings.append(("pass", m_iv.group(1), m_iv.group(2)))
+        m_iter = _RE_SCF_FOR_ITER_ARGS.search(header)
+        if m_iter:
+            for dst, src in _RE_ITER_BIND.findall(m_iter.group(1)):
+                bindings.append(("pass", dst, src))
     return bindings
+
+
+def _parse_scf_for_bounds(loop_headers: list[str]) -> list[tuple[str, str, str]]:
+    """Return (lb_ssa, ub_ssa, step_ssa) for each top-level scf.for header."""
+    bounds: list[tuple[str, str, str]] = []
+    for header in loop_headers:
+        m = _RE_SCF_FOR_BOUNDS.search(header)
+        if m:
+            bounds.append((m.group(2), m.group(3), m.group(4)))
+    return bounds
 
 
 def _compile_instructions(lines: list[str]) -> tuple[
@@ -253,7 +266,7 @@ def evaluate_ttgir_cta_offsets(
     without pattern-matching kernel idioms.
     """
     params = _parse_func_params(ttgir)
-    top_lines, loop_lines, loop_header = _extract_top_level_lines(ttgir)
+    top_lines, loop_lines, loop_headers = _extract_top_level_lines(ttgir)
     has_nested_loop = any("scf.for " in ln for ln in loop_lines)
     if has_nested_loop:
         # Persistent kernels compute per-tile coordinates inside an outer scf.for;
@@ -272,11 +285,12 @@ def evaluate_ttgir_cta_offsets(
     # the loop body) recover exact tile offsets without falling back to linear maps.
     loop_instrs, loop_scratch_to_ptr, loop_tma, loop_sinks = _compile_instructions(loop_lines)
     if loop_instrs or loop_sinks or loop_tma:
-        instrs = instrs + _parse_scf_for_bindings(loop_header) + loop_instrs
+        instrs = instrs + _parse_scf_for_bindings(loop_headers) + loop_instrs
         for k, v in loop_scratch_to_ptr.items():
             scratch_to_ptr.setdefault(k, v)
     all_ptr_sinks = ptr_sinks + [s for s in loop_sinks if s not in ptr_sinks]
     all_tma_uses = tma_uses + [u for u in loop_tma if u not in tma_uses]
+    loop_bounds_ssa = _parse_scf_for_bounds(loop_headers)
 
     # Build compact integer-indexed slots instead of per-CTA dict copies.
     ssa_to_slot: dict[str, int] = {}
@@ -321,6 +335,9 @@ def evaluate_ttgir_cta_offsets(
             _slot(ins[3])
 
     sink_slots: list[int] = [_slot(s) for s in all_ptr_sinks]
+    loop_bound_slots: list[tuple[int, int, int]] = [
+        (_slot(lb), _slot(ub), _slot(st)) for lb, ub, st in loop_bounds_ssa
+    ]
     desc_to_ptr_idx: dict[str, int] = {}
     for desc_ssa, ptr_ssa in scratch_to_ptr.items():
         if ptr_ssa in ptr_arg_indices:
@@ -455,6 +472,7 @@ def evaluate_ttgir_cta_offsets(
 
     ptr_elem_offsets: dict[int, list[int]] = {}
     tma_coords: dict[int, list[tuple[int, int]]] = {}
+    loop_trip_counts: list[int] | None = [] if loop_bound_slots else None
 
     for pz in range(gz):
         for py in range(gy):
@@ -479,9 +497,23 @@ def evaluate_ttgir_cta_offsets(
                             seen_tma.add(p_idx)
                             tma_coords.setdefault(p_idx, []).append((c0, c1))
 
+                if loop_trip_counts is not None:
+                    cta_trips = 0
+                    for lb_sl, ub_sl, st_sl in loop_bound_slots:
+                        lb_v, ub_v, st_v = slots[lb_sl], slots[ub_sl], slots[st_sl]
+                        if isinstance(lb_v, int) and isinstance(ub_v, int) and isinstance(st_v, int) and st_v > 0:
+                            diff = ub_v - lb_v
+                            cta_trips += (diff + st_v - 1) // st_v if diff > 0 else 0
+                        else:
+                            loop_trip_counts = None
+                            break
+                    if loop_trip_counts is not None:
+                        loop_trip_counts.append(cta_trips)
+
     return ScalarEvalResult(
         ptr_elem_offsets=ptr_elem_offsets,
         tma_coords=tma_coords,
         data_dependent=data_dependent,
         has_nested_loop=False,
+        loop_trip_counts=loop_trip_counts,
     )
