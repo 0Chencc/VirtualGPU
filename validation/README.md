@@ -219,3 +219,34 @@ parsing any reports. No readable copy is retained. The output carries
 `result_class=post-hoc` and is ineligible for formal decisions. The
 published conclusions and the formal scoring path retain their original
 release requirements.
+
+## v0.2 CPU prediction archive
+
+After the four capture receipts are published, check out the clean
+`v0.2-final` tag and load a matching formal core build. Keep the archived
+AOT metadata from each capture. The prediction command consumes those AOT
+directories, the frozen GPU profiles, the committed receipt metadata,
+and an already frozen NeuSight-style fit bundle.
+
+```sh
+python -m validation.v02_predict results/v02-formal \
+  --fit results/v02-fit.json --fit-sha256 "$fit_sha256" \
+  --rtx4070-gemm-aot results/v02-rtx4070/gemm/aot \
+  --rtx4070-attention-aot results/attention-fde371d/aot \
+  --gb10-gemm-aot results/v02-gb10/gemm/aot \
+  --gb10-attention-aot results/v02-gb10/attention/aot
+```
+
+The fit bundle contains the full `core_revision`, a `profile_sha256` mapping
+keyed by `rtx4070` and `gb10`, and a `fits` mapping keyed by `gemm` and
+`attention`. Each fit uses the `EfficiencyFit.to_json()` fields plus
+`training_inputs_sha256`. Train only with the inputs enumerated in
+[the preregistration](v02-preregistration.md).
+
+The command is CPU-only. It verifies the capture AOT digests and regenerates
+KernelIR using the frozen frontend. Candidates with failed or mismatched
+artifacts remain in the archive with their reasons. The output directory
+contains `predictions.json`, the IR archive and AOT index, and
+`prediction-evidence.json` with the digests for the freeze amendment.
+The four AOT arguments identify directories of per-case compiler metadata.
+Raw timing labels are outside the command's inputs.
