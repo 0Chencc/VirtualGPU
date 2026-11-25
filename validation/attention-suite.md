@@ -47,3 +47,29 @@ capacity) and cache-control probe. Keep holdout reports and their receipts
 separate from development. Authorize release only after the formal
 predictors are frozen and the holdout predictions and label receipts are
 archived with digests.
+
+## Runner
+
+Run from the repository root with the validation environment. Offline AOT
+does not require a GPU. Use a complete per-case AOT archive for collection.
+
+```sh
+python -m validation.attention_runner aot validation/attention-suite.json \
+  b1-q16-kv16-s512-d64-full results/attention/aot/b1-q16-kv16-s512-d64-full.json
+```
+
+After the suite is approved for measurement, collect a development session
+with the existing GPU lock. Use a unique output path for each session.
+
+```sh
+flock /tmp/virtualgpu-gpu.lock python -m validation.attention_runner capture \
+  validation/attention-suite.json b1-q16-kv16-s512-d64-full \
+  results/attention/development/b1-q16-kv16-s512-d64-full-session-1.json \
+  --aot results/attention/aot/b1-q16-kv16-s512-d64-full.json --session 1
+```
+
+Holdout capture requires `--sealed`. It writes a mode-zero report and a
+separate digest receipt. AOT and JIT share the same kernel entry point.
+The AOT archive includes the manifest hash, kernel key, hashes and
+resource metadata for each configuration. Only candidates passing the
+reference and artifact checks contribute timing samples.

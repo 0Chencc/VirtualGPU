@@ -155,6 +155,27 @@ def cache_control(evict, l2_bytes):
     return {"warm": [warm() for _ in range(8)], "cold": [cold() for _ in range(8)]}
 
 
+def jit_artifact(compiled, grid, arch):
+    ptx = compiled.asm["ptx"]
+    ptxas = Path(get_ptxas(arch).path)
+    return {
+        "grid": list(grid),
+        "shared_bytes": compiled.metadata.shared,
+        "ptx_raw_sha256": hashlib.sha256(ptx.encode()).hexdigest(),
+        **artifact_hashes(ptx, compiled.asm["ttgir"]),
+        "toolchain": {
+            "compiler": "triton",
+            "compiler_version": triton.__version__,
+            "assembler": ptxas.name,
+            "assembler_version": get_ptxas_version(str(ptxas)),
+            "target_sm_compiled": detect_ptx_target(ptx, arch),
+            "enable_fp_fusion": compiled.metadata.enable_fp_fusion,
+            "ptx_options": compiled.metadata.ptx_options,
+            "disable_ptxas_opt": triton.knobs.nvidia.disable_ptxas_opt,
+        },
+    }
+
+
 def prepare_candidates(case, configs, seed, arch=89, kernel=dense_gemm, tensor_copy=False):
     m, n, k = case["shape"]
     torch.manual_seed(seed)
@@ -163,8 +184,6 @@ def prepare_candidates(case, configs, seed, arch=89, kernel=dense_gemm, tensor_c
     out = torch.empty((m, n), device="cuda", dtype=torch.float16)
     torch.backends.cuda.matmul.allow_tf32 = False
     reference = (a.float() @ b.float()).half()
-    ptxas = Path(get_ptxas(arch).path)
-    assembler_version = get_ptxas_version(str(ptxas))
     operations = {}
     artifacts = {}
 
@@ -199,20 +218,7 @@ def prepare_candidates(case, configs, seed, arch=89, kernel=dense_gemm, tensor_c
             "tile": cfg["tile"],
             "num_warps": cfg["num_warps"],
             "mma_shapes": sorted({f"{m}x{n}x{k}" for m, n, k in mma_shapes}),
-            "grid": list(grid),
-            "shared_bytes": compiled.metadata.shared,
-            "ptx_raw_sha256": hashlib.sha256(ptx.encode()).hexdigest(),
-            **artifact_hashes(ptx, compiled.asm["ttgir"]),
-            "toolchain": {
-                "compiler": "triton",
-                "compiler_version": triton.__version__,
-                "assembler": ptxas.name,
-                "assembler_version": assembler_version,
-                "target_sm_compiled": detect_ptx_target(ptx, arch),
-                "enable_fp_fusion": compiled.metadata.enable_fp_fusion,
-                "ptx_options": compiled.metadata.ptx_options,
-                "disable_ptxas_opt": triton.knobs.nvidia.disable_ptxas_opt,
-            },
+            **jit_artifact(compiled, grid, arch),
         }
         artifacts[key] = row
         try:
@@ -234,7 +240,7 @@ def prepare_candidates(case, configs, seed, arch=89, kernel=dense_gemm, tensor_c
 
 
 def measure(case, configs, input_seed, args, manifest_sha, verify_artifacts=None, *,
-            device_arch=89, kernel=dense_gemm, tensor_copy=False, spark=None):
+            device_arch=89, kernel=dense_gemm, tensor_copy=False, spark=None, prepare=None):
     source = source_info()
     if torch.cuda.device_count() != 1:
         raise RuntimeError("Require exactly one visible CUDA device")
@@ -245,7 +251,10 @@ def measure(case, configs, input_seed, args, manifest_sha, verify_artifacts=None
     l2_bytes = l2_capacity()
     if spark is not None and l2_bytes != spark.l2_bytes:
         raise ValueError("CUDA L2 capacity differs from the frozen GB10 profile")
-    operations, artifacts = prepare_candidates(case, configs, input_seed, device_arch, kernel, tensor_copy)
+    if prepare is None:
+        operations, artifacts = prepare_candidates(case, configs, input_seed, device_arch, kernel, tensor_copy)
+    else:
+        operations, artifacts = prepare(case, configs, input_seed)
     if verify_artifacts is not None:
         verify_artifacts(artifacts)
         operations = {key: operation for key, operation in operations.items()
