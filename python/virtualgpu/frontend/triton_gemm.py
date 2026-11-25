@@ -27,7 +27,7 @@ from virtualgpu.frontend.compiler import (
 from virtualgpu.frontend.scalar_eval import evaluate_ttgir_cta_offsets
 from virtualgpu.frontend.ttgir import dtype_bits, parse_ttgir_summary
 
-KERNEL_IR_CACHE_VERSION = "2"
+KERNEL_IR_CACHE_VERSION = "3"
 _IR_MEMORY_CACHE: dict[str, tuple[dict[str, Any], str]] = {}
 
 
@@ -451,7 +451,7 @@ def _assemble_gemm_kernel_ir(
             "stage_offset": 0,
             "tensor_id": "C",
             "nominal_bytes_per_cta": tile_bytes_c,
-            "transfer_width_bytes": summary.transfer_width_bytes,
+            "transfer_width_bytes": summary.store_transfer_width_bytes or summary.transfer_width_bytes,
             "access_ref": "acc_C",
         },
     ]

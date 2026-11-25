@@ -33,6 +33,7 @@ class TtgirSummary:
     loop_barriers: int
     diagnostics: list[str] = field(default_factory=list)
     unsupported_features: list[str] = field(default_factory=list)
+    store_transfer_width_bytes: int | None = None
 
 
 _DTYPE_BITS: dict[str, int] = {
@@ -78,6 +79,16 @@ _RE_PTX_ANY_MMA = re.compile(r"\b(?:mma\.sync\.aligned|wgmma\.mma_async|tcgen05\
 _RE_TTGIR_ANY_DOT = re.compile(r"\b(?:tt\.dot|ttng\.warp_group_dot)\b")
 _RE_PTX_LABEL = re.compile(r"^\s*(\$[A-Za-z0-9_]+):")
 _RE_PTX_BRA = re.compile(r"\bbra(?:\.uni)?\s+(\$[A-Za-z0-9_]+)")
+_RE_PTX_LD_GLOBAL = re.compile(
+    r"\bld\.global(?:\.[a-z0-9_:]+)*?(?:\.(v[24]))?\.(?:b|u|s|f)(8|16|32|64)\b"
+)
+_RE_PTX_ST_GLOBAL = re.compile(
+    r"\bst\.global(?:\.[a-z0-9_:]+)*?(?:\.(v[24]))?\.(?:b|u|s|f)(8|16|32|64)\b"
+)
+_RE_PTX_CP_ASYNC_SIZE = re.compile(
+    r"\bcp\.async\.(?:ca|cg)\.shared(?:\.global|::cta\.global)[^;]*,\s*(0x[0-9a-fA-F]+|\d+)\b"
+)
+_RE_PTX_TMA_BULK = re.compile(r"\bcp\.async\.bulk\.tensor\b")
 
 
 def dtype_bits(dtype: str) -> int:
@@ -257,6 +268,49 @@ def _derive_tma_prefetch_distance(
     return 0, diags, unsupported
 
 
+def _effective_ptx_width(widths: list[int]) -> int | None:
+    """Return instruction-count-weighted effective transfer width in bytes."""
+    if not widths:
+        return None
+    return max(1, round(sum(widths) / len(widths)))
+
+
+def _extract_ptx_transfer_widths(ptx: str, ptx_loop: str) -> tuple[int | None, int | None]:
+    """Derive effective per-instruction global load and store widths (bytes) from PTX."""
+    if not ptx:
+        return None, None
+
+    load_src = ptx_loop if ptx_loop else ptx
+    load_widths: list[int] = []
+    for m in _RE_PTX_LD_GLOBAL.finditer(load_src):
+        vec = 4 if m.group(1) == "v4" else (2 if m.group(1) == "v2" else 1)
+        load_widths.append(vec * (int(m.group(2)) // 8))
+    for m in _RE_PTX_CP_ASYNC_SIZE.finditer(load_src):
+        size_b = int(m.group(1), 0)
+        if size_b > 0:
+            load_widths.append(size_b)
+    if not load_widths and _RE_PTX_TMA_BULK.search(load_src):
+        load_widths.append(128)
+    # Fall back to whole PTX if the loop body had no explicit global load instructions.
+    if not load_widths and load_src is ptx_loop:
+        for m in _RE_PTX_LD_GLOBAL.finditer(ptx):
+            vec = 4 if m.group(1) == "v4" else (2 if m.group(1) == "v2" else 1)
+            load_widths.append(vec * (int(m.group(2)) // 8))
+        for m in _RE_PTX_CP_ASYNC_SIZE.finditer(ptx):
+            size_b = int(m.group(1), 0)
+            if size_b > 0:
+                load_widths.append(size_b)
+
+    store_widths: list[int] = []
+    for m in _RE_PTX_ST_GLOBAL.finditer(ptx):
+        vec = 4 if m.group(1) == "v4" else (2 if m.group(1) == "v2" else 1)
+        store_widths.append(vec * (int(m.group(2)) // 8))
+    if not store_widths and _RE_PTX_TMA_BULK.search(ptx):
+        store_widths.append(128)
+
+    return _effective_ptx_width(load_widths), _effective_ptx_width(store_widths)
+
+
 def _extract_mma(ttgir: str, ptx: str) -> MmaInfo | None:
     """Extract hardware MMA class, instruction shape, and dtypes."""
     m_dot = _RE_TT_DOT.search(ttgir)
@@ -369,14 +423,19 @@ def parse_ttgir_summary(
         if requested_num_stages > 1:
             diagnostics.append("unpipelined_fallback")
 
-    # Vectorized transfer width per thread (bytes).
+    # Vectorized transfer width per thread (bytes), derived from PTX load/store instructions.
+    ptx_loop = _extract_ptx_loop_body(ptx)
+    ptx_load_width, ptx_store_width = _extract_ptx_transfer_widths(ptx, ptx_loop)
     contigs = [int(m.group(1)) for m in _RE_CONTIGUITY.finditer(ttgir)]
     if async_copy == "async_tensor":
         transfer_width_bytes = 128
+    elif ptx_load_width is not None:
+        transfer_width_bytes = ptx_load_width
     elif contigs:
         transfer_width_bytes = max(1, min(16, max(contigs) * element_bytes))
     else:
         transfer_width_bytes = 16
+    store_transfer_width_bytes = ptx_store_width if ptx_store_width is not None else transfer_width_bytes
 
     smem_load_bytes = 0
     for m in _RE_LOCAL_LOAD.finditer(loop_body):
@@ -407,4 +466,5 @@ def parse_ttgir_summary(
         loop_barriers=loop_barriers,
         diagnostics=diagnostics,
         unsupported_features=unsupported,
+        store_transfer_width_bytes=store_transfer_width_bytes,
     )

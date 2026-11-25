@@ -761,3 +761,41 @@ def test_num_stages_1_2_3_recover_identical_access_map_without_fallback() -> Non
     for ns, ir in zip((1, 2, 3), irs_ptr_step):
         assert "linear_access_fallback" not in ir["diagnostics"], f"iter_args num_stages={ns} fell back"
     assert irs_ptr_step[0]["access_map"] == irs_ptr_step[1]["access_map"] == irs_ptr_step[2]["access_map"]
+
+
+def test_transfer_width_bytes_from_ptx_aligned_vs_unaligned() -> None:
+    """Post-hoc fix: transfer_width_bytes must reflect PTX load/store width (16 aligned vs 2 unaligned)."""
+    # Verify MockTensor interns dtype singletons so Triton's native binder never sees reused IDs.
+    assert MockTensor("f16").dtype is MockTensor("f16").dtype
+    assert MockTensor("f16").dtype is not MockTensor("f32").dtype
+
+    for ns in (1, 3):
+        ir_aligned = extract_gemm_kernel_ir(
+            _matmul_kernel,
+            M=256,
+            N=256,
+            K=256,
+            config={"BLOCK_SIZE_M": 64, "BLOCK_SIZE_N": 64, "BLOCK_SIZE_K": 32, "GROUP_SIZE_M": 4, "num_warps": 4, "num_stages": ns},
+            target_arch="sm_89",
+            dtype="f16",
+        )
+        pl_a = {op["op_id"]: op for op in ir_aligned["body"]["pipeline_loop"]["ops"]}
+        ep_a = {op["op_id"]: op for op in ir_aligned["body"]["epilogue"]["ops"]}
+        assert pl_a["load_A"]["transfer_width_bytes"] == 16
+        assert pl_a["load_B"]["transfer_width_bytes"] == 16
+        assert ep_a["store_C"]["transfer_width_bytes"] == 16
+
+        ir_unaligned = extract_gemm_kernel_ir(
+            _matmul_kernel,
+            M=255,
+            N=255,
+            K=253,
+            config={"BLOCK_SIZE_M": 64, "BLOCK_SIZE_N": 64, "BLOCK_SIZE_K": 32, "GROUP_SIZE_M": 4, "num_warps": 4, "num_stages": ns},
+            target_arch="sm_89",
+            dtype="f16",
+        )
+        pl_u = {op["op_id"]: op for op in ir_unaligned["body"]["pipeline_loop"]["ops"]}
+        ep_u = {op["op_id"]: op for op in ir_unaligned["body"]["epilogue"]["ops"]}
+        assert pl_u["load_A"]["transfer_width_bytes"] == 2
+        assert pl_u["load_B"]["transfer_width_bytes"] == 2
+        assert ep_u["store_C"]["transfer_width_bytes"] == 2

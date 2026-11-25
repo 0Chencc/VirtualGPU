@@ -33,6 +33,18 @@ _CANONICAL_TO_TORCH_DTYPE: dict[str, str] = {
 }
 
 
+_MOCK_DTYPE_SINGLETONS: dict[str, Any] = {}
+
+
+def _intern_mock_dtype(torch_dt: str) -> Any:
+    """Return a process-immortal dtype singleton so Triton's native binder never sees reused object IDs."""
+    dt = _MOCK_DTYPE_SINGLETONS.get(torch_dt)
+    if dt is None:
+        dt = type("_MockDType", (), {"__str__": lambda _s, name=torch_dt: f"torch.{name}"})()
+        _MOCK_DTYPE_SINGLETONS[torch_dt] = dt
+    return dt
+
+
 class MockTensor:
     """Minimal tensor stand-in for CPU-only Triton JIT argument specialization.
 
@@ -44,7 +56,7 @@ class MockTensor:
         torch_dt = _CANONICAL_TO_TORCH_DTYPE.get(dtype, dtype)
         self._ptr = int(ptr)
         self._torch_dtype = torch_dt
-        self.dtype = type("_MockDType", (), {"__str__": lambda _s: f"torch.{torch_dt}"})()
+        self.dtype = _intern_mock_dtype(torch_dt)
 
     def data_ptr(self) -> int:
         return self._ptr
