@@ -429,8 +429,43 @@ fn narrow_loads_are_bound_by_memory_instruction_issue() {
     m.fixed_sync.clear();
     m.lsu_rate = 1.0;
     let p = run(&k, m);
-    assert!(close(p.makespan_ns, 64.0 * 1024.0 + 1.0), "{}", p.makespan_ns);
+    assert!(
+        close(p.makespan_ns, 64.0 * 1024.0 + 1.0),
+        "{}",
+        p.makespan_ns
+    );
     assert!(p.bound_fraction[6] > 0.99, "{:?}", p.bound_fraction);
+}
+
+#[test]
+fn two_ctas_share_the_sm_port_out_of_phase() {
+    // Two CTAs per SM, one 16 KiB stage each from L2: their round trips run
+    // out of phase, so the SM's 10 B/ns port carries both stages per round
+    // trip, 2 x 1638.4 ns, rather than the latency plus both stages.
+    let mut k = compute_only(92);
+    k.smem_per_cta_bytes = 40 * 1024;
+    k.tile.per_iteration = Work {
+        loads: vec![access("load", 16384.0)],
+        ..Work::default()
+    };
+    k.tile.prefetch_distance = 0;
+    let mut m = machine(&k);
+    m.l2_bw = vec![(1.0, 10.0), (46.0, 1e9)];
+    m.l2_mlp = [
+        vec![(4096.0, 40.0), (1e9, 1e3)],
+        vec![(4096.0, 40.0), (1e9, 1e3)],
+    ];
+    m.l2_latency_ns = 100.0;
+    m.fixed_sync.clear();
+    m.launch_overhead_ns = 0.0;
+    let p = simulate(&k, &profile(), &m, &mut ConstantHitRatio(1.0)).unwrap();
+    assert_eq!(p.occupancy.ctas_per_sm, 2);
+    let expected = 64.0 * 2.0 * 16384.0 / 10.0;
+    assert!(
+        close(p.makespan_ns, expected),
+        "{} vs {expected}",
+        p.makespan_ns
+    );
 }
 
 #[test]

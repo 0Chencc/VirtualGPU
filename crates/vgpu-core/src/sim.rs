@@ -228,19 +228,21 @@ impl Machine {
         }
     }
 
-    /// A round trip takes at least the idle latency plus streaming its bytes
-    /// through the SM's own port, shared by the CTAs resident on the SM: the
-    /// MLP curves are indexed by bytes in flight over the whole GPU and do
-    /// not see one SM receiving them all.
+    /// A round trip takes at least the idle latency plus streaming its own
+    /// bytes through the SM's port, and at least the time the port needs for
+    /// the bytes of all the SM's CTAs, whose round trips run out of phase.
+    /// The MLP curves are indexed by bytes in flight over the whole GPU and
+    /// do not see one SM receiving them all.
     fn port_floor(&self, lat: Latency, d: &Demand, resident: u32) -> Latency {
         if d.round_trips == 0.0 {
             return lat;
         }
         let port = interpolate(&self.l2_bw, 1.0);
-        let transfer = d.load_bytes / d.round_trips * f64::from(resident) / port;
+        let own = d.load_bytes / d.round_trips / port;
+        let shared = own * f64::from(resident);
         Latency {
-            dram: lat.dram.max(self.dram_latency_ns + transfer),
-            l2: lat.l2.max(self.l2_latency_ns + transfer),
+            dram: lat.dram.max(self.dram_latency_ns + own).max(shared),
+            l2: lat.l2.max(self.l2_latency_ns + own).max(shared),
         }
     }
 
