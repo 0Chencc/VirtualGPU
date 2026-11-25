@@ -120,7 +120,7 @@ Items such as shared memory bank conflicts and instruction scheduling are out of
 ### 6.2 Structure
 
 - Per CTA: phases (prologue, steady-state loop, drain, epilogue). Stage counts come from the IR after pipelining, never from the requested `num_stages`. How a phase's time is computed is in 6.4.
-- Per SM: resident CTAs share issue, tensor core, and shared memory bandwidth.
+- Per SM: resident CTAs share the SM's pipes (tensor core, issue, shared memory, local memory, special-function, shuffle, and memory instruction issue; 6.4).
 - Per GPU: an event-driven scheduler dispatches CTAs to SMs using the dispatch policy measured on the real GPU, and produces waves and tails naturally. L2 and DRAM bandwidth are shared among active phases by max-min fair sharing, using bandwidth curves measured against the number of active SMs.
 - L2: an online model, called by the scheduler at tile boundaries and once per phase segment, splits traffic into L2 hits and DRAM bytes from the actual set of resident tiles.
 
@@ -128,18 +128,18 @@ Events are per CTA phase, not per instruction or per loop iteration. The target 
 
 ### 6.2.1 Resolution through perturbation
 
-When variants are bound by different resources, profile errors do not cancel. Every measured profile field therefore carries an uncertainty. The model runs each variant against draw 0 (the nominal profile) and 32 perturbed draws (Latin hypercube within each field's uncertainty, correlated fields drawn together, dispatch policy candidates included). All variants share the same draws, so comparisons are paired. A pair is ordered only if every draw agrees on the direction and on a difference of at least 5%; otherwise it is indistinguishable.
+When variants are bound by different resources, profile errors do not cancel. Every measured profile field therefore carries an uncertainty. The model runs each variant against draw 0 (the nominal profile) and 32 perturbed draws (Latin hypercube within each field's uncertainty, correlated fields drawn together). The dispatch policy is not drawn: the core dispatches round robin and flags `dispatch_ambiguous` when the profile lists more than one candidate policy or less than high confidence. All variants share the same draws, so comparisons are paired. A pair is ordered only if every draw agrees on the direction and on a difference of at least 5%; otherwise it is indistinguishable.
 
 ### 6.3 Output
 
 - Predicted time per variant.
 - Pairwise verdicts (faster, slower, indistinguishable). Verdicts are kept per pair; there is no hard grouping, because "indistinguishable" is not transitive.
 - `unsupported` with a reason, when a kernel uses a feature the model does not handle.
-- Per variant: bounding resource, utilization of each resource, wave count and tail efficiency, estimated DRAM traffic.
+- Per variant: the share of time each cause bounds the kernel (`bound_fraction`, 6.4), occupancy and its limiter, wave count and tail efficiency, and load, L2 hit, merged and DRAM bytes.
 
 ### 6.4 Mechanisms in the core
 
-What the core computes, as of `3f65039`. Each mechanism was checked on its own microbenchmark before any development-set comparison; the field names are those of the GPU profile. Errors are over the microbenchmark's points unless stated, and none of those points set a parameter except where a calibration point is named.
+What the core computes in v0.2. Each mechanism was checked on its own microbenchmark before any development-set comparison; the field names are those of the GPU profile. Errors are over the microbenchmark's points unless stated, and none of those points set a parameter except where a calibration point is named.
 
 **Phase time.** Each phase of a CTA runs at the slowest of three paths: the round-trip path (launch, L2 and DRAM round trips, and the compute that cannot overlap them), the SM's shared compute path (each pipe's time with the SM's resident CTAs sharing it, plus synchronization), and the CTA's L2 and DRAM bandwidth shares. Rates change only at events: CTA phase boundaries. A phase with less than 1e-3 of its work left after an event finishes in that event, and at one timestamp all tile ends are applied before all tile starts, then the demands.
 
@@ -164,16 +164,18 @@ What the core computes, as of `3f65039`. Each mechanism was checked on its own m
 | `mma` | MMA FLOP | `mma_tflops_per_sm_by_warps`, by MMA-issuing warps on the SM | measured curve, interpolated between points |
 | `issue` | every non-MMA instruction | `non_mma_issue_rate_per_sm_gips` (estimated) | not measured |
 | `smem` | shared memory bytes, loads and stores | `smem_bw_per_sm_gbps` | not checked on its own |
-| `local` | spill bytes that stay in L1 | `local_mem_l1_hit_bw_per_sm_gbps` (estimated) | not measured |
+| `local` | all spill bytes | `local_mem_l1_hit_bw_per_sm_gbps` (estimated) | not measured |
 | `sfu` | `ex2`-class instructions | `sfu_issue_rate_per_sm_gips`, by warps | measured points exact; leave-one-out -1% to -12% at 8 and 16 warps, -24% to -28% at the 4-warp knee |
 | `shfl` | butterfly shuffles | `shfl_issue_rate_per_sm_gips`, by warps | within 0.4% at 8 and 16 warps leave-one-out, -24% to -28% at the knee |
 | `lsu` | global load and store warp instructions, bytes over 32 times the load width | peak of `gmem_load_issue_controlled` at its narrowest width (0.952 / 0.859 Gwarp-inst/ns) | one calibration point; held-out MAPE 18.0% / 13.1% (35 points each), the rest of it from the benchmark's unsynchronized warps |
 
 `sfu` and `shfl` instructions also take issue slots. `lsu` bounds the shared path only: issuing loads overlaps the wait for those in flight. Without a measured curve `sfu` falls back to `sfu_tflops` and `shfl` to the issue rate, and kernels that use them are flagged `unvalidated_feature`.
 
-**Register spills.** Spill bytes (loads plus stores per thread, from the assembler report) are charged once or per iteration by the IR's spill scope; `inner_loop_assumed` scales by `assumed_spill_scale` (1.0). The resident threads' stack frames up to `l1_to_l2_spill_threshold_bytes_per_sm` (measured at zero carveout since profile `0.18.0`, about 128 KB on both GPUs) stay in L1; the part above overflows linearly to L2 and DRAM traffic. All spill traffic takes the `local` pipe, the overflowing part too, since local accesses pass the SM's L1 and LSU wherever they are served. Not checked against a microbenchmark: `spill_reload_latency_by_count` shows a step at the L1 capacity rather than a linear overflow, and a step that follows the shared memory carveout (`l1_to_l2_spill_threshold_by_carveout`) is pending, as is whether the static spill bytes are all executed per iteration.
+**Register spills.** Spill bytes (loads plus stores per thread, from the assembler report) are charged once or per iteration by the IR's spill scope; `inner_loop_assumed` scales by `assumed_spill_scale` (1.0). The resident threads' stack frames up to `l1_to_l2_spill_threshold_bytes_per_sm` (measured at zero carveout since profile `0.18.0`, about 128 KB on both GPUs) stay in L1; the part above overflows linearly to L2 and DRAM traffic. All spill traffic takes the `local` pipe, the overflowing part too, since local accesses pass the SM's L1 and LSU wherever they are served. This is not checked against a microbenchmark, and v0.2 leaves it so (9.2).
 
 **Per-tile iterations.** Pipeline trip counts can vary per program and tile (causal attention); each tile's phases use its own count.
+
+**Not supported.** Warp-specialized kernels (producer and consumer warp groups), thread block clusters, and epilogues that overlap the next tile are reported `unsupported`, though 6.1 lists warp specialization among what must be modeled.
 
 **Bottleneck attribution.** `bound_fraction` gives the share of CTA time during which each of 13 causes bound the CTA's current phase: `mma`, `issue`, `smem`, `local`, `sfu`, `shfl`, `lsu`, `sync`, `l2_latency`, `dram_latency`, `l2_bandwidth`, `dram_bandwidth`, `launch`. The cause is the largest component of the slowest path; bandwidth counts only when it binds, since an unconstrained share equals the demand the other paths set.
 
@@ -285,9 +287,11 @@ These were also the configs whose KernelIR carried the `linear_access_fallback` 
 
 **Effect on users.** For these configs, rely on the indistinguishable verdict rather than the point prediction: autotuning keeps them in the shortlist for measurement on the real GPU instead of ruling them out.
 
-### 9.2 Next-version residuals
+### 9.2 v0.2 residuals and exclusions
 
-These are residuals of the next version's core on the development set, not of `phase1-final`.
+These are residuals of the v0.2 core on the development set, not of `phase1-final`.
+
+**Spill reload latency and the L1 transition are not in v0.2.** Spills are charged as local-memory bandwidth with a linear overflow past one L1 threshold (6.4). The measurements show this is wrong in two ways: reloads cost latency on an iteration's critical path, so the model is 17% to 93% fast on `spill_reload_latency_by_count`, and the move from L1 to L2 is a step at the L1 capacity that follows the shared memory carveout (`l1_to_l2_spill_threshold_by_carveout`), not a linear overflow. Both changes wait for the number of local loads a kernel executes per iteration, which the assembler's static spill report does not give (for causal attention it also sums the main and the diagonal loop) and which needs the GPU performance counters, so they are left to v0.3. Spilling configs are therefore predicted too fast: on the opened phase 1 holdout (post-hoc, `docs/analysis/posthoc-core-phase1-phase2.md`), `m128n128k64-w4` and `m128n64k64-w4` of `mask-mnk` are 42% and 60% fast.
 
 **Synchronous loads in GEMM.** GEMM configs with `num_stages = 1`, which stage their loads through registers (`ld.global`, then `st.shared`), are predicted slow: median error +9.1% warm and +2.2% cold on the development set (core `7b1be46`, profile `0.21.0`), against +3.6% and +0.2% before the round-trip port floor (`e51f8ef`). The floor first made them +11% and +5%, mostly because it let every CTA on an SM wait for all the SM's bytes after the latency, as if their round trips were in phase; `7b1be46` shares the port out of phase, as `sync_stage_loop` with 1 to 8 CTAs per SM shows. What remains is not explained. It is not a register-staging cost the model misses: on `sync_stage_loop` (profile `0.21.0`, 12 to 32 KiB stages, two or three CTAs per SM) register-staged loops are predicted with MAPE 4.2% (RTX 4070) and 8.3% (GB10), median error -0.2% and -7.1%, so no separate staging mechanism (next-version mechanism (c)) is needed there; with one CTA per SM the staging shows, and the model charges it by keeping the shared memory stores on a CTA's dependent chain, which taking them off makes worse.
 
