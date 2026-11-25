@@ -1,0 +1,1289 @@
+{
+  "schema_version": 1,
+  "kernel": "dense_gemm",
+  "input_dtype": "float16",
+  "output_dtype": "float16",
+  "accumulator_dtype": "float32",
+  "input_seed": 17,
+  "configs": [
+    {
+      "config_id": "m16n64k32-w4-s1-g1",
+      "tile": [
+        16,
+        64,
+        32
+      ],
+      "num_warps": 4,
+      "num_stages": 1,
+      "group_m": 1
+    },
+    {
+      "config_id": "m16n64k32-w4-s2-g1",
+      "tile": [
+        16,
+        64,
+        32
+      ],
+      "num_warps": 4,
+      "num_stages": 2,
+      "group_m": 1
+    },
+    {
+      "config_id": "m16n64k32-w4-s4-g1",
+      "tile": [
+        16,
+        64,
+        32
+      ],
+      "num_warps": 4,
+      "num_stages": 4,
+      "group_m": 1
+    },
+    {
+      "config_id": "m16n64k32-w8-s1-g1",
+      "tile": [
+        16,
+        64,
+        32
+      ],
+      "num_warps": 8,
+      "num_stages": 1,
+      "group_m": 1
+    },
+    {
+      "config_id": "m16n64k32-w8-s2-g1",
+      "tile": [
+        16,
+        64,
+        32
+      ],
+      "num_warps": 8,
+      "num_stages": 2,
+      "group_m": 1
+    },
+    {
+      "config_id": "m16n64k32-w8-s4-g1",
+      "tile": [
+        16,
+        64,
+        32
+      ],
+      "num_warps": 8,
+      "num_stages": 4,
+      "group_m": 1
+    },
+    {
+      "config_id": "m32n64k32-w4-s1-g1",
+      "tile": [
+        32,
+        64,
+        32
+      ],
+      "num_warps": 4,
+      "num_stages": 1,
+      "group_m": 1
+    },
+    {
+      "config_id": "m32n64k32-w4-s2-g1",
+      "tile": [
+        32,
+        64,
+        32
+      ],
+      "num_warps": 4,
+      "num_stages": 2,
+      "group_m": 1
+    },
+    {
+      "config_id": "m32n64k32-w4-s4-g1",
+      "tile": [
+        32,
+        64,
+        32
+      ],
+      "num_warps": 4,
+      "num_stages": 4,
+      "group_m": 1
+    },
+    {
+      "config_id": "m32n64k32-w8-s1-g1",
+      "tile": [
+        32,
+        64,
+        32
+      ],
+      "num_warps": 8,
+      "num_stages": 1,
+      "group_m": 1
+    },
+    {
+      "config_id": "m32n64k32-w8-s2-g1",
+      "tile": [
+        32,
+        64,
+        32
+      ],
+      "num_warps": 8,
+      "num_stages": 2,
+      "group_m": 1
+    },
+    {
+      "config_id": "m32n64k32-w8-s4-g1",
+      "tile": [
+        32,
+        64,
+        32
+      ],
+      "num_warps": 8,
+      "num_stages": 4,
+      "group_m": 1
+    },
+    {
+      "config_id": "m64n64k32-w4-s1-g1",
+      "tile": [
+        64,
+        64,
+        32
+      ],
+      "num_warps": 4,
+      "num_stages": 1,
+      "group_m": 1
+    },
+    {
+      "config_id": "m64n64k32-w4-s2-g1",
+      "tile": [
+        64,
+        64,
+        32
+      ],
+      "num_warps": 4,
+      "num_stages": 2,
+      "group_m": 1
+    },
+    {
+      "config_id": "m64n64k32-w4-s4-g1",
+      "tile": [
+        64,
+        64,
+        32
+      ],
+      "num_warps": 4,
+      "num_stages": 4,
+      "group_m": 1
+    },
+    {
+      "config_id": "m64n64k32-w8-s1-g1",
+      "tile": [
+        64,
+        64,
+        32
+      ],
+      "num_warps": 8,
+      "num_stages": 1,
+      "group_m": 1
+    },
+    {
+      "config_id": "m64n64k32-w8-s2-g1",
+      "tile": [
+        64,
+        64,
+        32
+      ],
+      "num_warps": 8,
+      "num_stages": 2,
+      "group_m": 1
+    },
+    {
+      "config_id": "m64n64k32-w8-s4-g1",
+      "tile": [
+        64,
+        64,
+        32
+      ],
+      "num_warps": 8,
+      "num_stages": 4,
+      "group_m": 1
+    },
+    {
+      "config_id": "m64n128k32-w4-s1-g1",
+      "tile": [
+        64,
+        128,
+        32
+      ],
+      "num_warps": 4,
+      "num_stages": 1,
+      "group_m": 1
+    },
+    {
+      "config_id": "m64n128k32-w4-s2-g1",
+      "tile": [
+        64,
+        128,
+        32
+      ],
+      "num_warps": 4,
+      "num_stages": 2,
+      "group_m": 1
+    },
+    {
+      "config_id": "m64n128k32-w4-s4-g1",
+      "tile": [
+        64,
+        128,
+        32
+      ],
+      "num_warps": 4,
+      "num_stages": 4,
+      "group_m": 1
+    },
+    {
+      "config_id": "m64n128k32-w8-s1-g1",
+      "tile": [
+        64,
+        128,
+        32
+      ],
+      "num_warps": 8,
+      "num_stages": 1,
+      "group_m": 1
+    },
+    {
+      "config_id": "m64n128k32-w8-s2-g1",
+      "tile": [
+        64,
+        128,
+        32
+      ],
+      "num_warps": 8,
+      "num_stages": 2,
+      "group_m": 1
+    },
+    {
+      "config_id": "m64n128k32-w8-s4-g1",
+      "tile": [
+        64,
+        128,
+        32
+      ],
+      "num_warps": 8,
+      "num_stages": 4,
+      "group_m": 1
+    },
+    {
+      "config_id": "m128n64k64-w4-s1-g1",
+      "tile": [
+        128,
+        64,
+        64
+      ],
+      "num_warps": 4,
+      "num_stages": 1,
+      "group_m": 1
+    },
+    {
+      "config_id": "m128n64k64-w4-s2-g1",
+      "tile": [
+        128,
+        64,
+        64
+      ],
+      "num_warps": 4,
+      "num_stages": 2,
+      "group_m": 1
+    },
+    {
+      "config_id": "m128n64k64-w4-s4-g1",
+      "tile": [
+        128,
+        64,
+        64
+      ],
+      "num_warps": 4,
+      "num_stages": 4,
+      "group_m": 1
+    },
+    {
+      "config_id": "m128n64k64-w8-s1-g1",
+      "tile": [
+        128,
+        64,
+        64
+      ],
+      "num_warps": 8,
+      "num_stages": 1,
+      "group_m": 1
+    },
+    {
+      "config_id": "m128n64k64-w8-s2-g1",
+      "tile": [
+        128,
+        64,
+        64
+      ],
+      "num_warps": 8,
+      "num_stages": 2,
+      "group_m": 1
+    },
+    {
+      "config_id": "m128n64k64-w8-s4-g1",
+      "tile": [
+        128,
+        64,
+        64
+      ],
+      "num_warps": 8,
+      "num_stages": 4,
+      "group_m": 1
+    },
+    {
+      "config_id": "m128n128k64-w4-s1-g1",
+      "tile": [
+        128,
+        128,
+        64
+      ],
+      "num_warps": 4,
+      "num_stages": 1,
+      "group_m": 1
+    },
+    {
+      "config_id": "m128n128k64-w4-s2-g1",
+      "tile": [
+        128,
+        128,
+        64
+      ],
+      "num_warps": 4,
+      "num_stages": 2,
+      "group_m": 1
+    },
+    {
+      "config_id": "m128n128k64-w4-s4-g1",
+      "tile": [
+        128,
+        128,
+        64
+      ],
+      "num_warps": 4,
+      "num_stages": 4,
+      "group_m": 1
+    },
+    {
+      "config_id": "m128n128k64-w8-s1-g1",
+      "tile": [
+        128,
+        128,
+        64
+      ],
+      "num_warps": 8,
+      "num_stages": 1,
+      "group_m": 1
+    },
+    {
+      "config_id": "m128n128k64-w8-s2-g1",
+      "tile": [
+        128,
+        128,
+        64
+      ],
+      "num_warps": 8,
+      "num_stages": 2,
+      "group_m": 1
+    },
+    {
+      "config_id": "m128n128k64-w8-s4-g1",
+      "tile": [
+        128,
+        128,
+        64
+      ],
+      "num_warps": 8,
+      "num_stages": 4,
+      "group_m": 1
+    }
+  ],
+  "opened_manifest_sha256": {
+    "rtx4070_development": "cbfe410e95f327943f6f0cd59250f217b874cbb4654a3a161f7e52e3756698d4",
+    "rtx4070_workload_holdout": "b6c8fd089543ec8444e820993acc962f25eb3e662f9d47d3fe3bb79dbf03eaf1",
+    "gb10_primary": "cbfe410e95f327943f6f0cd59250f217b874cbb4654a3a161f7e52e3756698d4",
+    "gb10_secondary": "b6c8fd089543ec8444e820993acc962f25eb3e662f9d47d3fe3bb79dbf03eaf1",
+    "gb10_tma_diagnostic": "2c6b9c7a3490fd18224d75eebe45a7c286dbab7bdb9381640e2e8724ce95571b"
+  },
+  "devices": {
+    "rtx4070": {
+      "target": "sm_89",
+      "wave_reference": {
+        "config_id": "m64n128k32-w4-s4-g1",
+        "sm_count": 46,
+        "planning_resident_ctas_per_sm": 2,
+        "planning_full_wave_ctas": 92
+      },
+      "cases": [
+        {
+          "case_id": "v02-rtx4070-decode-2",
+          "split": "holdout",
+          "shape": [
+            2,
+            5632,
+            3584
+          ],
+          "config_ids": [
+            "m16n64k32-w4-s1-g1",
+            "m16n64k32-w4-s2-g1",
+            "m16n64k32-w4-s4-g1",
+            "m16n64k32-w8-s1-g1",
+            "m16n64k32-w8-s2-g1",
+            "m16n64k32-w8-s4-g1",
+            "m32n64k32-w4-s1-g1",
+            "m32n64k32-w4-s2-g1",
+            "m32n64k32-w4-s4-g1",
+            "m32n64k32-w8-s1-g1",
+            "m32n64k32-w8-s2-g1",
+            "m32n64k32-w8-s4-g1",
+            "m64n64k32-w4-s1-g1",
+            "m64n64k32-w4-s2-g1",
+            "m64n64k32-w4-s4-g1",
+            "m64n64k32-w8-s1-g1",
+            "m64n64k32-w8-s2-g1",
+            "m64n64k32-w8-s4-g1",
+            "m64n128k32-w4-s1-g1",
+            "m64n128k32-w4-s2-g1",
+            "m64n128k32-w4-s4-g1",
+            "m64n128k32-w8-s1-g1",
+            "m64n128k32-w8-s2-g1",
+            "m64n128k32-w8-s4-g1",
+            "m128n64k64-w4-s1-g1",
+            "m128n64k64-w4-s2-g1",
+            "m128n64k64-w4-s4-g1",
+            "m128n64k64-w8-s1-g1",
+            "m128n64k64-w8-s2-g1",
+            "m128n64k64-w8-s4-g1",
+            "m128n128k64-w4-s1-g1",
+            "m128n128k64-w4-s2-g1",
+            "m128n128k64-w4-s4-g1",
+            "m128n128k64-w8-s1-g1",
+            "m128n128k64-w8-s2-g1",
+            "m128n128k64-w8-s4-g1"
+          ]
+        },
+        {
+          "case_id": "v02-rtx4070-decode-24",
+          "split": "holdout",
+          "shape": [
+            24,
+            10240,
+            6144
+          ],
+          "config_ids": [
+            "m16n64k32-w4-s1-g1",
+            "m16n64k32-w4-s2-g1",
+            "m16n64k32-w4-s4-g1",
+            "m16n64k32-w8-s1-g1",
+            "m16n64k32-w8-s2-g1",
+            "m16n64k32-w8-s4-g1",
+            "m32n64k32-w4-s1-g1",
+            "m32n64k32-w4-s2-g1",
+            "m32n64k32-w4-s4-g1",
+            "m32n64k32-w8-s1-g1",
+            "m32n64k32-w8-s2-g1",
+            "m32n64k32-w8-s4-g1",
+            "m64n64k32-w4-s1-g1",
+            "m64n64k32-w4-s2-g1",
+            "m64n64k32-w4-s4-g1",
+            "m64n64k32-w8-s1-g1",
+            "m64n64k32-w8-s2-g1",
+            "m64n64k32-w8-s4-g1",
+            "m64n128k32-w4-s1-g1",
+            "m64n128k32-w4-s2-g1",
+            "m64n128k32-w4-s4-g1",
+            "m64n128k32-w8-s1-g1",
+            "m64n128k32-w8-s2-g1",
+            "m64n128k32-w8-s4-g1",
+            "m128n64k64-w4-s1-g1",
+            "m128n64k64-w4-s2-g1",
+            "m128n64k64-w4-s4-g1",
+            "m128n64k64-w8-s1-g1",
+            "m128n64k64-w8-s2-g1",
+            "m128n64k64-w8-s4-g1",
+            "m128n128k64-w4-s1-g1",
+            "m128n128k64-w4-s2-g1",
+            "m128n128k64-w4-s4-g1",
+            "m128n128k64-w8-s1-g1",
+            "m128n128k64-w8-s2-g1",
+            "m128n128k64-w8-s4-g1"
+          ]
+        },
+        {
+          "case_id": "v02-rtx4070-mask-mnk-385",
+          "split": "holdout",
+          "shape": [
+            385,
+            4609,
+            3071
+          ],
+          "config_ids": [
+            "m16n64k32-w4-s1-g1",
+            "m16n64k32-w4-s2-g1",
+            "m16n64k32-w4-s4-g1",
+            "m16n64k32-w8-s1-g1",
+            "m16n64k32-w8-s2-g1",
+            "m16n64k32-w8-s4-g1",
+            "m32n64k32-w4-s1-g1",
+            "m32n64k32-w4-s2-g1",
+            "m32n64k32-w4-s4-g1",
+            "m32n64k32-w8-s1-g1",
+            "m32n64k32-w8-s2-g1",
+            "m32n64k32-w8-s4-g1",
+            "m64n64k32-w4-s1-g1",
+            "m64n64k32-w4-s2-g1",
+            "m64n64k32-w4-s4-g1",
+            "m64n64k32-w8-s1-g1",
+            "m64n64k32-w8-s2-g1",
+            "m64n64k32-w8-s4-g1",
+            "m64n128k32-w4-s1-g1",
+            "m64n128k32-w4-s2-g1",
+            "m64n128k32-w4-s4-g1",
+            "m64n128k32-w8-s1-g1",
+            "m64n128k32-w8-s2-g1",
+            "m64n128k32-w8-s4-g1",
+            "m128n64k64-w4-s1-g1",
+            "m128n64k64-w4-s2-g1",
+            "m128n64k64-w4-s4-g1",
+            "m128n64k64-w8-s1-g1",
+            "m128n64k64-w8-s2-g1",
+            "m128n64k64-w8-s4-g1",
+            "m128n128k64-w4-s1-g1",
+            "m128n128k64-w4-s2-g1",
+            "m128n128k64-w4-s4-g1",
+            "m128n128k64-w8-s1-g1",
+            "m128n128k64-w8-s2-g1",
+            "m128n128k64-w8-s4-g1"
+          ]
+        },
+        {
+          "case_id": "v02-rtx4070-mask-mnk-769",
+          "split": "holdout",
+          "shape": [
+            769,
+            9215,
+            4607
+          ],
+          "config_ids": [
+            "m16n64k32-w4-s1-g1",
+            "m16n64k32-w4-s2-g1",
+            "m16n64k32-w4-s4-g1",
+            "m16n64k32-w8-s1-g1",
+            "m16n64k32-w8-s2-g1",
+            "m16n64k32-w8-s4-g1",
+            "m32n64k32-w4-s1-g1",
+            "m32n64k32-w4-s2-g1",
+            "m32n64k32-w4-s4-g1",
+            "m32n64k32-w8-s1-g1",
+            "m32n64k32-w8-s2-g1",
+            "m32n64k32-w8-s4-g1",
+            "m64n64k32-w4-s1-g1",
+            "m64n64k32-w4-s2-g1",
+            "m64n64k32-w4-s4-g1",
+            "m64n64k32-w8-s1-g1",
+            "m64n64k32-w8-s2-g1",
+            "m64n64k32-w8-s4-g1",
+            "m64n128k32-w4-s1-g1",
+            "m64n128k32-w4-s2-g1",
+            "m64n128k32-w4-s4-g1",
+            "m64n128k32-w8-s1-g1",
+            "m64n128k32-w8-s2-g1",
+            "m64n128k32-w8-s4-g1",
+            "m128n64k64-w4-s1-g1",
+            "m128n64k64-w4-s2-g1",
+            "m128n64k64-w4-s4-g1",
+            "m128n64k64-w8-s1-g1",
+            "m128n64k64-w8-s2-g1",
+            "m128n64k64-w8-s4-g1",
+            "m128n128k64-w4-s1-g1",
+            "m128n128k64-w4-s2-g1",
+            "m128n128k64-w4-s4-g1",
+            "m128n128k64-w8-s1-g1",
+            "m128n128k64-w8-s2-g1",
+            "m128n128k64-w8-s4-g1"
+          ]
+        },
+        {
+          "case_id": "v02-rtx4070-resident-wave-below",
+          "split": "holdout",
+          "shape": [
+            56,
+            11648,
+            2560
+          ],
+          "config_ids": [
+            "m16n64k32-w4-s1-g1",
+            "m16n64k32-w4-s2-g1",
+            "m16n64k32-w4-s4-g1",
+            "m16n64k32-w8-s1-g1",
+            "m16n64k32-w8-s2-g1",
+            "m16n64k32-w8-s4-g1",
+            "m32n64k32-w4-s1-g1",
+            "m32n64k32-w4-s2-g1",
+            "m32n64k32-w4-s4-g1",
+            "m32n64k32-w8-s1-g1",
+            "m32n64k32-w8-s2-g1",
+            "m32n64k32-w8-s4-g1",
+            "m64n64k32-w4-s1-g1",
+            "m64n64k32-w4-s2-g1",
+            "m64n64k32-w4-s4-g1",
+            "m64n64k32-w8-s1-g1",
+            "m64n64k32-w8-s2-g1",
+            "m64n64k32-w8-s4-g1",
+            "m64n128k32-w4-s1-g1",
+            "m64n128k32-w4-s2-g1",
+            "m64n128k32-w4-s4-g1",
+            "m64n128k32-w8-s1-g1",
+            "m64n128k32-w8-s2-g1",
+            "m64n128k32-w8-s4-g1",
+            "m128n64k64-w4-s1-g1",
+            "m128n64k64-w4-s2-g1",
+            "m128n64k64-w4-s4-g1",
+            "m128n64k64-w8-s1-g1",
+            "m128n64k64-w8-s2-g1",
+            "m128n64k64-w8-s4-g1",
+            "m128n128k64-w4-s1-g1",
+            "m128n128k64-w4-s2-g1",
+            "m128n128k64-w4-s4-g1",
+            "m128n128k64-w8-s1-g1",
+            "m128n128k64-w8-s2-g1",
+            "m128n128k64-w8-s4-g1"
+          ],
+          "reference_ctas": 91
+        },
+        {
+          "case_id": "v02-rtx4070-resident-wave-exact",
+          "split": "holdout",
+          "shape": [
+            56,
+            11776,
+            2560
+          ],
+          "config_ids": [
+            "m16n64k32-w4-s1-g1",
+            "m16n64k32-w4-s2-g1",
+            "m16n64k32-w4-s4-g1",
+            "m16n64k32-w8-s1-g1",
+            "m16n64k32-w8-s2-g1",
+            "m16n64k32-w8-s4-g1",
+            "m32n64k32-w4-s1-g1",
+            "m32n64k32-w4-s2-g1",
+            "m32n64k32-w4-s4-g1",
+            "m32n64k32-w8-s1-g1",
+            "m32n64k32-w8-s2-g1",
+            "m32n64k32-w8-s4-g1",
+            "m64n64k32-w4-s1-g1",
+            "m64n64k32-w4-s2-g1",
+            "m64n64k32-w4-s4-g1",
+            "m64n64k32-w8-s1-g1",
+            "m64n64k32-w8-s2-g1",
+            "m64n64k32-w8-s4-g1",
+            "m64n128k32-w4-s1-g1",
+            "m64n128k32-w4-s2-g1",
+            "m64n128k32-w4-s4-g1",
+            "m64n128k32-w8-s1-g1",
+            "m64n128k32-w8-s2-g1",
+            "m64n128k32-w8-s4-g1",
+            "m128n64k64-w4-s1-g1",
+            "m128n64k64-w4-s2-g1",
+            "m128n64k64-w4-s4-g1",
+            "m128n64k64-w8-s1-g1",
+            "m128n64k64-w8-s2-g1",
+            "m128n64k64-w8-s4-g1",
+            "m128n128k64-w4-s1-g1",
+            "m128n128k64-w4-s2-g1",
+            "m128n128k64-w4-s4-g1",
+            "m128n128k64-w8-s1-g1",
+            "m128n128k64-w8-s2-g1",
+            "m128n128k64-w8-s4-g1"
+          ],
+          "reference_ctas": 92
+        },
+        {
+          "case_id": "v02-rtx4070-resident-wave-above",
+          "split": "holdout",
+          "shape": [
+            56,
+            11904,
+            2560
+          ],
+          "config_ids": [
+            "m16n64k32-w4-s1-g1",
+            "m16n64k32-w4-s2-g1",
+            "m16n64k32-w4-s4-g1",
+            "m16n64k32-w8-s1-g1",
+            "m16n64k32-w8-s2-g1",
+            "m16n64k32-w8-s4-g1",
+            "m32n64k32-w4-s1-g1",
+            "m32n64k32-w4-s2-g1",
+            "m32n64k32-w4-s4-g1",
+            "m32n64k32-w8-s1-g1",
+            "m32n64k32-w8-s2-g1",
+            "m32n64k32-w8-s4-g1",
+            "m64n64k32-w4-s1-g1",
+            "m64n64k32-w4-s2-g1",
+            "m64n64k32-w4-s4-g1",
+            "m64n64k32-w8-s1-g1",
+            "m64n64k32-w8-s2-g1",
+            "m64n64k32-w8-s4-g1",
+            "m64n128k32-w4-s1-g1",
+            "m64n128k32-w4-s2-g1",
+            "m64n128k32-w4-s4-g1",
+            "m64n128k32-w8-s1-g1",
+            "m64n128k32-w8-s2-g1",
+            "m64n128k32-w8-s4-g1",
+            "m128n64k64-w4-s1-g1",
+            "m128n64k64-w4-s2-g1",
+            "m128n64k64-w4-s4-g1",
+            "m128n64k64-w8-s1-g1",
+            "m128n64k64-w8-s2-g1",
+            "m128n64k64-w8-s4-g1",
+            "m128n128k64-w4-s1-g1",
+            "m128n128k64-w4-s2-g1",
+            "m128n128k64-w4-s4-g1",
+            "m128n128k64-w8-s1-g1",
+            "m128n128k64-w8-s2-g1",
+            "m128n128k64-w8-s4-g1"
+          ],
+          "reference_ctas": 93
+        },
+        {
+          "case_id": "v02-rtx4070-prefill-768",
+          "split": "holdout",
+          "shape": [
+            768,
+            5120,
+            3840
+          ],
+          "config_ids": [
+            "m16n64k32-w4-s1-g1",
+            "m16n64k32-w4-s2-g1",
+            "m16n64k32-w4-s4-g1",
+            "m16n64k32-w8-s1-g1",
+            "m16n64k32-w8-s2-g1",
+            "m16n64k32-w8-s4-g1",
+            "m32n64k32-w4-s1-g1",
+            "m32n64k32-w4-s2-g1",
+            "m32n64k32-w4-s4-g1",
+            "m32n64k32-w8-s1-g1",
+            "m32n64k32-w8-s2-g1",
+            "m32n64k32-w8-s4-g1",
+            "m64n64k32-w4-s1-g1",
+            "m64n64k32-w4-s2-g1",
+            "m64n64k32-w4-s4-g1",
+            "m64n64k32-w8-s1-g1",
+            "m64n64k32-w8-s2-g1",
+            "m64n64k32-w8-s4-g1",
+            "m64n128k32-w4-s1-g1",
+            "m64n128k32-w4-s2-g1",
+            "m64n128k32-w4-s4-g1",
+            "m64n128k32-w8-s1-g1",
+            "m64n128k32-w8-s2-g1",
+            "m64n128k32-w8-s4-g1",
+            "m128n64k64-w4-s1-g1",
+            "m128n64k64-w4-s2-g1",
+            "m128n64k64-w4-s4-g1",
+            "m128n64k64-w8-s1-g1",
+            "m128n64k64-w8-s2-g1",
+            "m128n64k64-w8-s4-g1",
+            "m128n128k64-w4-s1-g1",
+            "m128n128k64-w4-s2-g1",
+            "m128n128k64-w4-s4-g1",
+            "m128n128k64-w8-s1-g1",
+            "m128n128k64-w8-s2-g1",
+            "m128n128k64-w8-s4-g1"
+          ]
+        },
+        {
+          "case_id": "v02-rtx4070-prefill-1536",
+          "split": "holdout",
+          "shape": [
+            1536,
+            7168,
+            5120
+          ],
+          "config_ids": [
+            "m16n64k32-w4-s1-g1",
+            "m16n64k32-w4-s2-g1",
+            "m16n64k32-w4-s4-g1",
+            "m16n64k32-w8-s1-g1",
+            "m16n64k32-w8-s2-g1",
+            "m16n64k32-w8-s4-g1",
+            "m32n64k32-w4-s1-g1",
+            "m32n64k32-w4-s2-g1",
+            "m32n64k32-w4-s4-g1",
+            "m32n64k32-w8-s1-g1",
+            "m32n64k32-w8-s2-g1",
+            "m32n64k32-w8-s4-g1",
+            "m64n64k32-w4-s1-g1",
+            "m64n64k32-w4-s2-g1",
+            "m64n64k32-w4-s4-g1",
+            "m64n64k32-w8-s1-g1",
+            "m64n64k32-w8-s2-g1",
+            "m64n64k32-w8-s4-g1",
+            "m64n128k32-w4-s1-g1",
+            "m64n128k32-w4-s2-g1",
+            "m64n128k32-w4-s4-g1",
+            "m64n128k32-w8-s1-g1",
+            "m64n128k32-w8-s2-g1",
+            "m64n128k32-w8-s4-g1",
+            "m128n64k64-w4-s1-g1",
+            "m128n64k64-w4-s2-g1",
+            "m128n64k64-w4-s4-g1",
+            "m128n64k64-w8-s1-g1",
+            "m128n64k64-w8-s2-g1",
+            "m128n64k64-w8-s4-g1",
+            "m128n128k64-w4-s1-g1",
+            "m128n128k64-w4-s2-g1",
+            "m128n128k64-w4-s4-g1",
+            "m128n128k64-w8-s1-g1",
+            "m128n128k64-w8-s2-g1",
+            "m128n128k64-w8-s4-g1"
+          ]
+        }
+      ]
+    },
+    "gb10": {
+      "target": "sm_121",
+      "wave_reference": {
+        "config_id": "m64n128k32-w4-s4-g1",
+        "sm_count": 48,
+        "planning_resident_ctas_per_sm": 2,
+        "planning_full_wave_ctas": 96
+      },
+      "cases": [
+        {
+          "case_id": "v02-gb10-decode-4",
+          "split": "holdout",
+          "shape": [
+            4,
+            6656,
+            4352
+          ],
+          "config_ids": [
+            "m16n64k32-w4-s1-g1",
+            "m16n64k32-w4-s2-g1",
+            "m16n64k32-w4-s4-g1",
+            "m16n64k32-w8-s1-g1",
+            "m16n64k32-w8-s2-g1",
+            "m16n64k32-w8-s4-g1",
+            "m32n64k32-w4-s1-g1",
+            "m32n64k32-w4-s2-g1",
+            "m32n64k32-w4-s4-g1",
+            "m32n64k32-w8-s1-g1",
+            "m32n64k32-w8-s2-g1",
+            "m32n64k32-w8-s4-g1",
+            "m64n64k32-w4-s1-g1",
+            "m64n64k32-w4-s2-g1",
+            "m64n64k32-w4-s4-g1",
+            "m64n64k32-w8-s1-g1",
+            "m64n64k32-w8-s2-g1",
+            "m64n64k32-w8-s4-g1",
+            "m64n128k32-w4-s1-g1",
+            "m64n128k32-w4-s2-g1",
+            "m64n128k32-w4-s4-g1",
+            "m64n128k32-w8-s1-g1",
+            "m64n128k32-w8-s2-g1",
+            "m64n128k32-w8-s4-g1",
+            "m128n64k64-w4-s1-g1",
+            "m128n64k64-w4-s2-g1",
+            "m128n64k64-w4-s4-g1",
+            "m128n64k64-w8-s1-g1",
+            "m128n64k64-w8-s2-g1",
+            "m128n64k64-w8-s4-g1",
+            "m128n128k64-w4-s1-g1",
+            "m128n128k64-w4-s2-g1",
+            "m128n128k64-w4-s4-g1",
+            "m128n128k64-w8-s1-g1",
+            "m128n128k64-w8-s2-g1",
+            "m128n128k64-w8-s4-g1"
+          ]
+        },
+        {
+          "case_id": "v02-gb10-decode-40",
+          "split": "holdout",
+          "shape": [
+            40,
+            13312,
+            7680
+          ],
+          "config_ids": [
+            "m16n64k32-w4-s1-g1",
+            "m16n64k32-w4-s2-g1",
+            "m16n64k32-w4-s4-g1",
+            "m16n64k32-w8-s1-g1",
+            "m16n64k32-w8-s2-g1",
+            "m16n64k32-w8-s4-g1",
+            "m32n64k32-w4-s1-g1",
+            "m32n64k32-w4-s2-g1",
+            "m32n64k32-w4-s4-g1",
+            "m32n64k32-w8-s1-g1",
+            "m32n64k32-w8-s2-g1",
+            "m32n64k32-w8-s4-g1",
+            "m64n64k32-w4-s1-g1",
+            "m64n64k32-w4-s2-g1",
+            "m64n64k32-w4-s4-g1",
+            "m64n64k32-w8-s1-g1",
+            "m64n64k32-w8-s2-g1",
+            "m64n64k32-w8-s4-g1",
+            "m64n128k32-w4-s1-g1",
+            "m64n128k32-w4-s2-g1",
+            "m64n128k32-w4-s4-g1",
+            "m64n128k32-w8-s1-g1",
+            "m64n128k32-w8-s2-g1",
+            "m64n128k32-w8-s4-g1",
+            "m128n64k64-w4-s1-g1",
+            "m128n64k64-w4-s2-g1",
+            "m128n64k64-w4-s4-g1",
+            "m128n64k64-w8-s1-g1",
+            "m128n64k64-w8-s2-g1",
+            "m128n64k64-w8-s4-g1",
+            "m128n128k64-w4-s1-g1",
+            "m128n128k64-w4-s2-g1",
+            "m128n128k64-w4-s4-g1",
+            "m128n128k64-w8-s1-g1",
+            "m128n128k64-w8-s2-g1",
+            "m128n128k64-w8-s4-g1"
+          ]
+        },
+        {
+          "case_id": "v02-gb10-mask-mnk-641",
+          "split": "holdout",
+          "shape": [
+            641,
+            5123,
+            3581
+          ],
+          "config_ids": [
+            "m16n64k32-w4-s1-g1",
+            "m16n64k32-w4-s2-g1",
+            "m16n64k32-w4-s4-g1",
+            "m16n64k32-w8-s1-g1",
+            "m16n64k32-w8-s2-g1",
+            "m16n64k32-w8-s4-g1",
+            "m32n64k32-w4-s1-g1",
+            "m32n64k32-w4-s2-g1",
+            "m32n64k32-w4-s4-g1",
+            "m32n64k32-w8-s1-g1",
+            "m32n64k32-w8-s2-g1",
+            "m32n64k32-w8-s4-g1",
+            "m64n64k32-w4-s1-g1",
+            "m64n64k32-w4-s2-g1",
+            "m64n64k32-w4-s4-g1",
+            "m64n64k32-w8-s1-g1",
+            "m64n64k32-w8-s2-g1",
+            "m64n64k32-w8-s4-g1",
+            "m64n128k32-w4-s1-g1",
+            "m64n128k32-w4-s2-g1",
+            "m64n128k32-w4-s4-g1",
+            "m64n128k32-w8-s1-g1",
+            "m64n128k32-w8-s2-g1",
+            "m64n128k32-w8-s4-g1",
+            "m128n64k64-w4-s1-g1",
+            "m128n64k64-w4-s2-g1",
+            "m128n64k64-w4-s4-g1",
+            "m128n64k64-w8-s1-g1",
+            "m128n64k64-w8-s2-g1",
+            "m128n64k64-w8-s4-g1",
+            "m128n128k64-w4-s1-g1",
+            "m128n128k64-w4-s2-g1",
+            "m128n128k64-w4-s4-g1",
+            "m128n128k64-w8-s1-g1",
+            "m128n128k64-w8-s2-g1",
+            "m128n128k64-w8-s4-g1"
+          ]
+        },
+        {
+          "case_id": "v02-gb10-mask-mnk-1153",
+          "split": "holdout",
+          "shape": [
+            1153,
+            9727,
+            6653
+          ],
+          "config_ids": [
+            "m16n64k32-w4-s1-g1",
+            "m16n64k32-w4-s2-g1",
+            "m16n64k32-w4-s4-g1",
+            "m16n64k32-w8-s1-g1",
+            "m16n64k32-w8-s2-g1",
+            "m16n64k32-w8-s4-g1",
+            "m32n64k32-w4-s1-g1",
+            "m32n64k32-w4-s2-g1",
+            "m32n64k32-w4-s4-g1",
+            "m32n64k32-w8-s1-g1",
+            "m32n64k32-w8-s2-g1",
+            "m32n64k32-w8-s4-g1",
+            "m64n64k32-w4-s1-g1",
+            "m64n64k32-w4-s2-g1",
+            "m64n64k32-w4-s4-g1",
+            "m64n64k32-w8-s1-g1",
+            "m64n64k32-w8-s2-g1",
+            "m64n64k32-w8-s4-g1",
+            "m64n128k32-w4-s1-g1",
+            "m64n128k32-w4-s2-g1",
+            "m64n128k32-w4-s4-g1",
+            "m64n128k32-w8-s1-g1",
+            "m64n128k32-w8-s2-g1",
+            "m64n128k32-w8-s4-g1",
+            "m128n64k64-w4-s1-g1",
+            "m128n64k64-w4-s2-g1",
+            "m128n64k64-w4-s4-g1",
+            "m128n64k64-w8-s1-g1",
+            "m128n64k64-w8-s2-g1",
+            "m128n64k64-w8-s4-g1",
+            "m128n128k64-w4-s1-g1",
+            "m128n128k64-w4-s2-g1",
+            "m128n128k64-w4-s4-g1",
+            "m128n128k64-w8-s1-g1",
+            "m128n128k64-w8-s2-g1",
+            "m128n128k64-w8-s4-g1"
+          ]
+        },
+        {
+          "case_id": "v02-gb10-resident-wave-below",
+          "split": "holdout",
+          "shape": [
+            48,
+            12160,
+            2688
+          ],
+          "config_ids": [
+            "m16n64k32-w4-s1-g1",
+            "m16n64k32-w4-s2-g1",
+            "m16n64k32-w4-s4-g1",
+            "m16n64k32-w8-s1-g1",
+            "m16n64k32-w8-s2-g1",
+            "m16n64k32-w8-s4-g1",
+            "m32n64k32-w4-s1-g1",
+            "m32n64k32-w4-s2-g1",
+            "m32n64k32-w4-s4-g1",
+            "m32n64k32-w8-s1-g1",
+            "m32n64k32-w8-s2-g1",
+            "m32n64k32-w8-s4-g1",
+            "m64n64k32-w4-s1-g1",
+            "m64n64k32-w4-s2-g1",
+            "m64n64k32-w4-s4-g1",
+            "m64n64k32-w8-s1-g1",
+            "m64n64k32-w8-s2-g1",
+            "m64n64k32-w8-s4-g1",
+            "m64n128k32-w4-s1-g1",
+            "m64n128k32-w4-s2-g1",
+            "m64n128k32-w4-s4-g1",
+            "m64n128k32-w8-s1-g1",
+            "m64n128k32-w8-s2-g1",
+            "m64n128k32-w8-s4-g1",
+            "m128n64k64-w4-s1-g1",
+            "m128n64k64-w4-s2-g1",
+            "m128n64k64-w4-s4-g1",
+            "m128n64k64-w8-s1-g1",
+            "m128n64k64-w8-s2-g1",
+            "m128n64k64-w8-s4-g1",
+            "m128n128k64-w4-s1-g1",
+            "m128n128k64-w4-s2-g1",
+            "m128n128k64-w4-s4-g1",
+            "m128n128k64-w8-s1-g1",
+            "m128n128k64-w8-s2-g1",
+            "m128n128k64-w8-s4-g1"
+          ],
+          "reference_ctas": 95
+        },
+        {
+          "case_id": "v02-gb10-resident-wave-exact",
+          "split": "holdout",
+          "shape": [
+            48,
+            12288,
+            2688
+          ],
+          "config_ids": [
+            "m16n64k32-w4-s1-g1",
+            "m16n64k32-w4-s2-g1",
+            "m16n64k32-w4-s4-g1",
+            "m16n64k32-w8-s1-g1",
+            "m16n64k32-w8-s2-g1",
+            "m16n64k32-w8-s4-g1",
+            "m32n64k32-w4-s1-g1",
+            "m32n64k32-w4-s2-g1",
+            "m32n64k32-w4-s4-g1",
+            "m32n64k32-w8-s1-g1",
+            "m32n64k32-w8-s2-g1",
+            "m32n64k32-w8-s4-g1",
+            "m64n64k32-w4-s1-g1",
+            "m64n64k32-w4-s2-g1",
+            "m64n64k32-w4-s4-g1",
+            "m64n64k32-w8-s1-g1",
+            "m64n64k32-w8-s2-g1",
+            "m64n64k32-w8-s4-g1",
+            "m64n128k32-w4-s1-g1",
+            "m64n128k32-w4-s2-g1",
+            "m64n128k32-w4-s4-g1",
+            "m64n128k32-w8-s1-g1",
+            "m64n128k32-w8-s2-g1",
+            "m64n128k32-w8-s4-g1",
+            "m128n64k64-w4-s1-g1",
+            "m128n64k64-w4-s2-g1",
+            "m128n64k64-w4-s4-g1",
+            "m128n64k64-w8-s1-g1",
+            "m128n64k64-w8-s2-g1",
+            "m128n64k64-w8-s4-g1",
+            "m128n128k64-w4-s1-g1",
+            "m128n128k64-w4-s2-g1",
+            "m128n128k64-w4-s4-g1",
+            "m128n128k64-w8-s1-g1",
+            "m128n128k64-w8-s2-g1",
+            "m128n128k64-w8-s4-g1"
+          ],
+          "reference_ctas": 96
+        },
+        {
+          "case_id": "v02-gb10-resident-wave-above",
+          "split": "holdout",
+          "shape": [
+            48,
+            12416,
+            2688
+          ],
+          "config_ids": [
+            "m16n64k32-w4-s1-g1",
+            "m16n64k32-w4-s2-g1",
+            "m16n64k32-w4-s4-g1",
+            "m16n64k32-w8-s1-g1",
+            "m16n64k32-w8-s2-g1",
+            "m16n64k32-w8-s4-g1",
+            "m32n64k32-w4-s1-g1",
+            "m32n64k32-w4-s2-g1",
+            "m32n64k32-w4-s4-g1",
+            "m32n64k32-w8-s1-g1",
+            "m32n64k32-w8-s2-g1",
+            "m32n64k32-w8-s4-g1",
+            "m64n64k32-w4-s1-g1",
+            "m64n64k32-w4-s2-g1",
+            "m64n64k32-w4-s4-g1",
+            "m64n64k32-w8-s1-g1",
+            "m64n64k32-w8-s2-g1",
+            "m64n64k32-w8-s4-g1",
+            "m64n128k32-w4-s1-g1",
+            "m64n128k32-w4-s2-g1",
+            "m64n128k32-w4-s4-g1",
+            "m64n128k32-w8-s1-g1",
+            "m64n128k32-w8-s2-g1",
+            "m64n128k32-w8-s4-g1",
+            "m128n64k64-w4-s1-g1",
+            "m128n64k64-w4-s2-g1",
+            "m128n64k64-w4-s4-g1",
+            "m128n64k64-w8-s1-g1",
+            "m128n64k64-w8-s2-g1",
+            "m128n64k64-w8-s4-g1",
+            "m128n128k64-w4-s1-g1",
+            "m128n128k64-w4-s2-g1",
+            "m128n128k64-w4-s4-g1",
+            "m128n128k64-w8-s1-g1",
+            "m128n128k64-w8-s2-g1",
+            "m128n128k64-w8-s4-g1"
+          ],
+          "reference_ctas": 97
+        },
+        {
+          "case_id": "v02-gb10-prefill-896",
+          "split": "holdout",
+          "shape": [
+            896,
+            6144,
+            3328
+          ],
+          "config_ids": [
+            "m16n64k32-w4-s1-g1",
+            "m16n64k32-w4-s2-g1",
+            "m16n64k32-w4-s4-g1",
+            "m16n64k32-w8-s1-g1",
+            "m16n64k32-w8-s2-g1",
+            "m16n64k32-w8-s4-g1",
+            "m32n64k32-w4-s1-g1",
+            "m32n64k32-w4-s2-g1",
+            "m32n64k32-w4-s4-g1",
+            "m32n64k32-w8-s1-g1",
+            "m32n64k32-w8-s2-g1",
+            "m32n64k32-w8-s4-g1",
+            "m64n64k32-w4-s1-g1",
+            "m64n64k32-w4-s2-g1",
+            "m64n64k32-w4-s4-g1",
+            "m64n64k32-w8-s1-g1",
+            "m64n64k32-w8-s2-g1",
+            "m64n64k32-w8-s4-g1",
+            "m64n128k32-w4-s1-g1",
+            "m64n128k32-w4-s2-g1",
+            "m64n128k32-w4-s4-g1",
+            "m64n128k32-w8-s1-g1",
+            "m64n128k32-w8-s2-g1",
+            "m64n128k32-w8-s4-g1",
+            "m128n64k64-w4-s1-g1",
+            "m128n64k64-w4-s2-g1",
+            "m128n64k64-w4-s4-g1",
+            "m128n64k64-w8-s1-g1",
+            "m128n64k64-w8-s2-g1",
+            "m128n64k64-w8-s4-g1",
+            "m128n128k64-w4-s1-g1",
+            "m128n128k64-w4-s2-g1",
+            "m128n128k64-w4-s4-g1",
+            "m128n128k64-w8-s1-g1",
+            "m128n128k64-w8-s2-g1",
+            "m128n128k64-w8-s4-g1"
+          ]
+        },
+        {
+          "case_id": "v02-gb10-prefill-1792",
+          "split": "holdout",
+          "shape": [
+            1792,
+            7680,
+            5888
+          ],
+          "config_ids": [
+            "m16n64k32-w4-s1-g1",
+            "m16n64k32-w4-s2-g1",
+            "m16n64k32-w4-s4-g1",
+            "m16n64k32-w8-s1-g1",
+            "m16n64k32-w8-s2-g1",
+            "m16n64k32-w8-s4-g1",
+            "m32n64k32-w4-s1-g1",
+            "m32n64k32-w4-s2-g1",
+            "m32n64k32-w4-s4-g1",
+            "m32n64k32-w8-s1-g1",
+            "m32n64k32-w8-s2-g1",
+            "m32n64k32-w8-s4-g1",
+            "m64n64k32-w4-s1-g1",
+            "m64n64k32-w4-s2-g1",
+            "m64n64k32-w4-s4-g1",
+            "m64n64k32-w8-s1-g1",
+            "m64n64k32-w8-s2-g1",
+            "m64n64k32-w8-s4-g1",
+            "m64n128k32-w4-s1-g1",
+            "m64n128k32-w4-s2-g1",
+            "m64n128k32-w4-s4-g1",
+            "m64n128k32-w8-s1-g1",
+            "m64n128k32-w8-s2-g1",
+            "m64n128k32-w8-s4-g1",
+            "m128n64k64-w4-s1-g1",
+            "m128n64k64-w4-s2-g1",
+            "m128n64k64-w4-s4-g1",
+            "m128n64k64-w8-s1-g1",
+            "m128n64k64-w8-s2-g1",
+            "m128n64k64-w8-s4-g1",
+            "m128n128k64-w4-s1-g1",
+            "m128n128k64-w4-s2-g1",
+            "m128n128k64-w4-s4-g1",
+            "m128n128k64-w8-s1-g1",
+            "m128n128k64-w8-s2-g1",
+            "m128n128k64-w8-s4-g1"
+          ]
+        }
+      ]
+    }
+  }
+}

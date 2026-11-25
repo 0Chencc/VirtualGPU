@@ -1,0 +1,636 @@
+{
+  "schema_version": 1,
+  "kernel": "fused_attention_forward",
+  "triton_version": "3.9.0",
+  "input_dtype": "float16",
+  "output_dtype": "float16",
+  "accumulator_dtype": "float32",
+  "input_seed": 17,
+  "layout": "BHSD",
+  "softmax_scale": "1/sqrt(head_dim)",
+  "enable_fp_fusion": true,
+  "warp_specialize": false,
+  "config_space_source": "https://github.com/triton-lang/triton/blob/v3.9.0/python/tutorials/06-fused-attention.py",
+  "config_space": {
+    "block_m": [
+      64,
+      128
+    ],
+    "block_n": [
+      32,
+      64,
+      128
+    ],
+    "num_stages": [
+      2,
+      3,
+      4
+    ],
+    "num_warps": [
+      4,
+      8
+    ]
+  },
+  "configs": [
+    {
+      "config_id": "m64n32-w4-s2",
+      "block_m": 64,
+      "block_n": 32,
+      "num_stages": 2,
+      "num_warps": 4
+    },
+    {
+      "config_id": "m64n32-w8-s2",
+      "block_m": 64,
+      "block_n": 32,
+      "num_stages": 2,
+      "num_warps": 8
+    },
+    {
+      "config_id": "m64n32-w4-s3",
+      "block_m": 64,
+      "block_n": 32,
+      "num_stages": 3,
+      "num_warps": 4
+    },
+    {
+      "config_id": "m64n32-w8-s3",
+      "block_m": 64,
+      "block_n": 32,
+      "num_stages": 3,
+      "num_warps": 8
+    },
+    {
+      "config_id": "m64n32-w4-s4",
+      "block_m": 64,
+      "block_n": 32,
+      "num_stages": 4,
+      "num_warps": 4
+    },
+    {
+      "config_id": "m64n32-w8-s4",
+      "block_m": 64,
+      "block_n": 32,
+      "num_stages": 4,
+      "num_warps": 8
+    },
+    {
+      "config_id": "m64n64-w4-s2",
+      "block_m": 64,
+      "block_n": 64,
+      "num_stages": 2,
+      "num_warps": 4
+    },
+    {
+      "config_id": "m64n64-w8-s2",
+      "block_m": 64,
+      "block_n": 64,
+      "num_stages": 2,
+      "num_warps": 8
+    },
+    {
+      "config_id": "m64n64-w4-s3",
+      "block_m": 64,
+      "block_n": 64,
+      "num_stages": 3,
+      "num_warps": 4
+    },
+    {
+      "config_id": "m64n64-w8-s3",
+      "block_m": 64,
+      "block_n": 64,
+      "num_stages": 3,
+      "num_warps": 8
+    },
+    {
+      "config_id": "m64n64-w4-s4",
+      "block_m": 64,
+      "block_n": 64,
+      "num_stages": 4,
+      "num_warps": 4
+    },
+    {
+      "config_id": "m64n64-w8-s4",
+      "block_m": 64,
+      "block_n": 64,
+      "num_stages": 4,
+      "num_warps": 8
+    },
+    {
+      "config_id": "m64n128-w4-s2",
+      "block_m": 64,
+      "block_n": 128,
+      "num_stages": 2,
+      "num_warps": 4
+    },
+    {
+      "config_id": "m64n128-w8-s2",
+      "block_m": 64,
+      "block_n": 128,
+      "num_stages": 2,
+      "num_warps": 8
+    },
+    {
+      "config_id": "m64n128-w4-s3",
+      "block_m": 64,
+      "block_n": 128,
+      "num_stages": 3,
+      "num_warps": 4
+    },
+    {
+      "config_id": "m64n128-w8-s3",
+      "block_m": 64,
+      "block_n": 128,
+      "num_stages": 3,
+      "num_warps": 8
+    },
+    {
+      "config_id": "m64n128-w4-s4",
+      "block_m": 64,
+      "block_n": 128,
+      "num_stages": 4,
+      "num_warps": 4
+    },
+    {
+      "config_id": "m64n128-w8-s4",
+      "block_m": 64,
+      "block_n": 128,
+      "num_stages": 4,
+      "num_warps": 8
+    },
+    {
+      "config_id": "m128n32-w4-s2",
+      "block_m": 128,
+      "block_n": 32,
+      "num_stages": 2,
+      "num_warps": 4
+    },
+    {
+      "config_id": "m128n32-w8-s2",
+      "block_m": 128,
+      "block_n": 32,
+      "num_stages": 2,
+      "num_warps": 8
+    },
+    {
+      "config_id": "m128n32-w4-s3",
+      "block_m": 128,
+      "block_n": 32,
+      "num_stages": 3,
+      "num_warps": 4
+    },
+    {
+      "config_id": "m128n32-w8-s3",
+      "block_m": 128,
+      "block_n": 32,
+      "num_stages": 3,
+      "num_warps": 8
+    },
+    {
+      "config_id": "m128n32-w4-s4",
+      "block_m": 128,
+      "block_n": 32,
+      "num_stages": 4,
+      "num_warps": 4
+    },
+    {
+      "config_id": "m128n32-w8-s4",
+      "block_m": 128,
+      "block_n": 32,
+      "num_stages": 4,
+      "num_warps": 8
+    },
+    {
+      "config_id": "m128n64-w4-s2",
+      "block_m": 128,
+      "block_n": 64,
+      "num_stages": 2,
+      "num_warps": 4
+    },
+    {
+      "config_id": "m128n64-w8-s2",
+      "block_m": 128,
+      "block_n": 64,
+      "num_stages": 2,
+      "num_warps": 8
+    },
+    {
+      "config_id": "m128n64-w4-s3",
+      "block_m": 128,
+      "block_n": 64,
+      "num_stages": 3,
+      "num_warps": 4
+    },
+    {
+      "config_id": "m128n64-w8-s3",
+      "block_m": 128,
+      "block_n": 64,
+      "num_stages": 3,
+      "num_warps": 8
+    },
+    {
+      "config_id": "m128n64-w4-s4",
+      "block_m": 128,
+      "block_n": 64,
+      "num_stages": 4,
+      "num_warps": 4
+    },
+    {
+      "config_id": "m128n64-w8-s4",
+      "block_m": 128,
+      "block_n": 64,
+      "num_stages": 4,
+      "num_warps": 8
+    },
+    {
+      "config_id": "m128n128-w4-s2",
+      "block_m": 128,
+      "block_n": 128,
+      "num_stages": 2,
+      "num_warps": 4
+    },
+    {
+      "config_id": "m128n128-w8-s2",
+      "block_m": 128,
+      "block_n": 128,
+      "num_stages": 2,
+      "num_warps": 8
+    },
+    {
+      "config_id": "m128n128-w4-s3",
+      "block_m": 128,
+      "block_n": 128,
+      "num_stages": 3,
+      "num_warps": 4
+    },
+    {
+      "config_id": "m128n128-w8-s3",
+      "block_m": 128,
+      "block_n": 128,
+      "num_stages": 3,
+      "num_warps": 8
+    },
+    {
+      "config_id": "m128n128-w4-s4",
+      "block_m": 128,
+      "block_n": 128,
+      "num_stages": 4,
+      "num_warps": 4
+    },
+    {
+      "config_id": "m128n128-w8-s4",
+      "block_m": 128,
+      "block_n": 128,
+      "num_stages": 4,
+      "num_warps": 8
+    }
+  ],
+  "devices": {
+    "rtx4070": {
+      "target": "sm_89",
+      "manifest": "validation/attention-suite.json",
+      "manifest_sha256": "a1273886f7d48505f90191ce0bbf2df74dd6f9707fe9089551c2e15347ff5cfe",
+      "seal": "validation/attention-holdout-seal.json",
+      "seal_sha256": "b060f0e9c07dbe8b4df71fcc3135dd3cc8f3c3e3744b60e55865d971267ff9b0",
+      "case_ids": [
+        "b1-q12-kv12-s641-d64-full",
+        "b3-q16-kv16-s2560-d128-full",
+        "b2-q16-kv16-s1153-d64-causal",
+        "b1-q24-kv24-s4096-d128-causal",
+        "b2-q24-kv6-s1283-d64-full",
+        "b1-q32-kv4-s3072-d128-full",
+        "b2-q32-kv8-s1667-d64-causal",
+        "b1-q40-kv5-s2177-d128-causal"
+      ]
+    },
+    "gb10": {
+      "target": "sm_121",
+      "cases": [
+        {
+          "case_id": "b1-q20-kv20-s897-d64-full",
+          "split": "holdout",
+          "batch": 1,
+          "query_heads": 20,
+          "kv_heads": 20,
+          "seq_len": 897,
+          "head_dim": 64,
+          "causal": false,
+          "config_ids": [
+            "m64n32-w4-s2",
+            "m64n32-w8-s2",
+            "m64n32-w4-s3",
+            "m64n32-w8-s3",
+            "m64n32-w4-s4",
+            "m64n32-w8-s4",
+            "m64n64-w4-s2",
+            "m64n64-w8-s2",
+            "m64n64-w4-s3",
+            "m64n64-w8-s3",
+            "m64n64-w4-s4",
+            "m64n64-w8-s4",
+            "m128n32-w4-s2",
+            "m128n32-w8-s2",
+            "m128n32-w4-s3",
+            "m128n32-w8-s3",
+            "m128n32-w4-s4",
+            "m128n32-w8-s4",
+            "m128n64-w4-s2",
+            "m128n64-w8-s2",
+            "m128n64-w4-s3",
+            "m128n64-w8-s3",
+            "m128n64-w4-s4",
+            "m128n64-w8-s4"
+          ]
+        },
+        {
+          "case_id": "b2-q12-kv12-s2304-d128-full",
+          "split": "holdout",
+          "batch": 2,
+          "query_heads": 12,
+          "kv_heads": 12,
+          "seq_len": 2304,
+          "head_dim": 128,
+          "causal": false,
+          "config_ids": [
+            "m64n32-w4-s2",
+            "m64n32-w8-s2",
+            "m64n32-w4-s3",
+            "m64n32-w8-s3",
+            "m64n32-w4-s4",
+            "m64n32-w8-s4",
+            "m64n64-w4-s2",
+            "m64n64-w8-s2",
+            "m64n64-w4-s3",
+            "m64n64-w8-s3",
+            "m64n64-w4-s4",
+            "m64n64-w8-s4",
+            "m64n128-w4-s2",
+            "m64n128-w8-s2",
+            "m64n128-w4-s3",
+            "m64n128-w8-s3",
+            "m64n128-w4-s4",
+            "m64n128-w8-s4",
+            "m128n32-w4-s2",
+            "m128n32-w8-s2",
+            "m128n32-w4-s3",
+            "m128n32-w8-s3",
+            "m128n32-w4-s4",
+            "m128n32-w8-s4",
+            "m128n64-w4-s2",
+            "m128n64-w8-s2",
+            "m128n64-w4-s3",
+            "m128n64-w8-s3",
+            "m128n64-w4-s4",
+            "m128n64-w8-s4",
+            "m128n128-w4-s2",
+            "m128n128-w8-s2",
+            "m128n128-w4-s3",
+            "m128n128-w8-s3",
+            "m128n128-w4-s4",
+            "m128n128-w8-s4"
+          ]
+        },
+        {
+          "case_id": "b2-q20-kv20-s1345-d64-causal",
+          "split": "holdout",
+          "batch": 2,
+          "query_heads": 20,
+          "kv_heads": 20,
+          "seq_len": 1345,
+          "head_dim": 64,
+          "causal": true,
+          "config_ids": [
+            "m64n32-w4-s2",
+            "m64n32-w8-s2",
+            "m64n32-w4-s3",
+            "m64n32-w8-s3",
+            "m64n32-w4-s4",
+            "m64n32-w8-s4",
+            "m64n64-w4-s2",
+            "m64n64-w8-s2",
+            "m64n64-w4-s3",
+            "m64n64-w8-s3",
+            "m64n64-w4-s4",
+            "m64n64-w8-s4",
+            "m128n32-w4-s2",
+            "m128n32-w8-s2",
+            "m128n32-w4-s3",
+            "m128n32-w8-s3",
+            "m128n32-w4-s4",
+            "m128n32-w8-s4",
+            "m128n64-w4-s2",
+            "m128n64-w8-s2",
+            "m128n64-w4-s3",
+            "m128n64-w8-s3",
+            "m128n64-w4-s4",
+            "m128n64-w8-s4"
+          ]
+        },
+        {
+          "case_id": "b1-q28-kv28-s4608-d128-causal",
+          "split": "holdout",
+          "batch": 1,
+          "query_heads": 28,
+          "kv_heads": 28,
+          "seq_len": 4608,
+          "head_dim": 128,
+          "causal": true,
+          "config_ids": [
+            "m64n32-w4-s2",
+            "m64n32-w8-s2",
+            "m64n32-w4-s3",
+            "m64n32-w8-s3",
+            "m64n32-w4-s4",
+            "m64n32-w8-s4",
+            "m64n64-w4-s2",
+            "m64n64-w8-s2",
+            "m64n64-w4-s3",
+            "m64n64-w8-s3",
+            "m64n64-w4-s4",
+            "m64n64-w8-s4",
+            "m128n32-w4-s2",
+            "m128n32-w8-s2",
+            "m128n32-w4-s3",
+            "m128n32-w8-s3",
+            "m128n32-w4-s4",
+            "m128n32-w8-s4",
+            "m128n64-w4-s2",
+            "m128n64-w8-s2",
+            "m128n64-w4-s3",
+            "m128n64-w8-s3",
+            "m128n64-w4-s4",
+            "m128n64-w8-s4",
+            "m128n128-w4-s2",
+            "m128n128-w8-s2",
+            "m128n128-w4-s3",
+            "m128n128-w8-s3",
+            "m128n128-w4-s4",
+            "m128n128-w8-s4"
+          ]
+        },
+        {
+          "case_id": "b2-q28-kv7-s1409-d64-full",
+          "split": "holdout",
+          "batch": 2,
+          "query_heads": 28,
+          "kv_heads": 7,
+          "seq_len": 1409,
+          "head_dim": 64,
+          "causal": false,
+          "config_ids": [
+            "m64n32-w4-s2",
+            "m64n32-w8-s2",
+            "m64n32-w4-s3",
+            "m64n32-w8-s3",
+            "m64n32-w4-s4",
+            "m64n32-w8-s4",
+            "m64n64-w4-s2",
+            "m64n64-w8-s2",
+            "m64n64-w4-s3",
+            "m64n64-w8-s3",
+            "m64n64-w4-s4",
+            "m64n64-w8-s4",
+            "m128n32-w4-s2",
+            "m128n32-w8-s2",
+            "m128n32-w4-s3",
+            "m128n32-w8-s3",
+            "m128n32-w4-s4",
+            "m128n32-w8-s4",
+            "m128n64-w4-s2",
+            "m128n64-w8-s2",
+            "m128n64-w4-s3",
+            "m128n64-w8-s3",
+            "m128n64-w4-s4",
+            "m128n64-w8-s4"
+          ]
+        },
+        {
+          "case_id": "b1-q36-kv6-s2816-d128-full",
+          "split": "holdout",
+          "batch": 1,
+          "query_heads": 36,
+          "kv_heads": 6,
+          "seq_len": 2816,
+          "head_dim": 128,
+          "causal": false,
+          "config_ids": [
+            "m64n32-w4-s2",
+            "m64n32-w8-s2",
+            "m64n32-w4-s3",
+            "m64n32-w8-s3",
+            "m64n32-w4-s4",
+            "m64n32-w8-s4",
+            "m64n64-w4-s2",
+            "m64n64-w8-s2",
+            "m64n64-w4-s3",
+            "m64n64-w8-s3",
+            "m64n64-w4-s4",
+            "m64n64-w8-s4",
+            "m64n128-w4-s2",
+            "m64n128-w8-s2",
+            "m64n128-w4-s3",
+            "m64n128-w8-s3",
+            "m64n128-w4-s4",
+            "m64n128-w8-s4",
+            "m128n32-w4-s2",
+            "m128n32-w8-s2",
+            "m128n32-w4-s3",
+            "m128n32-w8-s3",
+            "m128n32-w4-s4",
+            "m128n32-w8-s4",
+            "m128n64-w4-s2",
+            "m128n64-w8-s2",
+            "m128n64-w4-s3",
+            "m128n64-w8-s3",
+            "m128n64-w4-s4",
+            "m128n64-w8-s4",
+            "m128n128-w4-s2",
+            "m128n128-w8-s2",
+            "m128n128-w4-s3",
+            "m128n128-w8-s3",
+            "m128n128-w4-s4",
+            "m128n128-w8-s4"
+          ]
+        },
+        {
+          "case_id": "b1-q48-kv8-s1857-d64-causal",
+          "split": "holdout",
+          "batch": 1,
+          "query_heads": 48,
+          "kv_heads": 8,
+          "seq_len": 1857,
+          "head_dim": 64,
+          "causal": true,
+          "config_ids": [
+            "m64n32-w4-s2",
+            "m64n32-w8-s2",
+            "m64n32-w4-s3",
+            "m64n32-w8-s3",
+            "m64n32-w4-s4",
+            "m64n32-w8-s4",
+            "m64n64-w4-s2",
+            "m64n64-w8-s2",
+            "m64n64-w4-s3",
+            "m64n64-w8-s3",
+            "m64n64-w4-s4",
+            "m64n64-w8-s4",
+            "m128n32-w4-s2",
+            "m128n32-w8-s2",
+            "m128n32-w4-s3",
+            "m128n32-w8-s3",
+            "m128n32-w4-s4",
+            "m128n32-w8-s4",
+            "m128n64-w4-s2",
+            "m128n64-w8-s2",
+            "m128n64-w4-s3",
+            "m128n64-w8-s3",
+            "m128n64-w4-s4",
+            "m128n64-w8-s4"
+          ]
+        },
+        {
+          "case_id": "b2-q32-kv8-s2433-d128-causal",
+          "split": "holdout",
+          "batch": 2,
+          "query_heads": 32,
+          "kv_heads": 8,
+          "seq_len": 2433,
+          "head_dim": 128,
+          "causal": true,
+          "config_ids": [
+            "m64n32-w4-s2",
+            "m64n32-w8-s2",
+            "m64n32-w4-s3",
+            "m64n32-w8-s3",
+            "m64n32-w4-s4",
+            "m64n32-w8-s4",
+            "m64n64-w4-s2",
+            "m64n64-w8-s2",
+            "m64n64-w4-s3",
+            "m64n64-w8-s3",
+            "m64n64-w4-s4",
+            "m64n64-w8-s4",
+            "m128n32-w4-s2",
+            "m128n32-w8-s2",
+            "m128n32-w4-s3",
+            "m128n32-w8-s3",
+            "m128n32-w4-s4",
+            "m128n32-w8-s4",
+            "m128n64-w4-s2",
+            "m128n64-w8-s2",
+            "m128n64-w4-s3",
+            "m128n64-w8-s3",
+            "m128n64-w4-s4",
+            "m128n64-w8-s4",
+            "m128n128-w4-s2",
+            "m128n128-w8-s2",
+            "m128n128-w4-s3",
+            "m128n128-w8-s3",
+            "m128n128-w4-s4",
+            "m128n128-w8-s4"
+          ]
+        }
+      ]
+    }
+  }
+}
