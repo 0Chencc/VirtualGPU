@@ -21,8 +21,8 @@ sys.path.insert(0, str(REPO_ROOT / "python"))
 from virtualgpu.profile import validate_profile  # noqa: E402
 
 DEFAULT_BIN = Path(__file__).resolve().parent / "build" / "vgpu_bench"
-SUITE_VERSION = "0.19.0"
-PROFILE_REVISION = "0.19.0-posthoc"
+SUITE_VERSION = "0.20.0"
+PROFILE_REVISION = "0.20.0-posthoc"
 
 
 def find_nvidia_smi() -> str | None:

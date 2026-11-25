@@ -3595,7 +3595,7 @@ __global__ void spill_reload_latency_kernel(uint32_t* __restrict__ sink,
       for (int k = 0; k < reload_count; ++k) {
         uint32_t v = loc[idx];
         r_acc ^= v;
-        idx = (v + static_cast<uint32_t>(stride_u32)) & mask;
+        idx = v & mask;
       }
     } else {
       // All reloads issued as a coalesced warp-uniform batch before dependent compute.

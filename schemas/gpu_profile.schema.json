@@ -320,6 +320,11 @@
               "minItems": 1,
               "items": { "$ref": "#/$defs/SpillReloadLatencyPoint" }
             },
+            "spill_reload_latency_serial_halfws_diagnostic": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/SpillReloadLatencyPoint" }
+            },
             "l1_to_l2_spill_threshold_by_carveout": {
               "type": "array",
               "minItems": 1,
