@@ -36,6 +36,8 @@ def test_rtx4070_profile_is_valid() -> None:
     mem = profile["measured"]["memory"]
     assert mem["dram_bw_read_gbps"]["source"] == "measured"
     assert mem["l2_bw_read_gbps"]["source"] == "measured"
+    assert len(mem["l2_bw_by_active_sms"]) >= 8
+    assert mem["l2_bw_by_active_sms"][0]["bw_gbps"]["value"] > mem["dram_bw_by_active_sms"][0]["bw_gbps"]["value"]
     assert mem["l2_effective_capacity_bytes"]["source"] == "measured"
     assert mem["l2_effective_capacity_bytes"]["value"] <= profile["specs"]["l2_size_bytes"]
     assert mem["dram_latency_loaded_ns"]["source"] == "measured"
@@ -88,6 +90,8 @@ def test_gb10_profile_is_valid() -> None:
     mem = profile["measured"]["memory"]
     assert mem["dram_bw_read_gbps"]["source"] == "measured"
     assert mem["l2_bw_read_gbps"]["source"] == "measured"
+    assert len(mem["l2_bw_by_active_sms"]) >= 8
+    assert mem["l2_bw_by_active_sms"][0]["bw_gbps"]["value"] > mem["dram_bw_by_active_sms"][0]["bw_gbps"]["value"]
     assert len(mem["dram_bw_by_bytes_in_flight"]) >= 40
     assert len(mem["dram_bw_by_bytes_in_flight_strided"]) >= 40
     assert len(mem["gmem_load_issue_per_sm"]) >= 24

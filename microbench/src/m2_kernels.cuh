@@ -244,6 +244,30 @@ __global__ void l2_read_cg_kernel(const uint4* __restrict__ src,
   }
 }
 
+__global__ void l2_read_cg_ilp8_kernel(const uint4* __restrict__ src,
+                                       uint4* __restrict__ sink,
+                                       size_t vec4_mask,
+                                       int iters) {
+  const uint32_t tid = threadIdx.x;
+  const uint32_t threads = blockDim.x;
+  size_t idx = (static_cast<size_t>(blockIdx.x) * threads * 8ULL + tid) & vec4_mask;
+  const size_t step = static_cast<size_t>(threads) * 8ULL;
+  uint32_t acc = 0u;
+
+  for (int it = 0; it < iters; ++it) {
+    #pragma unroll
+    for (int u = 0; u < 8; ++u) {
+      uint4 v = ld_cg_u4(src + ((idx + static_cast<size_t>(u) * threads) & vec4_mask));
+      acc ^= (v.x ^ v.y ^ v.z ^ v.w);
+    }
+    idx = (idx + step) & vec4_mask;
+  }
+
+  if (acc == 0x0000beefu) {
+    sink[tid & 1023u] = make_uint4(acc, acc, acc, acc);
+  }
+}
+
 __global__ void l2_write_cg_kernel(uint4* __restrict__ dst,
                                    size_t n_vec4,
                                    int passes,
@@ -294,8 +318,10 @@ static int run_l2(int device, int samples, int warmup) {
   add_t(1);
   add_t(2);
   add_t(4);
-  add_t(sm_count / 4);
+  add_t(8);
+  add_t(16);
   add_t(sm_count / 2);
+  add_t(32);
   add_t(sm_count);
   std::sort(targets.begin(), targets.end());
 
@@ -305,20 +331,22 @@ static int run_l2(int device, int samples, int warmup) {
 
   const int threads = 512;
   const size_t l2_vec4 = l2_ws_bytes / sizeof(uint4);
+  // 4 MiB power-of-two hot L2 buffer for ILP-8 L2 read ceiling sweep (fits in 24-36 MiB L2).
+  const size_t ilp8_ws_bytes = 4ULL * 1024ULL * 1024ULL;
+  const size_t ilp8_mask = (ilp8_ws_bytes / sizeof(uint4)) - 1ULL;
 
   std::printf("{\n  \"l2_spec_bytes\": %zu,\n  \"l2_bw_ws_bytes\": %zu,\n  \"samples\": %d,\n",
               l2_bytes, l2_ws_bytes, samples);
 
-  // 1) L2 read BW vs active SMs.
+  // 1) L2 read BW ceiling vs active SMs (16 warps/SM, 16 B loads, ILP 8 => 64 KB/SM in flight).
   std::printf("  \"read_curve\": [");
   for (size_t ti = 0; ti < targets.size(); ++ti) {
     int target_sms = targets[ti];
-    int grid = (target_sms == sm_count) ? (sm_count * 4) : target_sms;
-    int passes = (target_sms <= 4) ? 16 : 64;
-    double total_bytes = static_cast<double>(l2_ws_bytes) * passes;
+    int iters = (target_sms <= 4) ? 4096 : 2048;
+    double total_bytes = static_cast<double>(target_sms) * static_cast<double>(threads) * 8.0 * 16.0 * static_cast<double>(iters);
 
     for (int w = 0; w < warmup; ++w) {
-      l2_read_cg_kernel<<<grid, threads>>>(d_buf, d_sink, l2_vec4, 4);
+      l2_read_cg_ilp8_kernel<<<target_sms, threads>>>(d_buf, d_sink, ilp8_mask, iters);
     }
     CUDA_CHECK(cudaDeviceSynchronize());
 
@@ -326,7 +354,7 @@ static int run_l2(int device, int samples, int warmup) {
     gbps.reserve(samples);
     for (int s = 0; s < samples; ++s) {
       CUDA_CHECK(cudaEventRecord(ev_start));
-      l2_read_cg_kernel<<<grid, threads>>>(d_buf, d_sink, l2_vec4, passes);
+      l2_read_cg_ilp8_kernel<<<target_sms, threads>>>(d_buf, d_sink, ilp8_mask, iters);
       CUDA_CHECK(cudaEventRecord(ev_stop));
       CUDA_CHECK(cudaEventSynchronize(ev_stop));
       float ms = 0.0f;

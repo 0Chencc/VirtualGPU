@@ -21,8 +21,8 @@ sys.path.insert(0, str(REPO_ROOT / "python"))
 from virtualgpu.profile import validate_profile  # noqa: E402
 
 DEFAULT_BIN = Path(__file__).resolve().parent / "build" / "vgpu_bench"
-SUITE_VERSION = "0.15.0"
-PROFILE_REVISION = "0.15.0-posthoc"
+SUITE_VERSION = "0.16.0"
+PROFILE_REVISION = "0.16.0-posthoc"
 
 
 def find_nvidia_smi() -> str | None:
@@ -364,7 +364,7 @@ def build_profile(
         mv = make_measured(
             pt["gbps_samples"],
             unit="GB/s",
-            method="cuda_l2_cg_read_warm",
+            method="cuda_l2_cg_read_warm_ilp8_16w",
             perturb_group="l2_bw",
             clock_range=sm_range,
             locked=False,
