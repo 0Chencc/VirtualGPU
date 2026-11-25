@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "device": "RTX 4070",
+  "approval_commit": "fde371d",
+  "split": "holdout",
+  "manifest_sha256": "a1273886f7d48505f90191ce0bbf2df74dd6f9707fe9089551c2e15347ff5cfe",
+  "kernel_key": "5392dc945577188c854fbb4ed930db2f3c6f2525ee61fbc44333369fafc5cf84",
+  "audit_timestamp_utc": "2026-11-25T13:41:59.965499+00:00",
+  "aot_sha256_by_case": {
+    "b1-q12-kv12-s641-d64-full": "1820ebb7ab6b5d381e604e406cbf7e6247795db321ea7abaea9e5c79b4646caa",
+    "b3-q16-kv16-s2560-d128-full": "e1f628469a5c0aa688fa3b7678f6a1734cfc664b9b9251f38ff3e89f70bec0a0",
+    "b2-q16-kv16-s1153-d64-causal": "71eac02e3c81dd959dcec7db05007f1cc2313db6b5489637820cc86d3ea0428f",
+    "b1-q24-kv24-s4096-d128-causal": "4ca1be02ecf37edbeae0b9f22fd948322cae0d9d838fe2ed6e5b8159f9fe7b6a",
+    "b2-q24-kv6-s1283-d64-full": "e14bcde466b19cf90342a1351689cbe7acaa2081f53c4043d335426cb417e663",
+    "b1-q32-kv4-s3072-d128-full": "8384711d876de67f20dc49334cd01f3188e521ddf075238487acc6962a2c64f3",
+    "b2-q32-kv8-s1667-d64-causal": "b9fda73d2d42a1a3454e3a4a187c487a13373b6c22c004518a72e37e7d735fe5",
+    "b1-q40-kv5-s2177-d128-causal": "8f4d2375fdd75fa61a380c9cf606fa2b8647bafb438552c56f0fe8abe78ed504"
+  },
+  "reports": {
+    "b1-q12-kv12-s641-d64-full-session-1.json": {
+      "sha256": "fc169a181fa2d39d2a5615dd8e3543644275f5735cb581c5eebf393b0ed7b477",
+      "timestamp_utc": "2026-11-25T13:38:31.042697+00:00"
+    },
+    "b1-q12-kv12-s641-d64-full-session-2.json": {
+      "sha256": "dce25466ab9790b9ca7b659525cdef555d7adf72b74feb260d40614e98acb673",
+      "timestamp_utc": "2026-11-25T13:39:38.230943+00:00"
+    },
+    "b1-q12-kv12-s641-d64-full-session-3.json": {
+      "sha256": "31cd548a620bf6b4d8bce05880b7a8d343ace34ea7a2235b8dd954bb96e217c0",
+      "timestamp_utc": "2026-11-25T13:40:49.149619+00:00"
+    },
+    "b1-q24-kv24-s4096-d128-causal-session-1.json": {
+      "sha256": "8695b116851c7996659f623f6f710ad729a879e1f25cbdfd2a171723b4f8ffa6",
+      "timestamp_utc": "2026-11-25T13:38:57.809642+00:00"
+    },
+    "b1-q24-kv24-s4096-d128-causal-session-2.json": {
+      "sha256": "223bf89a049e2f30528248a9b25c7fc32f5099d3ff91239db0e4dd6d4539c661",
+      "timestamp_utc": "2026-11-25T13:40:06.645431+00:00"
+    },
+    "b1-q24-kv24-s4096-d128-causal-session-3.json": {
+      "sha256": "7fa077d383f15df1aa600059a3352ad69e840171851a4cfe5127fa4e13c1a16c",
+      "timestamp_utc": "2026-11-25T13:41:35.216787+00:00"
+    },
+    "b1-q32-kv4-s3072-d128-full-session-1.json": {
+      "sha256": "fc3b82cfed25a20e075e6e80942ce6089beee07ac691bb47da72d570cc78d4ed",
+      "timestamp_utc": "2026-11-25T13:39:15.735323+00:00"
+    },
+    "b1-q32-kv4-s3072-d128-full-session-2.json": {
+      "sha256": "f4a8773d77cf24c517aa9c30a9a517434e9d3be4abe60e98b19c2ad8bfb22e48",
+      "timestamp_utc": "2026-11-25T13:40:25.455580+00:00"
+    },
+    "b1-q32-kv4-s3072-d128-full-session-3.json": {
+      "sha256": "5fa824d04df4a18c9278ce49f6168b75fdb174ade1d7d369316d5d1de6de2feb",
+      "timestamp_utc": "2026-11-25T13:41:33.533867+00:00"
+    },
+    "b1-q40-kv5-s2177-d128-causal-session-1.json": {
+      "sha256": "b9eb49d6c486e10f7891eecd8b45c03bdd00b7b78ed4105bd1d3a532228a7d1a",
+      "timestamp_utc": "2026-11-25T13:39:31.275886+00:00"
+    },
+    "b1-q40-kv5-s2177-d128-causal-session-2.json": {
+      "sha256": "06e0a5a5b123674751bb38ea3cb7380382896deffcc149f4c80d5036fc76aa75",
+      "timestamp_utc": "2026-11-25T13:40:41.866967+00:00"
+    },
+    "b1-q40-kv5-s2177-d128-causal-session-3.json": {
+      "sha256": "1849b9c1b27e53a7031aa4fb79b12a83b877c546d51701dcf9967d66a1559d3a",
+      "timestamp_utc": "2026-11-25T13:41:49.280984+00:00"
+    },
+    "b2-q16-kv16-s1153-d64-causal-session-1.json": {
+      "sha256": "2a3adb8a41379c34d2298f2167d98ef7e9ef398106972a50a503f3c0adddf58c",
+      "timestamp_utc": "2026-11-25T13:38:47.891814+00:00"
+    },
+    "b2-q16-kv16-s1153-d64-causal-session-2.json": {
+      "sha256": "71c138fba358272fc7e1f8fe375596b05ba78302237d51d93523ad5120ff4fbd",
+      "timestamp_utc": "2026-11-25T13:40:16.858319+00:00"
+    },
+    "b2-q16-kv16-s1153-d64-causal-session-3.json": {
+      "sha256": "a68b52f62ec31c36666b4f8ef6e65f69c60fc4749a6c35756cc30af72a2779ac",
+      "timestamp_utc": "2026-11-25T13:41:06.786126+00:00"
+    },
+    "b2-q24-kv6-s1283-d64-full-session-1.json": {
+      "sha256": "b737ebf89398a0804360cc46d7db0215683e92412b462090269e32d5014aa05d",
+      "timestamp_utc": "2026-11-25T13:39:04.934504+00:00"
+    },
+    "b2-q24-kv6-s1283-d64-full-session-2.json": {
+      "sha256": "9172ed431c8aeadfdfc5d15781a04d0722dd3ca4292df4c6e44ced79659c95f6",
+      "timestamp_utc": "2026-11-25T13:40:14.476421+00:00"
+    },
+    "b2-q24-kv6-s1283-d64-full-session-3.json": {
+      "sha256": "1514c275f23b8d970ac5bcf74dfe0dcdf68ed6276e52659d7801679933909640",
+      "timestamp_utc": "2026-11-25T13:41:42.642714+00:00"
+    },
+    "b2-q32-kv8-s1667-d64-causal-session-1.json": {
+      "sha256": "426e19bbdf34e161edcb2e149b595a626bcbc0cfdf66a7b0276ac4bc1bc51a8c",
+      "timestamp_utc": "2026-11-25T13:39:23.442116+00:00"
+    },
+    "b2-q32-kv8-s1667-d64-causal-session-2.json": {
+      "sha256": "3ca693b349fde08581b8dbae80ffd717483424b20cfedb118b531944fa60afe2",
+      "timestamp_utc": "2026-11-25T13:40:33.182463+00:00"
+    },
+    "b2-q32-kv8-s1667-d64-causal-session-3.json": {
+      "sha256": "45490e1b6c539dd551e9bcbf8fb6da32315339f1407d8dafefdebea811d2bc18",
+      "timestamp_utc": "2026-11-25T13:41:41.011906+00:00"
+    },
+    "b3-q16-kv16-s2560-d128-full-session-1.json": {
+      "sha256": "8b28277de0f892365ab990afe3e619e311c4ccd7210e5dad520355a16198da29",
+      "timestamp_utc": "2026-11-25T13:38:40.836622+00:00"
+    },
+    "b3-q16-kv16-s2560-d128-full-session-2.json": {
+      "sha256": "704861be2e1816450b6beb8d97067df26620c21635ca719ce040b791bcdff12d",
+      "timestamp_utc": "2026-11-25T13:40:09.434246+00:00"
+    },
+    "b3-q16-kv16-s2560-d128-full-session-3.json": {
+      "sha256": "b17fc6df74016cb916a0555927bbe32d9071dc3ab66cbe729ba3ae674bc1f05d",
+      "timestamp_utc": "2026-11-25T13:40:59.737058+00:00"
+    }
+  },
+  "release": "Keep reports sealed until the attention model is frozen and holdout predictions and receipts are archived.",
+  "capture_revision": "9f9f0c7b075e276ba7126ae2a07e612400136aa4",
+  "capture_source_sha256": {
+    "validation/attention.py": "caefbb3525fc8629ab95d8ef0a0b63362cf0df1c17f4f607d92fa2af4597fcb9",
+    "validation/attention_runner.py": "164534abe0950dcc1777151ce82bb3bacce22d3535d014ae7fa9a48b473418d8",
+    "validation/runner.py": "664c8d5206c5925ad64546ffe5432b95be2e31e345a00d431083951258689a9f"
+  },
+  "development_audit_sha256": "b908929b4983d5441f566b79c143b6125c3b4784a502f143ff9921bbbdc50b11"
+}
