@@ -3448,7 +3448,7 @@ __global__ void gmem_load_issue_kernel(const uint8_t* __restrict__ src,
     idx = (idx + step) & elem_mask;
   }
 
-  if (acc == 0xdeadbeefu) {
+  if (acc == 0x0000beefu) {
     sink[blockIdx.x * threads + tid] = acc;
   }
 }

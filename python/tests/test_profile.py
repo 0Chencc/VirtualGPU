@@ -90,8 +90,11 @@ def test_gb10_profile_is_valid() -> None:
     assert mem["l2_bw_read_gbps"]["source"] == "measured"
     assert len(mem["dram_bw_by_bytes_in_flight"]) >= 40
     assert len(mem["dram_bw_by_bytes_in_flight_strided"]) >= 40
+    assert len(mem["gmem_load_issue_per_sm"]) >= 24
+    assert len(mem["spill_reload_latency_by_count"]) >= 20
     assert len(mem["dram_closed_loop_mma"]) >= 140
     assert len(profile["measured"]["pipeline"]["serial_stage_fill"]) >= 32
+    assert len(profile["measured"]["pipeline"]["sync_stage_loop"]) >= 288
     assert len(profile["measured"]["compute"]["mma_chain_latency"]) >= 128
 
 
