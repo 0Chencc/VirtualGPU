@@ -21,8 +21,8 @@ sys.path.insert(0, str(REPO_ROOT / "python"))
 from virtualgpu.profile import validate_profile  # noqa: E402
 
 DEFAULT_BIN = Path(__file__).resolve().parent / "build" / "vgpu_bench"
-SUITE_VERSION = "0.16.0"
-PROFILE_REVISION = "0.16.0-posthoc"
+SUITE_VERSION = "0.17.0"
+PROFILE_REVISION = "0.17.0-posthoc"
 
 
 def find_nvidia_smi() -> str | None:
@@ -295,6 +295,8 @@ def build_profile(
     strided_mlp_raw: dict[str, Any],
     sfu_shfl_raw: dict[str, Any],
     mma_sf_raw: dict[str, Any],
+    sync_abl_raw: dict[str, Any],
+    gmem_ctrl_raw: dict[str, Any],
     smi_samples: list[dict[str, Any]],
 ) -> dict[str, Any]:
     major = int(query["major"])
@@ -1107,6 +1109,49 @@ def build_profile(
             ),
         })
 
+    sync_stage_loop_ablation: list[dict[str, Any]] = []
+    for pt in sync_abl_raw["sync_stage_loop_ablation"]:
+        v_name = str(pt["variant"])
+        sync_stage_loop_ablation.append({
+            "variant": v_name,
+            "ctas_per_sm": int(pt["ctas_per_sm"]),
+            "active_ctas": int(pt["active_ctas"]),
+            "num_warps": int(pt["num_warps"]),
+            "stage_bytes": int(pt["stage_bytes"]),
+            "mma_chain_len": int(pt["mma_chain_len"]),
+            "delivered_bw_gbps": make_measured(
+                [float(x) for x in pt["bw_gbps_samples"]],
+                unit="GB/s", method=f"cuda_sync_ablation_{v_name}",
+                perturb_group="dram_bw", clock_range=mem_range, locked=False, throttle_events=throttle_events,
+            ),
+            "mean_stage_turnaround_ns": make_measured(
+                [float(x) for x in pt["turnaround_ns_samples"]],
+                unit="ns", method=f"cuda_sync_ablation_{v_name}",
+                perturb_group=None, clock_range=mem_range, locked=False, throttle_events=throttle_events,
+            ),
+        })
+
+    gmem_load_issue_controlled: list[dict[str, Any]] = []
+    for pt in gmem_ctrl_raw["gmem_load_issue_controlled"]:
+        w_b = int(pt["load_width_bytes"])
+        bn = int(pt["batch_loads_per_thread"])
+        gmem_load_issue_controlled.append({
+            "load_width_bytes": w_b,
+            "batch_loads_per_thread": bn,
+            "num_warps": int(pt["num_warps"]),
+            "bytes_in_flight": int(pt["bytes_in_flight"]),
+            "issue_rate_gwarp_inst_per_sm": make_measured(
+                [float(x) for x in pt["issue_rate_gwarp_inst_per_sm_samples"]],
+                unit="Gwarp-inst/s", method=f"cuda_gmem_cg_load_ctrl_{w_b}b_n{bn}",
+                perturb_group="l2_bw", clock_range=sm_range, locked=False, throttle_events=throttle_events,
+            ),
+            "delivered_bw_per_sm_gbps": make_measured(
+                [float(x) for x in pt["delivered_bw_per_sm_gbps_samples"]],
+                unit="GB/s", method=f"cuda_gmem_cg_load_ctrl_{w_b}b_n{bn}",
+                perturb_group="l2_bw", clock_range=sm_range, locked=False, throttle_events=throttle_events,
+            ),
+        })
+
     sm_clock_ghz = (
         (statistics.median(sm_clocks) / 1000.0)
         if sm_clocks
@@ -1211,6 +1256,7 @@ def build_profile(
                 "l2_rescan_hit_rate_by_working_set": l2_rescan_curve,
                 "smem_latency_ns": smem_lat_mv,
                 "gmem_load_issue_per_sm": gmem_load_issue_per_sm,
+                "gmem_load_issue_controlled": gmem_load_issue_controlled,
                 "spill_reload_latency_by_count": reload_latency_by_count,
             },
             "compute": {
@@ -1241,6 +1287,7 @@ def build_profile(
                 "min_async_roundtrip_ns": min_async_rt_mv,
                 "serial_stage_fill": serial_stage_fill,
                 "sync_stage_loop": sync_stage_loop,
+                "sync_stage_loop_ablation": sync_stage_loop_ablation,
             },
             "spill": {
                 "local_mem_l1_hit_bw_per_sm_gbps": make_estimated(150.0, "GB/s", "m2_estimated", "spill_l1"),
@@ -1335,11 +1382,17 @@ def main() -> int:
     mma_sf_raw, smi_ms = run_bench_with_clock_polling(
         args.binary, "mma-softmax-chain", args.device, ["--samples", "9", "--warmup", "2"]
     )
+    sync_abl_raw, smi_sa = run_bench_with_clock_polling(
+        args.binary, "sync-loop-ablation", args.device, ["--samples", "9", "--warmup", "2"]
+    )
+    gmem_ctrl_raw, smi_gc = run_bench_with_clock_polling(
+        args.binary, "gmem-issue-controlled", args.device, ["--samples", "11", "--warmup", "2"]
+    )
     dispatch_raw, smi_disp = run_bench_with_clock_polling(
         args.binary, "cta-dispatch", args.device, ["--repeats", str(args.repeats)]
     )
     smi_samples = (
-        smi_dram + smi_mma + smi_l2 + smi_cp + smi_lat + smi_launch + smi_lc + smi_rs + smi_mlp + smi_cl + smi_mg + smi_so + smi_clm + smi_mc + smi_sf + smi_sl + smi_gi + smi_sp + smi_sm + smi_ss + smi_ms + smi_disp
+        smi_dram + smi_mma + smi_l2 + smi_cp + smi_lat + smi_launch + smi_lc + smi_rs + smi_mlp + smi_cl + smi_mg + smi_so + smi_clm + smi_mc + smi_sf + smi_sl + smi_gi + smi_sp + smi_sm + smi_ss + smi_ms + smi_sa + smi_gc + smi_disp
     )
 
     profile = build_profile(
@@ -1347,7 +1400,8 @@ def main() -> int:
         latency_raw, launch_raw, lat_curve_raw, l2_rescan_raw, mlp_raw,
         closed_loop_raw, l2_merge_raw, stage_oh_raw, closed_loop_mma_raw,
         mma_chain_raw, serial_fill_raw, sync_loop_raw, gmem_issue_raw,
-        spill_lat_raw, strided_mlp_raw, sfu_shfl_raw, mma_sf_raw, smi_samples
+        spill_lat_raw, strided_mlp_raw, sfu_shfl_raw, mma_sf_raw,
+        sync_abl_raw, gmem_ctrl_raw, smi_samples
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("w", encoding="utf-8") as fh:

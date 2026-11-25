@@ -58,12 +58,14 @@ def test_rtx4070_profile_is_valid() -> None:
     assert len(mem["l2_merge_by_sharing"]) >= 20
     assert len(mem["l2_rescan_hit_rate_by_working_set"]) >= 12
     assert len(mem["gmem_load_issue_per_sm"]) >= 24
+    assert len(mem["gmem_load_issue_controlled"]) >= 36
     assert len(mem["spill_reload_latency_by_count"]) >= 60
     assert len(profile["measured"]["pipeline"]["stage_sync_overhead_ns"]) >= 8
     assert len(profile["measured"]["pipeline"]["fixed_sync_ns"]) >= 8
     assert profile["measured"]["pipeline"]["min_async_roundtrip_ns"]["source"] == "measured"
     assert len(profile["measured"]["pipeline"]["serial_stage_fill"]) >= 32
     assert len(profile["measured"]["pipeline"]["sync_stage_loop"]) >= 288
+    assert len(profile["measured"]["pipeline"]["sync_stage_loop_ablation"]) >= 64
     assert profile["measured"]["async_pipeline"]["cp_async_bw_per_sm_gbps"]["source"] == "measured"
     assert profile["measured"]["overhead"]["launch_overhead_us"]["source"] == "measured"
     mma_f16 = profile["measured"]["compute"]["mma_tflops_per_sm_by_warps"]["mma.sync:f16:f16:f32:16x8x16"]
@@ -95,10 +97,12 @@ def test_gb10_profile_is_valid() -> None:
     assert len(mem["dram_bw_by_bytes_in_flight"]) >= 40
     assert len(mem["dram_bw_by_bytes_in_flight_strided"]) >= 40
     assert len(mem["gmem_load_issue_per_sm"]) >= 24
+    assert len(mem["gmem_load_issue_controlled"]) >= 36
     assert len(mem["spill_reload_latency_by_count"]) >= 60
     assert len(mem["dram_closed_loop_mma"]) >= 140
     assert len(profile["measured"]["pipeline"]["serial_stage_fill"]) >= 32
     assert len(profile["measured"]["pipeline"]["sync_stage_loop"]) >= 288
+    assert len(profile["measured"]["pipeline"]["sync_stage_loop_ablation"]) >= 64
     assert len(profile["measured"]["compute"]["mma_chain_latency"]) >= 128
 
 

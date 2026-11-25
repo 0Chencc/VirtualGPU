@@ -548,6 +548,12 @@ int main(int argc, char** argv) {
   if (mode == "mma-softmax-chain") {
     return run_mma_softmax_chain(device, samples, warmup);
   }
+  if (mode == "sync-loop-ablation") {
+    return run_sync_loop_ablation(device, samples, warmup);
+  }
+  if (mode == "gmem-issue-controlled") {
+    return run_gmem_issue_controlled(device, samples, warmup);
+  }
   std::fprintf(stderr, "Unknown mode: %s\n", mode.c_str());
   return 2;
 }

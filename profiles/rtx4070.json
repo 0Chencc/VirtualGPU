@@ -7,13 +7,13 @@
     "memory_type": "discrete"
   },
   "provenance": {
-    "profile_revision": "0.16.0-posthoc",
+    "profile_revision": "0.17.0-posthoc",
     "calibration_run_id": "cal-20261124T220249Z-sm_89",
     "calibration_manifest_digest": null,
     "source": "partial",
     "driver_version": "610.88",
     "toolkit_version": "13.5",
-    "suite_version": "0.16.0",
+    "suite_version": "0.17.0",
     "host_os": "linux",
     "is_wsl": true,
     "power_limit_w": 200.0,
@@ -36332,6 +36332,944 @@
             "perturb_group": "spill_l2"
           }
         }
+      ],
+      "gmem_load_issue_controlled": [
+        {
+          "load_width_bytes": 2,
+          "batch_loads_per_thread": 8,
+          "num_warps": 4,
+          "bytes_in_flight": 2048,
+          "issue_rate_gwarp_inst_per_sm": {
+            "value": 0.2397,
+            "ci95_low": 0.2379,
+            "ci95_high": 0.2402,
+            "rel_uncertainty": 0.1082,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_gmem_cg_load_ctrl_2b_n8",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "delivered_bw_per_sm_gbps": {
+            "value": 15.341,
+            "ci95_low": 15.227,
+            "ci95_high": 15.37,
+            "rel_uncertainty": 0.1082,
+            "unit": "GB/s",
+            "method": "cuda_gmem_cg_load_ctrl_2b_n8",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "load_width_bytes": 2,
+          "batch_loads_per_thread": 8,
+          "num_warps": 8,
+          "bytes_in_flight": 4096,
+          "issue_rate_gwarp_inst_per_sm": {
+            "value": 0.4723,
+            "ci95_low": 0.4706,
+            "ci95_high": 0.4723,
+            "rel_uncertainty": 0.1082,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_gmem_cg_load_ctrl_2b_n8",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "delivered_bw_per_sm_gbps": {
+            "value": 30.229,
+            "ci95_low": 30.118,
+            "ci95_high": 30.229,
+            "rel_uncertainty": 0.1082,
+            "unit": "GB/s",
+            "method": "cuda_gmem_cg_load_ctrl_2b_n8",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "load_width_bytes": 2,
+          "batch_loads_per_thread": 8,
+          "num_warps": 16,
+          "bytes_in_flight": 8192,
+          "issue_rate_gwarp_inst_per_sm": {
+            "value": 0.6124,
+            "ci95_low": 0.5981,
+            "ci95_high": 0.6154,
+            "rel_uncertainty": 0.1082,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_gmem_cg_load_ctrl_2b_n8",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "delivered_bw_per_sm_gbps": {
+            "value": 39.196,
+            "ci95_low": 38.28,
+            "ci95_high": 39.385,
+            "rel_uncertainty": 0.1082,
+            "unit": "GB/s",
+            "method": "cuda_gmem_cg_load_ctrl_2b_n8",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "load_width_bytes": 2,
+          "batch_loads_per_thread": 8,
+          "num_warps": 32,
+          "bytes_in_flight": 16384,
+          "issue_rate_gwarp_inst_per_sm": {
+            "value": 0.7901,
+            "ci95_low": 0.7853,
+            "ci95_high": 0.7901,
+            "rel_uncertainty": 0.1082,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_gmem_cg_load_ctrl_2b_n8",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "delivered_bw_per_sm_gbps": {
+            "value": 50.568,
+            "ci95_low": 50.258,
+            "ci95_high": 50.568,
+            "rel_uncertainty": 0.1082,
+            "unit": "GB/s",
+            "method": "cuda_gmem_cg_load_ctrl_2b_n8",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "load_width_bytes": 2,
+          "batch_loads_per_thread": 16,
+          "num_warps": 4,
+          "bytes_in_flight": 4096,
+          "issue_rate_gwarp_inst_per_sm": {
+            "value": 0.3765,
+            "ci95_low": 0.3765,
+            "ci95_high": 0.3776,
+            "rel_uncertainty": 0.1082,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_gmem_cg_load_ctrl_2b_n16",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "delivered_bw_per_sm_gbps": {
+            "value": 24.094,
+            "ci95_low": 24.094,
+            "ci95_high": 24.165,
+            "rel_uncertainty": 0.1082,
+            "unit": "GB/s",
+            "method": "cuda_gmem_cg_load_ctrl_2b_n16",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "load_width_bytes": 2,
+          "batch_loads_per_thread": 16,
+          "num_warps": 8,
+          "bytes_in_flight": 8192,
+          "issue_rate_gwarp_inst_per_sm": {
+            "value": 0.7314,
+            "ci95_low": 0.7151,
+            "ci95_high": 0.7321,
+            "rel_uncertainty": 0.1082,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_gmem_cg_load_ctrl_2b_n16",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "delivered_bw_per_sm_gbps": {
+            "value": 46.811,
+            "ci95_low": 45.765,
+            "ci95_high": 46.853,
+            "rel_uncertainty": 0.1082,
+            "unit": "GB/s",
+            "method": "cuda_gmem_cg_load_ctrl_2b_n16",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "load_width_bytes": 2,
+          "batch_loads_per_thread": 16,
+          "num_warps": 16,
+          "bytes_in_flight": 16384,
+          "issue_rate_gwarp_inst_per_sm": {
+            "value": 0.7805,
+            "ci95_low": 0.7758,
+            "ci95_high": 0.805,
+            "rel_uncertainty": 0.1082,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_gmem_cg_load_ctrl_2b_n16",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "delivered_bw_per_sm_gbps": {
+            "value": 49.951,
+            "ci95_low": 49.648,
+            "ci95_high": 51.522,
+            "rel_uncertainty": 0.1082,
+            "unit": "GB/s",
+            "method": "cuda_gmem_cg_load_ctrl_2b_n16",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "load_width_bytes": 2,
+          "batch_loads_per_thread": 16,
+          "num_warps": 32,
+          "bytes_in_flight": 32768,
+          "issue_rate_gwarp_inst_per_sm": {
+            "value": 0.902,
+            "ci95_low": 0.9014,
+            "ci95_high": 0.9078,
+            "rel_uncertainty": 0.1082,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_gmem_cg_load_ctrl_2b_n16",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "delivered_bw_per_sm_gbps": {
+            "value": 57.728,
+            "ci95_low": 57.69,
+            "ci95_high": 58.099,
+            "rel_uncertainty": 0.1082,
+            "unit": "GB/s",
+            "method": "cuda_gmem_cg_load_ctrl_2b_n16",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "load_width_bytes": 2,
+          "batch_loads_per_thread": 32,
+          "num_warps": 4,
+          "bytes_in_flight": 8192,
+          "issue_rate_gwarp_inst_per_sm": {
+            "value": 0.4795,
+            "ci95_low": 0.4794,
+            "ci95_high": 0.48,
+            "rel_uncertainty": 0.1082,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_gmem_cg_load_ctrl_2b_n32",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "delivered_bw_per_sm_gbps": {
+            "value": 30.689,
+            "ci95_low": 30.682,
+            "ci95_high": 30.718,
+            "rel_uncertainty": 0.1082,
+            "unit": "GB/s",
+            "method": "cuda_gmem_cg_load_ctrl_2b_n32",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "load_width_bytes": 2,
+          "batch_loads_per_thread": 32,
+          "num_warps": 8,
+          "bytes_in_flight": 16384,
+          "issue_rate_gwarp_inst_per_sm": {
+            "value": 0.8217,
+            "ci95_low": 0.8,
+            "ci95_high": 0.8258,
+            "rel_uncertainty": 0.1082,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_gmem_cg_load_ctrl_2b_n32",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "delivered_bw_per_sm_gbps": {
+            "value": 52.587,
+            "ci95_low": 51.2,
+            "ci95_high": 52.852,
+            "rel_uncertainty": 0.1082,
+            "unit": "GB/s",
+            "method": "cuda_gmem_cg_load_ctrl_2b_n32",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "load_width_bytes": 2,
+          "batch_loads_per_thread": 32,
+          "num_warps": 16,
+          "bytes_in_flight": 32768,
+          "issue_rate_gwarp_inst_per_sm": {
+            "value": 0.9412,
+            "ci95_low": 0.9078,
+            "ci95_high": 0.9418,
+            "rel_uncertainty": 0.1082,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_gmem_cg_load_ctrl_2b_n32",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "delivered_bw_per_sm_gbps": {
+            "value": 60.235,
+            "ci95_low": 58.099,
+            "ci95_high": 60.277,
+            "rel_uncertainty": 0.1082,
+            "unit": "GB/s",
+            "method": "cuda_gmem_cg_load_ctrl_2b_n32",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "load_width_bytes": 2,
+          "batch_loads_per_thread": 32,
+          "num_warps": 32,
+          "bytes_in_flight": 65536,
+          "issue_rate_gwarp_inst_per_sm": {
+            "value": 0.9517,
+            "ci95_low": 0.9275,
+            "ci95_high": 0.966,
+            "rel_uncertainty": 0.1082,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_gmem_cg_load_ctrl_2b_n32",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "delivered_bw_per_sm_gbps": {
+            "value": 60.907,
+            "ci95_low": 59.362,
+            "ci95_high": 61.826,
+            "rel_uncertainty": 0.1082,
+            "unit": "GB/s",
+            "method": "cuda_gmem_cg_load_ctrl_2b_n32",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "load_width_bytes": 4,
+          "batch_loads_per_thread": 8,
+          "num_warps": 4,
+          "bytes_in_flight": 4096,
+          "issue_rate_gwarp_inst_per_sm": {
+            "value": 0.234,
+            "ci95_low": 0.2323,
+            "ci95_high": 0.2357,
+            "rel_uncertainty": 0.1082,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_gmem_cg_load_ctrl_4b_n8",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "delivered_bw_per_sm_gbps": {
+            "value": 29.952,
+            "ci95_low": 29.735,
+            "ci95_high": 30.173,
+            "rel_uncertainty": 0.1082,
+            "unit": "GB/s",
+            "method": "cuda_gmem_cg_load_ctrl_4b_n8",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "load_width_bytes": 4,
+          "batch_loads_per_thread": 8,
+          "num_warps": 8,
+          "bytes_in_flight": 8192,
+          "issue_rate_gwarp_inst_per_sm": {
+            "value": 0.446,
+            "ci95_low": 0.4399,
+            "ci95_high": 0.4491,
+            "rel_uncertainty": 0.1082,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_gmem_cg_load_ctrl_4b_n8",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "delivered_bw_per_sm_gbps": {
+            "value": 57.087,
+            "ci95_low": 56.302,
+            "ci95_high": 57.488,
+            "rel_uncertainty": 0.1082,
+            "unit": "GB/s",
+            "method": "cuda_gmem_cg_load_ctrl_4b_n8",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "load_width_bytes": 4,
+          "batch_loads_per_thread": 8,
+          "num_warps": 16,
+          "bytes_in_flight": 16384,
+          "issue_rate_gwarp_inst_per_sm": {
+            "value": 0.6809,
+            "ci95_low": 0.6772,
+            "ci95_high": 0.6845,
+            "rel_uncertainty": 0.1082,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_gmem_cg_load_ctrl_4b_n8",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "delivered_bw_per_sm_gbps": {
+            "value": 87.149,
+            "ci95_low": 86.688,
+            "ci95_high": 87.615,
+            "rel_uncertainty": 0.1082,
+            "unit": "GB/s",
+            "method": "cuda_gmem_cg_load_ctrl_4b_n8",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "load_width_bytes": 4,
+          "batch_loads_per_thread": 8,
+          "num_warps": 32,
+          "bytes_in_flight": 32768,
+          "issue_rate_gwarp_inst_per_sm": {
+            "value": 0.6957,
+            "ci95_low": 0.6957,
+            "ci95_high": 0.6961,
+            "rel_uncertainty": 0.1082,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_gmem_cg_load_ctrl_4b_n8",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "delivered_bw_per_sm_gbps": {
+            "value": 89.043,
+            "ci95_low": 89.043,
+            "ci95_high": 89.104,
+            "rel_uncertainty": 0.1082,
+            "unit": "GB/s",
+            "method": "cuda_gmem_cg_load_ctrl_4b_n8",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "load_width_bytes": 4,
+          "batch_loads_per_thread": 16,
+          "num_warps": 4,
+          "bytes_in_flight": 8192,
+          "issue_rate_gwarp_inst_per_sm": {
+            "value": 0.3342,
+            "ci95_low": 0.3316,
+            "ci95_high": 0.3354,
+            "rel_uncertainty": 0.1082,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_gmem_cg_load_ctrl_4b_n16",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "delivered_bw_per_sm_gbps": {
+            "value": 42.778,
+            "ci95_low": 42.449,
+            "ci95_high": 42.925,
+            "rel_uncertainty": 0.1082,
+            "unit": "GB/s",
+            "method": "cuda_gmem_cg_load_ctrl_4b_n16",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "load_width_bytes": 4,
+          "batch_loads_per_thread": 16,
+          "num_warps": 8,
+          "bytes_in_flight": 16384,
+          "issue_rate_gwarp_inst_per_sm": {
+            "value": 0.6432,
+            "ci95_low": 0.64,
+            "ci95_high": 0.6435,
+            "rel_uncertainty": 0.1082,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_gmem_cg_load_ctrl_4b_n16",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "delivered_bw_per_sm_gbps": {
+            "value": 82.332,
+            "ci95_low": 81.92,
+            "ci95_high": 82.37,
+            "rel_uncertainty": 0.1082,
+            "unit": "GB/s",
+            "method": "cuda_gmem_cg_load_ctrl_4b_n16",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "load_width_bytes": 4,
+          "batch_loads_per_thread": 16,
+          "num_warps": 16,
+          "bytes_in_flight": 32768,
+          "issue_rate_gwarp_inst_per_sm": {
+            "value": 0.6957,
+            "ci95_low": 0.6957,
+            "ci95_high": 0.6957,
+            "rel_uncertainty": 0.1082,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_gmem_cg_load_ctrl_4b_n16",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "delivered_bw_per_sm_gbps": {
+            "value": 89.043,
+            "ci95_low": 89.043,
+            "ci95_high": 89.043,
+            "rel_uncertainty": 0.1082,
+            "unit": "GB/s",
+            "method": "cuda_gmem_cg_load_ctrl_4b_n16",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "load_width_bytes": 4,
+          "batch_loads_per_thread": 16,
+          "num_warps": 32,
+          "bytes_in_flight": 65536,
+          "issue_rate_gwarp_inst_per_sm": {
+            "value": 0.6957,
+            "ci95_low": 0.6809,
+            "ci95_high": 0.6995,
+            "rel_uncertainty": 0.1082,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_gmem_cg_load_ctrl_4b_n16",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "delivered_bw_per_sm_gbps": {
+            "value": 89.043,
+            "ci95_low": 87.149,
+            "ci95_high": 89.53,
+            "rel_uncertainty": 0.1082,
+            "unit": "GB/s",
+            "method": "cuda_gmem_cg_load_ctrl_4b_n16",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "load_width_bytes": 4,
+          "batch_loads_per_thread": 32,
+          "num_warps": 4,
+          "bytes_in_flight": 16384,
+          "issue_rate_gwarp_inst_per_sm": {
+            "value": 0.4133,
+            "ci95_low": 0.4118,
+            "ci95_high": 0.4142,
+            "rel_uncertainty": 0.1082,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_gmem_cg_load_ctrl_4b_n32",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "delivered_bw_per_sm_gbps": {
+            "value": 52.9,
+            "ci95_low": 52.708,
+            "ci95_high": 53.023,
+            "rel_uncertainty": 0.1082,
+            "unit": "GB/s",
+            "method": "cuda_gmem_cg_load_ctrl_4b_n32",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "load_width_bytes": 4,
+          "batch_loads_per_thread": 32,
+          "num_warps": 8,
+          "bytes_in_flight": 32768,
+          "issue_rate_gwarp_inst_per_sm": {
+            "value": 0.5954,
+            "ci95_low": 0.5927,
+            "ci95_high": 0.6009,
+            "rel_uncertainty": 0.1082,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_gmem_cg_load_ctrl_4b_n32",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "delivered_bw_per_sm_gbps": {
+            "value": 76.216,
+            "ci95_low": 75.863,
+            "ci95_high": 76.92,
+            "rel_uncertainty": 0.1082,
+            "unit": "GB/s",
+            "method": "cuda_gmem_cg_load_ctrl_4b_n32",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "load_width_bytes": 4,
+          "batch_loads_per_thread": 32,
+          "num_warps": 16,
+          "bytes_in_flight": 65536,
+          "issue_rate_gwarp_inst_per_sm": {
+            "value": 0.6667,
+            "ci95_low": 0.6465,
+            "ci95_high": 0.6667,
+            "rel_uncertainty": 0.1082,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_gmem_cg_load_ctrl_4b_n32",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "delivered_bw_per_sm_gbps": {
+            "value": 85.333,
+            "ci95_low": 82.747,
+            "ci95_high": 85.333,
+            "rel_uncertainty": 0.1082,
+            "unit": "GB/s",
+            "method": "cuda_gmem_cg_load_ctrl_4b_n32",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "load_width_bytes": 4,
+          "batch_loads_per_thread": 32,
+          "num_warps": 32,
+          "bytes_in_flight": 131072,
+          "issue_rate_gwarp_inst_per_sm": {
+            "value": 0.6975,
+            "ci95_low": 0.6957,
+            "ci95_high": 0.7052,
+            "rel_uncertainty": 0.1082,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_gmem_cg_load_ctrl_4b_n32",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "delivered_bw_per_sm_gbps": {
+            "value": 89.286,
+            "ci95_low": 89.043,
+            "ci95_high": 90.27,
+            "rel_uncertainty": 0.1082,
+            "unit": "GB/s",
+            "method": "cuda_gmem_cg_load_ctrl_4b_n32",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "load_width_bytes": 16,
+          "batch_loads_per_thread": 8,
+          "num_warps": 4,
+          "bytes_in_flight": 16384,
+          "issue_rate_gwarp_inst_per_sm": {
+            "value": 0.1289,
+            "ci95_low": 0.1236,
+            "ci95_high": 0.129,
+            "rel_uncertainty": 0.1082,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_gmem_cg_load_ctrl_16b_n8",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "delivered_bw_per_sm_gbps": {
+            "value": 65.998,
+            "ci95_low": 63.259,
+            "ci95_high": 66.065,
+            "rel_uncertainty": 0.1082,
+            "unit": "GB/s",
+            "method": "cuda_gmem_cg_load_ctrl_16b_n8",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "load_width_bytes": 16,
+          "batch_loads_per_thread": 8,
+          "num_warps": 8,
+          "bytes_in_flight": 32768,
+          "issue_rate_gwarp_inst_per_sm": {
+            "value": 0.1602,
+            "ci95_low": 0.1582,
+            "ci95_high": 0.1604,
+            "rel_uncertainty": 0.1082,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_gmem_cg_load_ctrl_16b_n8",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "delivered_bw_per_sm_gbps": {
+            "value": 82.023,
+            "ci95_low": 81.009,
+            "ci95_high": 82.125,
+            "rel_uncertainty": 0.1082,
+            "unit": "GB/s",
+            "method": "cuda_gmem_cg_load_ctrl_16b_n8",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "load_width_bytes": 16,
+          "batch_loads_per_thread": 8,
+          "num_warps": 16,
+          "bytes_in_flight": 65536,
+          "issue_rate_gwarp_inst_per_sm": {
+            "value": 0.1773,
+            "ci95_low": 0.1773,
+            "ci95_high": 0.1775,
+            "rel_uncertainty": 0.1082,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_gmem_cg_load_ctrl_16b_n8",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "delivered_bw_per_sm_gbps": {
+            "value": 90.774,
+            "ci95_low": 90.77,
+            "ci95_high": 90.896,
+            "rel_uncertainty": 0.1082,
+            "unit": "GB/s",
+            "method": "cuda_gmem_cg_load_ctrl_16b_n8",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "load_width_bytes": 16,
+          "batch_loads_per_thread": 8,
+          "num_warps": 32,
+          "bytes_in_flight": 131072,
+          "issue_rate_gwarp_inst_per_sm": {
+            "value": 0.1778,
+            "ci95_low": 0.1768,
+            "ci95_high": 0.178,
+            "rel_uncertainty": 0.1082,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_gmem_cg_load_ctrl_16b_n8",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "delivered_bw_per_sm_gbps": {
+            "value": 91.046,
+            "ci95_low": 90.519,
+            "ci95_high": 91.149,
+            "rel_uncertainty": 0.1082,
+            "unit": "GB/s",
+            "method": "cuda_gmem_cg_load_ctrl_16b_n8",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "load_width_bytes": 16,
+          "batch_loads_per_thread": 16,
+          "num_warps": 4,
+          "bytes_in_flight": 32768,
+          "issue_rate_gwarp_inst_per_sm": {
+            "value": 0.141,
+            "ci95_low": 0.1357,
+            "ci95_high": 0.143,
+            "rel_uncertainty": 0.1082,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_gmem_cg_load_ctrl_16b_n16",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "delivered_bw_per_sm_gbps": {
+            "value": 72.176,
+            "ci95_low": 69.497,
+            "ci95_high": 73.225,
+            "rel_uncertainty": 0.1082,
+            "unit": "GB/s",
+            "method": "cuda_gmem_cg_load_ctrl_16b_n16",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "load_width_bytes": 16,
+          "batch_loads_per_thread": 16,
+          "num_warps": 8,
+          "bytes_in_flight": 65536,
+          "issue_rate_gwarp_inst_per_sm": {
+            "value": 0.1768,
+            "ci95_low": 0.1766,
+            "ci95_high": 0.1768,
+            "rel_uncertainty": 0.1082,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_gmem_cg_load_ctrl_16b_n16",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "delivered_bw_per_sm_gbps": {
+            "value": 90.519,
+            "ci95_low": 90.394,
+            "ci95_high": 90.519,
+            "rel_uncertainty": 0.1082,
+            "unit": "GB/s",
+            "method": "cuda_gmem_cg_load_ctrl_16b_n16",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "load_width_bytes": 16,
+          "batch_loads_per_thread": 16,
+          "num_warps": 16,
+          "bytes_in_flight": 131072,
+          "issue_rate_gwarp_inst_per_sm": {
+            "value": 0.178,
+            "ci95_low": 0.1778,
+            "ci95_high": 0.178,
+            "rel_uncertainty": 0.1082,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_gmem_cg_load_ctrl_16b_n16",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "delivered_bw_per_sm_gbps": {
+            "value": 91.149,
+            "ci95_low": 91.022,
+            "ci95_high": 91.149,
+            "rel_uncertainty": 0.1082,
+            "unit": "GB/s",
+            "method": "cuda_gmem_cg_load_ctrl_16b_n16",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "load_width_bytes": 16,
+          "batch_loads_per_thread": 16,
+          "num_warps": 32,
+          "bytes_in_flight": 262144,
+          "issue_rate_gwarp_inst_per_sm": {
+            "value": 0.1778,
+            "ci95_low": 0.1756,
+            "ci95_high": 0.178,
+            "rel_uncertainty": 0.1082,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_gmem_cg_load_ctrl_16b_n16",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "delivered_bw_per_sm_gbps": {
+            "value": 91.03,
+            "ci95_low": 89.898,
+            "ci95_high": 91.149,
+            "rel_uncertainty": 0.1082,
+            "unit": "GB/s",
+            "method": "cuda_gmem_cg_load_ctrl_16b_n16",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "load_width_bytes": 16,
+          "batch_loads_per_thread": 32,
+          "num_warps": 4,
+          "bytes_in_flight": 65536,
+          "issue_rate_gwarp_inst_per_sm": {
+            "value": 0.1522,
+            "ci95_low": 0.1517,
+            "ci95_high": 0.1524,
+            "rel_uncertainty": 0.1082,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_gmem_cg_load_ctrl_16b_n32",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "delivered_bw_per_sm_gbps": {
+            "value": 77.926,
+            "ci95_low": 77.649,
+            "ci95_high": 78.019,
+            "rel_uncertainty": 0.1082,
+            "unit": "GB/s",
+            "method": "cuda_gmem_cg_load_ctrl_16b_n32",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "load_width_bytes": 16,
+          "batch_loads_per_thread": 32,
+          "num_warps": 8,
+          "bytes_in_flight": 131072,
+          "issue_rate_gwarp_inst_per_sm": {
+            "value": 0.1773,
+            "ci95_low": 0.1727,
+            "ci95_high": 0.1773,
+            "rel_uncertainty": 0.1082,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_gmem_cg_load_ctrl_16b_n32",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "delivered_bw_per_sm_gbps": {
+            "value": 90.77,
+            "ci95_low": 88.443,
+            "ci95_high": 90.774,
+            "rel_uncertainty": 0.1082,
+            "unit": "GB/s",
+            "method": "cuda_gmem_cg_load_ctrl_16b_n32",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "load_width_bytes": 16,
+          "batch_loads_per_thread": 32,
+          "num_warps": 16,
+          "bytes_in_flight": 262144,
+          "issue_rate_gwarp_inst_per_sm": {
+            "value": 0.1778,
+            "ci95_low": 0.1732,
+            "ci95_high": 0.178,
+            "rel_uncertainty": 0.1082,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_gmem_cg_load_ctrl_16b_n32",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "delivered_bw_per_sm_gbps": {
+            "value": 91.042,
+            "ci95_low": 88.682,
+            "ci95_high": 91.149,
+            "rel_uncertainty": 0.1082,
+            "unit": "GB/s",
+            "method": "cuda_gmem_cg_load_ctrl_16b_n32",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "load_width_bytes": 16,
+          "batch_loads_per_thread": 32,
+          "num_warps": 32,
+          "bytes_in_flight": 524288,
+          "issue_rate_gwarp_inst_per_sm": {
+            "value": 0.1784,
+            "ci95_low": 0.1756,
+            "ci95_high": 0.1785,
+            "rel_uncertainty": 0.1082,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_gmem_cg_load_ctrl_16b_n32",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "delivered_bw_per_sm_gbps": {
+            "value": 91.339,
+            "ci95_low": 89.898,
+            "ci95_high": 91.403,
+            "rel_uncertainty": 0.1082,
+            "unit": "GB/s",
+            "method": "cuda_gmem_cg_load_ctrl_16b_n32",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        }
       ]
     },
     "compute": {
@@ -54311,6 +55249,1800 @@
             "method": "cuda_sync_loop_l2_cp_async_s1",
             "source": "measured",
             "perturb_group": "mma_dense"
+          }
+        }
+      ],
+      "sync_stage_loop_ablation": [
+        {
+          "variant": "cp_async_s1",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 4,
+          "stage_bytes": 8192,
+          "mma_chain_len": 0,
+          "delivered_bw_gbps": {
+            "value": 448.61,
+            "ci95_low": 444.377,
+            "ci95_high": 452.923,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_cp_async_s1",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 840.0,
+            "ci95_low": 832.0,
+            "ci95_high": 848.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_cp_async_s1",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "cp_async_s1",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 4,
+          "stage_bytes": 8192,
+          "mma_chain_len": 8,
+          "delivered_bw_gbps": {
+            "value": 440.224,
+            "ci95_low": 424.36,
+            "ci95_high": 440.224,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_cp_async_s1",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 856.0,
+            "ci95_low": 856.0,
+            "ci95_high": 888.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_cp_async_s1",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "cp_async_s1",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 4,
+          "stage_bytes": 8192,
+          "mma_chain_len": 32,
+          "delivered_bw_gbps": {
+            "value": 382.959,
+            "ci95_low": 379.871,
+            "ci95_high": 382.959,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_cp_async_s1",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 984.0,
+            "ci95_low": 984.0,
+            "ci95_high": 992.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_cp_async_s1",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "cp_async_s1",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 4,
+          "stage_bytes": 8192,
+          "mma_chain_len": 64,
+          "delivered_bw_gbps": {
+            "value": 278.722,
+            "ci95_low": 277.082,
+            "ci95_high": 278.722,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_cp_async_s1",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1352.0,
+            "ci95_low": 1352.0,
+            "ci95_high": 1360.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_cp_async_s1",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "cp_async_s1",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 4,
+          "stage_bytes": 16384,
+          "mma_chain_len": 0,
+          "delivered_bw_gbps": {
+            "value": 464.079,
+            "ci95_low": 461.804,
+            "ci95_high": 464.079,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_cp_async_s1",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1624.0,
+            "ci95_low": 1624.0,
+            "ci95_high": 1632.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_cp_async_s1",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "cp_async_s1",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 4,
+          "stage_bytes": 16384,
+          "mma_chain_len": 8,
+          "delivered_bw_gbps": {
+            "value": 461.804,
+            "ci95_low": 459.551,
+            "ci95_high": 464.079,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_cp_async_s1",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1632.0,
+            "ci95_low": 1624.0,
+            "ci95_high": 1640.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_cp_async_s1",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "cp_async_s1",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 4,
+          "stage_bytes": 16384,
+          "mma_chain_len": 32,
+          "delivered_bw_gbps": {
+            "value": 459.551,
+            "ci95_low": 457.32,
+            "ci95_high": 461.804,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_cp_async_s1",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1640.0,
+            "ci95_low": 1632.0,
+            "ci95_high": 1648.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_cp_async_s1",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "cp_async_s1",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 4,
+          "stage_bytes": 16384,
+          "mma_chain_len": 64,
+          "delivered_bw_gbps": {
+            "value": 457.32,
+            "ci95_low": 455.111,
+            "ci95_high": 457.32,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_cp_async_s1",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1648.0,
+            "ci95_low": 1648.0,
+            "ci95_high": 1656.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_cp_async_s1",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "cp_async_s1",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 8,
+          "stage_bytes": 8192,
+          "mma_chain_len": 0,
+          "delivered_bw_gbps": {
+            "value": 448.61,
+            "ci95_low": 444.377,
+            "ci95_high": 452.923,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_cp_async_s1",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 840.0,
+            "ci95_low": 832.0,
+            "ci95_high": 848.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_cp_async_s1",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "cp_async_s1",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 8,
+          "stage_bytes": 8192,
+          "mma_chain_len": 8,
+          "delivered_bw_gbps": {
+            "value": 409.6,
+            "ci95_low": 406.069,
+            "ci95_high": 409.6,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_cp_async_s1",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 920.0,
+            "ci95_low": 920.0,
+            "ci95_high": 928.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_cp_async_s1",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "cp_async_s1",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 8,
+          "stage_bytes": 8192,
+          "mma_chain_len": 32,
+          "delivered_bw_gbps": {
+            "value": 277.082,
+            "ci95_low": 277.082,
+            "ci95_high": 278.722,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_cp_async_s1",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1360.0,
+            "ci95_low": 1352.0,
+            "ci95_high": 1360.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_cp_async_s1",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "cp_async_s1",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 8,
+          "stage_bytes": 8192,
+          "mma_chain_len": 64,
+          "delivered_bw_gbps": {
+            "value": 177.751,
+            "ci95_low": 177.751,
+            "ci95_high": 177.751,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_cp_async_s1",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 2120.0,
+            "ci95_low": 2120.0,
+            "ci95_high": 2120.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_cp_async_s1",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "cp_async_s1",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 8,
+          "stage_bytes": 16384,
+          "mma_chain_len": 0,
+          "delivered_bw_gbps": {
+            "value": 464.079,
+            "ci95_low": 461.804,
+            "ci95_high": 466.376,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_cp_async_s1",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1624.0,
+            "ci95_low": 1616.0,
+            "ci95_high": 1632.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_cp_async_s1",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "cp_async_s1",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 8,
+          "stage_bytes": 16384,
+          "mma_chain_len": 8,
+          "delivered_bw_gbps": {
+            "value": 459.551,
+            "ci95_low": 459.551,
+            "ci95_high": 461.804,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_cp_async_s1",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1640.0,
+            "ci95_low": 1632.0,
+            "ci95_high": 1640.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_cp_async_s1",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "cp_async_s1",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 8,
+          "stage_bytes": 16384,
+          "mma_chain_len": 32,
+          "delivered_bw_gbps": {
+            "value": 457.32,
+            "ci95_low": 450.756,
+            "ci95_high": 459.551,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_cp_async_s1",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1648.0,
+            "ci95_low": 1640.0,
+            "ci95_high": 1672.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_cp_async_s1",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "cp_async_s1",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 8,
+          "stage_bytes": 16384,
+          "mma_chain_len": 64,
+          "delivered_bw_gbps": {
+            "value": 328.251,
+            "ci95_low": 328.251,
+            "ci95_high": 329.399,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_cp_async_s1",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 2296.0,
+            "ci95_low": 2288.0,
+            "ci95_high": 2296.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_cp_async_s1",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_st_sync",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 4,
+          "stage_bytes": 8192,
+          "mma_chain_len": 0,
+          "delivered_bw_gbps": {
+            "value": 402.598,
+            "ci95_low": 399.186,
+            "ci95_high": 402.598,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_st_sync",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 936.0,
+            "ci95_low": 936.0,
+            "ci95_high": 944.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_st_sync",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_st_sync",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 4,
+          "stage_bytes": 8192,
+          "mma_chain_len": 8,
+          "delivered_bw_gbps": {
+            "value": 365.147,
+            "ci95_low": 362.338,
+            "ci95_high": 368.0,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_st_sync",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1032.0,
+            "ci95_low": 1024.0,
+            "ci95_high": 1040.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_st_sync",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_st_sync",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 4,
+          "stage_bytes": 8192,
+          "mma_chain_len": 32,
+          "delivered_bw_gbps": {
+            "value": 305.87,
+            "ci95_low": 303.897,
+            "ci95_high": 307.869,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_st_sync",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1232.0,
+            "ci95_low": 1224.0,
+            "ci95_high": 1240.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_st_sync",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_st_sync",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 4,
+          "stage_bytes": 8192,
+          "mma_chain_len": 64,
+          "delivered_bw_gbps": {
+            "value": 235.52,
+            "ci95_low": 234.348,
+            "ci95_high": 236.704,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_st_sync",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1600.0,
+            "ci95_low": 1592.0,
+            "ci95_high": 1608.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_st_sync",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_st_sync",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 4,
+          "stage_bytes": 16384,
+          "mma_chain_len": 0,
+          "delivered_bw_gbps": {
+            "value": 452.923,
+            "ci95_low": 446.483,
+            "ci95_high": 452.923,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_st_sync",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1664.0,
+            "ci95_low": 1664.0,
+            "ci95_high": 1688.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_st_sync",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_st_sync",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 4,
+          "stage_bytes": 16384,
+          "mma_chain_len": 8,
+          "delivered_bw_gbps": {
+            "value": 444.377,
+            "ci95_low": 442.291,
+            "ci95_high": 444.377,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_st_sync",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1696.0,
+            "ci95_low": 1696.0,
+            "ci95_high": 1704.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_st_sync",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_st_sync",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 4,
+          "stage_bytes": 16384,
+          "mma_chain_len": 32,
+          "delivered_bw_gbps": {
+            "value": 416.85,
+            "ci95_low": 413.193,
+            "ci95_high": 418.702,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_st_sync",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1808.0,
+            "ci95_low": 1800.0,
+            "ci95_high": 1824.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_st_sync",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_st_sync",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 4,
+          "stage_bytes": 16384,
+          "mma_chain_len": 64,
+          "delivered_bw_gbps": {
+            "value": 387.687,
+            "ci95_low": 231.469,
+            "ci95_high": 389.289,
+            "rel_uncertainty": 0.2035,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_st_sync",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1944.0,
+            "ci95_low": 1936.0,
+            "ci95_high": 3256.0,
+            "rel_uncertainty": 0.3395,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_st_sync",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_st_sync",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 8,
+          "stage_bytes": 8192,
+          "mma_chain_len": 0,
+          "delivered_bw_gbps": {
+            "value": 448.61,
+            "ci95_low": 448.61,
+            "ci95_high": 452.923,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_st_sync",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 840.0,
+            "ci95_low": 832.0,
+            "ci95_high": 840.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_st_sync",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_st_sync",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 8,
+          "stage_bytes": 8192,
+          "mma_chain_len": 8,
+          "delivered_bw_gbps": {
+            "value": 432.147,
+            "ci95_low": 428.218,
+            "ci95_high": 432.147,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_st_sync",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 872.0,
+            "ci95_low": 872.0,
+            "ci95_high": 880.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_st_sync",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_st_sync",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 8,
+          "stage_bytes": 8192,
+          "mma_chain_len": 32,
+          "delivered_bw_gbps": {
+            "value": 307.869,
+            "ci95_low": 305.87,
+            "ci95_high": 309.895,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_st_sync",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1224.0,
+            "ci95_low": 1216.0,
+            "ci95_high": 1232.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_st_sync",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_st_sync",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 8,
+          "stage_bytes": 8192,
+          "mma_chain_len": 64,
+          "delivered_bw_gbps": {
+            "value": 195.452,
+            "ci95_low": 195.452,
+            "ci95_high": 196.267,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_st_sync",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1928.0,
+            "ci95_low": 1920.0,
+            "ci95_high": 1928.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_st_sync",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_st_sync",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 8,
+          "stage_bytes": 16384,
+          "mma_chain_len": 0,
+          "delivered_bw_gbps": {
+            "value": 464.079,
+            "ci95_low": 461.804,
+            "ci95_high": 466.376,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_st_sync",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1624.0,
+            "ci95_low": 1616.0,
+            "ci95_high": 1632.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_st_sync",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_st_sync",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 8,
+          "stage_bytes": 16384,
+          "mma_chain_len": 8,
+          "delivered_bw_gbps": {
+            "value": 457.32,
+            "ci95_low": 455.111,
+            "ci95_high": 461.804,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_st_sync",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1648.0,
+            "ci95_low": 1632.0,
+            "ci95_high": 1656.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_st_sync",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_st_sync",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 8,
+          "stage_bytes": 16384,
+          "mma_chain_len": 32,
+          "delivered_bw_gbps": {
+            "value": 426.281,
+            "ci95_low": 426.281,
+            "ci95_high": 428.218,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_st_sync",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1768.0,
+            "ci95_low": 1760.0,
+            "ci95_high": 1768.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_st_sync",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_st_sync",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 8,
+          "stage_bytes": 16384,
+          "mma_chain_len": 64,
+          "delivered_bw_gbps": {
+            "value": 322.63,
+            "ci95_low": 321.529,
+            "ci95_high": 323.739,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_st_sync",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 2336.0,
+            "ci95_low": 2328.0,
+            "ci95_high": 2344.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_st_sync",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_discard_sync",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 4,
+          "stage_bytes": 8192,
+          "mma_chain_len": 0,
+          "delivered_bw_gbps": {
+            "value": 416.85,
+            "ci95_low": 413.193,
+            "ci95_high": 420.571,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_discard_sync",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 904.0,
+            "ci95_low": 896.0,
+            "ci95_high": 912.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_discard_sync",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_discard_sync",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 4,
+          "stage_bytes": 8192,
+          "mma_chain_len": 8,
+          "delivered_bw_gbps": {
+            "value": 386.098,
+            "ci95_low": 386.098,
+            "ci95_high": 389.289,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_discard_sync",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 976.0,
+            "ci95_low": 968.0,
+            "ci95_high": 976.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_discard_sync",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_discard_sync",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 4,
+          "stage_bytes": 8192,
+          "mma_chain_len": 32,
+          "delivered_bw_gbps": {
+            "value": 329.399,
+            "ci95_low": 327.111,
+            "ci95_high": 331.718,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_discard_sync",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1144.0,
+            "ci95_low": 1136.0,
+            "ci95_high": 1152.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_discard_sync",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_discard_sync",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 4,
+          "stage_bytes": 8192,
+          "mma_chain_len": 64,
+          "delivered_bw_gbps": {
+            "value": 261.689,
+            "ci95_low": 256.0,
+            "ci95_high": 261.689,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_discard_sync",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1440.0,
+            "ci95_low": 1440.0,
+            "ci95_high": 1472.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_discard_sync",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_discard_sync",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 4,
+          "stage_bytes": 16384,
+          "mma_chain_len": 0,
+          "delivered_bw_gbps": {
+            "value": 455.111,
+            "ci95_low": 452.923,
+            "ci95_high": 457.32,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_discard_sync",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1656.0,
+            "ci95_low": 1648.0,
+            "ci95_high": 1664.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_discard_sync",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_discard_sync",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 4,
+          "stage_bytes": 16384,
+          "mma_chain_len": 8,
+          "delivered_bw_gbps": {
+            "value": 448.61,
+            "ci95_low": 446.483,
+            "ci95_high": 450.756,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_discard_sync",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1680.0,
+            "ci95_low": 1672.0,
+            "ci95_high": 1688.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_discard_sync",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_discard_sync",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 4,
+          "stage_bytes": 16384,
+          "mma_chain_len": 32,
+          "delivered_bw_gbps": {
+            "value": 432.147,
+            "ci95_low": 428.218,
+            "ci95_high": 432.147,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_discard_sync",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1744.0,
+            "ci95_low": 1744.0,
+            "ci95_high": 1760.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_discard_sync",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_discard_sync",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 4,
+          "stage_bytes": 16384,
+          "mma_chain_len": 64,
+          "delivered_bw_gbps": {
+            "value": 389.289,
+            "ci95_low": 387.687,
+            "ci95_high": 390.905,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_discard_sync",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1936.0,
+            "ci95_low": 1928.0,
+            "ci95_high": 1944.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_discard_sync",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_discard_sync",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 8,
+          "stage_bytes": 8192,
+          "mma_chain_len": 0,
+          "delivered_bw_gbps": {
+            "value": 452.923,
+            "ci95_low": 448.61,
+            "ci95_high": 452.923,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_discard_sync",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 832.0,
+            "ci95_low": 832.0,
+            "ci95_high": 840.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_discard_sync",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_discard_sync",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 8,
+          "stage_bytes": 8192,
+          "mma_chain_len": 8,
+          "delivered_bw_gbps": {
+            "value": 440.224,
+            "ci95_low": 440.224,
+            "ci95_high": 444.377,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_discard_sync",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 856.0,
+            "ci95_low": 848.0,
+            "ci95_high": 856.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_discard_sync",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_discard_sync",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 8,
+          "stage_bytes": 8192,
+          "mma_chain_len": 32,
+          "delivered_bw_gbps": {
+            "value": 327.111,
+            "ci95_low": 322.63,
+            "ci95_high": 327.111,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_discard_sync",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1152.0,
+            "ci95_low": 1152.0,
+            "ci95_high": 1168.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_discard_sync",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_discard_sync",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 8,
+          "stage_bytes": 8192,
+          "mma_chain_len": 64,
+          "delivered_bw_gbps": {
+            "value": 203.913,
+            "ci95_low": 203.034,
+            "ci95_high": 203.913,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_discard_sync",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1848.0,
+            "ci95_low": 1848.0,
+            "ci95_high": 1856.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_discard_sync",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_discard_sync",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 8,
+          "stage_bytes": 16384,
+          "mma_chain_len": 0,
+          "delivered_bw_gbps": {
+            "value": 464.079,
+            "ci95_low": 459.551,
+            "ci95_high": 466.376,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_discard_sync",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1624.0,
+            "ci95_low": 1616.0,
+            "ci95_high": 1640.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_discard_sync",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_discard_sync",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 8,
+          "stage_bytes": 16384,
+          "mma_chain_len": 8,
+          "delivered_bw_gbps": {
+            "value": 459.551,
+            "ci95_low": 457.32,
+            "ci95_high": 461.804,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_discard_sync",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1640.0,
+            "ci95_low": 1632.0,
+            "ci95_high": 1648.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_discard_sync",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_discard_sync",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 8,
+          "stage_bytes": 16384,
+          "mma_chain_len": 32,
+          "delivered_bw_gbps": {
+            "value": 446.483,
+            "ci95_low": 444.377,
+            "ci95_high": 448.61,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_discard_sync",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1688.0,
+            "ci95_low": 1680.0,
+            "ci95_high": 1696.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_discard_sync",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_discard_sync",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 8,
+          "stage_bytes": 16384,
+          "mma_chain_len": 64,
+          "delivered_bw_gbps": {
+            "value": 341.333,
+            "ci95_low": 340.101,
+            "ci95_high": 342.575,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_discard_sync",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 2208.0,
+            "ci95_low": 2200.0,
+            "ci95_high": 2216.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_discard_sync",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_st_sync_cross_dep",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 4,
+          "stage_bytes": 8192,
+          "mma_chain_len": 0,
+          "delivered_bw_gbps": {
+            "value": 356.848,
+            "ci95_low": 356.848,
+            "ci95_high": 359.573,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_st_sync_cross_dep",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1056.0,
+            "ci95_low": 1048.0,
+            "ci95_high": 1056.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_st_sync_cross_dep",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_st_sync_cross_dep",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 4,
+          "stage_bytes": 8192,
+          "mma_chain_len": 8,
+          "delivered_bw_gbps": {
+            "value": 320.435,
+            "ci95_low": 320.435,
+            "ci95_high": 322.63,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_st_sync_cross_dep",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1176.0,
+            "ci95_low": 1168.0,
+            "ci95_high": 1176.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_st_sync_cross_dep",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_st_sync_cross_dep",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 4,
+          "stage_bytes": 8192,
+          "mma_chain_len": 32,
+          "delivered_bw_gbps": {
+            "value": 273.86,
+            "ci95_low": 272.277,
+            "ci95_high": 273.86,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_st_sync_cross_dep",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1376.0,
+            "ci95_low": 1376.0,
+            "ci95_high": 1384.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_st_sync_cross_dep",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_st_sync_cross_dep",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 4,
+          "stage_bytes": 8192,
+          "mma_chain_len": 64,
+          "delivered_bw_gbps": {
+            "value": 223.242,
+            "ci95_low": 221.146,
+            "ci95_high": 223.242,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_st_sync_cross_dep",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1688.0,
+            "ci95_low": 1688.0,
+            "ci95_high": 1704.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_st_sync_cross_dep",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_st_sync_cross_dep",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 4,
+          "stage_bytes": 16384,
+          "mma_chain_len": 0,
+          "delivered_bw_gbps": {
+            "value": 450.756,
+            "ci95_low": 448.61,
+            "ci95_high": 452.923,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_st_sync_cross_dep",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1672.0,
+            "ci95_low": 1664.0,
+            "ci95_high": 1680.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_st_sync_cross_dep",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_st_sync_cross_dep",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 4,
+          "stage_bytes": 16384,
+          "mma_chain_len": 8,
+          "delivered_bw_gbps": {
+            "value": 444.377,
+            "ci95_low": 442.291,
+            "ci95_high": 446.483,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_st_sync_cross_dep",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1696.0,
+            "ci95_low": 1688.0,
+            "ci95_high": 1704.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_st_sync_cross_dep",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_st_sync_cross_dep",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 4,
+          "stage_bytes": 16384,
+          "mma_chain_len": 32,
+          "delivered_bw_gbps": {
+            "value": 420.571,
+            "ci95_low": 418.702,
+            "ci95_high": 422.457,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_st_sync_cross_dep",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1792.0,
+            "ci95_low": 1784.0,
+            "ci95_high": 1800.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_st_sync_cross_dep",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_st_sync_cross_dep",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 4,
+          "stage_bytes": 16384,
+          "mma_chain_len": 64,
+          "delivered_bw_gbps": {
+            "value": 378.345,
+            "ci95_low": 376.832,
+            "ci95_high": 379.871,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_st_sync_cross_dep",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1992.0,
+            "ci95_low": 1984.0,
+            "ci95_high": 2000.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_st_sync_cross_dep",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_st_sync_cross_dep",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 8,
+          "stage_bytes": 8192,
+          "mma_chain_len": 0,
+          "delivered_bw_gbps": {
+            "value": 448.61,
+            "ci95_low": 448.61,
+            "ci95_high": 452.923,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_st_sync_cross_dep",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 840.0,
+            "ci95_low": 832.0,
+            "ci95_high": 840.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_st_sync_cross_dep",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_st_sync_cross_dep",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 8,
+          "stage_bytes": 8192,
+          "mma_chain_len": 8,
+          "delivered_bw_gbps": {
+            "value": 428.218,
+            "ci95_low": 424.36,
+            "ci95_high": 432.147,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_st_sync_cross_dep",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 880.0,
+            "ci95_low": 872.0,
+            "ci95_high": 888.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_st_sync_cross_dep",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_st_sync_cross_dep",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 8,
+          "stage_bytes": 8192,
+          "mma_chain_len": 32,
+          "delivered_bw_gbps": {
+            "value": 305.87,
+            "ci95_low": 303.897,
+            "ci95_high": 307.869,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_st_sync_cross_dep",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1232.0,
+            "ci95_low": 1224.0,
+            "ci95_high": 1240.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_st_sync_cross_dep",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_st_sync_cross_dep",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 8,
+          "stage_bytes": 8192,
+          "mma_chain_len": 64,
+          "delivered_bw_gbps": {
+            "value": 195.452,
+            "ci95_low": 195.452,
+            "ci95_high": 196.267,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_st_sync_cross_dep",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1928.0,
+            "ci95_low": 1920.0,
+            "ci95_high": 1928.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_st_sync_cross_dep",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_st_sync_cross_dep",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 8,
+          "stage_bytes": 16384,
+          "mma_chain_len": 0,
+          "delivered_bw_gbps": {
+            "value": 457.32,
+            "ci95_low": 457.32,
+            "ci95_high": 459.551,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_st_sync_cross_dep",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1648.0,
+            "ci95_low": 1640.0,
+            "ci95_high": 1648.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_st_sync_cross_dep",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_st_sync_cross_dep",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 8,
+          "stage_bytes": 16384,
+          "mma_chain_len": 8,
+          "delivered_bw_gbps": {
+            "value": 440.224,
+            "ci95_low": 438.177,
+            "ci95_high": 440.224,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_st_sync_cross_dep",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1712.0,
+            "ci95_low": 1712.0,
+            "ci95_high": 1720.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_st_sync_cross_dep",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_st_sync_cross_dep",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 8,
+          "stage_bytes": 16384,
+          "mma_chain_len": 32,
+          "delivered_bw_gbps": {
+            "value": 389.289,
+            "ci95_low": 387.687,
+            "ci95_high": 390.905,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_st_sync_cross_dep",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 1936.0,
+            "ci95_low": 1928.0,
+            "ci95_high": 1944.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_st_sync_cross_dep",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "variant": "ld_st_sync_cross_dep",
+          "ctas_per_sm": 1,
+          "active_ctas": 46,
+          "num_warps": 8,
+          "stage_bytes": 16384,
+          "mma_chain_len": 64,
+          "delivered_bw_gbps": {
+            "value": 294.4,
+            "ci95_low": 292.571,
+            "ci95_high": 295.323,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "cuda_sync_ablation_ld_st_sync_cross_dep",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "mean_stage_turnaround_ns": {
+            "value": 2560.0,
+            "ci95_low": 2552.0,
+            "ci95_high": 2576.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "cuda_sync_ablation_ld_st_sync_cross_dep",
+            "source": "measured",
+            "perturb_group": null
           }
         }
       ]
