@@ -16,6 +16,25 @@ from validation.holdout import seal_report
 from validation.phase2_aot import REVISION, TMA_CASE, load_tma_kernel, write_json
 from validation.provenance import REPO_ROOT, read_core_revision, source_info
 
+THERMAL_AUDIT = "validation/phase2-thermal-audit.json"
+THERMAL_TIMEOUT_SECONDS = 20 * 60
+
+
+def thermal_harness_revision(policy):
+    revision = subprocess.check_output(
+        ["git", "log", "-1", "--format=%H", "--diff-filter=A", "origin/main", "--", THERMAL_AUDIT],
+        cwd=REPO_ROOT, text=True,
+    ).strip()
+    if not revision:
+        return None
+    audit = json.loads(subprocess.check_output(
+        ["git", "show", f"{revision}:{THERMAL_AUDIT}"], cwd=REPO_ROOT,
+    ))
+    if (audit["previous_harness_commit"] != policy["harness_commit"]
+            or audit["new_timeout_seconds"] != THERMAL_TIMEOUT_SECONDS):
+        raise ValueError("Published GB10 thermal revision does not match the frozen policy")
+    return revision
+
 
 def command(*args):
     result = subprocess.run(args, text=True, capture_output=True, check=False)
@@ -43,7 +62,8 @@ def host_snapshot():
 
 
 class SparkSession:
-    def __init__(self, policy):
+    def __init__(self, policy, thermal_trace):
+        self.thermal_trace = thermal_trace
         self.clock_policy = policy["clock_policy"]
         self.before = host_snapshot()
         self.initial_power = policy["power_mode"]
@@ -63,7 +83,7 @@ class SparkSession:
         if not has_operations:
             return
         start = time.monotonic()
-        while time.monotonic() - start < 300:
+        while time.monotonic() - start < THERMAL_TIMEOUT_SECONDS:
             warmup()
             now = time.monotonic()
             if now - start < 60:
@@ -76,7 +96,17 @@ class SparkSession:
                 self.soaks.append({"elapsed_seconds": now - start,
                                    "temperature_range_c": [min(measured), max(measured)] if measured else None})
                 return
-        raise RuntimeError("Spark 1 temperature did not stabilize within five minutes")
+        trace = {}
+        for row in telemetry:
+            elapsed = row["monotonic_ns"] / 1e9 - start
+            if elapsed >= 0:
+                trace[int(elapsed)] = row["temperature_c"]
+        self.thermal_trace.parent.mkdir(mode=0o700, exist_ok=True)
+        with self.thermal_trace.open("x") as stream:
+            json.dump({"utc": datetime.now(timezone.utc).isoformat(),
+                       "temperature_c_by_elapsed_second": trace}, stream, allow_nan=False)
+            stream.write("\n")
+        raise RuntimeError("Spark 1 temperature did not stabilize within twenty minutes")
 
     def begin_block(self):
         counters = {}
@@ -136,7 +166,7 @@ def capture(directory, frozen, cohort, case_id, session, amendment):
 
     index, policy, archive_sha256 = verify_release(directory, amendment)
     source = source_info()
-    if (source["commit"] != policy["harness_commit"] or source["python_dirty"]
+    if (source["commit"] != thermal_harness_revision(policy) or source["python_dirty"]
             or source["validation_dirty"] or triton.__version__ != "3.9.0"):
         raise ValueError("Collect using the published GB10 harness and Triton 3.9.0")
     revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=frozen, text=True).strip()
@@ -187,7 +217,8 @@ def capture(directory, frozen, cohort, case_id, session, amendment):
     report_path, receipt_path = raw_dir / name, receipts / name
     if report_path.exists() or receipt_path.exists():
         raise FileExistsError(name)
-    spark = SparkSession(policy)
+    trace = base / "thermal-timeouts" / name
+    spark = SparkSession(policy, trace)
     args = SimpleNamespace(cache="both", blocks=10, seed=100 + session, warmup_seconds=60)
     report = measure(case, configs, suite["input_seed"], args,
                      index["files"][manifest.relative_to(directory).as_posix()],

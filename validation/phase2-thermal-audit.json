@@ -1,0 +1,34 @@
+{
+  "recorded_utc": "2026-11-25T10:59:11.856445+00:00",
+  "previous_harness_commit": "d42128eea58ba09d831deb6e62861b59de122bbb",
+  "prediction_freeze_commit": "eae13bd736f50bcdbefc41103414cbea39be9406",
+  "prediction_archive_sha256": "8d1744a806d7b45a1e2e4b86dd74a43dce3c9eca599ca3ee43a808ffc172b635",
+  "old_timeout_seconds": 300,
+  "new_timeout_seconds": 1200,
+  "min_warmup_seconds": 60,
+  "temperature_window_seconds": 30,
+  "max_temperature_range_c": 2,
+  "scope": "All case-sessions started after this revision is published on origin/main",
+  "reason": "Allow the preregistered thermal window more time to stabilize without changing the thermal criteria",
+  "aborted_before_timing": [
+    {
+      "observed_utc": "2026-11-25T10:48:40.730775+00:00",
+      "cohort": "secondary",
+      "case_id": "prefill-1024",
+      "session": 1,
+      "stage": "untimed_thermal_stabilization",
+      "reason": "Temperature did not meet the 2 C stability window within five minutes",
+      "action": "Retry using the same frozen harness and protocol after idle cooldown"
+    },
+    {
+      "observed_utc": "2026-11-25T10:55:34.404088+00:00",
+      "cohort": "secondary",
+      "case_id": "prefill-1024",
+      "session": 1,
+      "stage": "untimed_thermal_stabilization",
+      "reason": "Same frozen thermal gate failed on retry after idle cooldown",
+      "action": "Collect other sessions under the original protocol while this case remains pending"
+    }
+  ],
+  "on_timeout": "Stop collection and preserve the untimed temperature trace"
+}
