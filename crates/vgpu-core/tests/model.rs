@@ -236,7 +236,7 @@ fn bound_fraction_names_the_bounding_resource() {
     let k = compute_only(46);
     let p = run(&k, machine(&k));
     assert!(close(p.bound_fraction.iter().sum(), 1.0));
-    assert!(close(p.bound_fraction[1], 1.0), "{:?}", p.bound_fraction);
+    assert!(close(p.bound_fraction[0], 1.0), "{:?}", p.bound_fraction);
 }
 
 /// Memory-only kernel with plenty of bandwidth and a fixed load latency.
@@ -327,7 +327,7 @@ fn spills_cost_local_memory_bandwidth_per_scope() {
     assert!(none < once && once < every, "{none} {once} {every}");
     // 64 iterations of 4096 B for 128 threads at 1 B/ns, one CTA per SM.
     assert!(close(every, 64.0 * 4096.0 * 128.0), "{every}");
-    assert!(run(&per_iter, m.clone()).bound_fraction[4] > 0.99);
+    assert!(run(&per_iter, m.clone()).bound_fraction[3] > 0.99);
 }
 
 #[test]
@@ -542,5 +542,40 @@ fn stage_synchronization_stalls_the_sm_for_every_cta() {
         close(two.makespan_ns, shared + 2.0 * 64.0 * 100.0),
         "{}",
         two.makespan_ns
+    );
+}
+
+#[test]
+fn bound_names_bandwidth_only_when_it_binds() {
+    use vgpu_core::sim::RESOURCES;
+    let at = |name: &str| RESOURCES.iter().position(|&r| r == name).unwrap();
+    // Compute bound with light loads and synchronization: the bandwidth share
+    // equals the demand, which must not read as bandwidth bound.
+    let mut k = compute_only(46);
+    k.tile.per_iteration.loads = vec![access("load", 64.0)];
+    let mut m = machine(&k);
+    m.fixed_sync = vec![(4, 2, 10.0)];
+    let p = run(&k, m);
+    assert!(p.bound_fraction[at("mma")] > 0.99, "{:?}", p.bound_fraction);
+    // DRAM bound: the bandwidth share binds.
+    let mut k = compute_only(46 * 4);
+    k.tile.per_iteration = Work {
+        loads: vec![access("load", 1048576.0)],
+        ..Work::default()
+    };
+    k.tile.iterations = 8;
+    let p = run(&k, machine(&k));
+    assert!(
+        p.bound_fraction[at("dram_bandwidth")] > 0.99,
+        "{:?}",
+        p.bound_fraction
+    );
+    // Latency bound with plenty of bandwidth.
+    let (k, m) = latency_bound(1);
+    let p = run(&k, m);
+    assert!(
+        p.bound_fraction[at("dram_latency")] + p.bound_fraction[at("l2_latency")] > 0.99,
+        "{:?}",
+        p.bound_fraction
     );
 }

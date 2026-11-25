@@ -292,11 +292,29 @@ pub struct Prediction {
     pub events: u64,
     /// Fraction of CTA-time during which each resource of `RESOURCES` was the
     /// bound of the CTA's current phase.
-    pub bound_fraction: [f64; 7],
+    pub bound_fraction: [f64; 10],
 }
 
 /// Resources a phase can be bound by, in `Prediction::bound_fraction` order.
-pub const RESOURCES: [&str; 7] = ["latency", "mma", "issue", "smem", "local", "l2", "dram"];
+pub const RESOURCES: [&str; 10] = [
+    "mma",
+    "issue",
+    "smem",
+    "local",
+    "sync",
+    "l2_latency",
+    "dram_latency",
+    "l2_bandwidth",
+    "dram_bandwidth",
+    "launch",
+];
+const MMA: usize = 0;
+const SYNC: usize = 4;
+const L2_LATENCY: usize = 5;
+const DRAM_LATENCY: usize = 6;
+const L2_BANDWIDTH: usize = 7;
+const DRAM_BANDWIDTH: usize = 8;
+const LAUNCH: usize = 9;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Phase {
@@ -338,11 +356,13 @@ struct Demand {
 }
 
 impl Demand {
-    /// Exposed latency given the current DRAM and L2 load latencies.
-    fn latency(&self, lat: Latency) -> f64 {
-        self.fixed_latency_ns
-            + self.round_trips
-                * (self.resident_fraction * lat.l2 + (1.0 - self.resident_fraction) * lat.dram)
+    /// Exposed latency split into (launch, L2 round trips, DRAM round trips).
+    fn latency_parts(&self, lat: Latency) -> (f64, f64, f64) {
+        (
+            self.fixed_latency_ns,
+            self.round_trips * self.resident_fraction * lat.l2,
+            self.round_trips * (1.0 - self.resident_fraction) * lat.dram,
+        )
     }
 }
 
@@ -647,6 +667,67 @@ enum TileEvent {
     Begin(u32, u32, u32),
 }
 
+/// One CTA's three paths through an iteration, by component.
+#[derive(Debug, Clone, Copy, Default)]
+struct Parts {
+    /// Round-trip path: launch, L2 and DRAM round trips, and compute that
+    /// cannot overlap them, with the `RESOURCES` index of that compute.
+    launch: f64,
+    l2_latency: f64,
+    dram_latency: f64,
+    exposed: f64,
+    exposed_kind: usize,
+    /// Shared compute path: pipes by `RESOURCES` index, plus synchronization.
+    pipes: [f64; 4],
+    sync: f64,
+}
+
+impl Parts {
+    fn round_trip(&self) -> f64 {
+        self.launch + self.l2_latency + self.dram_latency + self.exposed
+    }
+
+    fn compute(&self) -> f64 {
+        self.pipes.iter().fold(0.0f64, |a, &b| a.max(b)) + self.sync
+    }
+
+    /// What bounds the phase, given its bandwidth times. Bandwidth counts
+    /// only when it binds: an unconstrained share equals the demand and
+    /// would otherwise tie with the path that set the demand.
+    fn bound(&self, t_l2: f64, t_dram: f64) -> usize {
+        let (lat, cmp) = (self.round_trip(), self.compute());
+        if t_l2.max(t_dram) > lat.max(cmp) * (1.0 + 1e-9) {
+            return if t_l2 >= t_dram {
+                L2_BANDWIDTH
+            } else {
+                DRAM_BANDWIDTH
+            };
+        }
+        let argmax = |xs: &[(f64, usize)]| {
+            xs.iter()
+                .fold((f64::MIN, MMA), |b, &x| if x.0 > b.0 { x } else { b })
+                .1
+        };
+        if lat >= cmp {
+            argmax(&[
+                (self.launch, LAUNCH),
+                (self.l2_latency, L2_LATENCY),
+                (self.dram_latency, DRAM_LATENCY),
+                (self.exposed, self.exposed_kind),
+            ])
+        } else {
+            let p = self.pipes;
+            argmax(&[
+                (p[0], 0),
+                (p[1], 1),
+                (p[2], 2),
+                (p[3], 3),
+                (self.sync, SYNC),
+            ])
+        }
+    }
+}
+
 /// Reusable buffers for the rate computation.
 #[derive(Default)]
 struct Scratch {
@@ -661,7 +742,9 @@ struct Scratch {
     dram_share: Vec<f64>,
     rate: Vec<f64>,
     /// Per CTA, the time each resource alone would need, in `RESOURCES` order.
-    terms: Vec<[f64; 7]>,
+    terms: Vec<Parts>,
+    /// Per CTA, the `RESOURCES` index of what bounds its current phase.
+    bound: Vec<usize>,
 }
 
 /// `mma_per_cta[u]` is the tensor throughput of each of `u` MMA-issuing CTAs on one SM.
@@ -712,22 +795,35 @@ fn rates(ctas: &[Cta], m: &Machine, mma_per_cta: &[f64], lat: Latency, s: &mut S
         } else {
             0.0
         };
-        // Synchronization stalls the SM for every resident CTA in turn.
-        let t_sm =
-            t_mma.max(t_issue).max(t_smem).max(t_local) + d.sync_ns * f64::from(s.resident[i]);
         // Round trips plus the compute that cannot overlap them. While a CTA
         // waits, the other CTAs on its SM use the pipes it leaves idle, so
         // that compute runs at the rate the CTA would get alone, and the
-        // shared rate only bounds the average. Reported as latency.
-        let alone = (d.flops / mma_per_cta[1])
-            .max(d.warp_insts / m.issue_rate)
-            .max(d.smem_bytes / m.smem_bw)
-            .max(d.local_bytes / m.local_bw);
-        let latency = d.latency(lat) + d.exposed_compute * alone;
-        s.terms
-            .push([latency, t_mma, t_issue, t_smem, t_local, 0.0, 0.0]);
+        // shared rate only bounds the average. Synchronization stalls the SM
+        // for every resident CTA in turn.
+        let alone = [
+            d.flops / mma_per_cta[1],
+            d.warp_insts / m.issue_rate,
+            d.smem_bytes / m.smem_bw,
+            d.local_bytes / m.local_bw,
+        ];
+        let (kind, &longest) =
+            alone
+                .iter()
+                .enumerate()
+                .fold((MMA, &0.0), |b, x| if x.1 > b.1 { x } else { b });
+        let (launch, l2_latency, dram_latency) = d.latency_parts(lat);
+        let parts = Parts {
+            launch,
+            l2_latency,
+            dram_latency,
+            exposed: d.exposed_compute * longest,
+            exposed_kind: kind,
+            pipes: [t_mma, t_issue, t_smem, t_local],
+            sync: d.sync_ns * f64::from(s.resident[i]),
+        };
+        s.terms.push(parts);
         // Time without memory bandwidth limits: caps the bandwidth demand.
-        s.t_compute.push(latency.max(t_sm));
+        s.t_compute.push(parts.round_trip().max(parts.compute()));
     }
 
     let n = ctas.len();
@@ -761,6 +857,7 @@ fn rates(ctas: &[Cta], m: &Machine, mma_per_cta: &[f64], lat: Latency, s: &mut S
     );
 
     s.rate.clear();
+    s.bound.clear();
     for (i, c) in ctas.iter().enumerate() {
         let d = &c.demand;
         let t_l2 = if d.bytes > 0.0 {
@@ -773,17 +870,14 @@ fn rates(ctas: &[Cta], m: &Machine, mma_per_cta: &[f64], lat: Latency, s: &mut S
         } else {
             0.0
         };
-        s.terms[i][5] = t_l2;
-        s.terms[i][6] = t_dram;
         let t_mem = t_l2.max(t_dram);
-        let [latency, t_mma, t_issue, t_smem, t_local, ..] = s.terms[i];
-        let t_sm = t_mma.max(t_issue).max(t_smem).max(t_local)
-            + d.sync_ns * f64::from(s.resident[c.sm as usize]);
+        let parts = s.terms[i];
+        s.bound.push(parts.bound(t_l2, t_dram));
         // The loaded latency already contains queueing and transfer under
         // the current load, and DRAM and L2 serve whichever CTAs have requests
         // outstanding, so the bandwidth share only bounds the average rate,
         // for synchronous loads too.
-        let t = latency.max(t_sm).max(t_mem);
+        let t = parts.round_trip().max(parts.compute()).max(t_mem);
         // A phase with no demand finishes at once.
         s.rate.push(1.0 / t.max(1e-9));
     }
@@ -855,7 +949,7 @@ pub fn simulate<L: L2>(
     let mut freed: Vec<u32> = Vec::new();
     let mut busy_sm_ns = 0.0;
     let mut events = 0u64;
-    let mut bound_ns = [0.0f64; 7];
+    let mut bound_ns = [0.0f64; 10];
     // Latency depends on the DRAM and L2 utilization and the utilization on
     // the rates, which depend on latency. DRAM utilization falls as the
     // latency it implies rises, so the equilibrium is unique and bisection
@@ -948,8 +1042,7 @@ pub fn simulate<L: L2>(
             .fold(f64::INFINITY, f64::min);
         sim.t += dt;
         busy_sm_ns += dt * s.resident.iter().filter(|&&r| r > 0).count() as f64;
-        for t in &s.terms {
-            let b = (0..t.len()).fold(0, |b, j| if t[j] > t[b] { j } else { b });
+        for &b in &s.bound {
             bound_ns[b] += dt;
         }
         events += 1;
