@@ -2,6 +2,7 @@
 
 import json
 import math
+import os
 from pathlib import Path
 import stat
 from types import SimpleNamespace
@@ -16,6 +17,7 @@ from validation.experiment import core_records, development_gates, load_case, va
 from validation.holdout import read_verified_report, require_release, seal_report, sha256
 from validation.neusight import TileFeatures, fit, leave_one_case_out
 from validation.phase2_capture import SECOND_NS, SparkSession, thermal_stability, thermal_windows
+from validation.posthoc import published_seal, read_posthoc_reports, read_sealed_bytes
 from validation.provenance import read_core_revision, require_formal_build
 from validation.score import check_artifact, kendall_tau_b, median_ci95, observed_pair, predicted_pair, score
 from validation.suite import development_manifest, manifest
@@ -349,6 +351,71 @@ class HoldoutSealTest(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "archive digest"):
                     require_release(revision, archive, "invalid")
                 self.assertEqual(require_release(revision, archive, sha256(b"[]")), [])
+
+
+class PostHocAccessTest(unittest.TestCase):
+    def test_only_published_release_with_matching_seal_is_eligible(self):
+        seal = b'{"reports": {}}'
+        revision = "a" * 40
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            path = root / "validation/holdout-seal.json"
+            path.parent.mkdir()
+            path.write_bytes(seal)
+            okay = lambda data: SimpleNamespace(returncode=0, stdout=data)
+            with patch("validation.posthoc.REPO_ROOT", root):
+                with self.assertRaisesRegex(ValueError, "published Phase 1 and Phase 2"):
+                    published_seal(path.with_name("attention-holdout-seal.json"))
+                with patch("validation.posthoc.subprocess.run", side_effect=[
+                    okay(revision.encode()), okay(seal), SimpleNamespace(returncode=1, stdout=b""),
+                ]):
+                    with self.assertRaisesRegex(ValueError, "published seal and report"):
+                        published_seal(path)
+                with patch("validation.posthoc.subprocess.run", side_effect=[
+                    okay(revision.encode()), okay(seal), okay(b"unrelated report"),
+                ]):
+                    with self.assertRaisesRegex(ValueError, "does not match"):
+                        published_seal(path)
+                with patch("validation.posthoc.subprocess.run", side_effect=[
+                    okay(revision.encode()), okay(seal), okay(f"`{sha256(seal)}`".encode()),
+                ]):
+                    self.assertEqual(published_seal(path)[2:], (revision, {"reports": {}}))
+
+    def test_report_mode_is_restored_before_bytes_are_read(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "raw.json"
+            receipt = seal_report(path, {"timestamp_utc": "fixture"})
+            fdopen = os.fdopen
+
+            def check_mode(fd, *args, **kwargs):
+                self.assertEqual(stat.S_IMODE(os.fstat(fd).st_mode), 0)
+                self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0)
+                return fdopen(fd, *args, **kwargs)
+
+            with patch("validation.posthoc.os.fdopen", side_effect=check_mode):
+                self.assertEqual(sha256(read_sealed_bytes(path)), receipt["sha256"])
+            self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0)
+
+    def test_gb10_digest_and_access_audit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            name = "secondary/sealed/fixture.json"
+            path = root / name
+            path.parent.mkdir(parents=True)
+            report = {"timestamp_utc": "fixture", "gpu": {"arch": "sm_121"}, "cohort": "secondary"}
+            receipt = seal_report(path, report)
+            release = ("seal", "report", "a" * 40, {"reports": {name: receipt}})
+            revision = "b" * 40
+            with patch("validation.posthoc.REPO_ROOT", root):
+                self.assertEqual(read_posthoc_reports([path], release, revision, "diagnosis", "hash"), [report])
+                receipt["sha256"] = "invalid"
+                with self.assertRaisesRegex(ValueError, "digest does not match"):
+                    read_posthoc_reports([path], release, revision, "diagnosis", "hash")
+            events = (root / "results/post-hoc-access.jsonl").read_text().splitlines()
+            self.assertEqual(len(events), 2)
+            self.assertEqual(json.loads(events[0])["prediction_revision"], revision)
+            self.assertEqual(json.loads(events[0])["purpose"], "diagnosis")
+            self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0)
 
 
 if __name__ == "__main__":

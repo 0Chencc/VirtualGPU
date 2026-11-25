@@ -183,6 +183,8 @@ def main():
     parser.add_argument("--top-k", type=int, default=5)
     parser.add_argument("--sealed-audit", type=Path, help="Committed digest index for sealed holdout labels")
     parser.add_argument("--prediction-sha256", help="Independently archived prediction digest for holdout release")
+    parser.add_argument("--post-hoc", action="store_true", help="Diagnose a formally published holdout")
+    parser.add_argument("--purpose", help="Reason for post-hoc access, written to the audit log")
     gate = parser.add_mutually_exclusive_group(required=True)
     gate.add_argument("--aot", action="append", default=[], metavar="CONFIG_ID=KERNEL_IR_JSON",
                       help="Require matching AOT output for every scored configuration")
@@ -195,7 +197,24 @@ def main():
     if args.core_revision and args.unchecked:
         parser.error("Formal scoring requires --aot")
     seal = None
-    if args.sealed_audit:
+    release = None
+    if args.post_hoc:
+        from validation.posthoc import published_seal
+
+        if (not args.core_revision or not args.sealed_audit or not (args.purpose or "").strip()
+                or args.prediction_sha256):
+            parser.error("Post-hoc scoring requires --core-revision, --aot, --sealed-audit and --purpose")
+        try:
+            release = published_seal(args.sealed_audit)
+            prediction_bytes = args.predictions.read_bytes()
+            input_predictions = json.loads(prediction_bytes)
+            if not isinstance(input_predictions, list) or not input_predictions:
+                raise ValueError("Post-hoc scoring requires formal prediction records")
+        except (OSError, ValueError) as error:
+            parser.error(str(error))
+    elif args.purpose is not None:
+        parser.error("--purpose requires --post-hoc")
+    elif args.sealed_audit:
         if not args.core_revision or not args.prediction_sha256:
             parser.error("Holdout scoring requires the phase1-final revision and archived prediction digest")
         try:
@@ -221,11 +240,19 @@ def main():
             parser.error("Supply one --aot CONFIG_ID=KERNEL_IR_JSON per configuration")
         artifacts[key] = json.loads(Path(path).read_text())
     try:
-        sessions = ([read_verified_report(path, seal) for path in args.measurements] if seal is not None
-                    else [json.loads(path.read_text()) for path in args.measurements])
-    except ValueError as error:
+        if args.post_hoc:
+            from validation.holdout import sha256
+            from validation.posthoc import read_posthoc_reports
+
+            sessions = read_posthoc_reports(args.measurements, release, args.core_revision,
+                                            args.purpose.strip(), sha256(prediction_bytes))
+        elif seal is not None:
+            sessions = [read_verified_report(path, seal) for path in args.measurements]
+        else:
+            sessions = [json.loads(path.read_text()) for path in args.measurements]
+    except (OSError, ValueError) as error:
         parser.error(str(error))
-    if any(session.get("split") == "holdout" for session in sessions) and seal is None:
+    if any(session.get("split") == "holdout" for session in sessions) and seal is None and release is None:
         parser.error("Holdout scoring requires verified sealed reports")
     case_id = sessions[0]["case_id"]
     identity = ("case_id", "gpu", "kernel_sha256", "manifest_sha256")
@@ -274,6 +301,10 @@ def main():
                   expected_core_revision=args.core_revision,
                   artifact_gate="required" if artifacts else "unchecked",
                   artifact_checks=artifact_checks)
+    if args.post_hoc:
+        from validation.posthoc import mark_posthoc
+
+        mark_posthoc(report, args.purpose.strip())
     print(json.dumps(report, indent=2))
     if not timings:
         raise SystemExit(2)

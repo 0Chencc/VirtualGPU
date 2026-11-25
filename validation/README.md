@@ -198,3 +198,21 @@ The policy binds the harness commit, GPU driver, L2 capacity, clock policy,
 and power mode to calibration. Collection writes mode-zero reports and
 separate receipts. Use `validation.phase2_capture audit` to check the full
 receipt census without opening labels.
+
+## Post-hoc access to a published holdout
+
+`validation.score --post-hoc --purpose "..."` accepts the published
+`validation/holdout-seal.json` and `validation/phase2-gb10-seal.json` seals.
+Refresh `origin/main` before running it. The published report must reference
+the seal digest. Supply the prediction build's full SHA with
+`--core-revision`, the seal with `--sealed-audit`, and one matching
+`--aot CONFIG_ID=KERNEL_IR_JSON` per scored config.
+
+The scorer logs every access attempt before opening any bytes in
+`results/post-hoc-access.jsonl`. On Linux, it pins the mode-zero inode,
+temporarily opens a read descriptor, then restores mode zero before reading
+through that descriptor. It verifies every selected seal digest before
+parsing any reports. No readable copy is retained. The output carries
+`result_class=post-hoc` and is ineligible for formal decisions. The
+published conclusions and the formal scoring path retain their original
+release requirements.
