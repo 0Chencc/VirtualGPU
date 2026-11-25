@@ -30,8 +30,12 @@ def compile_artifact(case, config, target):
     )
     if any(signature.get(key) != dtype for key, dtype in _EXPECTED_POINTER_TYPES.items()):
         raise ValueError("Attention AOT pointer types do not match the JIT input types")
+    return compile_identity(fused_attention, target, grid, options, parsed, signature, constexprs, attrs)
+
+
+def compile_identity(kernel, target, grid, options, parsed, signature, constexprs, attrs):
     artifact = compile_triton_aot(
-        fused_attention, signature, constexprs, target,
+        kernel, signature, constexprs, target,
         options["num_warps"], options["num_stages"], attrs=attrs, options=parsed,
     )
     # Store the resource and toolchain fields used by the shared artifact check.
@@ -74,33 +78,41 @@ def compile_case(case, configs, manifest, identity, output):
     return Counter(row["status"] for row in rows.values())
 
 
-def measure_case(args, case, configs, manifest, identity):
-    from validation.runner import measure
-
-    archive_bytes = args.aot.read_bytes()
+def load_aot(archive_bytes, case, identity):
     archive = json.loads(archive_bytes)
     if any(archive.get(key) != value for key, value in identity.items()):
         raise ValueError("AOT archive does not match the manifest, kernel, or case")
     if set(archive["configs"]) != set(case["config_ids"]):
         raise ValueError("AOT archive must cover every declared config")
 
-    def verify(artifacts):
-        for key, jit in artifacts.items():
-            if jit["status"] != "ok":
-                continue
-            aot = archive["configs"][key]
-            if aot["status"] != "ok":
-                jit.update(status="aot_compile_failed", reason=aot["reason"])
-                continue
-            match = check_artifact(jit, aot)
-            jit["aot_check"] = match
-            if match["status"] != "matched" or not match["ttgir_match"]:
-                jit.update(status="artifact_mismatch", reason="AOT/JIT artifact check failed")
+    return archive
 
+
+def verify_artifacts(archive, artifacts):
+    for key, jit in artifacts.items():
+        if jit["status"] != "ok":
+            continue
+        aot = archive["configs"][key]
+        if aot["status"] != "ok":
+            jit.update(status="aot_compile_failed", reason=aot["reason"])
+            continue
+        match = check_artifact(jit, aot)
+        jit["aot_check"] = match
+        if match["status"] != "matched" or not match["ttgir_match"]:
+            jit.update(status="artifact_mismatch", reason="AOT/JIT artifact check failed")
+
+
+def measure_case(args, case, configs, manifest, identity):
+    from functools import partial
+    from validation.runner import measure
+
+    archive_bytes = args.aot.read_bytes()
+    archive = load_aot(archive_bytes, case, identity)
     run = SimpleNamespace(cache="both", blocks=10, seed=100 + args.session, warmup_seconds=2)
     report = measure(
         dict(case, shape=[case[key] for key in SHAPE_FIELDS]), configs, manifest["input_seed"], run,
-        identity["manifest_sha256"], verify_artifacts=verify, kernel=fused_attention,
+        identity["manifest_sha256"], verify_artifacts=partial(verify_artifacts, archive),
+        kernel=fused_attention,
         prepare=prepare_candidates,
     )
     report.update(workload={key: case[key] for key in SHAPE_FIELDS}, kernel_key=identity["kernel_key"],

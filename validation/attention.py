@@ -103,7 +103,7 @@ def reference(q, k, v, causal):
     return output, lse
 
 
-def prepare_candidates(case, configs, seed):
+def prepare_candidates(case, configs, seed, arch=89):
     import torch
     from triton.runtime.errors import PTXASError
 
@@ -128,7 +128,7 @@ def prepare_candidates(case, configs, seed):
         except (triton.CompilationError, PTXASError) as error:
             artifacts[key] = {"status": "compile_failed", "reason": str(error)}
             continue
-        row = {**jit_artifact(compiled, grid, 89), **options}
+        row = {**jit_artifact(compiled, grid, arch), **options}
         artifacts[key] = row
         output.fill_(torch.nan)
         lse.fill_(torch.nan)

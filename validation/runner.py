@@ -240,7 +240,8 @@ def prepare_candidates(case, configs, seed, arch=89, kernel=dense_gemm, tensor_c
 
 
 def measure(case, configs, input_seed, args, manifest_sha, verify_artifacts=None, *,
-            device_arch=89, kernel=dense_gemm, tensor_copy=False, spark=None, prepare=None):
+            device_arch=89, kernel=dense_gemm, tensor_copy=False, spark=None, prepare=None,
+            retry_rejected_blocks=True):
     source = source_info()
     if torch.cuda.device_count() != 1:
         raise RuntimeError("Require exactly one visible CUDA device")
@@ -299,9 +300,10 @@ def measure(case, configs, input_seed, args, manifest_sha, verify_artifacts=None
                 while operations and time.monotonic() < deadline:
                     warmup()
             order = list(trials)
+            attempts = 3 if spark is not None and retry_rejected_blocks else 1
             for block in range(args.blocks):
                 rng.shuffle(order)
-                for attempt in range(3 if spark is not None else 1):
+                for attempt in range(attempts):
                     block_samples = []
                     block_state = spark.begin_block() if spark and order else None
                     start_ns = time.monotonic_ns()
@@ -320,7 +322,7 @@ def measure(case, configs, input_seed, args, manifest_sha, verify_artifacts=None
                         break
                     rejected_blocks.append({"block": block, "attempt": attempt + 1,
                                             "reason": reason, "samples": block_samples})
-                    if attempt < 2:
+                    if attempt + 1 < attempts:
                         spark.stabilize(warmup, telemetry, True)
                 else:
                     # Retain the failed session and its rejected trials in the seal.
