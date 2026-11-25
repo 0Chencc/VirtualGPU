@@ -63,6 +63,9 @@ _RE_LOAD_USE = re.compile(
     r"(?:ttg\.async_copy_global_to_local|tt\.load)\s+(%[A-Za-z0-9_]+)\b"
 )
 _RE_STORE_USE = re.compile(r"tt\.store\s+(%[A-Za-z0-9_]+)\b")
+_RE_SCF_FOR_IV = re.compile(r"scf\.for\s+(%[A-Za-z0-9_]+)\s*=\s*(%[A-Za-z0-9_]+)\b")
+_RE_SCF_FOR_ITER_ARGS = re.compile(r"iter_args\(([^)]*)\)")
+_RE_ITER_BIND = re.compile(r"(%[A-Za-z0-9_]+)\s*=\s*(%[A-Za-z0-9_]+)")
 
 
 def _c_div(a: int, b: int) -> int:
@@ -112,17 +115,18 @@ def _parse_func_params(ttgir: str) -> list[tuple[str, bool]]:
     return params
 
 
-def _extract_top_level_lines(ttgir: str) -> tuple[list[str], list[str]]:
-    """Split tt.func body into top-level lines (outside scf.for) and inner-loop lines."""
+def _extract_top_level_lines(ttgir: str) -> tuple[list[str], list[str], str | None]:
+    """Split tt.func body into top-level lines (outside scf.for), inner-loop lines, and the scf.for header."""
     func_pos = ttgir.find("tt.func ")
     if func_pos == -1:
-        return [], []
+        return [], [], None
     body_start = ttgir.find("{", func_pos)
     if body_start == -1:
-        return [], []
+        return [], [], None
 
     top_lines: list[str] = []
     loop_lines: list[str] = []
+    loop_header: str | None = None
     depth = 0
     in_loop = False
     for raw in ttgir[body_start + 1 :].splitlines():
@@ -135,6 +139,8 @@ def _extract_top_level_lines(ttgir: str) -> tuple[list[str], list[str]]:
             break
         if depth == 0 and "scf.for " in line:
             in_loop = True
+            if loop_header is None:
+                loop_header = line
             depth += opens - closes
             continue
         if in_loop:
@@ -147,7 +153,22 @@ def _extract_top_level_lines(ttgir: str) -> tuple[list[str], list[str]]:
         else:
             top_lines.append(line)
             depth += opens - closes
-    return top_lines, loop_lines
+    return top_lines, loop_lines, loop_header
+
+
+def _parse_scf_for_bindings(loop_header: str | None) -> list[tuple[str, ...]]:
+    """Bind scf.for induction variable and iter_args to their iteration-0 values."""
+    if not loop_header:
+        return []
+    bindings: list[tuple[str, ...]] = []
+    m_iv = _RE_SCF_FOR_IV.search(loop_header)
+    if m_iv:
+        bindings.append(("pass", m_iv.group(1), m_iv.group(2)))
+    m_iter = _RE_SCF_FOR_ITER_ARGS.search(loop_header)
+    if m_iter:
+        for dst, src in _RE_ITER_BIND.findall(m_iter.group(1)):
+            bindings.append(("pass", dst, src))
+    return bindings
 
 
 def _compile_instructions(lines: list[str]) -> tuple[
@@ -232,7 +253,7 @@ def evaluate_ttgir_cta_offsets(
     without pattern-matching kernel idioms.
     """
     params = _parse_func_params(ttgir)
-    top_lines, loop_lines = _extract_top_level_lines(ttgir)
+    top_lines, loop_lines, loop_header = _extract_top_level_lines(ttgir)
     has_nested_loop = any("scf.for " in ln for ln in loop_lines)
     if has_nested_loop:
         # Persistent kernels compute per-tile coordinates inside an outer scf.for;
@@ -246,9 +267,14 @@ def evaluate_ttgir_cta_offsets(
 
     instrs, scratch_to_ptr, tma_uses, ptr_sinks = _compile_instructions(top_lines)
 
-    # Also collect ptr/TMA sinks inside the loop if prologue didn't issue loads
-    # (e.g., unpipelined kernels where tt.load is only inside scf.for).
-    _, _, loop_tma, loop_sinks = _compile_instructions(loop_lines)
+    # Evaluate iteration 0 of scf.for (binding IV -> lower bound and iter_args -> inits)
+    # so unpipelined kernels (e.g. num_stages=1 where tt.addptr + tt.load stay inside
+    # the loop body) recover exact tile offsets without falling back to linear maps.
+    loop_instrs, loop_scratch_to_ptr, loop_tma, loop_sinks = _compile_instructions(loop_lines)
+    if loop_instrs or loop_sinks or loop_tma:
+        instrs = instrs + _parse_scf_for_bindings(loop_header) + loop_instrs
+        for k, v in loop_scratch_to_ptr.items():
+            scratch_to_ptr.setdefault(k, v)
     all_ptr_sinks = ptr_sinks + [s for s in loop_sinks if s not in ptr_sinks]
     all_tma_uses = tma_uses + [u for u in loop_tma if u not in tma_uses]
 

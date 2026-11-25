@@ -27,7 +27,7 @@ from virtualgpu.frontend.compiler import (
 from virtualgpu.frontend.scalar_eval import evaluate_ttgir_cta_offsets
 from virtualgpu.frontend.ttgir import dtype_bits, parse_ttgir_summary
 
-KERNEL_IR_CACHE_VERSION = "1"
+KERNEL_IR_CACHE_VERSION = "2"
 _IR_MEMORY_CACHE: dict[str, tuple[dict[str, Any], str]] = {}
 
 

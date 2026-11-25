@@ -698,3 +698,66 @@ def test_persistent_kernel_emits_explicit_diagnostic() -> None:
     jsonschema.validate(instance=ir, schema=schema)
     assert "persistent_kernel_unmodeled" in ir["diagnostics"]
     assert "linear_access_fallback" in ir["diagnostics"]
+
+
+@triton.jit
+def _inloop_addr_gemm(
+    A, B, C,
+    M: tl.constexpr, N: tl.constexpr, K: tl.constexpr,
+    BM: tl.constexpr, BN: tl.constexpr, BK: tl.constexpr, GROUP_M: tl.constexpr,
+):
+    pid = tl.program_id(0)
+    grid_m = tl.cdiv(M, BM)
+    grid_n = tl.cdiv(N, BN)
+    group = pid // (GROUP_M * grid_n)
+    first_m = group * GROUP_M
+    group_size = tl.minimum(grid_m - first_m, GROUP_M)
+    local_id = pid % (GROUP_M * grid_n)
+    rows = (first_m + local_id % group_size) * BM + tl.arange(0, BM)
+    cols = (local_id // group_size) * BN + tl.arange(0, BN)
+    offsets = tl.arange(0, BK)
+    acc = tl.full((BM, BN), 0, tl.float32)
+    for step in range(tl.cdiv(K, BK)):
+        inner = step * BK + offsets
+        a = tl.load(A + rows[:, None] * K + inner[None, :], (rows[:, None] < M) & (inner[None, :] < K), other=0)
+        b = tl.load(B + inner[:, None] * N + cols[None, :], (inner[:, None] < K) & (cols[None, :] < N), other=0)
+        acc = tl.dot(a, b, acc)
+    tl.store(C + rows[:, None] * N + cols[None, :], acc.to(tl.float16), (rows[:, None] < M) & (cols[None, :] < N))
+
+
+def test_num_stages_1_2_3_recover_identical_access_map_without_fallback() -> None:
+    """num_stages=1 (no software pipelining) must recover the exact same access_map as num_stages=2/3."""
+    call_args = (MockTensor("f16", 0x10000), MockTensor("f16", 0x200000), MockTensor("f16", 0x400000))
+    irs_inloop = [
+        extract_gemm_kernel_ir(
+            _inloop_addr_gemm,
+            M=256,
+            N=256,
+            K=256,
+            config={"M": 256, "N": 256, "K": 256, "BM": 64, "BN": 64, "BK": 32, "GROUP_M": 4, "num_warps": 4, "num_stages": ns},
+            target_arch="sm_89",
+            dtype="f16",
+            call_args=call_args,
+        )
+        for ns in (1, 2, 3)
+    ]
+    for ns, ir in zip((1, 2, 3), irs_inloop):
+        assert "linear_access_fallback" not in ir["diagnostics"], f"num_stages={ns} fell back to linear access map"
+    assert irs_inloop[0]["access_map"] == irs_inloop[1]["access_map"] == irs_inloop[2]["access_map"]
+
+    # Also verify pointer-iter_args stepping kernels across num_stages=1/2/3
+    irs_ptr_step = [
+        extract_gemm_kernel_ir(
+            _matmul_kernel,
+            M=256,
+            N=256,
+            K=256,
+            config={"BLOCK_SIZE_M": 64, "BLOCK_SIZE_N": 64, "BLOCK_SIZE_K": 32, "GROUP_SIZE_M": 4, "num_warps": 4, "num_stages": ns},
+            target_arch="sm_89",
+            dtype="f16",
+        )
+        for ns in (1, 2, 3)
+    ]
+    for ns, ir in zip((1, 2, 3), irs_ptr_step):
+        assert "linear_access_fallback" not in ir["diagnostics"], f"iter_args num_stages={ns} fell back"
+    assert irs_ptr_step[0]["access_map"] == irs_ptr_step[1]["access_map"] == irs_ptr_step[2]["access_map"]
