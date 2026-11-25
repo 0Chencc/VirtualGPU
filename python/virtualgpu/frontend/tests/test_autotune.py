@@ -289,3 +289,62 @@ def test_virtualgpu_autotune_decorator_env_switch(tmp_path: Path, monkeypatch: p
     )(_autotuned_gemm.fn)
     assert hasattr(wrapped, "vgpu_reports")
     assert wrapped.early_config_prune is not None
+    assert wrapped._do_bench is not None
+
+
+def test_kernel_ir_disk_cache_and_predict_batch_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from virtualgpu.frontend import compiler as comp_mod
+    from virtualgpu.frontend import triton_gemm as tg_mod
+
+    batch_calls = 0
+
+    class _BatchCore(_DeterministicCore):
+        @staticmethod
+        def predict_batch(
+            kernel_ir_jsons: list[str],
+            profile_json: str,
+            l2_state: str = "cold",
+            draws: int = 32,
+            seed: int = 17,
+        ) -> list[dict[str, Any]]:
+            nonlocal batch_calls
+            batch_calls += 1
+            return [
+                _DeterministicCore.predict(ir_j, profile_json, l2_state=l2_state, draws=draws, seed=seed)
+                for ir_j in kernel_ir_jsons
+            ]
+
+    cache_dir = tmp_path / "cache"
+    comp_mod._MEMORY_CACHE.clear()
+    tg_mod._IR_MEMORY_CACHE.clear()
+    r1 = autotune_offline(
+        _autotuned_gemm,
+        shape=(1024, 1024, 512),
+        profile=PROFILE_EXAMPLE_PATH,
+        draws=4,
+        top_k=2,
+        cache_dir=cache_dir,
+        core_module=_BatchCore,
+    )
+    assert r1.status == "ok"
+    assert batch_calls == 1
+
+    # Clear memory caches and poison both triton.compile and scalar evaluator:
+    # second run must hit on-disk KernelIR cache cleanly.
+    comp_mod._MEMORY_CACHE.clear()
+    tg_mod._IR_MEMORY_CACHE.clear()
+    monkeypatch.setattr(triton, "compile", lambda *a, **k: (_ for _ in ()).throw(AssertionError("should hit IR cache")))
+    monkeypatch.setattr(tg_mod, "evaluate_ttgir_cta_offsets", lambda *a, **k: (_ for _ in ()).throw(AssertionError("should skip scalar_eval")))
+
+    r2 = autotune_offline(
+        _autotuned_gemm,
+        shape=(1024, 1024, 512),
+        profile=PROFILE_EXAMPLE_PATH,
+        draws=4,
+        top_k=2,
+        cache_dir=cache_dir,
+        core_module=_BatchCore,
+    )
+    assert r2.status == "ok"
+    assert batch_calls == 2
+    assert r2.shortlist == r1.shortlist

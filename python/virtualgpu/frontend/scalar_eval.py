@@ -252,120 +252,206 @@ def evaluate_ttgir_cta_offsets(
     all_ptr_sinks = ptr_sinks + [s for s in loop_sinks if s not in ptr_sinks]
     all_tma_uses = tma_uses + [u for u in loop_tma if u not in tma_uses]
 
-    # Build base environment for kernel arguments.
-    base_env: dict[str, Any] = {}
+    # Build compact integer-indexed slots instead of per-CTA dict copies.
+    ssa_to_slot: dict[str, int] = {}
+
+    def _slot(name: str) -> int:
+        idx = ssa_to_slot.get(name)
+        if idx is None:
+            idx = len(ssa_to_slot)
+            ssa_to_slot[name] = idx
+        return idx
+
+    # Seed parameter slots and track which slots are invariant across CTAs.
     ptr_arg_indices: dict[str, int] = {}
     ptr_counter = 0
+    param_values: dict[int, Any] = {}
     for idx, (ssa, is_ptr) in enumerate(params):
+        sl = _slot(ssa)
         if is_ptr:
-            base_env[ssa] = PtrVal(arg_index=ptr_counter, elem_offset=0)
+            param_values[sl] = PtrVal(arg_index=ptr_counter, elem_offset=0)
             ptr_arg_indices[ssa] = ptr_counter
             ptr_counter += 1
         else:
             name = ssa.lstrip("%")
             if param_int_values is not None and idx < len(param_int_values) and param_int_values[idx] is not None:
-                base_env[ssa] = int(param_int_values[idx])  # type: ignore[arg-type]
+                param_values[sl] = int(param_int_values[idx])  # type: ignore[arg-type]
             elif name in runtime_int_args:
-                base_env[ssa] = int(runtime_int_args[name])
+                param_values[sl] = int(runtime_int_args[name])
 
-    gx, gy, gz = grid
-    ptr_elem_offsets: dict[int, list[int]] = {}
-    tma_coords: dict[int, list[tuple[int, int]]] = {}
-    data_dependent = False
+    # Pre-assign slots for every SSA symbol referenced by instructions or sinks.
+    for ins in instrs:
+        op = ins[0]
+        _slot(ins[1])
+        if op == "pass":
+            _slot(ins[2])
+        elif op in ("binop", "cmpi", "select"):
+            _slot(ins[3])
+            _slot(ins[4])
+            if op == "select":
+                _slot(ins[2])
+        elif op == "addptr":
+            _slot(ins[2])
+            _slot(ins[3])
 
-    # Map TMA descriptor SSA -> ptr arg index
+    sink_slots: list[int] = [_slot(s) for s in all_ptr_sinks]
     desc_to_ptr_idx: dict[str, int] = {}
     for desc_ssa, ptr_ssa in scratch_to_ptr.items():
         if ptr_ssa in ptr_arg_indices:
             desc_to_ptr_idx[desc_ssa] = ptr_arg_indices[ptr_ssa]
+    tma_sink_slots: list[tuple[int, int, int]] = []
+    for desc_ssa, c0_ssa, c1_ssa in all_tma_uses:
+        p_idx = desc_to_ptr_idx.get(desc_ssa)
+        if p_idx is not None:
+            tma_sink_slots.append((p_idx, _slot(c0_ssa), _slot(c1_ssa)))
+
+    gx, gy, gz = grid
+    slots: list[Any] = [None] * len(ssa_to_slot)
+    for sl, val in param_values.items():
+        slots[sl] = val
+
+    # Partition instructions into CTA-invariant (evaluated once) and PID-dependent
+    # (evaluated per CTA in-place on `slots`, avoiding dict copies).
+    pid_dep: set[int] = set()
+    var_instrs: list[tuple[Any, ...]] = []
+    data_dependent = False
+
+    def _exec_one(ins_code: tuple[Any, ...], px: int, py: int, pz: int) -> None:
+        nonlocal data_dependent
+        op = ins_code[0]
+        dst = ins_code[1]
+        if op == "const":
+            slots[dst] = ins_code[2]
+        elif op == "pid":
+            axis = ins_code[2]
+            slots[dst] = px if axis == 0 else (py if axis == 1 else pz)
+        elif op == "nprog":
+            axis = ins_code[2]
+            slots[dst] = gx if axis == 0 else (gy if axis == 1 else gz)
+        elif op == "pass":
+            val = slots[ins_code[2]]
+            if val is not None:
+                slots[dst] = val
+        elif op == "binop":
+            bop, a_sl, b_sl = ins_code[2], ins_code[3], ins_code[4]
+            av, bv = slots[a_sl], slots[b_sl]
+            if isinstance(av, int) and isinstance(bv, int):
+                if bop == "addi":
+                    slots[dst] = av + bv
+                elif bop == "subi":
+                    slots[dst] = av - bv
+                elif bop == "muli":
+                    slots[dst] = av * bv
+                elif bop in ("divsi", "divui"):
+                    slots[dst] = _c_div(av, bv)
+                elif bop in ("remsi", "remui"):
+                    slots[dst] = _c_rem(av, bv)
+                elif bop in ("minsi", "minui"):
+                    slots[dst] = av if av < bv else bv
+                elif bop in ("maxsi", "maxui"):
+                    slots[dst] = av if av > bv else bv
+                elif bop == "andi":
+                    slots[dst] = av & bv
+                elif bop == "ori":
+                    slots[dst] = av | bv
+                elif bop == "xori":
+                    slots[dst] = av ^ bv
+                elif bop == "shli":
+                    slots[dst] = av << bv
+                elif bop in ("shrsi", "shrui"):
+                    slots[dst] = av >> bv
+            elif av == "_DATA_DEP" or bv == "_DATA_DEP":
+                slots[dst] = "_DATA_DEP"
+        elif op == "cmpi":
+            pred, a_sl, b_sl = ins_code[2], ins_code[3], ins_code[4]
+            av, bv = slots[a_sl], slots[b_sl]
+            if isinstance(av, int) and isinstance(bv, int):
+                slots[dst] = _eval_cmpi(pred, av, bv)
+        elif op == "select":
+            c_sl, t_sl, f_sl = ins_code[2], ins_code[3], ins_code[4]
+            cv = slots[c_sl]
+            if isinstance(cv, int):
+                chosen = slots[t_sl] if cv else slots[f_sl]
+                if chosen is not None:
+                    slots[dst] = chosen
+        elif op == "addptr":
+            p_sl, o_sl = ins_code[2], ins_code[3]
+            pv, ov = slots[p_sl], slots[o_sl]
+            if isinstance(pv, PtrVal) and isinstance(ov, int):
+                slots[dst] = PtrVal(pv.arg_index, pv.elem_offset + ov)
+            elif ov == "_DATA_DEP":
+                data_dependent = True
+        elif op == "load_unknown":
+            slots[dst] = "_DATA_DEP"
+
+    axis_map = {"x": 0, "y": 1, "z": 2}
+    for ins in instrs:
+        op = ins[0]
+        dst = ssa_to_slot[ins[1]]
+        if op == "const":
+            compiled_ins: tuple[Any, ...] = ("const", dst, int(ins[2]))
+            depends = False
+        elif op == "pid":
+            compiled_ins = ("pid", dst, axis_map[ins[2]])
+            depends = True
+        elif op == "nprog":
+            compiled_ins = ("nprog", dst, axis_map[ins[2]])
+            depends = False
+        elif op == "pass":
+            src_sl = ssa_to_slot[ins[2]]
+            compiled_ins = ("pass", dst, src_sl)
+            depends = src_sl in pid_dep
+        elif op == "binop":
+            a_sl, b_sl = ssa_to_slot[ins[3]], ssa_to_slot[ins[4]]
+            compiled_ins = ("binop", dst, ins[2], a_sl, b_sl)
+            depends = (a_sl in pid_dep) or (b_sl in pid_dep)
+        elif op == "cmpi":
+            a_sl, b_sl = ssa_to_slot[ins[3]], ssa_to_slot[ins[4]]
+            compiled_ins = ("cmpi", dst, ins[2], a_sl, b_sl)
+            depends = (a_sl in pid_dep) or (b_sl in pid_dep)
+        elif op == "select":
+            c_sl, t_sl, f_sl = ssa_to_slot[ins[2]], ssa_to_slot[ins[3]], ssa_to_slot[ins[4]]
+            compiled_ins = ("select", dst, c_sl, t_sl, f_sl)
+            depends = (c_sl in pid_dep) or (t_sl in pid_dep) or (f_sl in pid_dep)
+        elif op == "addptr":
+            p_sl, o_sl = ssa_to_slot[ins[2]], ssa_to_slot[ins[3]]
+            compiled_ins = ("addptr", dst, p_sl, o_sl)
+            depends = (p_sl in pid_dep) or (o_sl in pid_dep)
+        else:
+            compiled_ins = ("load_unknown", dst)
+            depends = False
+
+        if depends:
+            pid_dep.add(dst)
+            var_instrs.append(compiled_ins)
+        else:
+            _exec_one(compiled_ins, 0, 0, 0)
+
+    ptr_elem_offsets: dict[int, list[int]] = {}
+    tma_coords: dict[int, list[tuple[int, int]]] = {}
 
     for pz in range(gz):
         for py in range(gy):
             for px in range(gx):
-                env = dict(base_env)
-                for ins in instrs:
-                    op = ins[0]
-                    dst = ins[1]
-                    if op == "const":
-                        env[dst] = int(ins[2])
-                    elif op == "pid":
-                        axis = ins[2]
-                        env[dst] = px if axis == "x" else (py if axis == "y" else pz)
-                    elif op == "nprog":
-                        axis = ins[2]
-                        env[dst] = gx if axis == "x" else (gy if axis == "y" else gz)
-                    elif op == "pass":
-                        if ins[2] in env:
-                            env[dst] = env[ins[2]]
-                    elif op == "binop":
-                        bop, a_s, b_s = ins[2], ins[3], ins[4]
-                        av, bv = env.get(a_s), env.get(b_s)
-                        if isinstance(av, int) and isinstance(bv, int):
-                            if bop == "addi":
-                                env[dst] = av + bv
-                            elif bop == "subi":
-                                env[dst] = av - bv
-                            elif bop == "muli":
-                                env[dst] = av * bv
-                            elif bop in ("divsi", "divui"):
-                                env[dst] = _c_div(av, bv)
-                            elif bop in ("remsi", "remui"):
-                                env[dst] = _c_rem(av, bv)
-                            elif bop in ("minsi", "minui"):
-                                env[dst] = min(av, bv)
-                            elif bop in ("maxsi", "maxui"):
-                                env[dst] = max(av, bv)
-                            elif bop == "andi":
-                                env[dst] = av & bv
-                            elif bop == "ori":
-                                env[dst] = av | bv
-                            elif bop == "xori":
-                                env[dst] = av ^ bv
-                            elif bop == "shli":
-                                env[dst] = av << bv
-                            elif bop in ("shrsi", "shrui"):
-                                env[dst] = av >> bv
-                        elif av == "_DATA_DEP" or bv == "_DATA_DEP":
-                            env[dst] = "_DATA_DEP"
-                    elif op == "cmpi":
-                        pred, a_s, b_s = ins[2], ins[3], ins[4]
-                        av, bv = env.get(a_s), env.get(b_s)
-                        if isinstance(av, int) and isinstance(bv, int):
-                            env[dst] = _eval_cmpi(pred, av, bv)
-                    elif op == "select":
-                        c_s, t_s, f_s = ins[2], ins[3], ins[4]
-                        cv = env.get(c_s)
-                        if isinstance(cv, int):
-                            chosen = env.get(t_s) if cv else env.get(f_s)
-                            if chosen is not None:
-                                env[dst] = chosen
-                    elif op == "addptr":
-                        p_s, o_s = ins[2], ins[3]
-                        pv, ov = env.get(p_s), env.get(o_s)
-                        if isinstance(pv, PtrVal) and isinstance(ov, int):
-                            env[dst] = PtrVal(pv.arg_index, pv.elem_offset + ov)
-                        elif ov == "_DATA_DEP":
-                            data_dependent = True
-                    elif op == "load_unknown":
-                        env[dst] = "_DATA_DEP"
+                for ins_code in var_instrs:
+                    _exec_one(ins_code, px, py, pz)
 
-                # Record the first evaluated offset for each pointer arg on this CTA.
                 seen_ptrs: set[int] = set()
-                for sink in all_ptr_sinks:
-                    val = env.get(sink)
+                for sl in sink_slots:
+                    val = slots[sl]
                     if isinstance(val, PtrVal) and val.arg_index not in seen_ptrs:
                         seen_ptrs.add(val.arg_index)
                         ptr_elem_offsets.setdefault(val.arg_index, []).append(val.elem_offset)
 
-                seen_tma: set[int] = set()
-                for desc_ssa, c0_ssa, c1_ssa in all_tma_uses:
-                    p_idx = desc_to_ptr_idx.get(desc_ssa)
-                    if p_idx is None or p_idx in seen_tma:
-                        continue
-                    c0, c1 = env.get(c0_ssa), env.get(c1_ssa)
-                    if isinstance(c0, int) and isinstance(c1, int):
-                        seen_tma.add(p_idx)
-                        tma_coords.setdefault(p_idx, []).append((c0, c1))
+                if tma_sink_slots:
+                    seen_tma: set[int] = set()
+                    for p_idx, c0_sl, c1_sl in tma_sink_slots:
+                        if p_idx in seen_tma:
+                            continue
+                        c0, c1 = slots[c0_sl], slots[c1_sl]
+                        if isinstance(c0, int) and isinstance(c1, int):
+                            seen_tma.add(p_idx)
+                            tma_coords.setdefault(p_idx, []).append((c0, c1))
 
     return ScalarEvalResult(
         ptr_elem_offsets=ptr_elem_offsets,

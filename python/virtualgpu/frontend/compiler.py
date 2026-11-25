@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ProcessPoolExecutor
+from dataclasses import asdict, dataclass
+import functools
 import hashlib
+import importlib
 import json
 import os
 from pathlib import Path
 import re
 import subprocess
 import tempfile
-from dataclasses import asdict, dataclass
-from typing import Any
+from typing import Any, Sequence
 
 
 _CANONICAL_TO_TORCH_DTYPE: dict[str, str] = {
@@ -223,8 +226,9 @@ def find_bundled_ptxas(arch_num: int) -> tuple[str, str]:
     raise FileNotFoundError(f"Could not find ptxas binary under {bin_dir}")
 
 
+@functools.lru_cache(maxsize=16)
 def get_ptxas_version(ptxas_path: str) -> str:
-    """Return the version string of a ptxas binary."""
+    """Return the version string of a ptxas binary (cached per path)."""
     out = subprocess.check_output([ptxas_path, "--version"], text=True, stderr=subprocess.STDOUT)
     m = _RE_VERSION.search(out)
     if m:
@@ -563,3 +567,209 @@ def compile_triton_aot(
                 pass
 
     return artifacts
+
+
+def _unwrap_to_jit_fn(obj: Any) -> Any:
+    """Unwrap Autotuner/wrapper layers down to the underlying Triton JITFunction."""
+    while hasattr(obj, "fn") and not hasattr(obj, "cache_key"):
+        obj = obj.fn
+    return obj
+
+
+def _can_import_kernel(fn: Any) -> tuple[str, str] | None:
+    """Return (module, qualname) if fn is a top-level importable Triton JITFunction."""
+    mod_name = getattr(fn, "__module__", None)
+    qualname = getattr(fn, "__qualname__", None) or getattr(fn, "__name__", None)
+    if not mod_name or not qualname or "<locals>" in qualname or mod_name == "__main__":
+        return None
+    try:
+        mod = importlib.import_module(mod_name)
+        obj: Any = mod
+        for part in qualname.split("."):
+            obj = getattr(obj, part)
+        if _unwrap_to_jit_fn(obj) is fn:
+            return mod_name, qualname
+    except Exception:
+        return None
+    return None
+
+
+def _aot_worker(task: tuple[Any, ...]) -> tuple[int, dict[str, Any] | None, str | None]:
+    """Process-pool worker that compiles one Triton config AOT on CPU."""
+    (
+        idx,
+        mod_name,
+        qualname,
+        parent_sys_path,
+        signature,
+        constexprs,
+        target_arch,
+        num_warps,
+        num_stages,
+        attrs,
+        options,
+        warp_size,
+        enable_fp_fusion,
+        cache_dir_str,
+        triton_cache_dir,
+        use_cache,
+    ) = task
+    try:
+        import sys
+
+        for p in parent_sys_path:
+            if p not in sys.path:
+                sys.path.append(p)
+        if triton_cache_dir:
+            import triton
+
+            triton.knobs.cache.dir = triton_cache_dir
+        mod = importlib.import_module(mod_name)
+        obj: Any = mod
+        for part in qualname.split("."):
+            obj = getattr(obj, part)
+        obj = _unwrap_to_jit_fn(obj)
+        art = compile_triton_aot(
+            fn=obj,
+            signature=signature,
+            constexprs=constexprs,
+            target_arch=target_arch,
+            num_warps=num_warps,
+            num_stages=num_stages,
+            attrs=attrs,
+            options=options,
+            warp_size=warp_size,
+            enable_fp_fusion=enable_fp_fusion,
+            cache_dir=cache_dir_str,
+            use_cache=use_cache,
+        )
+        return idx, _artifacts_to_dict(art), None
+    except Exception as exc:
+        return idx, None, f"{type(exc).__name__}: {exc}"
+
+
+def compile_triton_aot_batch(
+    fn: Any,
+    specs: Sequence[dict[str, Any]],
+    *,
+    target_arch: str,
+    warp_size: int = 32,
+    enable_fp_fusion: bool = True,
+    cache_dir: str | Path | None = None,
+    use_cache: bool = True,
+    max_workers: int | None = None,
+) -> list[CompiledArtifacts | Exception]:
+    """Compile multiple Triton configs AOT, using a process pool for cache misses.
+
+    Each element of `specs` is a dict with keys: `signature`, `constexprs`,
+    `num_warps`, `num_stages`, `attrs`, `options`.
+    """
+    import triton
+
+    arch_num = parse_arch_number(target_arch)
+    resolved_dir = Path(cache_dir) if cache_dir is not None else default_aot_cache_dir()
+    _, ptxas_path = find_bundled_ptxas(arch_num)
+    assembler_ver = get_ptxas_version(ptxas_path)
+
+    results: list[CompiledArtifacts | Exception | None] = [None] * len(specs)
+    misses: list[tuple[int, dict[str, Any], str | None]] = []
+
+    for idx, spec in enumerate(specs):
+        compile_options = dict(spec.get("options") or {})
+        compile_options.setdefault("num_warps", spec["num_warps"])
+        compile_options.setdefault("num_stages", spec["num_stages"])
+        compile_options.setdefault("enable_fp_fusion", enable_fp_fusion)
+
+        cache_key: str | None = None
+        if use_cache:
+            cache_key = _compute_aot_cache_key(
+                fn=fn,
+                signature=spec["signature"],
+                constexprs=spec["constexprs"],
+                attrs=spec.get("attrs"),
+                options=compile_options,
+                target_arch=f"sm_{arch_num}",
+                warp_size=warp_size,
+                triton_version=triton.__version__,
+                assembler_version=assembler_ver,
+            )
+            if cache_key in _MEMORY_CACHE:
+                results[idx] = _MEMORY_CACHE[cache_key]
+                continue
+            disk_path = resolved_dir / f"{cache_key}.json"
+            if disk_path.is_file():
+                try:
+                    art = _artifacts_from_dict(json.loads(disk_path.read_text(encoding="utf-8")))
+                    _MEMORY_CACHE[cache_key] = art
+                    results[idx] = art
+                    continue
+                except (OSError, KeyError, ValueError, TypeError):
+                    pass
+        misses.append((idx, {**spec, "options": compile_options}, cache_key))
+
+    if not misses:
+        return [r for r in results if r is not None]
+
+    import_info = _can_import_kernel(fn) if len(misses) >= 2 else None
+    if import_info is not None:
+        import multiprocessing
+        import sys
+
+        mod_name, qualname = import_info
+        workers = min(max_workers or 8, len(misses), os.cpu_count() or 1)
+        parent_sys_path = tuple(sys.path)
+        triton_cache_dir = str(triton.knobs.cache.dir) if getattr(triton.knobs.cache, "dir", None) else None
+        tasks = [
+            (
+                idx,
+                mod_name,
+                qualname,
+                parent_sys_path,
+                sp["signature"],
+                sp["constexprs"],
+                target_arch,
+                sp["num_warps"],
+                sp["num_stages"],
+                sp.get("attrs"),
+                sp["options"],
+                warp_size,
+                enable_fp_fusion,
+                str(resolved_dir) if cache_dir is not None else None,
+                triton_cache_dir,
+                use_cache,
+            )
+            for idx, sp, _ in misses
+        ]
+        key_by_idx = {idx: ck for idx, _, ck in misses}
+        mp_ctx = multiprocessing.get_context("spawn")
+        with ProcessPoolExecutor(max_workers=workers, mp_context=mp_ctx) as pool:
+            for idx, art_dict, err_msg in pool.map(_aot_worker, tasks):
+                if art_dict is not None:
+                    art = _artifacts_from_dict(art_dict)
+                    results[idx] = art
+                    ck = key_by_idx.get(idx)
+                    if use_cache and ck is not None:
+                        _MEMORY_CACHE[ck] = art
+                else:
+                    results[idx] = RuntimeError(err_msg or "AOT worker failed")
+    else:
+        for idx, sp, _ in misses:
+            try:
+                results[idx] = compile_triton_aot(
+                    fn=fn,
+                    signature=sp["signature"],
+                    constexprs=sp["constexprs"],
+                    target_arch=target_arch,
+                    num_warps=sp["num_warps"],
+                    num_stages=sp["num_stages"],
+                    attrs=sp.get("attrs"),
+                    options=sp["options"],
+                    warp_size=warp_size,
+                    enable_fp_fusion=enable_fp_fusion,
+                    cache_dir=cache_dir,
+                    use_cache=use_cache,
+                )
+            except Exception as exc:
+                results[idx] = exc
+
+    return [r for r in results if r is not None]

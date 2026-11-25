@@ -2,18 +2,116 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import math
+import os
 from pathlib import Path
-from typing import Any
+import tempfile
+from typing import Any, Sequence
 
 from virtualgpu.frontend.compiler import (
     ARTIFACT_HASH_VERSION,
+    CompiledArtifacts,
     MockTensor,
+    _canonical_json,
+    _compute_aot_cache_key,
     compile_triton_aot,
+    compile_triton_aot_batch,
+    default_aot_cache_dir,
+    find_bundled_ptxas,
+    get_ptxas_version,
+    parse_arch_number,
     specialize_triton_call,
 )
 from virtualgpu.frontend.scalar_eval import evaluate_ttgir_cta_offsets
 from virtualgpu.frontend.ttgir import dtype_bits, parse_ttgir_summary
+
+KERNEL_IR_CACHE_VERSION = "1"
+_IR_MEMORY_CACHE: dict[str, tuple[dict[str, Any], str]] = {}
+
+
+def _default_ir_cache_dir(cache_dir: str | Path | None) -> Path:
+    base = Path(cache_dir) if cache_dir is not None else default_aot_cache_dir()
+    return base / "kernel_ir"
+
+
+def _compute_ir_cache_key(
+    *,
+    fn: Any,
+    signature: dict[str, str],
+    constexprs: dict[Any, Any],
+    attrs: dict[Any, Any] | None,
+    options: dict[str, Any],
+    target_arch: str,
+    M: int,
+    N: int,
+    K: int,
+    dtype: str,
+    acc_dtype: str,
+    stride_am: int,
+    stride_bk: int,
+    config: dict[str, Any],
+    triton_version: str,
+    assembler_version: str,
+) -> str:
+    aot_key = _compute_aot_cache_key(
+        fn=fn,
+        signature=signature,
+        constexprs=constexprs,
+        attrs=attrs,
+        options=options,
+        target_arch=target_arch,
+        warp_size=32,
+        triton_version=triton_version,
+        assembler_version=assembler_version,
+    )
+    payload = {
+        "ir_cache_version": KERNEL_IR_CACHE_VERSION,
+        "aot_key": aot_key,
+        "shape": [M, N, K],
+        "dtype": dtype,
+        "acc_dtype": acc_dtype,
+        "strides": [stride_am, stride_bk],
+        "config": _canonical_json(config),
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _load_ir_cache(ir_key: str, cache_dir: str | Path | None) -> tuple[dict[str, Any], str] | None:
+    if ir_key in _IR_MEMORY_CACHE:
+        return _IR_MEMORY_CACHE[ir_key]
+    disk_path = _default_ir_cache_dir(cache_dir) / f"{ir_key}.json"
+    if disk_path.is_file():
+        try:
+            ir_text = disk_path.read_text(encoding="utf-8")
+            ir_dict = json.loads(ir_text)
+            entry = (ir_dict, ir_text)
+            _IR_MEMORY_CACHE[ir_key] = entry
+            return entry
+        except (OSError, ValueError, TypeError):
+            return None
+    return None
+
+
+def _store_ir_cache(ir_key: str, ir_dict: dict[str, Any], cache_dir: str | Path | None) -> str:
+    ir_text = json.dumps(ir_dict)
+    _IR_MEMORY_CACHE[ir_key] = (ir_dict, ir_text)
+    ir_dir = _default_ir_cache_dir(cache_dir)
+    try:
+        ir_dir.mkdir(parents=True, exist_ok=True)
+        tmp_fd, tmp_name = tempfile.mkstemp(prefix=".ir_", suffix=".tmp", dir=str(ir_dir))
+        try:
+            with os.fdopen(tmp_fd, "w", encoding="utf-8") as f:
+                f.write(ir_text)
+            os.replace(tmp_name, ir_dir / f"{ir_key}.json")
+        except OSError:
+            if os.path.exists(tmp_name):
+                os.unlink(tmp_name)
+    except OSError:
+        pass
+    return ir_text
 
 
 def _align_up(value: int, alignment: int = 256) -> int:
@@ -203,89 +301,32 @@ def _recover_cta_tile_coords(
     return linear, True, ev.data_dependent, ev.has_nested_loop
 
 
-def extract_gemm_kernel_ir(
+def _assemble_gemm_kernel_ir(
     fn: Any,
+    artifacts: CompiledArtifacts,
     *,
     M: int,
     N: int,
     K: int,
     config: dict[str, int],
-    target_arch: str,
-    dtype: str = "f16",
-    acc_dtype: str = "f32",
-    call_args: tuple[Any, ...] | None = None,
-    strides_a: tuple[int, int] | None = None,
-    strides_b: tuple[int, int] | None = None,
-    strides_c: tuple[int, int] | None = None,
-    ptr_offset_a: int = 0x10000,
-    ptr_offset_b: int | None = None,
-    ptr_offset_c: int | None = None,
-    enable_fp_fusion: bool = True,
-    cache_dir: str | Path | None = None,
-    use_cache: bool = True,
+    dtype: str,
+    call_args: tuple[Any, ...],
+    signature: dict[str, str],
+    strides_a: tuple[int, int] | None,
+    strides_b: tuple[int, int] | None,
 ) -> dict[str, Any]:
-    """Compile a Triton GEMM kernel offline using Triton's runtime JIT binder
-    and emit a KernelIR v0.1 dictionary.
-    """
     block_m = int(config.get("BLOCK_SIZE_M", config.get("BLOCK_M", config.get("BM", 128))))
     block_n = int(config.get("BLOCK_SIZE_N", config.get("BLOCK_N", config.get("BN", 128))))
     block_k = int(config.get("BLOCK_SIZE_K", config.get("BLOCK_K", config.get("BK", 32))))
-    num_warps = int(config.get("num_warps", 4))
     num_stages = int(config.get("num_stages", 3))
 
     elem_bits = dtype_bits(dtype)
     elem_bytes = elem_bits // 8
     size_a = M * K * elem_bytes
     size_b = K * N * elem_bytes
-
-    # Virtual aligned addresses for L2 modeling (base_addr in KernelIR tensors)
     base_a = 0
     base_b = _align_up(size_a)
     base_c = _align_up(base_b + size_b)
-
-    # Pointer addresses passed to Triton's runtime specialization binder
-    sim_ptr_a = ptr_offset_a
-    sim_ptr_b = ptr_offset_b if ptr_offset_b is not None else _align_up(sim_ptr_a + size_a)
-    sim_ptr_c = ptr_offset_c if ptr_offset_c is not None else _align_up(sim_ptr_b + size_b)
-
-    if call_args is None:
-        call_args = _build_gemm_call_args(
-            fn,
-            dtype=dtype,
-            M=M,
-            N=N,
-            K=K,
-            base_a=sim_ptr_a,
-            base_b=sim_ptr_b,
-            base_c=sim_ptr_c,
-            strides_a=strides_a,
-            strides_b=strides_b,
-            strides_c=strides_c,
-        )
-
-    call_kwargs = dict(config)
-    call_kwargs.setdefault("enable_fp_fusion", enable_fp_fusion)
-    options_dict, signature, constexprs, attrs = specialize_triton_call(
-        fn=fn,
-        target_arch=target_arch,
-        args=call_args,
-        kwargs=call_kwargs,
-        enable_fp_fusion=enable_fp_fusion,
-    )
-
-    artifacts = compile_triton_aot(
-        fn=fn,
-        signature=signature,
-        constexprs=constexprs,
-        target_arch=target_arch,
-        num_warps=num_warps,
-        num_stages=num_stages,
-        attrs=attrs,
-        options=options_dict,
-        enable_fp_fusion=enable_fp_fusion,
-        cache_dir=cache_dir,
-        use_cache=use_cache,
-    )
 
     summary = parse_ttgir_summary(
         ttgir=artifacts.ttgir,
@@ -333,12 +374,7 @@ def extract_gemm_kernel_ir(
     tile_bytes_b = block_k * block_n * elem_bytes
     tile_bytes_c = block_m * block_n * elem_bytes
 
-    # Keep prologue.ops empty for standard GEMM: software-pipeline prefill and
-    # drain are accounted for by pipeline_loop.prefetch_distance in the model core
-    # to avoid double-counting global loads.
     prologue_ops: list[dict[str, Any]] = []
-
-    # Steady-state pipeline loop ops.
     smem_load_bytes = summary.smem_load_bytes_per_iter or (tile_bytes_a + tile_bytes_b)
     pipeline_ops: list[dict[str, Any]] = [
         {
@@ -526,3 +562,276 @@ def extract_gemm_kernel_ir(
         "diagnostics": diagnostics,
         "unsupported_features": unsupported_features,
     }
+
+
+def extract_gemm_kernel_ir(
+    fn: Any,
+    *,
+    M: int,
+    N: int,
+    K: int,
+    config: dict[str, int],
+    target_arch: str,
+    dtype: str = "f16",
+    acc_dtype: str = "f32",
+    call_args: tuple[Any, ...] | None = None,
+    strides_a: tuple[int, int] | None = None,
+    strides_b: tuple[int, int] | None = None,
+    strides_c: tuple[int, int] | None = None,
+    ptr_offset_a: int = 0x10000,
+    ptr_offset_b: int | None = None,
+    ptr_offset_c: int | None = None,
+    enable_fp_fusion: bool = True,
+    cache_dir: str | Path | None = None,
+    use_cache: bool = True,
+) -> dict[str, Any]:
+    """Compile a Triton GEMM kernel offline using Triton's runtime JIT binder
+    and emit a KernelIR v0.1 dictionary (with two-level KernelIR caching).
+    """
+    import triton
+
+    num_warps = int(config.get("num_warps", 4))
+    num_stages = int(config.get("num_stages", 3))
+    elem_bytes = dtype_bits(dtype) // 8
+    size_a = M * K * elem_bytes
+    size_b = K * N * elem_bytes
+
+    sim_ptr_a = ptr_offset_a
+    sim_ptr_b = ptr_offset_b if ptr_offset_b is not None else _align_up(sim_ptr_a + size_a)
+    sim_ptr_c = ptr_offset_c if ptr_offset_c is not None else _align_up(sim_ptr_b + size_b)
+
+    if call_args is None:
+        call_args = _build_gemm_call_args(
+            fn,
+            dtype=dtype,
+            M=M,
+            N=N,
+            K=K,
+            base_a=sim_ptr_a,
+            base_b=sim_ptr_b,
+            base_c=sim_ptr_c,
+            strides_a=strides_a,
+            strides_b=strides_b,
+            strides_c=strides_c,
+        )
+
+    call_kwargs = dict(config)
+    call_kwargs.setdefault("enable_fp_fusion", enable_fp_fusion)
+    options_dict, signature, constexprs, attrs = specialize_triton_call(
+        fn=fn,
+        target_arch=target_arch,
+        args=call_args,
+        kwargs=call_kwargs,
+        enable_fp_fusion=enable_fp_fusion,
+    )
+
+    arch_num = parse_arch_number(target_arch)
+    stride_am = strides_a[0] if strides_a is not None else K
+    stride_bk = strides_b[0] if strides_b is not None else N
+
+    ir_key: str | None = None
+    if use_cache:
+        _, ptxas_path = find_bundled_ptxas(arch_num)
+        assembler_ver = get_ptxas_version(ptxas_path)
+        ir_key = _compute_ir_cache_key(
+            fn=fn,
+            signature=signature,
+            constexprs=constexprs,
+            attrs=attrs,
+            options=options_dict,
+            target_arch=f"sm_{arch_num}",
+            M=M,
+            N=N,
+            K=K,
+            dtype=dtype,
+            acc_dtype=acc_dtype,
+            stride_am=stride_am,
+            stride_bk=stride_bk,
+            config=config,
+            triton_version=triton.__version__,
+            assembler_version=assembler_ver,
+        )
+        cached = _load_ir_cache(ir_key, cache_dir)
+        if cached is not None:
+            return cached[0]
+
+    artifacts = compile_triton_aot(
+        fn=fn,
+        signature=signature,
+        constexprs=constexprs,
+        target_arch=target_arch,
+        num_warps=num_warps,
+        num_stages=num_stages,
+        attrs=attrs,
+        options=options_dict,
+        enable_fp_fusion=enable_fp_fusion,
+        cache_dir=cache_dir,
+        use_cache=use_cache,
+    )
+
+    ir_dict = _assemble_gemm_kernel_ir(
+        fn,
+        artifacts,
+        M=M,
+        N=N,
+        K=K,
+        config=config,
+        dtype=dtype,
+        call_args=call_args,
+        signature=signature,
+        strides_a=strides_a,
+        strides_b=strides_b,
+    )
+    if use_cache and ir_key is not None:
+        _store_ir_cache(ir_key, ir_dict, cache_dir)
+    return ir_dict
+
+
+def extract_gemm_kernel_ir_batch(
+    fn: Any,
+    *,
+    M: int,
+    N: int,
+    K: int,
+    configs: Sequence[dict[str, int]],
+    target_arch: str,
+    dtype: str = "f16",
+    acc_dtype: str = "f32",
+    call_args: tuple[Any, ...] | None = None,
+    strides_a: tuple[int, int] | None = None,
+    strides_b: tuple[int, int] | None = None,
+    strides_c: tuple[int, int] | None = None,
+    enable_fp_fusion: bool = True,
+    cache_dir: str | Path | None = None,
+    use_cache: bool = True,
+    max_workers: int | None = None,
+) -> list[tuple[dict[str, Any], str] | Exception]:
+    """Batch-extract (ir_dict, ir_json) with KernelIR caching and parallel AOT compilation."""
+    import triton
+
+    elem_bytes = dtype_bits(dtype) // 8
+    size_a = M * K * elem_bytes
+    size_b = K * N * elem_bytes
+    if call_args is None:
+        sim_ptr_a = 0x10000
+        sim_ptr_b = _align_up(sim_ptr_a + size_a)
+        sim_ptr_c = _align_up(sim_ptr_b + size_b)
+        call_args = _build_gemm_call_args(
+            fn,
+            dtype=dtype,
+            M=M,
+            N=N,
+            K=K,
+            base_a=sim_ptr_a,
+            base_b=sim_ptr_b,
+            base_c=sim_ptr_c,
+            strides_a=strides_a,
+            strides_b=strides_b,
+            strides_c=strides_c,
+        )
+
+    arch_num = parse_arch_number(target_arch)
+    _, ptxas_path = find_bundled_ptxas(arch_num)
+    assembler_ver = get_ptxas_version(ptxas_path)
+    stride_am = strides_a[0] if strides_a is not None else K
+    stride_bk = strides_b[0] if strides_b is not None else N
+
+    results: list[tuple[dict[str, Any], str] | Exception | None] = [None] * len(configs)
+    pending_indices: list[int] = []
+    pending_specs: list[dict[str, Any]] = []
+    pending_keys: list[str | None] = []
+    pending_sigs: list[dict[str, str]] = []
+
+    for idx, cfg in enumerate(configs):
+        num_warps = int(cfg.get("num_warps", 4))
+        num_stages = int(cfg.get("num_stages", 3))
+        call_kwargs = dict(cfg)
+        call_kwargs.setdefault("enable_fp_fusion", enable_fp_fusion)
+        try:
+            options_dict, signature, constexprs, attrs = specialize_triton_call(
+                fn=fn,
+                target_arch=target_arch,
+                args=call_args,
+                kwargs=call_kwargs,
+                enable_fp_fusion=enable_fp_fusion,
+            )
+        except Exception as exc:
+            results[idx] = exc
+            continue
+
+        ir_key: str | None = None
+        if use_cache:
+            ir_key = _compute_ir_cache_key(
+                fn=fn,
+                signature=signature,
+                constexprs=constexprs,
+                attrs=attrs,
+                options=options_dict,
+                target_arch=f"sm_{arch_num}",
+                M=M,
+                N=N,
+                K=K,
+                dtype=dtype,
+                acc_dtype=acc_dtype,
+                stride_am=stride_am,
+                stride_bk=stride_bk,
+                config=cfg,
+                triton_version=triton.__version__,
+                assembler_version=assembler_ver,
+            )
+            cached = _load_ir_cache(ir_key, cache_dir)
+            if cached is not None:
+                results[idx] = cached
+                continue
+
+        pending_indices.append(idx)
+        pending_specs.append({
+            "signature": signature,
+            "constexprs": constexprs,
+            "num_warps": num_warps,
+            "num_stages": num_stages,
+            "attrs": attrs,
+            "options": options_dict,
+        })
+        pending_keys.append(ir_key)
+        pending_sigs.append(signature)
+
+    if pending_specs:
+        compiled_list = compile_triton_aot_batch(
+            fn,
+            pending_specs,
+            target_arch=target_arch,
+            enable_fp_fusion=enable_fp_fusion,
+            cache_dir=cache_dir,
+            use_cache=use_cache,
+            max_workers=max_workers,
+        )
+        for pos, art_or_err in enumerate(compiled_list):
+            idx = pending_indices[pos]
+            if isinstance(art_or_err, Exception):
+                results[idx] = art_or_err
+                continue
+            try:
+                ir_dict = _assemble_gemm_kernel_ir(
+                    fn,
+                    art_or_err,
+                    M=M,
+                    N=N,
+                    K=K,
+                    config=configs[idx],
+                    dtype=dtype,
+                    call_args=call_args,
+                    signature=pending_sigs[pos],
+                    strides_a=strides_a,
+                    strides_b=strides_b,
+                )
+                ir_key = pending_keys[pos]
+                if use_cache and ir_key is not None:
+                    ir_text = _store_ir_cache(ir_key, ir_dict, cache_dir)
+                else:
+                    ir_text = json.dumps(ir_dict)
+                results[idx] = (ir_dict, ir_text)
+            except Exception as exc:
+                results[idx] = exc
+
+    return [r for r in results if r is not None]

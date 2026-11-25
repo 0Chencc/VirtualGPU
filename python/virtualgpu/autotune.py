@@ -14,7 +14,10 @@ import warnings
 
 from virtualgpu.api import _build_kernel_call_args, _load_profile, predict_kernel_ir
 from virtualgpu.frontend.compiler import ARTIFACT_HASH_VERSION
-from virtualgpu.frontend.triton_gemm import extract_gemm_kernel_ir
+from virtualgpu.frontend.triton_gemm import extract_gemm_kernel_ir_batch
+
+DEFAULT_ONLINE_WARMUP = 50
+DEFAULT_ONLINE_REP = 200
 
 
 def _unwrap_kernel_and_configs(
@@ -161,6 +164,7 @@ def _rank_configs(
     cache_dir: str | Path | None,
     use_cache: bool,
     core_module: Any,
+    hw_bench_params: dict[str, int] | None = None,
 ) -> AutotuneReport:
     if top_k < 1:
         raise ValueError(f"top_k must be >= 1, got {top_k}")
@@ -179,49 +183,93 @@ def _rank_configs(
     kernel_source_sha256 = hashlib.sha256(src_text.encode("utf-8")).hexdigest()
 
     config_objects: dict[str, Any] = {}
+    cids: list[str] = []
+    flat_configs: list[dict[str, int]] = []
+    for idx, orig_cfg in enumerate(configs):
+        cid, flat_cfg = _config_to_dict(orig_cfg, idx)
+        config_objects[cid] = orig_cfg
+        cids.append(cid)
+        flat_configs.append(flat_cfg)
+
+    extracted_batch = extract_gemm_kernel_ir_batch(
+        fn,
+        M=M,
+        N=N,
+        K=K,
+        configs=flat_configs,
+        target_arch=target_arch,
+        dtype=dtype,
+        call_args=call_args,
+        cache_dir=cache_dir,
+        use_cache=use_cache,
+    )
+
     ok_entries: list[dict[str, Any]] = []
     bad_entries: list[dict[str, Any]] = []
     toolchain_sample: dict[str, Any] = {}
 
-    for idx, orig_cfg in enumerate(configs):
-        cid, flat_cfg = _config_to_dict(orig_cfg, idx)
-        config_objects[cid] = orig_cfg
-        try:
-            ir = extract_gemm_kernel_ir(
-                fn,
-                M=M,
-                N=N,
-                K=K,
-                config=flat_cfg,
-                target_arch=target_arch,
-                dtype=dtype,
-                call_args=call_args,
-                cache_dir=cache_dir,
-                use_cache=use_cache,
-            )
-        except Exception as exc:
+    ready_items: list[tuple[str, dict[str, int], dict[str, Any], str]] = []
+    for cid, flat_cfg, item in zip(cids, flat_configs, extracted_batch):
+        if isinstance(item, Exception):
             bad_entries.append({
                 "config_id": cid,
                 "config": flat_cfg,
                 "status": "unsupported",
-                "reason": f"{type(exc).__name__}: {exc}",
+                "reason": f"{type(item).__name__}: {item}",
             })
             continue
-
+        ir, ir_json = item
         if not toolchain_sample:
             toolchain_sample = dict(ir["metadata"].get("toolchain", {}))
+        ready_items.append((cid, flat_cfg, ir, ir_json))
 
-        pred = predict_kernel_ir(
-            ir,
-            profile_text,
-            case_id="autotune",
-            config_id=cid,
-            l2_state=l2_state,
-            draws=draws,
-            seed=seed,
-            core_module=core_module,
-        )
+    # Use core.predict_batch when available so profile parsing and draw sampling happen once.
+    raw_preds: list[dict[str, Any]] = []
+    if ready_items:
+        if hasattr(core_module, "predict_batch"):
+            ir_jsons = [item[3] for item in ready_items]
+            batch_raw = core_module.predict_batch(
+                ir_jsons,
+                profile_text,
+                l2_state=l2_state,
+                draws=draws,
+                seed=seed,
+            )
+            for raw_item in batch_raw:
+                d = dict(raw_item)
+                status = d.pop("status")
+                rec: dict[str, Any] = {
+                    "status": status,
+                    "assumptions": {
+                        "l2_state": d.pop("l2_state", l2_state),
+                        "dispatch_policy": d.pop("dispatch_policy", "round_robin"),
+                    },
+                }
+                if status == "ok":
+                    rec["nominal_latency_ns"] = float(d.pop("time_ns"))
+                    raw_draws = d.pop("draws", None)
+                    if draws > 0 and isinstance(raw_draws, Mapping) and "0" in raw_draws:
+                        rec["draws"] = {str(k): float(v) for k, v in raw_draws.items()}
+                    rec["diagnostics"] = d
+                else:
+                    rec["reason"] = d.pop("reason", "unsupported")
+                raw_preds.append(rec)
+        else:
+            for cid, _flat_cfg, _ir, ir_json in ready_items:
+                raw_preds.append(
+                    predict_kernel_ir(
+                        ir_json,
+                        profile_text,
+                        case_id="autotune",
+                        config_id=cid,
+                        l2_state=l2_state,
+                        draws=draws,
+                        seed=seed,
+                        core_module=core_module,
+                    )
+                )
 
+    for (cid, flat_cfg, ir, _ir_json), pred in zip(ready_items, raw_preds):
         if pred["status"] != "ok":
             bad_entries.append({
                 "config_id": cid,
@@ -324,6 +372,7 @@ def _rank_configs(
         "assembler_version": toolchain_sample.get("assembler_version"),
         "artifact_hash_version": ARTIFACT_HASH_VERSION,
         "kernel_source_sha256": kernel_source_sha256,
+        "hardware_bench": hw_bench_params,
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -447,6 +496,7 @@ def prune_configs_by(
     user_prune: Callable[..., list[Any]] | None = None,
     report_sink: list[AutotuneReport] | None = None,
     core_module: Any = None,
+    hw_bench_params: dict[str, int] | None = None,
 ) -> dict[str, Any]:
     """Build a Triton `prune_configs_by` dict backed by VirtualGPU ranking.
 
@@ -491,6 +541,7 @@ def prune_configs_by(
                 cache_dir=cache_dir,
                 use_cache=use_cache,
                 core_module=core_module,
+                hw_bench_params=hw_bench_params,
             )
         except Exception as exc:
             if strict:
@@ -571,6 +622,33 @@ def autotune(
         if "early_config_prune" in merged_prune:
             user_prune = merged_prune.pop("early_config_prune")
 
+        # With only top-k (default 5) candidates left for hardware benchmarking,
+        # increase warmup/rep via Triton 3.9's public `do_bench` hook (warmup/rep
+        # kwargs are deprecated in Triton 3.9) to suppress clock jitter.
+        effective_kwargs = dict(triton_kwargs)
+        hw_bench_params: dict[str, int] | None = None
+        if (
+            "do_bench" not in effective_kwargs
+            and "warmup" not in effective_kwargs
+            and "rep" not in effective_kwargs
+            and not effective_kwargs.get("use_cuda_graph", False)
+        ):
+            hw_bench_params = {
+                "warmup": DEFAULT_ONLINE_WARMUP,
+                "rep": DEFAULT_ONLINE_REP,
+            }
+            effective_kwargs["do_bench"] = lambda kernel_call, quantiles: triton.testing.do_bench(
+                kernel_call,
+                warmup=DEFAULT_ONLINE_WARMUP,
+                rep=DEFAULT_ONLINE_REP,
+                quantiles=quantiles,
+            )
+        elif "warmup" in effective_kwargs or "rep" in effective_kwargs:
+            hw_bench_params = {
+                "warmup": int(effective_kwargs.get("warmup", 25)),
+                "rep": int(effective_kwargs.get("rep", 100)),
+            }
+
         reports: list[AutotuneReport] = []
         vgpu_prune = _make_prune_dict(
             fn,
@@ -585,13 +663,14 @@ def autotune(
             user_prune=user_prune,
             report_sink=reports,
             core_module=core_module,
+            hw_bench_params=hw_bench_params,
         )
         merged_prune.update(vgpu_prune)
         tuned = triton.autotune(
             configs=configs,
             key=key,
             prune_configs_by=merged_prune,
-            **triton_kwargs,
+            **effective_kwargs,
         )(fn)
         tuned.vgpu_reports = reports
         return tuned
