@@ -641,6 +641,7 @@
         "tokens": { "type": "integer", "minimum": 1 },
         "num_warps": { "type": "integer", "minimum": 1 },
         "stage_bytes": { "type": "integer", "minimum": 1 },
+        "ldmatrix_bytes_per_stage": { "type": "integer", "minimum": 0 },
         "mma_iters_per_stage": { "type": "integer", "minimum": 0 },
         "solo_compute_ns": { "type": "number", "minimum": 0 },
         "delivered_bw_gbps": { "$ref": "#/$defs/MeasuredValue" },

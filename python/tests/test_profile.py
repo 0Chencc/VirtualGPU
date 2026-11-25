@@ -45,7 +45,11 @@ def test_rtx4070_profile_is_valid() -> None:
     assert max(pt["bytes_in_flight"] for pt in mem["dram_bw_by_bytes_in_flight"]) >= 6 * 1024 * 1024
     assert max(pt["bytes_in_flight"] for pt in mem["l2_bw_by_bytes_in_flight"]) >= 6 * 1024 * 1024
     assert len(mem["dram_closed_loop"]) >= 100
-    assert len(mem["dram_closed_loop_mma"]) >= 48
+    assert len(mem["dram_closed_loop_mma"]) >= 140
+    assert any(
+        pt["num_warps"] == 8 and pt.get("ldmatrix_bytes_per_stage", 0) >= 16384
+        for pt in mem["dram_closed_loop_mma"]
+    )
     assert len(mem["l2_closed_loop"]) >= 100
     assert len(mem["l2_merge_by_sharing"]) >= 20
     assert len(mem["l2_rescan_hit_rate_by_working_set"]) >= 12

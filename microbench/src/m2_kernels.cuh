@@ -2296,6 +2296,133 @@ __global__ void closed_loop_mma_kernel(const uint4* __restrict__ src,
   }
 }
 
+template <int TOKENS, int LD_PASSES>
+__global__ void closed_loop_mma_8w_kernel(const uint4* __restrict__ src,
+                                          float* __restrict__ sink,
+                                          size_t n_vec4_mask,
+                                          int steps,
+                                          int mma_iters) {
+  // 256 threads (8 warps/CTA), 8192 B per stage (2 x 16B per thread).
+  // Max dynamic smem = 4 * 8192 = 32 KB/CTA -> 2 CTAs/SM = 64 KB/SM (single wave on RTX 4070).
+  // LD_PASSES in {0, 4, 8} => 0 / 16384 / 32768 B of ldmatrix.x4 reads per stage per CTA.
+  extern __shared__ uint4 smem[];
+  const uint32_t tid = threadIdx.x;
+  const uint32_t warp_id = tid >> 5;
+  const uint32_t lane = tid & 31u;
+  const size_t stage_vec4 = 512ULL;  // 8192 B / 16 B
+  const size_t grid_stage_vec4 = static_cast<size_t>(gridDim.x) * stage_vec4;
+  size_t base = (static_cast<size_t>(blockIdx.x) * stage_vec4 + tid) & n_vec4_mask;
+
+  uint32_t a0 = 0x3c003c00u + (tid & 7u), a1 = 0x3c003c00u, a2 = 0x3c003c00u, a3 = 0x3c003c00u;
+  uint32_t b0 = 0x3c003c00u, b1 = 0x3c003c00u;
+  uint32_t live_acc = 0u;
+  float c00 = 0.f, c01 = 0.f, c02 = 0.f, c03 = 0.f;
+  float c10 = 0.f, c11 = 0.f, c12 = 0.f, c13 = 0.f;
+  float c20 = 0.f, c21 = 0.f, c22 = 0.f, c23 = 0.f;
+  float c30 = 0.f, c31 = 0.f, c32 = 0.f, c33 = 0.f;
+
+  auto issue_stage = [&](int slot, size_t cur_base) {
+    uint4* slot_ptr = smem + static_cast<size_t>(slot) * stage_vec4;
+    #pragma unroll
+    for (int v = 0; v < 2; ++v) {
+      uint32_t saddr = static_cast<uint32_t>(__cvta_generic_to_shared(slot_ptr + v * 256 + tid));
+      const void* gptr = src + ((cur_base + static_cast<size_t>(v) * 256ULL) & n_vec4_mask);
+      asm volatile("cp.async.cg.shared.global [%0], [%1], 16;\n" :: "r"(saddr), "l"(gptr) : "memory");
+    }
+    asm volatile("cp.async.commit_group;\n" ::: "memory");
+  };
+
+  int issued = 0;
+  #pragma unroll
+  for (int s = 0; s < TOKENS; ++s) {
+    if (s < steps) {
+      issue_stage(s, base);
+      base = (base + grid_stage_vec4) & n_vec4_mask;
+      ++issued;
+    }
+  }
+
+  for (int step = 0; step < steps; ++step) {
+    if constexpr (TOKENS == 1) asm volatile("cp.async.wait_group 0;\n" ::: "memory");
+    else if constexpr (TOKENS == 2) asm volatile("cp.async.wait_group 1;\n" ::: "memory");
+    else if constexpr (TOKENS == 4) asm volatile("cp.async.wait_group 3;\n" ::: "memory");
+
+    if constexpr (LD_PASSES > 0) {
+      asm volatile("bar.sync 0;\n" ::: "memory");
+      uint4* cur_slot = smem + static_cast<size_t>(step % TOKENS) * stage_vec4;
+      #pragma unroll
+      for (int p = 0; p < LD_PASSES; ++p) {
+        size_t off_u4 = (static_cast<size_t>(p & 1) * 8ULL + warp_id) * 32ULL + lane;
+        uint32_t saddr = static_cast<uint32_t>(__cvta_generic_to_shared(cur_slot + off_u4));
+        uint32_t r0, r1, r2, r3;
+        asm volatile("ldmatrix.sync.aligned.x4.m8n8.shared.b16 {%0,%1,%2,%3}, [%4];\n"
+                     : "=r"(r0), "=r"(r1), "=r"(r2), "=r"(r3) : "r"(saddr) : "memory");
+        live_acc ^= (r0 ^ r1 ^ r2 ^ r3);
+        if (p == LD_PASSES - 2) {
+          b0 = r0;
+          b1 = r1;
+        } else if (p == LD_PASSES - 1) {
+          a0 = r0;
+          a1 = r1;
+          a2 = r2;
+          a3 = r3;
+        }
+      }
+    }
+
+    for (int m = 0; m < mma_iters; ++m) {
+      asm volatile(
+          "mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 "
+          "{%0,%1,%2,%3}, {%4,%5,%6,%7}, {%8,%9}, {%0,%1,%2,%3};\n"
+          : "+f"(c00), "+f"(c01), "+f"(c02), "+f"(c03)
+          : "r"(a0), "r"(a1), "r"(a2), "r"(a3), "r"(b0), "r"(b1));
+      asm volatile(
+          "mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 "
+          "{%0,%1,%2,%3}, {%4,%5,%6,%7}, {%8,%9}, {%0,%1,%2,%3};\n"
+          : "+f"(c10), "+f"(c11), "+f"(c12), "+f"(c13)
+          : "r"(a0), "r"(a1), "r"(a2), "r"(a3), "r"(b0), "r"(b1));
+      asm volatile(
+          "mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 "
+          "{%0,%1,%2,%3}, {%4,%5,%6,%7}, {%8,%9}, {%0,%1,%2,%3};\n"
+          : "+f"(c20), "+f"(c21), "+f"(c22), "+f"(c23)
+          : "r"(a0), "r"(a1), "r"(a2), "r"(a3), "r"(b0), "r"(b1));
+      asm volatile(
+          "mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 "
+          "{%0,%1,%2,%3}, {%4,%5,%6,%7}, {%8,%9}, {%0,%1,%2,%3};\n"
+          : "+f"(c30), "+f"(c31), "+f"(c32), "+f"(c33)
+          : "r"(a0), "r"(a1), "r"(a2), "r"(a3), "r"(b0), "r"(b1));
+    }
+
+    if constexpr (LD_PASSES > 0) {
+      asm volatile("bar.sync 0;\n" ::: "memory");
+    }
+
+    if (issued < steps) {
+      issue_stage(step % TOKENS, base);
+      base = (base + grid_stage_vec4) & n_vec4_mask;
+      ++issued;
+    }
+  }
+
+  asm volatile("cp.async.wait_all;\n" ::: "memory");
+  __syncthreads();
+  float sum = c00 + c01 + c02 + c03 + c10 + c11 + c12 + c13 +
+              c20 + c21 + c22 + c23 + c30 + c31 + c32 + c33 +
+              static_cast<float>(smem[tid].x ^ live_acc);
+  if (sum == -999999.0f) {
+    sink[blockIdx.x * blockDim.x + tid] = sum;
+  }
+}
+
+template <int LD_PASSES>
+static void dispatch_closed_loop_mma_8w(int tokens, int active_ctas, size_t dyn_smem,
+                                        const uint4* d_dram, float* d_sink_f,
+                                        size_t dram_mask, int steps, int mma_iters) {
+  if (tokens == 1) closed_loop_mma_8w_kernel<1, LD_PASSES><<<active_ctas, 256, dyn_smem>>>(d_dram, d_sink_f, dram_mask, steps, mma_iters);
+  else if (tokens == 2) closed_loop_mma_8w_kernel<2, LD_PASSES><<<active_ctas, 256, dyn_smem>>>(d_dram, d_sink_f, dram_mask, steps, mma_iters);
+  else closed_loop_mma_8w_kernel<4, LD_PASSES><<<active_ctas, 256, dyn_smem>>>(d_dram, d_sink_f, dram_mask, steps, mma_iters);
+}
+
 static int run_closed_loop_mma(int device, int samples, int warmup) {
   cudaDeviceProp prop{};
   CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
@@ -2312,8 +2439,8 @@ static int run_closed_loop_mma(int device, int samples, int warmup) {
   CUDA_CHECK(cudaMalloc(&d_dram, dram_bytes));
   CUDA_CHECK(cudaMalloc(&d_flush, dram_bytes));
   CUDA_CHECK(cudaMalloc(&d_sink_u4, 1024 * sizeof(uint4)));
-  CUDA_CHECK(cudaMalloc(&d_sink_f, static_cast<size_t>(sm_count) * 4 * 128 * sizeof(float)));
-  CUDA_CHECK(cudaMemset(d_dram, 23, dram_bytes));
+  CUDA_CHECK(cudaMalloc(&d_sink_f, static_cast<size_t>(sm_count) * 4 * 256 * sizeof(float)));
+  CUDA_CHECK(cudaMemset(d_dram, 0x3c, dram_bytes));
   CUDA_CHECK(cudaMemset(d_flush, 24, dram_bytes));
 
   cudaEvent_t ev_start, ev_stop;
@@ -2396,7 +2523,8 @@ static int run_closed_loop_mma(int device, int samples, int warmup) {
         first = false;
         std::printf(
             "\n    {\"ctas_per_sm\": %d, \"active_ctas\": %d, \"tokens\": %d, \"num_warps\": 4, "
-            "\"stage_bytes\": %d, \"mma_iters_per_stage\": %d, \"solo_compute_ns\": %.2f, \"bw_gbps_samples\": [",
+            "\"stage_bytes\": %d, \"ldmatrix_bytes_per_stage\": 0, \"mma_iters_per_stage\": %d, "
+            "\"solo_compute_ns\": %.2f, \"bw_gbps_samples\": [",
             cps, active_ctas, tokens, stage_bytes, mma_iters, solo_tc_ns);
         for (size_t i = 0; i < bw_s.size(); ++i) { if (i) std::printf(", "); std::printf("%.3f", bw_s[i]); }
         std::printf("], \"turnaround_ns_samples\": [");
@@ -2406,6 +2534,89 @@ static int run_closed_loop_mma(int device, int samples, int warmup) {
         std::printf("], \"tensor_util_samples\": [");
         for (size_t i = 0; i < util_s.size(); ++i) { if (i) std::printf(", "); std::printf("%.4f", util_s[i]); }
         std::printf("]}");
+      }
+    }
+  }
+
+  // 8-warp contention sweep: ctas_per_sm in {1, 2}, tokens in {1, 2, 4},
+  // ldmatrix_bytes_per_stage in {0, 16384, 32768}.
+  const int cal_iters_8w = 10000;
+  for (int w = 0; w < 2; ++w) {
+    mma_m16n8k16_kernel<false><<<sm_count, 256>>>(d_sink_f, cal_iters_8w);
+  }
+  CUDA_CHECK(cudaDeviceSynchronize());
+  CUDA_CHECK(cudaEventRecord(ev_start));
+  mma_m16n8k16_kernel<false><<<sm_count, 256>>>(d_sink_f, cal_iters_8w);
+  CUDA_CHECK(cudaEventRecord(ev_stop));
+  CUDA_CHECK(cudaEventSynchronize(ev_stop));
+  float cal_ms_8w = 1.0f;
+  CUDA_CHECK(cudaEventElapsedTime(&cal_ms_8w, ev_start, ev_stop));
+  const double ns_per_mma_iter_8w = (static_cast<double>(cal_ms_8w) * 1e6) / static_cast<double>(cal_iters_8w);
+  const double flops_per_cta_iter_8w = 8.0 * 4.0 * 4096.0;
+  const double peak_tflops_per_sm_8w = (flops_per_cta_iter_8w / 1e12) / (ns_per_mma_iter_8w / 1e9);
+
+  for (int ld_passes : {0, 4, 8}) {
+    const int ldm_bytes = ld_passes * 4096;
+    for (int cps : {1, 2}) {
+      int active_ctas = sm_count * cps;
+      for (int tokens : {1, 2, 4}) {
+        size_t dyn_smem = static_cast<size_t>(tokens) * static_cast<size_t>(stage_bytes);
+        for (double target_tc : target_tc_ns_list) {
+          int mma_iters = (target_tc <= 0.0) ? 0 : std::max(1, static_cast<int>(target_tc / ns_per_mma_iter_8w + 0.5));
+          double solo_tc_ns = static_cast<double>(mma_iters) * ns_per_mma_iter_8w;
+          double total_bytes = static_cast<double>(active_ctas) * static_cast<double>(stage_bytes) * steps;
+          double total_flops_per_sm = static_cast<double>(cps) * flops_per_cta_iter_8w * mma_iters * steps;
+
+          auto launch_8w = [&]() {
+            if (ld_passes == 0) dispatch_closed_loop_mma_8w<0>(tokens, active_ctas, dyn_smem, d_dram, d_sink_f, dram_mask, steps, mma_iters);
+            else if (ld_passes == 4) dispatch_closed_loop_mma_8w<4>(tokens, active_ctas, dyn_smem, d_dram, d_sink_f, dram_mask, steps, mma_iters);
+            else dispatch_closed_loop_mma_8w<8>(tokens, active_ctas, dyn_smem, d_dram, d_sink_f, dram_mask, steps, mma_iters);
+          };
+
+          for (int w = 0; w < warmup; ++w) {
+            l2_read_cg_kernel<<<sm_count * 4, 512>>>(d_flush, d_sink_u4, flush_vec4, 1);
+            launch_8w();
+          }
+          CUDA_CHECK(cudaDeviceSynchronize());
+
+          std::vector<double> bw_s, turn_s, tf_s, util_s;
+          bw_s.reserve(samples);
+          turn_s.reserve(samples);
+          tf_s.reserve(samples);
+          util_s.reserve(samples);
+
+          for (int s = 0; s < samples; ++s) {
+            l2_read_cg_kernel<<<sm_count * 4, 512>>>(d_flush, d_sink_u4, flush_vec4, 1);
+            CUDA_CHECK(cudaEventRecord(ev_start));
+            launch_8w();
+            CUDA_CHECK(cudaEventRecord(ev_stop));
+            CUDA_CHECK(cudaEventSynchronize(ev_stop));
+            float ms = 0.0f;
+            CUDA_CHECK(cudaEventElapsedTime(&ms, ev_start, ev_stop));
+            double sec = static_cast<double>(ms) / 1e3;
+            double tf_per_sm = (total_flops_per_sm / 1e12) / sec;
+            bw_s.push_back((total_bytes / 1e9) / sec);
+            turn_s.push_back((static_cast<double>(ms) * 1e6) / static_cast<double>(steps));
+            tf_s.push_back(tf_per_sm);
+            util_s.push_back((peak_tflops_per_sm_8w > 0.0) ? (tf_per_sm / peak_tflops_per_sm_8w) : 0.0);
+          }
+
+          if (!first) std::printf(",");
+          first = false;
+          std::printf(
+              "\n    {\"ctas_per_sm\": %d, \"active_ctas\": %d, \"tokens\": %d, \"num_warps\": 8, "
+              "\"stage_bytes\": %d, \"ldmatrix_bytes_per_stage\": %d, \"mma_iters_per_stage\": %d, "
+              "\"solo_compute_ns\": %.2f, \"bw_gbps_samples\": [",
+              cps, active_ctas, tokens, stage_bytes, ldm_bytes, mma_iters, solo_tc_ns);
+          for (size_t i = 0; i < bw_s.size(); ++i) { if (i) std::printf(", "); std::printf("%.3f", bw_s[i]); }
+          std::printf("], \"turnaround_ns_samples\": [");
+          for (size_t i = 0; i < turn_s.size(); ++i) { if (i) std::printf(", "); std::printf("%.2f", turn_s[i]); }
+          std::printf("], \"mma_tflops_per_sm_samples\": [");
+          for (size_t i = 0; i < tf_s.size(); ++i) { if (i) std::printf(", "); std::printf("%.4f", tf_s[i]); }
+          std::printf("], \"tensor_util_samples\": [");
+          for (size_t i = 0; i < util_s.size(); ++i) { if (i) std::printf(", "); std::printf("%.4f", util_s[i]); }
+          std::printf("]}");
+        }
       }
     }
   }

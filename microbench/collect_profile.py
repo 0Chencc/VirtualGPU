@@ -21,8 +21,8 @@ sys.path.insert(0, str(REPO_ROOT / "python"))
 from virtualgpu.profile import validate_profile  # noqa: E402
 
 DEFAULT_BIN = Path(__file__).resolve().parent / "build" / "vgpu_bench"
-SUITE_VERSION = "0.10.0"
-PROFILE_REVISION = "0.10.0-m3"
+SUITE_VERSION = "0.11.0"
+PROFILE_REVISION = "0.11.0-m3"
 
 
 def find_nvidia_smi() -> str | None:
@@ -758,6 +758,7 @@ def build_profile(
             "tokens": int(pt["tokens"]),
             "num_warps": int(pt["num_warps"]),
             "stage_bytes": int(pt["stage_bytes"]),
+            "ldmatrix_bytes_per_stage": int(pt.get("ldmatrix_bytes_per_stage", 0)),
             "mma_iters_per_stage": int(pt["mma_iters_per_stage"]),
             "solo_compute_ns": float(pt["solo_compute_ns"]),
             "delivered_bw_gbps": make_measured(
