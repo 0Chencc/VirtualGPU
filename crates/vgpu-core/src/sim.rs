@@ -344,6 +344,10 @@ struct Demand {
     /// Fraction of the phase's compute, at the rate the CTA would get alone
     /// on its SM, that adds to the round trips instead of overlapping them.
     exposed_compute: f64,
+    /// Steady-state stages of the phase (pipeline iterations), and the stage
+    /// buffers each CTA cycles through them.
+    stages: f64,
+    tokens: u32,
     /// Per-stage synchronization over the phase. It stalls the SM's pipes,
     /// so the other resident CTAs cannot fill it.
     sync_ns: f64,
@@ -524,6 +528,8 @@ impl<'a, L: L2> Sim<'a, L> {
             fixed_latency_ns: 0.0,
             load_bytes,
             round_trips: if load_bytes > 0.0 { round_trips } else { 0.0 },
+            stages: if phase == Phase::Main { steps } else { 0.0 },
+            tokens: d + 1,
             sync_ns: match phase {
                 Phase::Main => self.m.sync_ns(k.num_warps, d + 1) * steps,
                 _ => 0.0,
@@ -680,11 +686,30 @@ struct Parts {
     /// Shared compute path: pipes by `RESOURCES` index, plus synchronization.
     pipes: [f64; 4],
     sync: f64,
+    /// Steady state as a closed queueing network, when it applies: the time
+    /// mean value analysis gives instead of the round-trip bound.
+    queued: Option<f64>,
+}
+
+/// Stage throughput of `customers` stage buffers cycling through one
+/// queueing server (`service` per stage) and a delay (`delay` per stage):
+/// exact mean value analysis of the closed network.
+fn mva_throughput(customers: u32, service: f64, delay: f64) -> f64 {
+    let (mut queue, mut x) = (0.0, 0.0);
+    for n in 1..=customers {
+        let response = service * (1.0 + queue);
+        x = f64::from(n) / (response + delay);
+        queue = x * response;
+    }
+    x
 }
 
 impl Parts {
+    /// Round-trip path: the queueing-network time if it applies, else round
+    /// trips plus the compute that cannot overlap them.
     fn round_trip(&self) -> f64 {
-        self.launch + self.l2_latency + self.dram_latency + self.exposed
+        self.queued
+            .unwrap_or(self.launch + self.l2_latency + self.dram_latency + self.exposed)
     }
 
     fn compute(&self) -> f64 {
@@ -812,6 +837,16 @@ fn rates(ctas: &[Cta], m: &Machine, mma_per_cta: &[f64], lat: Latency, s: &mut S
                 .enumerate()
                 .fold((MMA, &0.0), |b, x| if x.1 > b.1 { x } else { b });
         let (launch, l2_latency, dram_latency) = d.latency_parts(lat);
+        // Steady state with compute and loads: the stage buffers of all CTAs
+        // on the SM queue for the SM's pipes (service: a stage's compute alone
+        // plus its synchronization) and wait a round trip between stages.
+        let queued = (d.stages > 0.0 && d.round_trips > 0.0 && longest > 0.0).then(|| {
+            let users = s.mma_users[i].max(1);
+            let service = (longest + d.sync_ns) / d.stages;
+            let delay = (l2_latency + dram_latency) / d.round_trips;
+            let x = mva_throughput(users * d.tokens, service, delay);
+            d.stages * f64::from(users) / x
+        });
         let parts = Parts {
             launch,
             l2_latency,
@@ -820,6 +855,7 @@ fn rates(ctas: &[Cta], m: &Machine, mma_per_cta: &[f64], lat: Latency, s: &mut S
             exposed_kind: kind,
             pipes: [t_mma, t_issue, t_smem, t_local],
             sync: d.sync_ns * f64::from(s.resident[i]),
+            queued,
         };
         s.terms.push(parts);
         // Time without memory bandwidth limits: caps the bandwidth demand.

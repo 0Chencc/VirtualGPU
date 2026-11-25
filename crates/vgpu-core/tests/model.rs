@@ -434,11 +434,11 @@ fn other_ctas_compute_while_a_synchronous_cta_waits() {
 }
 
 #[test]
-fn stage_buffers_share_round_trip_and_compute() {
+fn stage_buffers_queue_for_the_sm() {
     // Closed loop with three buffers (prefetch distance 2), a fixed 1000 ns
-    // round trip and 400 ns of compute alone per iteration: the prefill pays
-    // one round trip, then each round trip plus compute serves three of the
-    // remaining 62 iterations, which is slower than the 64 x 400 ns of compute.
+    // round trip and 400 ns of compute alone per stage. The prefill pays one
+    // round trip; then the three buffers cycle through the SM's pipes and the
+    // round trip, and mean value analysis gives the stage rate.
     let mut k = compute_only(46);
     k.tile.per_iteration.loads = vec![access("load", 64.0)];
     k.tile.prefetch_distance = 2;
@@ -452,12 +452,22 @@ fn stage_buffers_share_round_trip_and_compute() {
     m.l2_latency_ns = 1000.0;
     m.l2_latency_loaded_ns = 1000.0;
     let p = run(&k, m);
-    let expected = 1000.0 + 62.0 / 3.0 * (1000.0 + 400.0);
+    let (service, delay) = (400.0, 1000.0);
+    let x1 = 1.0 / (service + delay);
+    let q1 = x1 * service;
+    let r2 = service * (1.0 + q1);
+    let x2 = 2.0 / (r2 + delay);
+    let r3 = service * (1.0 + x2 * r2);
+    let x3 = 3.0 / (r3 + delay);
+    let expected = 1000.0 + 64.0 / x3;
     assert!(
         close(p.makespan_ns, expected),
         "{} vs {expected}",
         p.makespan_ns
     );
+    // Between the deterministic bound and serial execution.
+    assert!(p.makespan_ns > 1000.0 + 64.0 * (1400.0f64 / 3.0).max(400.0));
+    assert!(p.makespan_ns < 1000.0 + 64.0 * 1400.0);
 }
 
 /// Loads split by fixed fractions between resident hits, merged requests,
