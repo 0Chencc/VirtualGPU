@@ -1,0 +1,2494 @@
+{
+  "scope": "phase1_rtx4070_workload_holdout",
+  "result_class": "formal",
+  "core_revision": "129a6f55d3dcbf5c261a8397296400f91f291fe1",
+  "profile_revision": "0.11.0-m3",
+  "manifest_sha256": "b6c8fd089543ec8444e820993acc962f25eb3e662f9d47d3fe3bb79dbf03eaf1",
+  "cold_flush": "read_cg",
+  "model_pair_margin": 0.05,
+  "core_perturbation_draws": 32,
+  "summary": {
+    "warm": {
+      "roofline_wave": {
+        "cases_with_tau_b": 9,
+        "median_tau_b": 0.5115207040495392,
+        "cases_with_top_5_regret": 9,
+        "mean_top_5_regret": 0.09296239693284554,
+        "measured_configs": 324,
+        "scored_configs": 324,
+        "pair_confusion": {
+          "b_faster": {
+            "indistinguishable": 311,
+            "a_faster": 767,
+            "b_faster": 1815
+          },
+          "indistinguishable": {
+            "indistinguishable": 223,
+            "a_faster": 311,
+            "b_faster": 85
+          },
+          "a_faster": {
+            "a_faster": 1650,
+            "indistinguishable": 194,
+            "b_faster": 90
+          },
+          "unresolved": {
+            "a_faster": 109,
+            "indistinguishable": 67,
+            "b_faster": 48
+          }
+        }
+      },
+      "neusight_style": {
+        "cases_with_tau_b": 9,
+        "median_tau_b": 0.38658590892674877,
+        "cases_with_top_5_regret": 9,
+        "mean_top_5_regret": 0.011925082998767107,
+        "measured_configs": 324,
+        "scored_configs": 324,
+        "pair_confusion": {
+          "b_faster": {
+            "b_faster": 2285,
+            "indistinguishable": 233,
+            "a_faster": 375
+          },
+          "indistinguishable": {
+            "indistinguishable": 179,
+            "a_faster": 103,
+            "b_faster": 337
+          },
+          "a_faster": {
+            "a_faster": 1034,
+            "indistinguishable": 272,
+            "b_faster": 628
+          },
+          "unresolved": {
+            "b_faster": 132,
+            "a_faster": 36,
+            "indistinguishable": 56
+          }
+        }
+      },
+      "core": {
+        "cases_with_tau_b": 9,
+        "median_tau_b": 0.7873015873015873,
+        "cases_with_top_5_regret": 9,
+        "mean_top_5_regret": 0.03107929120656368,
+        "measured_configs": 324,
+        "scored_configs": 324,
+        "pair_confusion": {
+          "b_faster": {
+            "indistinguishable": 1114,
+            "a_faster": 48,
+            "b_faster": 1731
+          },
+          "indistinguishable": {
+            "indistinguishable": 549,
+            "a_faster": 42,
+            "b_faster": 28
+          },
+          "a_faster": {
+            "a_faster": 1149,
+            "indistinguishable": 768,
+            "b_faster": 17
+          },
+          "unresolved": {
+            "a_faster": 16,
+            "indistinguishable": 192,
+            "b_faster": 16
+          }
+        }
+      }
+    },
+    "cold": {
+      "roofline_wave": {
+        "cases_with_tau_b": 9,
+        "median_tau_b": 0.5140123739229383,
+        "cases_with_top_5_regret": 9,
+        "mean_top_5_regret": 0.09251080732922537,
+        "measured_configs": 324,
+        "scored_configs": 324,
+        "pair_confusion": {
+          "b_faster": {
+            "indistinguishable": 326,
+            "a_faster": 792,
+            "b_faster": 1834
+          },
+          "indistinguishable": {
+            "indistinguishable": 218,
+            "a_faster": 311,
+            "b_faster": 70
+          },
+          "a_faster": {
+            "a_faster": 1641,
+            "indistinguishable": 190,
+            "b_faster": 85
+          },
+          "unresolved": {
+            "a_faster": 93,
+            "indistinguishable": 61,
+            "b_faster": 49
+          }
+        }
+      },
+      "neusight_style": {
+        "cases_with_tau_b": 9,
+        "median_tau_b": 0.4763691105862369,
+        "cases_with_top_5_regret": 9,
+        "mean_top_5_regret": 0.01241236713536151,
+        "measured_configs": 324,
+        "scored_configs": 324,
+        "pair_confusion": {
+          "b_faster": {
+            "b_faster": 2257,
+            "indistinguishable": 258,
+            "a_faster": 437
+          },
+          "indistinguishable": {
+            "indistinguishable": 223,
+            "a_faster": 105,
+            "b_faster": 271
+          },
+          "a_faster": {
+            "a_faster": 998,
+            "indistinguishable": 330,
+            "b_faster": 588
+          },
+          "unresolved": {
+            "b_faster": 112,
+            "a_faster": 31,
+            "indistinguishable": 60
+          }
+        }
+      },
+      "core": {
+        "cases_with_tau_b": 9,
+        "median_tau_b": 0.7496012759170654,
+        "cases_with_top_5_regret": 9,
+        "mean_top_5_regret": 0.030228269943866713,
+        "measured_configs": 324,
+        "scored_configs": 324,
+        "pair_confusion": {
+          "b_faster": {
+            "indistinguishable": 1179,
+            "a_faster": 51,
+            "b_faster": 1722
+          },
+          "indistinguishable": {
+            "indistinguishable": 541,
+            "a_faster": 37,
+            "b_faster": 21
+          },
+          "a_faster": {
+            "a_faster": 1155,
+            "indistinguishable": 747,
+            "b_faster": 14
+          },
+          "unresolved": {
+            "a_faster": 14,
+            "indistinguishable": 168,
+            "b_faster": 21
+          }
+        }
+      }
+    }
+  },
+  "holdout_gates": {
+    "warm": {
+      "absolute_regret_pass": false,
+      "baselines": {
+        "roofline_wave": {
+          "median_tau_b_gain": 0.2757808832520481,
+          "mean_top_5_regret_excess": -0.06188310572628186,
+          "ranking_pass": true,
+          "non_inferiority_pass": true
+        },
+        "neusight_style": {
+          "median_tau_b_gain": 0.4007156783748385,
+          "mean_top_5_regret_excess": 0.019154208207796574,
+          "ranking_pass": true,
+          "non_inferiority_pass": false
+        }
+      },
+      "pass": false
+    },
+    "cold": {
+      "absolute_regret_pass": false,
+      "baselines": {
+        "roofline_wave": {
+          "median_tau_b_gain": 0.23558890199412708,
+          "mean_top_5_regret_excess": -0.06228253738535866,
+          "ranking_pass": true,
+          "non_inferiority_pass": true
+        },
+        "neusight_style": {
+          "median_tau_b_gain": 0.2732321653308285,
+          "mean_top_5_regret_excess": 0.017815902808505202,
+          "ranking_pass": true,
+          "non_inferiority_pass": false
+        }
+      },
+      "pass": false
+    }
+  },
+  "cases": {
+    "prefill-256": {
+      "candidate_status_counts": {
+        "ok": 36
+      },
+      "matched_config_sessions": 108,
+      "cache": {
+        "warm": {
+          "core": {
+            "kendall_tau_b": 0.6602870813397129,
+            "k": 5,
+            "shortlist": [
+              "m128n64k64-w4-s2-g1",
+              "m128n64k64-w4-s1-g1",
+              "m128n64k64-w4-s4-g1",
+              "m128n64k64-w8-s4-g1",
+              "m64n128k32-w4-s2-g1"
+            ],
+            "top_k_hit": false,
+            "top_k_regret": 0.006756709587931953,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "indistinguishable": 125,
+                "a_faster": 18,
+                "b_faster": 182
+              },
+              "indistinguishable": {
+                "indistinguishable": 35,
+                "a_faster": 24,
+                "b_faster": 7
+              },
+              "a_faster": {
+                "a_faster": 199,
+                "indistinguishable": 29,
+                "b_faster": 4
+              },
+              "unresolved": {
+                "a_faster": 4,
+                "indistinguishable": 3
+              }
+            }
+          },
+          "neusight_style": {
+            "kendall_tau_b": 0.7611474617985825,
+            "k": 5,
+            "shortlist": [
+              "m64n128k32-w4-s2-g1",
+              "m64n128k32-w8-s2-g1",
+              "m128n64k64-w4-s2-g1",
+              "m128n64k64-w4-s4-g1",
+              "m128n64k64-w8-s4-g1"
+            ],
+            "top_k_hit": false,
+            "top_k_regret": 0.006756709587931953,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "b_faster": 303,
+                "indistinguishable": 20,
+                "a_faster": 2
+              },
+              "indistinguishable": {
+                "indistinguishable": 25,
+                "a_faster": 21,
+                "b_faster": 20
+              },
+              "a_faster": {
+                "a_faster": 194,
+                "indistinguishable": 28,
+                "b_faster": 10
+              },
+              "unresolved": {
+                "b_faster": 4,
+                "a_faster": 2,
+                "indistinguishable": 1
+              }
+            }
+          },
+          "roofline_wave": {
+            "kendall_tau_b": 0.5115207040495392,
+            "k": 5,
+            "shortlist": [
+              "m128n128k64-w4-s1-g1",
+              "m128n128k64-w4-s2-g1",
+              "m128n128k64-w4-s4-g1",
+              "m128n128k64-w8-s1-g1",
+              "m128n128k64-w8-s2-g1"
+            ],
+            "top_k_hit": false,
+            "top_k_regret": 0.28378376916809156,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "indistinguishable": 23,
+                "a_faster": 100,
+                "b_faster": 202
+              },
+              "indistinguishable": {
+                "indistinguishable": 25,
+                "a_faster": 31,
+                "b_faster": 10
+              },
+              "a_faster": {
+                "a_faster": 212,
+                "indistinguishable": 16,
+                "b_faster": 4
+              },
+              "unresolved": {
+                "a_faster": 5,
+                "indistinguishable": 2
+              }
+            }
+          },
+          "core_advantage": {
+            "roofline_wave": {
+              "tau_b_gain": 0.14876637729017372,
+              "top_5_regret_reduction": 0.2770270595801596
+            },
+            "neusight_style": {
+              "tau_b_gain": -0.10086038045886958,
+              "top_5_regret_reduction": 0.0
+            }
+          }
+        },
+        "cold": {
+          "core": {
+            "kendall_tau_b": 0.6974531135309187,
+            "k": 5,
+            "shortlist": [
+              "m128n64k64-w4-s2-g1",
+              "m128n64k64-w4-s1-g1",
+              "m128n64k64-w4-s4-g1",
+              "m128n64k64-w8-s4-g1",
+              "m64n128k32-w4-s2-g1"
+            ],
+            "top_k_hit": false,
+            "top_k_regret": 0.0270269366754754,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "indistinguishable": 135,
+                "a_faster": 13,
+                "b_faster": 177
+              },
+              "indistinguishable": {
+                "indistinguishable": 46,
+                "a_faster": 18,
+                "b_faster": 3
+              },
+              "a_faster": {
+                "a_faster": 193,
+                "indistinguishable": 31,
+                "b_faster": 2
+              },
+              "unresolved": {
+                "a_faster": 2,
+                "indistinguishable": 6,
+                "b_faster": 4
+              }
+            }
+          },
+          "neusight_style": {
+            "kendall_tau_b": 0.8175541883879207,
+            "k": 5,
+            "shortlist": [
+              "m64n128k32-w4-s2-g1",
+              "m64n128k32-w8-s2-g1",
+              "m128n64k64-w4-s2-g1",
+              "m128n64k64-w4-s4-g1",
+              "m128n64k64-w8-s4-g1"
+            ],
+            "top_k_hit": false,
+            "top_k_regret": 0.0270269366754754,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "b_faster": 300,
+                "indistinguishable": 23,
+                "a_faster": 2
+              },
+              "indistinguishable": {
+                "indistinguishable": 31,
+                "a_faster": 19,
+                "b_faster": 17
+              },
+              "a_faster": {
+                "a_faster": 200,
+                "indistinguishable": 21,
+                "b_faster": 5
+              },
+              "unresolved": {
+                "b_faster": 8,
+                "a_faster": 1,
+                "indistinguishable": 3
+              }
+            }
+          },
+          "roofline_wave": {
+            "kendall_tau_b": 0.5140123739229383,
+            "k": 5,
+            "shortlist": [
+              "m128n128k64-w4-s1-g1",
+              "m128n128k64-w4-s2-g1",
+              "m128n128k64-w4-s4-g1",
+              "m128n128k64-w8-s1-g1",
+              "m128n128k64-w8-s2-g1"
+            ],
+            "top_k_hit": false,
+            "top_k_regret": 0.28378376916809156,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "indistinguishable": 24,
+                "a_faster": 101,
+                "b_faster": 200
+              },
+              "indistinguishable": {
+                "indistinguishable": 27,
+                "a_faster": 34,
+                "b_faster": 6
+              },
+              "a_faster": {
+                "a_faster": 210,
+                "indistinguishable": 12,
+                "b_faster": 4
+              },
+              "unresolved": {
+                "a_faster": 3,
+                "indistinguishable": 3,
+                "b_faster": 6
+              }
+            }
+          },
+          "core_advantage": {
+            "roofline_wave": {
+              "tau_b_gain": 0.18344073960798035,
+              "top_5_regret_reduction": 0.25675683249261616
+            },
+            "neusight_style": {
+              "tau_b_gain": -0.12010107485700205,
+              "top_5_regret_reduction": 0.0
+            }
+          }
+        }
+      }
+    },
+    "prefill-1024": {
+      "candidate_status_counts": {
+        "ok": 36
+      },
+      "matched_config_sessions": 108,
+      "cache": {
+        "warm": {
+          "core": {
+            "kendall_tau_b": 0.7282889333851095,
+            "k": 5,
+            "shortlist": [
+              "m128n128k64-w8-s4-g1",
+              "m128n128k64-w4-s4-g1",
+              "m128n128k64-w4-s2-g1",
+              "m128n128k64-w4-s1-g1",
+              "m128n128k64-w8-s1-g1"
+            ],
+            "top_k_hit": true,
+            "top_k_regret": 0.0,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "indistinguishable": 21,
+                "b_faster": 166,
+                "a_faster": 8
+              },
+              "indistinguishable": {
+                "indistinguishable": 54,
+                "a_faster": 7,
+                "b_faster": 2
+              },
+              "unresolved": {
+                "a_faster": 9,
+                "indistinguishable": 40,
+                "b_faster": 8
+              },
+              "a_faster": {
+                "a_faster": 178,
+                "indistinguishable": 133,
+                "b_faster": 4
+              }
+            }
+          },
+          "neusight_style": {
+            "kendall_tau_b": 0.38658590892674877,
+            "k": 5,
+            "shortlist": [
+              "m64n128k32-w4-s4-g1",
+              "m64n128k32-w8-s4-g1",
+              "m64n64k32-w4-s4-g1",
+              "m64n128k32-w4-s2-g1",
+              "m64n64k32-w8-s4-g1"
+            ],
+            "top_k_hit": false,
+            "top_k_regret": 0.07986906610523103,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "b_faster": 178,
+                "a_faster": 16,
+                "indistinguishable": 1
+              },
+              "indistinguishable": {
+                "indistinguishable": 21,
+                "b_faster": 35,
+                "a_faster": 7
+              },
+              "unresolved": {
+                "indistinguishable": 20,
+                "b_faster": 32,
+                "a_faster": 5
+              },
+              "a_faster": {
+                "a_faster": 169,
+                "b_faster": 102,
+                "indistinguishable": 44
+              }
+            }
+          },
+          "roofline_wave": {
+            "kendall_tau_b": 0.7312492955363467,
+            "k": 5,
+            "shortlist": [
+              "m128n128k64-w4-s1-g1",
+              "m128n128k64-w4-s2-g1",
+              "m128n128k64-w4-s4-g1",
+              "m128n128k64-w8-s1-g1",
+              "m128n128k64-w8-s2-g1"
+            ],
+            "top_k_hit": true,
+            "top_k_regret": 0.0,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "indistinguishable": 16,
+                "a_faster": 12,
+                "b_faster": 167
+              },
+              "indistinguishable": {
+                "indistinguishable": 30,
+                "a_faster": 31,
+                "b_faster": 2
+              },
+              "unresolved": {
+                "indistinguishable": 23,
+                "a_faster": 26,
+                "b_faster": 8
+              },
+              "a_faster": {
+                "a_faster": 259,
+                "indistinguishable": 49,
+                "b_faster": 7
+              }
+            }
+          },
+          "core_advantage": {
+            "roofline_wave": {
+              "tau_b_gain": -0.0029603621512371836,
+              "top_5_regret_reduction": 0.0
+            },
+            "neusight_style": {
+              "tau_b_gain": 0.3417030244583607,
+              "top_5_regret_reduction": 0.07986906610523103
+            }
+          }
+        },
+        "cold": {
+          "core": {
+            "kendall_tau_b": 0.7336532456950673,
+            "k": 5,
+            "shortlist": [
+              "m128n128k64-w8-s4-g1",
+              "m128n128k64-w4-s4-g1",
+              "m128n128k64-w4-s2-g1",
+              "m128n128k64-w4-s1-g1",
+              "m128n128k64-w8-s1-g1"
+            ],
+            "top_k_hit": true,
+            "top_k_regret": 0.0,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "indistinguishable": 22,
+                "b_faster": 168,
+                "a_faster": 8
+              },
+              "indistinguishable": {
+                "indistinguishable": 49,
+                "a_faster": 7,
+                "b_faster": 2
+              },
+              "unresolved": {
+                "a_faster": 6,
+                "indistinguishable": 43,
+                "b_faster": 6
+              },
+              "a_faster": {
+                "indistinguishable": 134,
+                "a_faster": 181,
+                "b_faster": 4
+              }
+            }
+          },
+          "neusight_style": {
+            "kendall_tau_b": 0.4879139325495114,
+            "k": 5,
+            "shortlist": [
+              "m64n128k32-w4-s4-g1",
+              "m64n128k32-w8-s4-g1",
+              "m64n128k32-w4-s2-g1",
+              "m64n128k32-w8-s2-g1",
+              "m128n64k64-w4-s2-g1"
+            ],
+            "top_k_hit": false,
+            "top_k_regret": 0.07383419366819788,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "b_faster": 181,
+                "indistinguishable": 6,
+                "a_faster": 11
+              },
+              "indistinguishable": {
+                "indistinguishable": 23,
+                "b_faster": 29,
+                "a_faster": 6
+              },
+              "unresolved": {
+                "indistinguishable": 16,
+                "b_faster": 31,
+                "a_faster": 8
+              },
+              "a_faster": {
+                "b_faster": 76,
+                "a_faster": 178,
+                "indistinguishable": 65
+              }
+            }
+          },
+          "roofline_wave": {
+            "kendall_tau_b": 0.7283212866998018,
+            "k": 5,
+            "shortlist": [
+              "m128n128k64-w4-s1-g1",
+              "m128n128k64-w4-s2-g1",
+              "m128n128k64-w4-s4-g1",
+              "m128n128k64-w8-s1-g1",
+              "m128n128k64-w8-s2-g1"
+            ],
+            "top_k_hit": true,
+            "top_k_regret": 0.0,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "indistinguishable": 16,
+                "a_faster": 13,
+                "b_faster": 169
+              },
+              "indistinguishable": {
+                "indistinguishable": 27,
+                "a_faster": 29,
+                "b_faster": 2
+              },
+              "unresolved": {
+                "indistinguishable": 26,
+                "a_faster": 23,
+                "b_faster": 6
+              },
+              "a_faster": {
+                "a_faster": 263,
+                "indistinguishable": 49,
+                "b_faster": 7
+              }
+            }
+          },
+          "core_advantage": {
+            "roofline_wave": {
+              "tau_b_gain": 0.005331958995265507,
+              "top_5_regret_reduction": 0.0
+            },
+            "neusight_style": {
+              "tau_b_gain": 0.24573931314555592,
+              "top_5_regret_reduction": 0.07383419366819788
+            }
+          }
+        }
+      }
+    },
+    "prefill-2048": {
+      "candidate_status_counts": {
+        "ok": 36
+      },
+      "matched_config_sessions": 108,
+      "cache": {
+        "warm": {
+          "core": {
+            "kendall_tau_b": 0.6888888888888889,
+            "k": 5,
+            "shortlist": [
+              "m128n128k64-w8-s4-g1",
+              "m128n128k64-w4-s4-g1",
+              "m128n64k64-w4-s2-g1",
+              "m128n64k64-w4-s1-g1",
+              "m128n128k64-w4-s2-g1"
+            ],
+            "top_k_hit": false,
+            "top_k_regret": 0.028231151630466744,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "indistinguishable": {
+                "indistinguishable": 59
+              },
+              "a_faster": {
+                "indistinguishable": 139,
+                "a_faster": 176,
+                "b_faster": 3
+              },
+              "unresolved": {
+                "indistinguishable": 39,
+                "b_faster": 1
+              },
+              "b_faster": {
+                "indistinguishable": 52,
+                "b_faster": 161
+              }
+            }
+          },
+          "neusight_style": {
+            "kendall_tau_b": 0.4603174603174603,
+            "k": 5,
+            "shortlist": [
+              "m64n128k32-w4-s4-g1",
+              "m64n128k32-w4-s2-g1",
+              "m64n128k32-w8-s4-g1",
+              "m64n64k32-w4-s4-g1",
+              "m64n128k32-w8-s2-g1"
+            ],
+            "top_k_hit": true,
+            "top_k_regret": 0.0,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "indistinguishable": {
+                "b_faster": 34,
+                "indistinguishable": 17,
+                "a_faster": 8
+              },
+              "a_faster": {
+                "indistinguishable": 54,
+                "b_faster": 92,
+                "a_faster": 172
+              },
+              "unresolved": {
+                "b_faster": 29,
+                "indistinguishable": 8,
+                "a_faster": 3
+              },
+              "b_faster": {
+                "b_faster": 199,
+                "indistinguishable": 4,
+                "a_faster": 10
+              }
+            }
+          },
+          "roofline_wave": {
+            "kendall_tau_b": 0.7012685750973902,
+            "k": 5,
+            "shortlist": [
+              "m128n128k64-w4-s4-g1",
+              "m128n128k64-w8-s2-g1",
+              "m128n128k64-w8-s4-g1",
+              "m128n128k64-w4-s1-g1",
+              "m128n128k64-w4-s2-g1"
+            ],
+            "top_k_hit": false,
+            "top_k_regret": 0.0677106318768872,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "indistinguishable": {
+                "indistinguishable": 23,
+                "a_faster": 36
+              },
+              "a_faster": {
+                "indistinguishable": 64,
+                "a_faster": 251,
+                "b_faster": 3
+              },
+              "unresolved": {
+                "a_faster": 18,
+                "indistinguishable": 12,
+                "b_faster": 10
+              },
+              "b_faster": {
+                "a_faster": 23,
+                "indistinguishable": 20,
+                "b_faster": 170
+              }
+            }
+          },
+          "core_advantage": {
+            "roofline_wave": {
+              "tau_b_gain": -0.012379686208501273,
+              "top_5_regret_reduction": 0.03947948024642045
+            },
+            "neusight_style": {
+              "tau_b_gain": 0.2285714285714286,
+              "top_5_regret_reduction": -0.028231151630466744
+            }
+          }
+        },
+        "cold": {
+          "core": {
+            "kendall_tau_b": 0.6857142857142857,
+            "k": 5,
+            "shortlist": [
+              "m128n128k64-w8-s4-g1",
+              "m128n128k64-w4-s4-g1",
+              "m128n64k64-w4-s2-g1",
+              "m128n64k64-w4-s1-g1",
+              "m128n128k64-w4-s2-g1"
+            ],
+            "top_k_hit": false,
+            "top_k_regret": 0.02314301656648765,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "indistinguishable": {
+                "indistinguishable": 63
+              },
+              "a_faster": {
+                "indistinguishable": 141,
+                "a_faster": 176,
+                "b_faster": 2
+              },
+              "unresolved": {
+                "indistinguishable": 32,
+                "b_faster": 2
+              },
+              "b_faster": {
+                "indistinguishable": 53,
+                "b_faster": 161
+              }
+            }
+          },
+          "neusight_style": {
+            "kendall_tau_b": 0.4763691105862369,
+            "k": 5,
+            "shortlist": [
+              "m64n128k32-w4-s4-g1",
+              "m64n128k32-w4-s2-g1",
+              "m64n128k32-w8-s4-g1",
+              "m64n64k32-w4-s4-g1",
+              "m64n128k32-w8-s2-g1"
+            ],
+            "top_k_hit": true,
+            "top_k_regret": 0.0,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "indistinguishable": {
+                "b_faster": 37,
+                "indistinguishable": 17,
+                "a_faster": 9
+              },
+              "a_faster": {
+                "indistinguishable": 64,
+                "b_faster": 83,
+                "a_faster": 172
+              },
+              "unresolved": {
+                "b_faster": 24,
+                "indistinguishable": 8,
+                "a_faster": 2
+              },
+              "b_faster": {
+                "b_faster": 200,
+                "indistinguishable": 6,
+                "a_faster": 8
+              }
+            }
+          },
+          "roofline_wave": {
+            "kendall_tau_b": 0.7045686625096131,
+            "k": 5,
+            "shortlist": [
+              "m128n128k64-w4-s4-g1",
+              "m128n128k64-w8-s2-g1",
+              "m128n128k64-w8-s4-g1",
+              "m128n128k64-w4-s1-g1",
+              "m128n128k64-w4-s2-g1"
+            ],
+            "top_k_hit": false,
+            "top_k_regret": 0.06942915233584768,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "indistinguishable": {
+                "indistinguishable": 25,
+                "a_faster": 38
+              },
+              "a_faster": {
+                "indistinguishable": 66,
+                "a_faster": 251,
+                "b_faster": 2
+              },
+              "unresolved": {
+                "a_faster": 15,
+                "indistinguishable": 8,
+                "b_faster": 11
+              },
+              "b_faster": {
+                "a_faster": 24,
+                "indistinguishable": 20,
+                "b_faster": 170
+              }
+            }
+          },
+          "core_advantage": {
+            "roofline_wave": {
+              "tau_b_gain": -0.01885437679532742,
+              "top_5_regret_reduction": 0.046286135769360026
+            },
+            "neusight_style": {
+              "tau_b_gain": 0.20934517512804884,
+              "top_5_regret_reduction": -0.02314301656648765
+            }
+          }
+        }
+      }
+    },
+    "mask-mnk": {
+      "candidate_status_counts": {
+        "ok": 36
+      },
+      "matched_config_sessions": 108,
+      "cache": {
+        "warm": {
+          "core": {
+            "kendall_tau_b": 0.3591399565273678,
+            "k": 5,
+            "shortlist": [
+              "m128n128k64-w8-s1-g1",
+              "m128n128k64-w8-s2-g1",
+              "m128n128k64-w8-s4-g1",
+              "m128n64k64-w4-s1-g1",
+              "m128n64k64-w4-s2-g1"
+            ],
+            "top_k_hit": false,
+            "top_k_regret": 0.24472575964067445,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "indistinguishable": {
+                "indistinguishable": 63
+              },
+              "b_faster": {
+                "indistinguishable": 307,
+                "a_faster": 18,
+                "b_faster": 108
+              },
+              "a_faster": {
+                "indistinguishable": 62,
+                "a_faster": 45
+              },
+              "unresolved": {
+                "indistinguishable": 27
+              }
+            }
+          },
+          "neusight_style": {
+            "kendall_tau_b": 0.30806075253734266,
+            "k": 5,
+            "shortlist": [
+              "m64n64k32-w4-s4-g1",
+              "m64n64k32-w8-s4-g1",
+              "m64n128k32-w4-s4-g1",
+              "m64n128k32-w8-s4-g1",
+              "m64n64k32-w4-s2-g1"
+            ],
+            "top_k_hit": false,
+            "top_k_regret": 0.0021096900036816635,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "indistinguishable": {
+                "b_faster": 41,
+                "indistinguishable": 15,
+                "a_faster": 7
+              },
+              "b_faster": {
+                "a_faster": 87,
+                "indistinguishable": 45,
+                "b_faster": 301
+              },
+              "a_faster": {
+                "b_faster": 39,
+                "indistinguishable": 23,
+                "a_faster": 45
+              },
+              "unresolved": {
+                "b_faster": 14,
+                "indistinguishable": 7,
+                "a_faster": 6
+              }
+            }
+          },
+          "roofline_wave": {
+            "kendall_tau_b": 0.05035499517247944,
+            "k": 5,
+            "shortlist": [
+              "m128n128k64-w4-s1-g1",
+              "m128n128k64-w4-s2-g1",
+              "m128n128k64-w4-s4-g1",
+              "m128n128k64-w8-s1-g1",
+              "m128n128k64-w8-s2-g1"
+            ],
+            "top_k_hit": false,
+            "top_k_regret": 0.24472575964067445,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "indistinguishable": {
+                "indistinguishable": 36,
+                "a_faster": 27
+              },
+              "b_faster": {
+                "indistinguishable": 18,
+                "a_faster": 234,
+                "b_faster": 181
+              },
+              "a_faster": {
+                "a_faster": 89,
+                "indistinguishable": 9,
+                "b_faster": 9
+              },
+              "unresolved": {
+                "indistinguishable": 9,
+                "b_faster": 8,
+                "a_faster": 10
+              }
+            }
+          },
+          "core_advantage": {
+            "roofline_wave": {
+              "tau_b_gain": 0.30878496135488837,
+              "top_5_regret_reduction": 0.0
+            },
+            "neusight_style": {
+              "tau_b_gain": 0.051079203990025135,
+              "top_5_regret_reduction": -0.24261606963699278
+            }
+          }
+        },
+        "cold": {
+          "core": {
+            "kendall_tau_b": 0.3361561802452939,
+            "k": 5,
+            "shortlist": [
+              "m128n64k64-w4-s1-g1",
+              "m128n64k64-w4-s2-g1",
+              "m128n64k64-w4-s4-g1",
+              "m128n128k64-w8-s1-g1",
+              "m128n128k64-w8-s2-g1"
+            ],
+            "top_k_hit": false,
+            "top_k_regret": 0.22188447625283736,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "indistinguishable": {
+                "indistinguishable": 72
+              },
+              "b_faster": {
+                "indistinguishable": 340,
+                "a_faster": 18,
+                "b_faster": 108
+              },
+              "a_faster": {
+                "indistinguishable": 42,
+                "a_faster": 45
+              },
+              "unresolved": {
+                "indistinguishable": 5
+              }
+            }
+          },
+          "neusight_style": {
+            "kendall_tau_b": 0.35431227763463774,
+            "k": 5,
+            "shortlist": [
+              "m64n64k32-w4-s4-g1",
+              "m64n64k32-w8-s4-g1",
+              "m64n128k32-w4-s4-g1",
+              "m64n128k32-w8-s4-g1",
+              "m64n64k32-w4-s2-g1"
+            ],
+            "top_k_hit": true,
+            "top_k_regret": 0.0,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "indistinguishable": {
+                "b_faster": 37,
+                "indistinguishable": 27,
+                "a_faster": 8
+              },
+              "b_faster": {
+                "a_faster": 107,
+                "indistinguishable": 49,
+                "b_faster": 310
+              },
+              "a_faster": {
+                "b_faster": 23,
+                "indistinguishable": 23,
+                "a_faster": 41
+              },
+              "unresolved": {
+                "indistinguishable": 4,
+                "a_faster": 1
+              }
+            }
+          },
+          "roofline_wave": {
+            "kendall_tau_b": -0.005059806172657636,
+            "k": 5,
+            "shortlist": [
+              "m128n128k64-w4-s1-g1",
+              "m128n128k64-w4-s2-g1",
+              "m128n128k64-w4-s4-g1",
+              "m128n128k64-w8-s1-g1",
+              "m128n128k64-w8-s2-g1"
+            ],
+            "top_k_hit": false,
+            "top_k_regret": 0.22188447625283736,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "indistinguishable": {
+                "indistinguishable": 45,
+                "a_faster": 27
+              },
+              "b_faster": {
+                "indistinguishable": 18,
+                "a_faster": 261,
+                "b_faster": 187
+              },
+              "a_faster": {
+                "a_faster": 72,
+                "indistinguishable": 6,
+                "b_faster": 9
+              },
+              "unresolved": {
+                "indistinguishable": 3,
+                "b_faster": 2
+              }
+            }
+          },
+          "core_advantage": {
+            "roofline_wave": {
+              "tau_b_gain": 0.34121598641795153,
+              "top_5_regret_reduction": 0.0
+            },
+            "neusight_style": {
+              "tau_b_gain": -0.018156097389343817,
+              "top_5_regret_reduction": -0.22188447625283736
+            }
+          }
+        }
+      }
+    },
+    "resident-wave-below": {
+      "candidate_status_counts": {
+        "ok": 36
+      },
+      "matched_config_sessions": 108,
+      "cache": {
+        "warm": {
+          "core": {
+            "kendall_tau_b": 0.7984127110353749,
+            "k": 5,
+            "shortlist": [
+              "m64n64k32-w4-s2-g1",
+              "m64n64k32-w4-s1-g1",
+              "m64n128k32-w8-s1-g1",
+              "m64n128k32-w4-s1-g1",
+              "m64n128k32-w4-s2-g1"
+            ],
+            "top_k_hit": true,
+            "top_k_regret": 0.0,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "indistinguishable": 63,
+                "b_faster": 263
+              },
+              "a_faster": {
+                "indistinguishable": 112,
+                "a_faster": 91,
+                "b_faster": 1
+              },
+              "indistinguishable": {
+                "b_faster": 3,
+                "indistinguishable": 69,
+                "a_faster": 1
+              },
+              "unresolved": {
+                "indistinguishable": 26,
+                "a_faster": 1
+              }
+            }
+          },
+          "neusight_style": {
+            "kendall_tau_b": 0.19283021563928215,
+            "k": 5,
+            "shortlist": [
+              "m32n64k32-w4-s4-g1",
+              "m32n64k32-w8-s4-g1",
+              "m64n64k32-w4-s2-g1",
+              "m32n64k32-w8-s1-g1",
+              "m32n64k32-w8-s2-g1"
+            ],
+            "top_k_hit": false,
+            "top_k_regret": 0.003936923065288589,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "b_faster": 226,
+                "indistinguishable": 31,
+                "a_faster": 69
+              },
+              "a_faster": {
+                "indistinguishable": 29,
+                "b_faster": 119,
+                "a_faster": 56
+              },
+              "indistinguishable": {
+                "b_faster": 44,
+                "indistinguishable": 22,
+                "a_faster": 7
+              },
+              "unresolved": {
+                "b_faster": 15,
+                "a_faster": 7,
+                "indistinguishable": 5
+              }
+            }
+          },
+          "roofline_wave": {
+            "kendall_tau_b": 0.4949510599282902,
+            "k": 5,
+            "shortlist": [
+              "m128n128k64-w4-s4-g1",
+              "m128n128k64-w8-s2-g1",
+              "m128n128k64-w8-s4-g1",
+              "m64n128k32-w4-s2-g1",
+              "m64n128k32-w8-s1-g1"
+            ],
+            "top_k_hit": false,
+            "top_k_regret": 0.003936923065288589,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "indistinguishable": 49,
+                "b_faster": 211,
+                "a_faster": 66
+              },
+              "a_faster": {
+                "indistinguishable": 13,
+                "a_faster": 176,
+                "b_faster": 15
+              },
+              "indistinguishable": {
+                "b_faster": 13,
+                "a_faster": 39,
+                "indistinguishable": 21
+              },
+              "unresolved": {
+                "a_faster": 18,
+                "indistinguishable": 5,
+                "b_faster": 4
+              }
+            }
+          },
+          "core_advantage": {
+            "roofline_wave": {
+              "tau_b_gain": 0.30346165110708473,
+              "top_5_regret_reduction": 0.003936923065288589
+            },
+            "neusight_style": {
+              "tau_b_gain": 0.6055824953960928,
+              "top_5_regret_reduction": 0.003936923065288589
+            }
+          }
+        },
+        "cold": {
+          "core": {
+            "kendall_tau_b": 0.7917339099517116,
+            "k": 5,
+            "shortlist": [
+              "m64n64k32-w4-s2-g1",
+              "m64n64k32-w4-s1-g1",
+              "m64n128k32-w4-s1-g1",
+              "m64n128k32-w8-s1-g1",
+              "m64n128k32-w4-s2-g1"
+            ],
+            "top_k_hit": true,
+            "top_k_regret": 0.0,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "indistinguishable": 72,
+                "b_faster": 261
+              },
+              "a_faster": {
+                "indistinguishable": 109,
+                "a_faster": 90,
+                "b_faster": 1
+              },
+              "indistinguishable": {
+                "b_faster": 4,
+                "indistinguishable": 64,
+                "a_faster": 2
+              },
+              "unresolved": {
+                "indistinguishable": 25,
+                "b_faster": 1,
+                "a_faster": 1
+              }
+            }
+          },
+          "neusight_style": {
+            "kendall_tau_b": 0.10264902475782589,
+            "k": 5,
+            "shortlist": [
+              "m32n64k32-w4-s4-g1",
+              "m32n64k32-w8-s4-g1",
+              "m64n64k32-w4-s2-g1",
+              "m32n64k32-w8-s1-g1",
+              "m32n64k32-w8-s2-g1"
+            ],
+            "top_k_hit": true,
+            "top_k_regret": 0.0,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "b_faster": 195,
+                "a_faster": 102,
+                "indistinguishable": 36
+              },
+              "a_faster": {
+                "indistinguishable": 27,
+                "b_faster": 121,
+                "a_faster": 52
+              },
+              "indistinguishable": {
+                "b_faster": 29,
+                "indistinguishable": 29,
+                "a_faster": 12
+              },
+              "unresolved": {
+                "b_faster": 14,
+                "a_faster": 4,
+                "indistinguishable": 9
+              }
+            }
+          },
+          "roofline_wave": {
+            "kendall_tau_b": 0.48382581048480716,
+            "k": 5,
+            "shortlist": [
+              "m128n128k64-w4-s4-g1",
+              "m128n128k64-w8-s2-g1",
+              "m128n128k64-w8-s4-g1",
+              "m64n128k32-w4-s2-g1",
+              "m64n128k32-w8-s1-g1"
+            ],
+            "top_k_hit": false,
+            "top_k_regret": 0.004970216886609924,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "indistinguishable": 52,
+                "b_faster": 213,
+                "a_faster": 68
+              },
+              "a_faster": {
+                "indistinguishable": 13,
+                "a_faster": 176,
+                "b_faster": 11
+              },
+              "indistinguishable": {
+                "b_faster": 14,
+                "a_faster": 37,
+                "indistinguishable": 19
+              },
+              "unresolved": {
+                "a_faster": 18,
+                "b_faster": 5,
+                "indistinguishable": 4
+              }
+            }
+          },
+          "core_advantage": {
+            "roofline_wave": {
+              "tau_b_gain": 0.3079080994669044,
+              "top_5_regret_reduction": 0.004970216886609924
+            },
+            "neusight_style": {
+              "tau_b_gain": 0.6890848851938857,
+              "top_5_regret_reduction": 0.0
+            }
+          }
+        }
+      }
+    },
+    "resident-wave-exact": {
+      "candidate_status_counts": {
+        "ok": 36
+      },
+      "matched_config_sessions": 108,
+      "cache": {
+        "warm": {
+          "core": {
+            "kendall_tau_b": 0.7873015873015873,
+            "k": 5,
+            "shortlist": [
+              "m64n64k32-w4-s1-g1",
+              "m64n64k32-w4-s2-g1",
+              "m64n128k32-w8-s1-g1",
+              "m64n128k32-w4-s1-g1",
+              "m64n128k32-w8-s2-g1"
+            ],
+            "top_k_hit": true,
+            "top_k_regret": 0.0,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "indistinguishable": 64,
+                "b_faster": 260
+              },
+              "a_faster": {
+                "indistinguishable": 108,
+                "a_faster": 92,
+                "b_faster": 1
+              },
+              "indistinguishable": {
+                "b_faster": 3,
+                "indistinguishable": 78,
+                "a_faster": 1
+              },
+              "unresolved": {
+                "b_faster": 3,
+                "indistinguishable": 19,
+                "a_faster": 1
+              }
+            }
+          },
+          "neusight_style": {
+            "kendall_tau_b": 0.17142857142857143,
+            "k": 5,
+            "shortlist": [
+              "m32n64k32-w4-s4-g1",
+              "m32n64k32-w8-s4-g1",
+              "m64n64k32-w4-s2-g1",
+              "m32n64k32-w8-s1-g1",
+              "m32n64k32-w8-s2-g1"
+            ],
+            "top_k_hit": false,
+            "top_k_regret": 0.004906808902813475,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "b_faster": 224,
+                "indistinguishable": 29,
+                "a_faster": 71
+              },
+              "a_faster": {
+                "indistinguishable": 29,
+                "b_faster": 117,
+                "a_faster": 55
+              },
+              "indistinguishable": {
+                "b_faster": 48,
+                "indistinguishable": 25,
+                "a_faster": 9
+              },
+              "unresolved": {
+                "b_faster": 15,
+                "indistinguishable": 3,
+                "a_faster": 5
+              }
+            }
+          },
+          "roofline_wave": {
+            "kendall_tau_b": 0.5459208336840117,
+            "k": 5,
+            "shortlist": [
+              "m128n128k64-w4-s4-g1",
+              "m128n128k64-w8-s2-g1",
+              "m128n128k64-w8-s4-g1",
+              "m64n128k32-w4-s2-g1",
+              "m64n128k32-w8-s1-g1"
+            ],
+            "top_k_hit": false,
+            "top_k_regret": 0.006869532463938954,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "indistinguishable": 50,
+                "b_faster": 206,
+                "a_faster": 68
+              },
+              "a_faster": {
+                "indistinguishable": 13,
+                "a_faster": 174,
+                "b_faster": 14
+              },
+              "indistinguishable": {
+                "b_faster": 17,
+                "a_faster": 43,
+                "indistinguishable": 22
+              },
+              "unresolved": {
+                "b_faster": 6,
+                "a_faster": 14,
+                "indistinguishable": 3
+              }
+            }
+          },
+          "core_advantage": {
+            "roofline_wave": {
+              "tau_b_gain": 0.2413807536175756,
+              "top_5_regret_reduction": 0.006869532463938954
+            },
+            "neusight_style": {
+              "tau_b_gain": 0.6158730158730159,
+              "top_5_regret_reduction": 0.004906808902813475
+            }
+          }
+        },
+        "cold": {
+          "core": {
+            "kendall_tau_b": 0.79809321846538,
+            "k": 5,
+            "shortlist": [
+              "m64n64k32-w4-s1-g1",
+              "m64n64k32-w4-s2-g1",
+              "m64n128k32-w4-s1-g1",
+              "m64n128k32-w8-s1-g1",
+              "m64n128k32-w4-s2-g1"
+            ],
+            "top_k_hit": true,
+            "top_k_regret": 0.0,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "indistinguishable": 72,
+                "b_faster": 259
+              },
+              "a_faster": {
+                "indistinguishable": 117,
+                "a_faster": 92,
+                "b_faster": 1
+              },
+              "indistinguishable": {
+                "b_faster": 3,
+                "indistinguishable": 66,
+                "a_faster": 1
+              },
+              "unresolved": {
+                "b_faster": 4,
+                "indistinguishable": 14,
+                "a_faster": 1
+              }
+            }
+          },
+          "neusight_style": {
+            "kendall_tau_b": 0.09462956969862074,
+            "k": 5,
+            "shortlist": [
+              "m32n64k32-w4-s4-g1",
+              "m32n64k32-w8-s4-g1",
+              "m64n64k32-w4-s2-g1",
+              "m32n64k32-w8-s1-g1",
+              "m32n64k32-w8-s2-g1"
+            ],
+            "top_k_hit": false,
+            "top_k_regret": 0.0029762131619994747,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "b_faster": 194,
+                "a_faster": 101,
+                "indistinguishable": 36
+              },
+              "a_faster": {
+                "indistinguishable": 31,
+                "b_faster": 125,
+                "a_faster": 54
+              },
+              "indistinguishable": {
+                "b_faster": 30,
+                "indistinguishable": 28,
+                "a_faster": 12
+              },
+              "unresolved": {
+                "b_faster": 10,
+                "a_faster": 5,
+                "indistinguishable": 4
+              }
+            }
+          },
+          "roofline_wave": {
+            "kendall_tau_b": 0.5501033187703972,
+            "k": 5,
+            "shortlist": [
+              "m128n128k64-w4-s4-g1",
+              "m128n128k64-w8-s2-g1",
+              "m128n128k64-w8-s4-g1",
+              "m64n128k32-w4-s2-g1",
+              "m64n128k32-w8-s1-g1"
+            ],
+            "top_k_hit": false,
+            "top_k_regret": 0.0059524263239991715,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "indistinguishable": 52,
+                "b_faster": 209,
+                "a_faster": 70
+              },
+              "a_faster": {
+                "indistinguishable": 13,
+                "a_faster": 182,
+                "b_faster": 15
+              },
+              "indistinguishable": {
+                "b_faster": 13,
+                "a_faster": 37,
+                "indistinguishable": 20
+              },
+              "unresolved": {
+                "b_faster": 6,
+                "a_faster": 10,
+                "indistinguishable": 3
+              }
+            }
+          },
+          "core_advantage": {
+            "roofline_wave": {
+              "tau_b_gain": 0.24798989969498275,
+              "top_5_regret_reduction": 0.0059524263239991715
+            },
+            "neusight_style": {
+              "tau_b_gain": 0.7034636487667592,
+              "top_5_regret_reduction": 0.0029762131619994747
+            }
+          }
+        }
+      }
+    },
+    "resident-wave-above": {
+      "candidate_status_counts": {
+        "ok": 36
+      },
+      "matched_config_sessions": 108,
+      "cache": {
+        "warm": {
+          "core": {
+            "kendall_tau_b": 0.8022242403461927,
+            "k": 5,
+            "shortlist": [
+              "m64n128k32-w4-s1-g1",
+              "m64n128k32-w8-s1-g1",
+              "m64n128k32-w4-s2-g1",
+              "m64n128k32-w8-s2-g1",
+              "m64n64k32-w4-s1-g1"
+            ],
+            "top_k_hit": true,
+            "top_k_regret": 0.0,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "indistinguishable": 80,
+                "b_faster": 258
+              },
+              "a_faster": {
+                "indistinguishable": 92,
+                "a_faster": 105,
+                "b_faster": 2
+              },
+              "indistinguishable": {
+                "b_faster": 9,
+                "indistinguishable": 65
+              },
+              "unresolved": {
+                "b_faster": 2,
+                "indistinguishable": 17
+              }
+            }
+          },
+          "neusight_style": {
+            "kendall_tau_b": 0.17315335088660397,
+            "k": 5,
+            "shortlist": [
+              "m32n64k32-w4-s4-g1",
+              "m32n64k32-w8-s4-g1",
+              "m32n64k32-w8-s2-g1",
+              "m32n64k32-w4-s2-g1",
+              "m64n64k32-w4-s1-g1"
+            ],
+            "top_k_hit": false,
+            "top_k_regret": 0.009746549323957243,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "b_faster": 232,
+                "indistinguishable": 35,
+                "a_faster": 71
+              },
+              "a_faster": {
+                "indistinguishable": 31,
+                "b_faster": 115,
+                "a_faster": 53
+              },
+              "indistinguishable": {
+                "b_faster": 46,
+                "indistinguishable": 21,
+                "a_faster": 7
+              },
+              "unresolved": {
+                "b_faster": 10,
+                "indistinguishable": 7,
+                "a_faster": 2
+              }
+            }
+          },
+          "roofline_wave": {
+            "kendall_tau_b": 0.528598685088031,
+            "k": 5,
+            "shortlist": [
+              "m128n128k64-w4-s4-g1",
+              "m128n128k64-w8-s2-g1",
+              "m128n128k64-w8-s4-g1",
+              "m64n128k32-w4-s2-g1",
+              "m64n128k32-w8-s1-g1"
+            ],
+            "top_k_hit": false,
+            "top_k_regret": 0.005847884208284526,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "indistinguishable": 59,
+                "b_faster": 217,
+                "a_faster": 62
+              },
+              "a_faster": {
+                "indistinguishable": 14,
+                "a_faster": 167,
+                "b_faster": 18
+              },
+              "indistinguishable": {
+                "b_faster": 6,
+                "indistinguishable": 27,
+                "a_faster": 41
+              },
+              "unresolved": {
+                "b_faster": 2,
+                "a_faster": 9,
+                "indistinguishable": 8
+              }
+            }
+          },
+          "core_advantage": {
+            "roofline_wave": {
+              "tau_b_gain": 0.2736255552581617,
+              "top_5_regret_reduction": 0.005847884208284526
+            },
+            "neusight_style": {
+              "tau_b_gain": 0.6290708894595887,
+              "top_5_regret_reduction": 0.009746549323957243
+            }
+          }
+        },
+        "cold": {
+          "core": {
+            "kendall_tau_b": 0.8044525269790482,
+            "k": 5,
+            "shortlist": [
+              "m64n128k32-w4-s1-g1",
+              "m64n128k32-w8-s1-g1",
+              "m64n128k32-w4-s2-g1",
+              "m64n128k32-w8-s2-g1",
+              "m64n64k32-w4-s1-g1"
+            ],
+            "top_k_hit": true,
+            "top_k_regret": 0.0,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "indistinguishable": 80,
+                "b_faster": 258
+              },
+              "a_faster": {
+                "indistinguishable": 90,
+                "a_faster": 107,
+                "b_faster": 2
+              },
+              "indistinguishable": {
+                "b_faster": 9,
+                "indistinguishable": 66
+              },
+              "unresolved": {
+                "b_faster": 2,
+                "indistinguishable": 15,
+                "a_faster": 1
+              }
+            }
+          },
+          "neusight_style": {
+            "kendall_tau_b": 0.011155382027391247,
+            "k": 5,
+            "shortlist": [
+              "m32n64k32-w4-s4-g1",
+              "m32n64k32-w8-s4-g1",
+              "m32n64k32-w8-s2-g1",
+              "m32n64k32-w4-s2-g1",
+              "m64n64k32-w4-s1-g1"
+            ],
+            "top_k_hit": false,
+            "top_k_regret": 0.00787396071258084,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "b_faster": 186,
+                "a_faster": 99,
+                "indistinguishable": 53
+              },
+              "a_faster": {
+                "indistinguishable": 41,
+                "b_faster": 121,
+                "a_faster": 37
+              },
+              "indistinguishable": {
+                "b_faster": 38,
+                "indistinguishable": 27,
+                "a_faster": 10
+              },
+              "unresolved": {
+                "b_faster": 8,
+                "indistinguishable": 5,
+                "a_faster": 5
+              }
+            }
+          },
+          "roofline_wave": {
+            "kendall_tau_b": 0.515752432896178,
+            "k": 5,
+            "shortlist": [
+              "m128n128k64-w4-s4-g1",
+              "m128n128k64-w8-s2-g1",
+              "m128n128k64-w8-s4-g1",
+              "m64n128k32-w4-s2-g1",
+              "m64n128k32-w8-s1-g1"
+            ],
+            "top_k_hit": false,
+            "top_k_regret": 0.003936923065288589,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "indistinguishable": 59,
+                "b_faster": 216,
+                "a_faster": 63
+              },
+              "a_faster": {
+                "indistinguishable": 13,
+                "a_faster": 167,
+                "b_faster": 19
+              },
+              "indistinguishable": {
+                "b_faster": 6,
+                "indistinguishable": 28,
+                "a_faster": 41
+              },
+              "unresolved": {
+                "b_faster": 2,
+                "a_faster": 8,
+                "indistinguishable": 8
+              }
+            }
+          },
+          "core_advantage": {
+            "roofline_wave": {
+              "tau_b_gain": 0.28870009408287023,
+              "top_5_regret_reduction": 0.003936923065288589
+            },
+            "neusight_style": {
+              "tau_b_gain": 0.793297144951657,
+              "top_5_regret_reduction": 0.00787396071258084
+            }
+          }
+        }
+      }
+    },
+    "l2-working-set-below": {
+      "candidate_status_counts": {
+        "ok": 36
+      },
+      "matched_config_sessions": 108,
+      "cache": {
+        "warm": {
+          "core": {
+            "kendall_tau_b": 0.7996784566957379,
+            "k": 5,
+            "shortlist": [
+              "m64n64k32-w4-s1-g1",
+              "m64n64k32-w4-s2-g1",
+              "m64n64k32-w4-s4-g1",
+              "m64n64k32-w8-s2-g1",
+              "m64n64k32-w8-s4-g1"
+            ],
+            "top_k_hit": true,
+            "top_k_regret": 0.0,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "indistinguishable": 195,
+                "a_faster": 1,
+                "b_faster": 169
+              },
+              "indistinguishable": {
+                "indistinguishable": 68,
+                "a_faster": 5,
+                "b_faster": 4
+              },
+              "a_faster": {
+                "a_faster": 125,
+                "indistinguishable": 48,
+                "b_faster": 1
+              },
+              "unresolved": {
+                "indistinguishable": 13,
+                "b_faster": 1
+              }
+            }
+          },
+          "neusight_style": {
+            "kendall_tau_b": 0.6560134352927336,
+            "k": 5,
+            "shortlist": [
+              "m64n128k32-w4-s4-g1",
+              "m64n128k32-w8-s4-g1",
+              "m64n64k32-w4-s4-g1",
+              "m64n64k32-w8-s4-g1",
+              "m128n64k64-w4-s4-g1"
+            ],
+            "top_k_hit": true,
+            "top_k_regret": 0.0,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "b_faster": 300,
+                "indistinguishable": 35,
+                "a_faster": 30
+              },
+              "indistinguishable": {
+                "indistinguishable": 17,
+                "a_faster": 16,
+                "b_faster": 44
+              },
+              "a_faster": {
+                "a_faster": 141,
+                "b_faster": 18,
+                "indistinguishable": 15
+              },
+              "unresolved": {
+                "b_faster": 7,
+                "a_faster": 4,
+                "indistinguishable": 3
+              }
+            }
+          },
+          "roofline_wave": {
+            "kendall_tau_b": 0.47204131256212667,
+            "k": 5,
+            "shortlist": [
+              "m128n128k64-w4-s4-g1",
+              "m128n128k64-w8-s2-g1",
+              "m128n128k64-w8-s4-g1",
+              "m128n64k64-w4-s4-g1",
+              "m128n64k64-w8-s1-g1"
+            ],
+            "top_k_hit": false,
+            "top_k_regret": 0.11267598850029814,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "indistinguishable": 33,
+                "b_faster": 225,
+                "a_faster": 107
+              },
+              "indistinguishable": {
+                "indistinguishable": 24,
+                "a_faster": 27,
+                "b_faster": 26
+              },
+              "a_faster": {
+                "a_faster": 158,
+                "indistinguishable": 7,
+                "b_faster": 9
+              },
+              "unresolved": {
+                "b_faster": 6,
+                "a_faster": 6,
+                "indistinguishable": 2
+              }
+            }
+          },
+          "core_advantage": {
+            "roofline_wave": {
+              "tau_b_gain": 0.3276371441336112,
+              "top_5_regret_reduction": 0.11267598850029814
+            },
+            "neusight_style": {
+              "tau_b_gain": 0.1436650214030043,
+              "top_5_regret_reduction": 0.0
+            }
+          }
+        },
+        "cold": {
+          "core": {
+            "kendall_tau_b": 0.7496012759170654,
+            "k": 5,
+            "shortlist": [
+              "m64n64k32-w4-s4-g1",
+              "m64n64k32-w8-s4-g1",
+              "m64n64k32-w4-s2-g1",
+              "m64n64k32-w4-s1-g1",
+              "m64n64k32-w8-s2-g1"
+            ],
+            "top_k_hit": true,
+            "top_k_regret": 0.0,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "indistinguishable": 204,
+                "b_faster": 166,
+                "a_faster": 8
+              },
+              "indistinguishable": {
+                "indistinguishable": 62,
+                "a_faster": 2
+              },
+              "a_faster": {
+                "a_faster": 133,
+                "indistinguishable": 40,
+                "b_faster": 1
+              },
+              "unresolved": {
+                "indistinguishable": 11,
+                "a_faster": 2,
+                "b_faster": 1
+              }
+            }
+          },
+          "neusight_style": {
+            "kendall_tau_b": 0.7466048646146047,
+            "k": 5,
+            "shortlist": [
+              "m64n64k32-w4-s4-g1",
+              "m64n64k32-w8-s4-g1",
+              "m64n64k32-w8-s2-g1",
+              "m64n128k32-w4-s4-g1",
+              "m64n64k32-w4-s2-g1"
+            ],
+            "top_k_hit": true,
+            "top_k_regret": 0.0,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "b_faster": 346,
+                "indistinguishable": 27,
+                "a_faster": 5
+              },
+              "indistinguishable": {
+                "indistinguishable": 20,
+                "b_faster": 28,
+                "a_faster": 16
+              },
+              "a_faster": {
+                "a_faster": 129,
+                "b_faster": 17,
+                "indistinguishable": 28
+              },
+              "unresolved": {
+                "b_faster": 8,
+                "a_faster": 3,
+                "indistinguishable": 3
+              }
+            }
+          },
+          "roofline_wave": {
+            "kendall_tau_b": 0.4648322880592868,
+            "k": 5,
+            "shortlist": [
+              "m128n128k64-w4-s4-g1",
+              "m128n128k64-w8-s2-g1",
+              "m128n128k64-w8-s4-g1",
+              "m128n64k64-w4-s4-g1",
+              "m128n64k64-w8-s1-g1"
+            ],
+            "top_k_hit": false,
+            "top_k_regret": 0.1267604998726195,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "indistinguishable": 41,
+                "b_faster": 236,
+                "a_faster": 101
+              },
+              "indistinguishable": {
+                "indistinguishable": 14,
+                "b_faster": 17,
+                "a_faster": 33
+              },
+              "a_faster": {
+                "a_faster": 156,
+                "indistinguishable": 9,
+                "b_faster": 9
+              },
+              "unresolved": {
+                "a_faster": 8,
+                "b_faster": 4,
+                "indistinguishable": 2
+              }
+            }
+          },
+          "core_advantage": {
+            "roofline_wave": {
+              "tau_b_gain": 0.2847689878577786,
+              "top_5_regret_reduction": 0.1267604998726195
+            },
+            "neusight_style": {
+              "tau_b_gain": 0.0029964113024606442,
+              "top_5_regret_reduction": 0.0
+            }
+          }
+        }
+      }
+    },
+    "l2-working-set-above": {
+      "candidate_status_counts": {
+        "ok": 36
+      },
+      "matched_config_sessions": 108,
+      "cache": {
+        "warm": {
+          "core": {
+            "kendall_tau_b": 0.7993607669774315,
+            "k": 5,
+            "shortlist": [
+              "m64n64k32-w4-s4-g1",
+              "m64n64k32-w8-s4-g1",
+              "m64n64k32-w4-s2-g1",
+              "m64n64k32-w4-s1-g1",
+              "m128n128k64-w8-s4-g1"
+            ],
+            "top_k_hit": true,
+            "top_k_regret": 0.0,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "indistinguishable": 207,
+                "b_faster": 164,
+                "a_faster": 3
+              },
+              "unresolved": {
+                "indistinguishable": 8,
+                "a_faster": 1,
+                "b_faster": 1
+              },
+              "a_faster": {
+                "a_faster": 138,
+                "indistinguishable": 45,
+                "b_faster": 1
+              },
+              "indistinguishable": {
+                "a_faster": 4,
+                "indistinguishable": 58
+              }
+            }
+          },
+          "neusight_style": {
+            "kendall_tau_b": 0.7059781126687167,
+            "k": 5,
+            "shortlist": [
+              "m64n128k32-w4-s4-g1",
+              "m64n128k32-w8-s4-g1",
+              "m64n64k32-w4-s4-g1",
+              "m64n64k32-w8-s4-g1",
+              "m128n64k64-w4-s4-g1"
+            ],
+            "top_k_hit": true,
+            "top_k_regret": 0.0,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "b_faster": 322,
+                "indistinguishable": 33,
+                "a_faster": 19
+              },
+              "unresolved": {
+                "indistinguishable": 2,
+                "b_faster": 6,
+                "a_faster": 2
+              },
+              "a_faster": {
+                "a_faster": 149,
+                "b_faster": 16,
+                "indistinguishable": 19
+              },
+              "indistinguishable": {
+                "indistinguishable": 16,
+                "b_faster": 25,
+                "a_faster": 21
+              }
+            }
+          },
+          "roofline_wave": {
+            "kendall_tau_b": 0.4854129470962767,
+            "k": 5,
+            "shortlist": [
+              "m128n128k64-w4-s4-g1",
+              "m128n128k64-w8-s2-g1",
+              "m128n128k64-w8-s4-g1",
+              "m128n64k64-w4-s4-g1",
+              "m128n64k64-w8-s1-g1"
+            ],
+            "top_k_hit": false,
+            "top_k_regret": 0.11111108347214649,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "indistinguishable": 43,
+                "b_faster": 236,
+                "a_faster": 95
+              },
+              "unresolved": {
+                "indistinguishable": 3,
+                "a_faster": 3,
+                "b_faster": 4
+              },
+              "a_faster": {
+                "a_faster": 164,
+                "indistinguishable": 9,
+                "b_faster": 11
+              },
+              "indistinguishable": {
+                "a_faster": 36,
+                "b_faster": 11,
+                "indistinguishable": 15
+              }
+            }
+          },
+          "core_advantage": {
+            "roofline_wave": {
+              "tau_b_gain": 0.31394781988115483,
+              "top_5_regret_reduction": 0.11111108347214649
+            },
+            "neusight_style": {
+              "tau_b_gain": 0.09338265430871484,
+              "top_5_regret_reduction": 0.0
+            }
+          }
+        },
+        "cold": {
+          "core": {
+            "kendall_tau_b": 0.7808,
+            "k": 5,
+            "shortlist": [
+              "m64n64k32-w4-s4-g1",
+              "m64n64k32-w8-s4-g1",
+              "m64n64k32-w4-s2-g1",
+              "m128n128k64-w8-s4-g1",
+              "m128n128k64-w4-s4-g1"
+            ],
+            "top_k_hit": true,
+            "top_k_regret": 0.0,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "indistinguishable": 201,
+                "b_faster": 164,
+                "a_faster": 4
+              },
+              "indistinguishable": {
+                "indistinguishable": 53,
+                "a_faster": 7
+              },
+              "a_faster": {
+                "a_faster": 138,
+                "indistinguishable": 43,
+                "b_faster": 1
+              },
+              "unresolved": {
+                "a_faster": 1,
+                "indistinguishable": 17,
+                "b_faster": 1
+              }
+            }
+          },
+          "neusight_style": {
+            "kendall_tau_b": 0.7630583624573739,
+            "k": 5,
+            "shortlist": [
+              "m64n64k32-w4-s4-g1",
+              "m64n64k32-w8-s4-g1",
+              "m64n64k32-w8-s2-g1",
+              "m64n128k32-w4-s4-g1",
+              "m64n128k32-w8-s4-g1"
+            ],
+            "top_k_hit": true,
+            "top_k_regret": 0.0,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "b_faster": 345,
+                "indistinguishable": 22,
+                "a_faster": 2
+              },
+              "indistinguishable": {
+                "indistinguishable": 21,
+                "b_faster": 26,
+                "a_faster": 13
+              },
+              "a_faster": {
+                "a_faster": 135,
+                "b_faster": 17,
+                "indistinguishable": 30
+              },
+              "unresolved": {
+                "indistinguishable": 8,
+                "b_faster": 9,
+                "a_faster": 2
+              }
+            }
+          },
+          "roofline_wave": {
+            "kendall_tau_b": 0.4725820440895998,
+            "k": 5,
+            "shortlist": [
+              "m128n128k64-w4-s4-g1",
+              "m128n128k64-w8-s2-g1",
+              "m128n128k64-w8-s4-g1",
+              "m128n64k64-w4-s4-g1",
+              "m128n64k64-w8-s1-g1"
+            ],
+            "top_k_hit": false,
+            "top_k_regret": 0.11587980205773452,
+            "scored_configs": 36,
+            "measured_configs": 36,
+            "pair_confusion": {
+              "b_faster": {
+                "indistinguishable": 44,
+                "b_faster": 234,
+                "a_faster": 91
+              },
+              "indistinguishable": {
+                "indistinguishable": 13,
+                "a_faster": 35,
+                "b_faster": 12
+              },
+              "a_faster": {
+                "a_faster": 164,
+                "indistinguishable": 9,
+                "b_faster": 9
+              },
+              "unresolved": {
+                "a_faster": 8,
+                "b_faster": 7,
+                "indistinguishable": 4
+              }
+            }
+          },
+          "core_advantage": {
+            "roofline_wave": {
+              "tau_b_gain": 0.30821795591040024,
+              "top_5_regret_reduction": 0.11587980205773452
+            },
+            "neusight_style": {
+              "tau_b_gain": 0.017741637542626143,
+              "top_5_regret_reduction": 0.0
+            }
+          }
+        }
+      }
+    }
+  },
+  "hardware_pairs": {
+    "warm": {
+      "equivalent": 619,
+      "unresolved": 224,
+      "total": 5670
+    },
+    "cold": {
+      "equivalent": 599,
+      "unresolved": 203,
+      "total": 5670
+    }
+  }
+}
