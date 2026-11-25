@@ -15,6 +15,7 @@ from validation.baseline import gemm_work, latency_ns, predict
 from validation.experiment import core_records, development_gates, load_case, validate_core_builds
 from validation.holdout import read_verified_report, require_release, seal_report, sha256
 from validation.neusight import TileFeatures, fit, leave_one_case_out
+from validation.phase2_capture import SECOND_NS, SparkSession, thermal_stability, thermal_windows
 from validation.provenance import read_core_revision, require_formal_build
 from validation.score import check_artifact, kendall_tau_b, median_ci95, observed_pair, predicted_pair, score
 from validation.suite import development_manifest, manifest
@@ -233,6 +234,59 @@ class MeasurementTest(unittest.TestCase):
         self.assertEqual(data.timings["warm"]["cfg"], {("old", 0): 100})
         self.assertEqual(data.timings["cold"]["cfg"], {("new", 0): 120})
         self.assertEqual(data.matched_config_sessions, 2)
+
+
+class ThermalStabilityTest(unittest.TestCase):
+    def sample(self, second, temp, clock, reasons):
+        return {"monotonic_ns": second * SECOND_NS, "temperature_c": temp,
+                "sm_mhz": clock, "clock_event_reasons": reasons}
+
+    def test_window_boundaries_and_thresholds(self):
+        rows = [self.sample(t, (75, 80)[t % 2], 2000, 0)
+                for t in range(30)]
+        rows += [self.sample(t, (76, 80)[t % 2], 2020, 0)
+                 for t in range(30, 60)]
+        rows.append(self.sample(60, 100, 3000, 4))
+        earlier, later = thermal_windows(rows, 60 * SECOND_NS)
+        self.assertEqual(earlier, rows[:30])
+        self.assertEqual(later, rows[30:60])
+        self.assertEqual(thermal_stability((earlier, later)), {
+            "temperature_mean_c": [77.5, 78],
+            "sm_clock_median_mhz": [2000, 2020],
+            "samples_per_window": [30, 30],
+        })
+        for temperature, clock in ((79, 2020), (78, 2021), (78, 1979)):
+            with self.subTest(temperature=temperature, clock=clock):
+                second = [self.sample(t, temperature, clock, 0) for t in range(30, 60)]
+                self.assertIsNone(thermal_stability((earlier, second)))
+
+    def test_rejects_slowdown_or_missing_telemetry_in_either_window(self):
+        clean = [self.sample(1, 78, 2500, 0)]
+        for event in (4, 8, 32, 64, 128, {"unavailable": "Unsupported"}):
+            with self.subTest(event=event):
+                affected = [self.sample(2, 78, 2500, event)]
+                self.assertIsNone(thermal_stability((clean, affected)))
+                self.assertIsNone(thermal_stability((affected, clean)))
+        self.assertIsNone(thermal_stability((clean, [self.sample(2, 78, None, 0)])))
+        self.assertIsNone(thermal_stability((clean, [self.sample(2, None, 2500, 0)])))
+        self.assertIsNone(thermal_stability((clean, [])))
+
+    def test_timeout_keeps_all_three_telemetry_fields(self):
+        rows = [self.sample(t, 78, 2500, 4) for t in range(1201)]
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "timeout.json"
+            session = SimpleNamespace(soaks=[], thermal_trace=path)
+            with patch("validation.phase2_capture.time.monotonic_ns",
+                       side_effect=[0, 0, 1200 * SECOND_NS, 1200 * SECOND_NS]):
+                with self.assertRaisesRegex(RuntimeError, "twenty minutes"):
+                    SparkSession.stabilize(session, lambda: None, rows, True)
+            self.assertEqual(session.soaks, [])
+            payload = json.loads(path.read_bytes())["warmup_telemetry"]
+            self.assertEqual(len(payload), 1200)
+            self.assertEqual(payload[-1], {
+                "elapsed_ns": 1199 * SECOND_NS, "temperature_c": 78,
+                "sm_mhz": 2500, "clock_event_reasons": 4,
+            })
 
 
 class ProvenanceTest(unittest.TestCase):

@@ -1,6 +1,7 @@
 """Capture a sealed GB10 case-session after the published prediction freeze."""
 
 import argparse
+from bisect import bisect_left
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -8,6 +9,7 @@ from pathlib import Path
 import platform
 import shutil
 import stat
+from statistics import mean, median
 import subprocess
 import time
 from types import SimpleNamespace
@@ -16,24 +18,66 @@ from validation.holdout import seal_report
 from validation.phase2_aot import REVISION, TMA_CASE, load_tma_kernel, write_json
 from validation.provenance import REPO_ROOT, read_core_revision, source_info
 
-THERMAL_AUDIT = "validation/phase2-thermal-audit.json"
+THERMAL_AUDITS = ("validation/phase2-thermal-audit.json",
+                  "validation/phase2-thermal-trend-audit.json")
 THERMAL_TIMEOUT_SECONDS = 20 * 60
+SECOND_NS = 10**9
+THERMAL_WINDOW_SECONDS = 30
+MIN_WARMUP_SECONDS = 2 * THERMAL_WINDOW_SECONDS
+# NVML SW power cap, generic HW slowdown, SW/HW thermal, and HW power brake.
+SLOWDOWN_MASK = 0x04 | 0x08 | 0x20 | 0x40 | 0x80
 
 
-def thermal_harness_revision(policy):
-    revision = subprocess.check_output(
-        ["git", "log", "-1", "--format=%H", "--diff-filter=A", "origin/main", "--", THERMAL_AUDIT],
-        cwd=REPO_ROOT, text=True,
-    ).strip()
-    if not revision:
+def thermal_harness_revisions(policy):
+    revisions = [policy["harness_commit"]]
+    for path in THERMAL_AUDITS:
+        revision = subprocess.check_output(
+            ["git", "log", "-1", "--format=%H", "--diff-filter=A", "origin/main", "--", path],
+            cwd=REPO_ROOT, text=True,
+        ).strip()
+        if not revision:
+            break
+        audit = json.loads(subprocess.check_output(
+            ["git", "show", f"{revision}:{path}"], cwd=REPO_ROOT,
+        ))
+        if (audit["previous_harness_commit"] != revisions[-1]
+                or audit["new_timeout_seconds"] != THERMAL_TIMEOUT_SECONDS):
+            raise ValueError("Published GB10 thermal revision does not match the frozen policy")
+        revisions.append(revision)
+    return revisions
+
+
+def thermal_windows(telemetry, end_ns):
+    """Return the two adjacent half-open windows ending at end_ns."""
+    width = THERMAL_WINDOW_SECONDS * SECOND_NS
+    bounds = [bisect_left(telemetry, tick, key=lambda row: row["monotonic_ns"])
+              for tick in (end_ns - 2 * width, end_ns - width, end_ns)]
+    first, middle, end = bounds
+    return telemetry[first:middle], telemetry[middle:end]
+
+
+def thermal_stability(windows):
+    """Return the passing telemetry summary, or None if any condition fails."""
+    temperatures, sm_clocks = [], []
+    for window in windows:
+        if not window:
+            return None
+        for row in window:
+            temperature, clock, reasons = (row["temperature_c"], row["sm_mhz"],
+                                           row["clock_event_reasons"])
+            if (type(temperature) is not int or type(clock) is not int or clock <= 0
+                    or type(reasons) is not int or reasons < 0 or reasons & SLOWDOWN_MASK):
+                return None
+        temperatures.append([row["temperature_c"] for row in window])
+        sm_clocks.append(median(row["sm_mhz"] for row in window))
+    earlier, later = temperatures
+    mean_numerator = abs(sum(earlier) * len(later) - sum(later) * len(earlier))
+    if (2 * mean_numerator > len(earlier) * len(later)
+            or 100 * abs(sm_clocks[0] - sm_clocks[1]) > sm_clocks[0]):
         return None
-    audit = json.loads(subprocess.check_output(
-        ["git", "show", f"{revision}:{THERMAL_AUDIT}"], cwd=REPO_ROOT,
-    ))
-    if (audit["previous_harness_commit"] != policy["harness_commit"]
-            or audit["new_timeout_seconds"] != THERMAL_TIMEOUT_SECONDS):
-        raise ValueError("Published GB10 thermal revision does not match the frozen policy")
-    return revision
+    return {"temperature_mean_c": list(map(mean, temperatures)),
+            "sm_clock_median_mhz": sm_clocks,
+            "samples_per_window": list(map(len, temperatures))}
 
 
 def command(*args):
@@ -82,31 +126,28 @@ class SparkSession:
     def stabilize(self, warmup, telemetry, has_operations):
         if not has_operations:
             return
-        start = time.monotonic()
-        while time.monotonic() - start < THERMAL_TIMEOUT_SECONDS:
+        start = time.monotonic_ns()
+        deadline = start + THERMAL_TIMEOUT_SECONDS * SECOND_NS
+        next_check = MIN_WARMUP_SECONDS
+        while time.monotonic_ns() < deadline:
             warmup()
-            now = time.monotonic()
-            if now - start < 60:
-                continue
-            recent_ns = int((now - 30) * 1e9)
-            values = [row["temperature_c"] for row in telemetry
-                      if row["monotonic_ns"] >= recent_ns]
-            measured = [value for value in values if isinstance(value, int)]
-            if values and (not measured or len(measured) == len(values) and max(measured) - min(measured) <= 2):
-                self.soaks.append({"elapsed_seconds": now - start,
-                                   "temperature_range_c": [min(measured), max(measured)] if measured else None})
-                return
-        trace = {}
-        for row in telemetry:
-            elapsed = row["monotonic_ns"] / 1e9 - start
-            if elapsed >= 0:
-                trace[int(elapsed)] = row["temperature_c"]
+            elapsed = min((time.monotonic_ns() - start) // SECOND_NS, THERMAL_TIMEOUT_SECONDS)
+            while next_check <= elapsed:
+                stable = thermal_stability(thermal_windows(telemetry, start + next_check * SECOND_NS))
+                if stable is not None:
+                    self.soaks.append({"elapsed_seconds": next_check, **stable})
+                    return
+                next_check += 1
+        fields = ("temperature_c", "sm_mhz", "clock_event_reasons")
+        trace = [{"elapsed_ns": row["monotonic_ns"] - start,
+                  **{name: row[name] for name in fields}}
+                 for row in telemetry if start <= row["monotonic_ns"] < deadline]
         self.thermal_trace.parent.mkdir(mode=0o700, exist_ok=True)
         with self.thermal_trace.open("x") as stream:
             json.dump({"utc": datetime.now(timezone.utc).isoformat(),
-                       "temperature_c_by_elapsed_second": trace}, stream, allow_nan=False)
+                       "warmup_telemetry": trace}, stream, allow_nan=False)
             stream.write("\n")
-        raise RuntimeError("Spark 1 temperature did not stabilize within twenty minutes")
+        raise RuntimeError("Spark 1 thermal trend did not stabilize within twenty minutes")
 
     def begin_block(self):
         counters = {}
@@ -166,7 +207,9 @@ def capture(directory, frozen, cohort, case_id, session, amendment):
 
     index, policy, archive_sha256 = verify_release(directory, amendment)
     source = source_info()
-    if (source["commit"] != thermal_harness_revision(policy) or source["python_dirty"]
+    approved_harnesses = thermal_harness_revisions(policy)
+    if (len(approved_harnesses) != 3 or source["commit"] != approved_harnesses[-1]
+            or source["python_dirty"]
             or source["validation_dirty"] or triton.__version__ != "3.9.0"):
         raise ValueError("Collect using the published GB10 harness and Triton 3.9.0")
     revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=frozen, text=True).strip()

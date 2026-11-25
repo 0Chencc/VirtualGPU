@@ -1,0 +1,55 @@
+{
+  "recorded_utc": "2026-11-25T11:24:08.785259+00:00",
+  "previous_harness_commit": "42689c8f9e2a6514eab1a9e23806597bafd3a6c2",
+  "prediction_freeze_commit": "eae13bd736f50bcdbefc41103414cbea39be9406",
+  "prediction_archive_sha256": "8d1744a806d7b45a1e2e4b86dd74a43dce3c9eca599ca3ee43a808ffc172b635",
+  "gb10_profile_sha256": "6494b25720a6ff3be84e1f8ea8a9b34df3990b3adf22240e864e0f71f10d36f4",
+  "new_timeout_seconds": 1200,
+  "min_warmup_seconds": 60,
+  "window_seconds": 30,
+  "max_temperature_mean_difference_c": 0.5,
+  "max_sm_median_relative_difference": 0.01,
+  "rejected_clock_events": [
+    "SW power cap",
+    "generic HW slowdown",
+    "SW thermal slowdown",
+    "HW thermal slowdown",
+    "HW power brake slowdown"
+  ],
+  "rejected_clock_event_mask": "0xec",
+  "clock_comparison": "Divide the absolute difference between the two SM clock medians by the earlier median.",
+  "activation": "The commit that introduces this audit on origin/main. The collector requires that exact published commit.",
+  "scope": "All remaining GB10 case-sessions in all cohorts. Completed sessions keep their original protocol and validity.",
+  "reason": "The original 30-second range failed even after the trace settled around 77.5 C. The narrowest sampled range after 60 seconds was 3 C. Short-term fluctuations drive the range, even when adjacent window means are stable. The trend criterion measures drift and also checks SM clock stability and throttle events.",
+  "historical_replay": {
+    "cohort": "secondary",
+    "case": "prefill-1024",
+    "session": 1,
+    "sidecar": "phase2-thermal-prefill-1024.json",
+    "sidecar_sha256": "e1588d488542b58ece843bbc970665ac479a3f01425097988d06e1294c50cfe4",
+    "recorded_utc": "2026-11-25T11:20:52.896969+00:00",
+    "sample_rate_hz": 1,
+    "first_temperature_only_pass_elapsed_seconds": 94,
+    "windows_elapsed_seconds_half_open": [
+      [
+        34,
+        64
+      ],
+      [
+        64,
+        94
+      ]
+    ],
+    "temperature_means_c": [
+      78.76666666666667,
+      79.16666666666667
+    ],
+    "temperature_mean_difference_c": 0.4,
+    "sm_clock_check": "Unavailable. The sidecar records temperature only.",
+    "clock_event_check": "Unavailable. The sidecar records temperature only.",
+    "complete_gate_first_pass_elapsed_seconds": null,
+    "other_timeout_sidecars": "None. The five-minute collector did not save telemetry on timeout."
+  },
+  "telemetry": "Collect temperature, SM clocks, and clock-event reasons through both windows. Missing values prevent a pass. Preserve the sampled warm-up telemetry on timeout.",
+  "preserved": "The model, profile, AOT, toolchain, prediction archive, and scoring rules are unchanged. Ten completed reports met the original gate and remain sealed. No GB10 label was opened for this revision."
+}
