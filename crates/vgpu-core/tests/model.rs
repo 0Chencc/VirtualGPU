@@ -326,8 +326,10 @@ fn spills_cost_local_memory_bandwidth_per_scope() {
     let per_iter = spilled(SpillScope::PerIteration { assumed: false });
     let every = t(&per_iter);
     assert!(none < once && once < every, "{none} {once} {every}");
-    // 64 iterations of 4096 B for 128 threads at 1 B/ns, one CTA per SM.
-    assert!(close(every, 64.0 * 4096.0 * 128.0), "{every}");
+    // 64 iterations of 4096 B for 128 threads at 1 B/ns, one CTA per SM,
+    // after each iteration's MMAs.
+    let mma = base.tile.per_iteration.mma_flops / (0.60 * 1e3);
+    assert!(close(every, 64.0 * (4096.0 * 128.0 + mma)), "{every}");
     assert!(run(&per_iter, m.clone()).bound_fraction[3] > 0.99);
 }
 
@@ -605,6 +607,20 @@ fn per_tile_iterations_set_each_programs_length() {
         p.makespan_ns,
         46.0 * one
     );
+}
+
+#[test]
+fn one_cta_runs_its_mma_and_the_work_depending_on_it_in_series() {
+    // One CTA per SM: each iteration's SFU work waits for its MMAs, so the
+    // two add up instead of overlapping.
+    let mut k = compute_only(46);
+    k.tile.per_iteration.sfu_insts_per_warp = 100.0;
+    let mut m = machine(&k);
+    m.sfu = vec![(1.0, 1.0)];
+    let mma = k.tile.per_iteration.mma_flops / (0.60 * 1e3);
+    let sfu = 4.0 * 100.0 / 1.0;
+    let p = run(&k, m);
+    assert!(close(p.makespan_ns, 64.0 * (mma + sfu)), "{}", p.makespan_ns);
 }
 
 #[test]

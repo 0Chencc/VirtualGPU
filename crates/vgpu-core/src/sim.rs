@@ -5,6 +5,7 @@
 //! rate, recomputed from the current set of active phases:
 //!
 //! - tensor throughput and non-MMA issue are shared among the CTAs of one SM;
+//! - within a CTA, an iteration's non-MMA work follows its MMAs in series;
 //! - L2 and DRAM bandwidth are shared max-min fairly among all phases on the
 //!   GPU, with the achievable bandwidth taken from the profile curve for the
 //!   current number of active SMs.
@@ -740,6 +741,8 @@ struct Parts {
     /// Shared compute path: pipes by `RESOURCES` index, plus synchronization.
     pipes: [f64; 6],
     sync: f64,
+    /// One CTA's dependent chain, a floor under the shared path.
+    chain: f64,
     /// Steady state as a closed queueing network, when it applies: the time
     /// mean value analysis gives instead of the round-trip bound.
     queued: Option<f64>,
@@ -767,7 +770,7 @@ impl Parts {
     }
 
     fn compute(&self) -> f64 {
-        self.pipes.iter().fold(0.0f64, |a, &b| a.max(b)) + self.sync
+        (self.pipes.iter().fold(0.0f64, |a, &b| a.max(b)) + self.sync).max(self.chain)
     }
 
     /// What bounds the phase, given its bandwidth times. Bandwidth counts
@@ -804,6 +807,7 @@ impl Parts {
                 (p[4], 4),
                 (p[5], 5),
                 (self.sync, SYNC),
+                (self.chain, self.exposed_kind),
             ])
         }
     }
@@ -906,11 +910,16 @@ fn rates(ctas: &[Cta], m: &Machine, per_cta: &[PerCta], lat: Latency, s: &mut Sc
             d.sfu_insts / per_cta[1].sfu,
             d.shfl_insts / per_cta[1].shfl,
         ];
-        let (kind, &longest) =
-            alone
+        // The other pipes' work in an iteration depends on its MMA results
+        // and the next MMAs on that work (the softmax between attention's two
+        // MMAs), so one CTA takes the sum; CTAs on the same SM overlap.
+        let (other, &t_other) =
+            alone[1..]
                 .iter()
                 .enumerate()
-                .fold((MMA, &0.0), |b, x| if x.1 > b.1 { x } else { b });
+                .fold((0, &0.0), |b, x| if x.1 > b.1 { x } else { b });
+        let kind = if alone[0] >= t_other { MMA } else { other + 1 };
+        let longest = alone[0] + t_other;
         let (launch, l2_latency, dram_latency) = d.latency_parts(lat);
         // Steady state with compute and loads: the stage buffers of all CTAs
         // on the SM queue for the SM's pipes (service: a stage's compute alone
@@ -930,6 +939,7 @@ fn rates(ctas: &[Cta], m: &Machine, per_cta: &[PerCta], lat: Latency, s: &mut Sc
             exposed_kind: kind,
             pipes: [t_mma, t_issue, t_smem, t_local, t_sfu, t_shfl],
             sync: d.sync_ns * f64::from(s.resident[i]),
+            chain: longest + d.sync_ns,
             queued,
         };
         s.terms.push(parts);
