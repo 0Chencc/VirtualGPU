@@ -3832,3 +3832,175 @@ static int run_strided_mlp(int device, int samples, int warmup) {
   CUDA_CHECK(cudaFree(d_sink));
   return 0;
 }
+
+// ---------------------------------------------------------------------------
+// 19. Post-hoc / Phase 4: SFU (ex2/rcp) and SHFL (bfly/idx) issue throughput
+//     per SM by warps_per_sm, plus SHFL dependency chain latency
+// ---------------------------------------------------------------------------
+
+template <bool IS_RCP>
+__global__ void sfu_issue_kernel(float* __restrict__ sink, int iters) {
+  const uint32_t tid = threadIdx.x;
+  float x0 = IS_RCP ? (1.5f + static_cast<float>(tid & 7u) * 0.01f) : (-0.5f - static_cast<float>(tid & 7u) * 0.01f);
+  float x1 = x0 + 0.02f;
+  float x2 = x0 + 0.04f;
+  float x3 = x0 + 0.06f;
+
+  for (int it = 0; it < iters; ++it) {
+    #pragma unroll
+    for (int u = 0; u < 4; ++u) {
+      if constexpr (IS_RCP) {
+        asm volatile("rcp.approx.f32 %0, %1;\n" : "=f"(x0) : "f"(x0));
+        asm volatile("rcp.approx.f32 %0, %1;\n" : "=f"(x1) : "f"(x1));
+        asm volatile("rcp.approx.f32 %0, %1;\n" : "=f"(x2) : "f"(x2));
+        asm volatile("rcp.approx.f32 %0, %1;\n" : "=f"(x3) : "f"(x3));
+      } else {
+        float y0, y1, y2, y3;
+        asm volatile("ex2.approx.f32 %0, %1;\n" : "=f"(y0) : "f"(x0));
+        asm volatile("ex2.approx.f32 %0, %1;\n" : "=f"(y1) : "f"(x1));
+        asm volatile("ex2.approx.f32 %0, %1;\n" : "=f"(y2) : "f"(x2));
+        asm volatile("ex2.approx.f32 %0, %1;\n" : "=f"(y3) : "f"(x3));
+        // Negate so ex2(-y) stays bounded near fixed point ~0.641 (no Inf/NaN/subnormal).
+        x0 = -y0; x1 = -y1; x2 = -y2; x3 = -y3;
+      }
+    }
+  }
+  float sum = x0 + x1 + x2 + x3;
+  if (sum == -999999.0f) {
+    sink[blockIdx.x * blockDim.x + tid] = sum;
+  }
+}
+
+template <bool IS_IDX>
+__global__ void shfl_issue_kernel(uint32_t* __restrict__ sink, int iters) {
+  const uint32_t tid = threadIdx.x;
+  const uint32_t lane = tid & 31u;
+  uint32_t r0 = tid + 1u;
+  uint32_t r1 = tid + 17u;
+  uint32_t r2 = tid + 33u;
+  uint32_t r3 = tid + 65u;
+  const uint32_t src0 = lane ^ 1u;
+  const uint32_t src1 = lane ^ 2u;
+  const uint32_t src2 = lane ^ 4u;
+  const uint32_t src3 = lane ^ 8u;
+
+  for (int it = 0; it < iters; ++it) {
+    #pragma unroll
+    for (int u = 0; u < 4; ++u) {
+      if constexpr (IS_IDX) {
+        asm volatile("shfl.sync.idx.b32 %0, %1, %2, 0x1f, 0xffffffff;\n" : "=r"(r0) : "r"(r0), "r"(src0));
+        asm volatile("shfl.sync.idx.b32 %0, %1, %2, 0x1f, 0xffffffff;\n" : "=r"(r1) : "r"(r1), "r"(src1));
+        asm volatile("shfl.sync.idx.b32 %0, %1, %2, 0x1f, 0xffffffff;\n" : "=r"(r2) : "r"(r2), "r"(src2));
+        asm volatile("shfl.sync.idx.b32 %0, %1, %2, 0x1f, 0xffffffff;\n" : "=r"(r3) : "r"(r3), "r"(src3));
+      } else {
+        asm volatile("shfl.sync.bfly.b32 %0, %1, 1, 0x1f, 0xffffffff;\n" : "=r"(r0) : "r"(r0));
+        asm volatile("shfl.sync.bfly.b32 %0, %1, 2, 0x1f, 0xffffffff;\n" : "=r"(r1) : "r"(r1));
+        asm volatile("shfl.sync.bfly.b32 %0, %1, 4, 0x1f, 0xffffffff;\n" : "=r"(r2) : "r"(r2));
+        asm volatile("shfl.sync.bfly.b32 %0, %1, 8, 0x1f, 0xffffffff;\n" : "=r"(r3) : "r"(r3));
+      }
+    }
+  }
+  uint32_t sum = r0 ^ r1 ^ r2 ^ r3;
+  if (sum == 0xdeadbeefu) {
+    sink[blockIdx.x * blockDim.x + tid] = sum;
+  }
+}
+
+__global__ void shfl_latency_chain_kernel(uint32_t* __restrict__ sink, int iters) {
+  uint32_t r = threadIdx.x + 1u;
+  for (int it = 0; it < iters; ++it) {
+    #pragma unroll
+    for (int u = 0; u < 64; ++u) {
+      asm volatile("shfl.sync.bfly.b32 %0, %1, 1, 0x1f, 0xffffffff;\n" : "=r"(r) : "r"(r));
+    }
+  }
+  if (r == 0xdeadbeefu) {
+    sink[threadIdx.x] = r;
+  }
+}
+
+static int run_sfu_shfl(int device, int samples, int warmup) {
+  cudaDeviceProp prop{};
+  CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
+  const int sm_count = prop.multiProcessorCount;
+
+  float* d_sink_f = nullptr;
+  uint32_t* d_sink_u = nullptr;
+  CUDA_CHECK(cudaMalloc(&d_sink_f, static_cast<size_t>(sm_count) * 1024 * sizeof(float)));
+  CUDA_CHECK(cudaMalloc(&d_sink_u, static_cast<size_t>(sm_count) * 1024 * sizeof(uint32_t)));
+
+  cudaEvent_t ev_start, ev_stop;
+  CUDA_CHECK(cudaEventCreate(&ev_start));
+  CUDA_CHECK(cudaEventCreate(&ev_stop));
+
+  const std::vector<int> warp_list = {1, 2, 4, 8, 16, 32};
+
+  auto measure_curve = [&](const char* key, int kind, bool comma) {
+    std::printf("  \"%s\": [", key);
+    bool first = true;
+    for (int warps : warp_list) {
+      int threads = warps * 32;
+      int iters = (warps <= 4) ? 16384 : ((warps <= 16) ? 8192 : 4096);
+      double warp_insts_per_sm = static_cast<double>(warps) * static_cast<double>(iters) * 16.0;
+
+      auto launch = [&]() {
+        if (kind == 0) sfu_issue_kernel<false><<<sm_count, threads>>>(d_sink_f, iters);
+        else if (kind == 1) sfu_issue_kernel<true><<<sm_count, threads>>>(d_sink_f, iters);
+        else if (kind == 2) shfl_issue_kernel<false><<<sm_count, threads>>>(d_sink_u, iters);
+        else shfl_issue_kernel<true><<<sm_count, threads>>>(d_sink_u, iters);
+      };
+
+      for (int w = 0; w < warmup; ++w) launch();
+      CUDA_CHECK(cudaDeviceSynchronize());
+
+      std::vector<double> rate_s;
+      rate_s.reserve(samples);
+      for (int s = 0; s < samples; ++s) {
+        CUDA_CHECK(cudaEventRecord(ev_start));
+        launch();
+        CUDA_CHECK(cudaEventRecord(ev_stop));
+        CUDA_CHECK(cudaEventSynchronize(ev_stop));
+        float ms = 0.0f;
+        CUDA_CHECK(cudaEventElapsedTime(&ms, ev_start, ev_stop));
+        rate_s.push_back((warp_insts_per_sm / 1e9) / (static_cast<double>(ms) / 1e3));
+      }
+
+      if (!first) std::printf(",");
+      first = false;
+      std::printf("\n    {\"warps_per_sm\": %d, \"rate_gwarp_inst_per_sm_samples\": [", warps);
+      for (size_t i = 0; i < rate_s.size(); ++i) { if (i) std::printf(", "); std::printf("%.4f", rate_s[i]); }
+      std::printf("]}");
+    }
+    std::printf("\n  ]%s\n", comma ? "," : "");
+  };
+
+  std::printf("{\n  \"samples\": %d,\n  \"sm_count\": %d,\n", samples, sm_count);
+  measure_curve("sfu_issue_rate_per_sm_gips", 0, true);
+  measure_curve("sfu_rcp_issue_rate_per_sm_gips", 1, true);
+  measure_curve("shfl_issue_rate_per_sm_gips", 2, true);
+  measure_curve("shfl_idx_issue_rate_per_sm_gips", 3, true);
+
+  // Measure single-warp dependent shfl.sync.bfly chain latency.
+  const int lat_iters = 4096;
+  const double total_shfls = static_cast<double>(lat_iters) * 64.0;
+  for (int w = 0; w < warmup; ++w) shfl_latency_chain_kernel<<<1, 32>>>(d_sink_u, lat_iters);
+  CUDA_CHECK(cudaDeviceSynchronize());
+  std::printf("  \"shfl_latency_ns_samples\": [");
+  for (int s = 0; s < samples; ++s) {
+    CUDA_CHECK(cudaEventRecord(ev_start));
+    shfl_latency_chain_kernel<<<1, 32>>>(d_sink_u, lat_iters);
+    CUDA_CHECK(cudaEventRecord(ev_stop));
+    CUDA_CHECK(cudaEventSynchronize(ev_stop));
+    float ms = 0.0f;
+    CUDA_CHECK(cudaEventElapsedTime(&ms, ev_start, ev_stop));
+    if (s) std::printf(", ");
+    std::printf("%.3f", (static_cast<double>(ms) * 1e6) / total_shfls);
+  }
+  std::printf("]\n}\n");
+
+  CUDA_CHECK(cudaEventDestroy(ev_start));
+  CUDA_CHECK(cudaEventDestroy(ev_stop));
+  CUDA_CHECK(cudaFree(d_sink_f));
+  CUDA_CHECK(cudaFree(d_sink_u));
+  return 0;
+}

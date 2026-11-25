@@ -7,13 +7,13 @@
     "memory_type": "unified"
   },
   "provenance": {
-    "profile_revision": "0.13.0-posthoc",
+    "profile_revision": "0.14.0-posthoc",
     "calibration_run_id": "cal-20261125T102038Z-sm_121",
     "calibration_manifest_digest": null,
     "source": "partial",
     "driver_version": "580.173.02",
     "toolkit_version": "13.0",
-    "suite_version": "0.13.0",
+    "suite_version": "0.14.0",
     "host_os": "linux",
     "is_wsl": false,
     "power_limit_w": null,
@@ -33507,13 +33507,13 @@
         "perturb_group": null
       },
       "sfu_tflops": {
-        "value": 1.9269,
-        "ci95_low": null,
-        "ci95_high": null,
-        "rel_uncertainty": 0.3,
+        "value": 1.9415,
+        "ci95_low": 1.9409,
+        "ci95_high": 1.9417,
+        "rel_uncertainty": 0.1,
         "unit": "TFLOP/s",
-        "method": "m2_estimated",
-        "source": "estimated",
+        "method": "cuda_ptx_ex2_approx_f32",
+        "source": "measured",
         "perturb_group": null
       },
       "mma_chain_latency": [
@@ -36127,7 +36127,337 @@
           },
           "r_squared": 0.999631
         }
-      ]
+      ],
+      "sfu_issue_rate_per_sm_gips": [
+        {
+          "warps_per_sm": 1,
+          "rate": {
+            "value": 0.2638,
+            "ci95_low": 0.2638,
+            "ci95_high": 0.2639,
+            "rel_uncertainty": 0.1,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_ptx_ex2_approx_f32",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "warps_per_sm": 2,
+          "rate": {
+            "value": 0.5277,
+            "ci95_low": 0.5276,
+            "ci95_high": 0.5277,
+            "rel_uncertainty": 0.1,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_ptx_ex2_approx_f32",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "warps_per_sm": 4,
+          "rate": {
+            "value": 1.0439,
+            "ci95_low": 1.0429,
+            "ci95_high": 1.0453,
+            "rel_uncertainty": 0.1,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_ptx_ex2_approx_f32",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "warps_per_sm": 8,
+          "rate": {
+            "value": 1.21,
+            "ci95_low": 1.2087,
+            "ci95_high": 1.2102,
+            "rel_uncertainty": 0.1,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_ptx_ex2_approx_f32",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "warps_per_sm": 16,
+          "rate": {
+            "value": 1.2624,
+            "ci95_low": 1.2618,
+            "ci95_high": 1.2626,
+            "rel_uncertainty": 0.1,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_ptx_ex2_approx_f32",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "warps_per_sm": 32,
+          "rate": {
+            "value": 1.264,
+            "ci95_low": 1.2636,
+            "ci95_high": 1.2641,
+            "rel_uncertainty": 0.1,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_ptx_ex2_approx_f32",
+            "source": "measured",
+            "perturb_group": null
+          }
+        }
+      ],
+      "sfu_rcp_issue_rate_per_sm_gips": [
+        {
+          "warps_per_sm": 1,
+          "rate": {
+            "value": 0.2038,
+            "ci95_low": 0.2037,
+            "ci95_high": 0.2038,
+            "rel_uncertainty": 0.1,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_ptx_rcp_approx_f32",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "warps_per_sm": 2,
+          "rate": {
+            "value": 0.4076,
+            "ci95_low": 0.4075,
+            "ci95_high": 0.4076,
+            "rel_uncertainty": 0.1,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_ptx_rcp_approx_f32",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "warps_per_sm": 4,
+          "rate": {
+            "value": 0.8151,
+            "ci95_low": 0.8144,
+            "ci95_high": 0.8152,
+            "rel_uncertainty": 0.1,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_ptx_rcp_approx_f32",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "warps_per_sm": 8,
+          "rate": {
+            "value": 1.1168,
+            "ci95_low": 1.1164,
+            "ci95_high": 1.1251,
+            "rel_uncertainty": 0.1,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_ptx_rcp_approx_f32",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "warps_per_sm": 16,
+          "rate": {
+            "value": 1.161,
+            "ci95_low": 1.1602,
+            "ci95_high": 1.1621,
+            "rel_uncertainty": 0.1,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_ptx_rcp_approx_f32",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "warps_per_sm": 32,
+          "rate": {
+            "value": 1.1754,
+            "ci95_low": 1.1745,
+            "ci95_high": 1.1755,
+            "rel_uncertainty": 0.1,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_ptx_rcp_approx_f32",
+            "source": "measured",
+            "perturb_group": null
+          }
+        }
+      ],
+      "shfl_issue_rate_per_sm_gips": [
+        {
+          "warps_per_sm": 1,
+          "rate": {
+            "value": 0.3615,
+            "ci95_low": 0.3614,
+            "ci95_high": 0.3616,
+            "rel_uncertainty": 0.1,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_ptx_shfl_sync_bfly_b32",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "warps_per_sm": 2,
+          "rate": {
+            "value": 0.7245,
+            "ci95_low": 0.7232,
+            "ci95_high": 0.7248,
+            "rel_uncertainty": 0.1,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_ptx_shfl_sync_bfly_b32",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "warps_per_sm": 4,
+          "rate": {
+            "value": 1.2673,
+            "ci95_low": 1.2669,
+            "ci95_high": 1.272,
+            "rel_uncertainty": 0.1,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_ptx_shfl_sync_bfly_b32",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "warps_per_sm": 8,
+          "rate": {
+            "value": 1.2766,
+            "ci95_low": 1.2763,
+            "ci95_high": 1.2768,
+            "rel_uncertainty": 0.1,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_ptx_shfl_sync_bfly_b32",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "warps_per_sm": 16,
+          "rate": {
+            "value": 1.2796,
+            "ci95_low": 1.2776,
+            "ci95_high": 1.2798,
+            "rel_uncertainty": 0.1,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_ptx_shfl_sync_bfly_b32",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "warps_per_sm": 32,
+          "rate": {
+            "value": 1.2798,
+            "ci95_low": 1.2797,
+            "ci95_high": 1.2798,
+            "rel_uncertainty": 0.1,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_ptx_shfl_sync_bfly_b32",
+            "source": "measured",
+            "perturb_group": null
+          }
+        }
+      ],
+      "shfl_idx_issue_rate_per_sm_gips": [
+        {
+          "warps_per_sm": 1,
+          "rate": {
+            "value": 0.3403,
+            "ci95_low": 0.3403,
+            "ci95_high": 0.3403,
+            "rel_uncertainty": 0.1,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_ptx_shfl_sync_idx_b32",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "warps_per_sm": 2,
+          "rate": {
+            "value": 0.6806,
+            "ci95_low": 0.6806,
+            "ci95_high": 0.6808,
+            "rel_uncertainty": 0.1,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_ptx_shfl_sync_idx_b32",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "warps_per_sm": 4,
+          "rate": {
+            "value": 1.2657,
+            "ci95_low": 1.2645,
+            "ci95_high": 1.2671,
+            "rel_uncertainty": 0.1,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_ptx_shfl_sync_idx_b32",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "warps_per_sm": 8,
+          "rate": {
+            "value": 1.2764,
+            "ci95_low": 1.2763,
+            "ci95_high": 1.2769,
+            "rel_uncertainty": 0.1,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_ptx_shfl_sync_idx_b32",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "warps_per_sm": 16,
+          "rate": {
+            "value": 1.2797,
+            "ci95_low": 1.2796,
+            "ci95_high": 1.2798,
+            "rel_uncertainty": 0.1,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_ptx_shfl_sync_idx_b32",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "warps_per_sm": 32,
+          "rate": {
+            "value": 1.2797,
+            "ci95_low": 1.2774,
+            "ci95_high": 1.2798,
+            "rel_uncertainty": 0.1,
+            "unit": "Gwarp-inst/s",
+            "method": "cuda_ptx_shfl_sync_idx_b32",
+            "source": "measured",
+            "perturb_group": null
+          }
+        }
+      ],
+      "shfl_latency_ns": {
+        "value": 10.93,
+        "ci95_low": 10.93,
+        "ci95_high": 10.932,
+        "rel_uncertainty": 0.1,
+        "unit": "ns",
+        "method": "cuda_ptx_shfl_sync_bfly_chain",
+        "source": "measured",
+        "perturb_group": null
+      }
     },
     "occupancy": {
       "smem_carveout_observed": []

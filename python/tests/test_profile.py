@@ -69,6 +69,10 @@ def test_rtx4070_profile_is_valid() -> None:
     assert all(pt["tflops_per_sm"]["source"] == "measured" for pt in mma_f16)
     assert len(profile["measured"]["compute"]["mma_chain_latency"]) >= 128
     assert len(profile["measured"]["compute"]["serial_stage_overhead_ns"]) >= 16
+    assert profile["measured"]["compute"]["sfu_tflops"]["source"] == "measured"
+    assert len(profile["measured"]["compute"]["sfu_issue_rate_per_sm_gips"]) >= 6
+    assert len(profile["measured"]["compute"]["shfl_issue_rate_per_sm_gips"]) >= 6
+    assert profile["measured"]["compute"]["shfl_latency_ns"]["source"] == "measured"
 
 
 def test_gb10_profile_is_valid() -> None:

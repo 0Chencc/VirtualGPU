@@ -542,6 +542,9 @@ int main(int argc, char** argv) {
   if (mode == "strided-mlp") {
     return run_strided_mlp(device, samples, warmup);
   }
+  if (mode == "sfu-shfl") {
+    return run_sfu_shfl(device, samples, warmup);
+  }
   std::fprintf(stderr, "Unknown mode: %s\n", mode.c_str());
   return 2;
 }

@@ -351,7 +351,28 @@
               "type": "array",
               "minItems": 1,
               "items": { "$ref": "#/$defs/SerialStageOverheadSummary" }
-            }
+            },
+            "sfu_issue_rate_per_sm_gips": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/WarpIssueRatePoint" }
+            },
+            "sfu_rcp_issue_rate_per_sm_gips": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/WarpIssueRatePoint" }
+            },
+            "shfl_issue_rate_per_sm_gips": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/WarpIssueRatePoint" }
+            },
+            "shfl_idx_issue_rate_per_sm_gips": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/WarpIssueRatePoint" }
+            },
+            "shfl_latency_ns": { "$ref": "#/$defs/MeasuredValue" }
           }
         },
         "occupancy": {
@@ -875,6 +896,15 @@
         "active_ctas": { "type": "integer", "minimum": 1 },
         "bytes_per_cta": { "type": "integer", "minimum": 1 },
         "bw_gbps": { "$ref": "#/$defs/MeasuredValue" }
+      }
+    },
+    "WarpIssueRatePoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["warps_per_sm", "rate"],
+      "properties": {
+        "warps_per_sm": { "type": "integer", "minimum": 1 },
+        "rate": { "$ref": "#/$defs/MeasuredValue" }
       }
     }
   }
