@@ -27,6 +27,7 @@ fn gemm(grid: u32, iterations: u32, prefetch_distance: u32) -> Kernel {
         mma_key: MMA.to_string(),
         spill: Spill::default(),
         async_loads: true,
+        tile_iterations: None,
         tile: Tile {
             prologue: Work::default(),
             iterations,
@@ -587,5 +588,65 @@ fn bound_names_bandwidth_only_when_it_binds() {
         p.bound_fraction[at("dram_latency")] + p.bound_fraction[at("l2_latency")] > 0.99,
         "{:?}",
         p.bound_fraction
+    );
+}
+
+#[test]
+fn per_tile_iterations_set_each_programs_length() {
+    // Causal-like: program p runs p + 1 iterations, one CTA per SM, so the
+    // last program alone sets the makespan.
+    let mut k = compute_only(46);
+    k.tile_iterations = Some((0..46).map(|p| vec![p + 1]).collect());
+    let one = k.tile.per_iteration.mma_flops / (0.60 * 1e3);
+    let p = run(&k, machine(&k));
+    assert!(
+        close(p.makespan_ns, 46.0 * one),
+        "{} vs {}",
+        p.makespan_ns,
+        46.0 * one
+    );
+}
+
+#[test]
+fn special_function_and_shuffle_pipes_bound_their_instructions() {
+    // Only SFU work: 64 iterations x 4 warps x 100 instructions at the SFU
+    // rate; the same count of ALU instructions is bound by the faster issue
+    // rate, and SFU instructions also take issue slots.
+    let mut k = compute_only(46);
+    k.tile.per_iteration = Work {
+        sfu_insts_per_warp: 100.0,
+        ..Work::default()
+    };
+    let mut m = machine(&k);
+    m.sfu_rate = 1.0;
+    m.issue_rate = 10.0;
+    m.shfl_rate = 2.0;
+    let sfu = run(&k, m.clone());
+    assert!(
+        close(sfu.makespan_ns, 64.0 * 4.0 * 100.0 / 1.0),
+        "{}",
+        sfu.makespan_ns
+    );
+    assert!(sfu.bound_fraction[4] > 0.99, "{:?}", sfu.bound_fraction);
+    k.tile.per_iteration = Work {
+        shfl_insts_per_warp: 100.0,
+        ..Work::default()
+    };
+    let shfl = run(&k, m.clone());
+    assert!(
+        close(shfl.makespan_ns, 64.0 * 4.0 * 100.0 / 2.0),
+        "{}",
+        shfl.makespan_ns
+    );
+    k.tile.per_iteration = Work {
+        alu_insts_per_warp: 100.0,
+        sfu_insts_per_warp: 1.0,
+        ..Work::default()
+    };
+    let issue = run(&k, m);
+    assert!(
+        close(issue.makespan_ns, 64.0 * 4.0 * 101.0 / 10.0),
+        "{}",
+        issue.makespan_ns
     );
 }

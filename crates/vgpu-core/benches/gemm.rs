@@ -30,6 +30,7 @@ fn main() {
         mma_key: "mma.sync:f16:f16:f32:16x8x16".to_string(),
         spill: Spill::default(),
         async_loads: true,
+        tile_iterations: None,
         tile: Tile {
             prologue: Work::default(),
             iterations: 128,

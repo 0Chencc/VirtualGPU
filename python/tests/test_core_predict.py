@@ -75,3 +75,11 @@ def test_predict_batch_matches_predict_exactly():
 def test_predict_batch_names_a_malformed_variant():
     with pytest.raises(ValueError, match="variant 1"):
         _core.predict_batch([IR, "{}"], PROFILE)
+
+
+def test_causal_attention_predicts_and_is_flagged_unvalidated():
+    attn = (ROOT / "schemas/examples/flash_attention_causal_gqa_sm89.json").read_text()
+    r = _core.predict(attn, PROFILE, draws=2)
+    assert r["status"] == "ok"
+    assert "unvalidated_feature" in r["flags"]
+    assert set(r["bound_fraction"]) >= {"sfu", "shfl"}

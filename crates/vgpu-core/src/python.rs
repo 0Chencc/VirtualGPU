@@ -2,7 +2,7 @@
 
 use crate::draws::{draws as draw_profiles, Draw};
 use crate::from_ir::{kernel_from_ir, IrL2};
-use crate::ir::KernelIR;
+use crate::ir::{KernelIR, Op};
 use crate::kernel::Kernel;
 use crate::l2::L2InitState;
 use crate::sim::{simulate, Machine, ModelError, Prediction, RESOURCES};
@@ -127,7 +127,16 @@ fn record<'py>(
     if ir.resources.spill_loads_bytes + ir.resources.spill_stores_bytes > 0 {
         flags.push("spill".into());
     }
-    if !ir.diagnostics.is_empty() {
+    // The profile has no measured shuffle throughput and only an estimated
+    // special-function one, so kernels using them are not validated yet.
+    let uses_sfu_or_shfl = [
+        &ir.body.prologue.ops,
+        &ir.body.pipeline_loop.ops,
+        &ir.body.epilogue.ops,
+    ]
+    .iter()
+    .any(|ops| ops.iter().any(|op| matches!(op, Op::Sfu(_) | Op::Shfl(_))));
+    if !ir.diagnostics.is_empty() || uses_sfu_or_shfl {
         flags.push("unvalidated_feature".into());
     }
     let dispatch = &all[0].profile.measured.cta_dispatch;

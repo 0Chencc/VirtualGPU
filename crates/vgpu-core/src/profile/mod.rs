@@ -153,6 +153,9 @@ pub struct Compute {
     /// Keyed by `<op_class>:<a_dtype>:<b_dtype>:<acc_dtype>:<M>x<N>x<K>`.
     pub mma_tflops_per_sm_by_warps: BTreeMap<String, Vec<MmaPoint>>,
     pub non_mma_issue_rate_per_sm_gips: MeasuredValue,
+    /// Special-function lane operations per second for the whole GPU.
+    #[serde(default)]
+    pub sfu_tflops: Option<MeasuredValue>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

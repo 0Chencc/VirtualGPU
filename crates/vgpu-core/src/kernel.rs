@@ -17,8 +17,11 @@ pub struct Access {
 pub struct Work {
     /// Tensor-core floating-point operations.
     pub mma_flops: f64,
-    /// Non-MMA instructions, per warp.
+    /// Non-MMA instructions, per warp: all of them take issue slots; the
+    /// special-function and shuffle ones also take their own pipes.
     pub alu_insts_per_warp: f64,
+    pub sfu_insts_per_warp: f64,
+    pub shfl_insts_per_warp: f64,
     /// Shared memory bytes moved by the CTA.
     pub smem_bytes: f64,
     pub loads: Vec<Access>,
@@ -85,9 +88,18 @@ pub struct Kernel {
     /// Pipeline loads are asynchronous copies (`cp.async`, TMA) rather than
     /// loads into registers.
     pub async_loads: bool,
+    /// Pipeline iterations per `[program][tile]` when they vary, for example
+    /// causal attention; `None` means `tile.iterations` everywhere.
+    pub tile_iterations: Option<Vec<Vec<u32>>>,
 }
 
 impl Kernel {
+    pub fn iterations(&self, program: u32, tile: u32) -> u32 {
+        self.tile_iterations
+            .as_ref()
+            .map_or(self.tile.iterations, |v| v[program as usize][tile as usize])
+    }
+
     pub fn tiles_of(&self, program: u32) -> u32 {
         match &self.tiles_per_program {
             TripCounts::Uniform(n) => *n,

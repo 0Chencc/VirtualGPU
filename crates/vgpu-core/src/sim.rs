@@ -126,8 +126,11 @@ pub struct Machine {
     pub l2_mlp: [Vec<(f64, f64)>; 2],
     /// (MMA-issuing warps on the SM, FLOP per ns for the whole SM).
     pub mma: Vec<(f64, f64)>,
-    /// Warp instructions per ns per SM.
+    /// Warp instructions per ns per SM: issue, special-function pipe, and
+    /// shuffle pipe.
     pub issue_rate: f64,
+    pub sfu_rate: f64,
+    pub shfl_rate: f64,
     /// Shared memory bytes per ns per SM.
     pub smem_bw: f64,
     /// L1-resident local memory (spill) bytes per ns per SM.
@@ -255,6 +258,16 @@ impl Machine {
                 "mma_tflops_per_sm_by_warps",
             )?,
             issue_rate: m.compute.non_mma_issue_rate_per_sm_gips.value,
+            // Lane operations per second over the SMs and the 32 lanes of a
+            // warp; without a measurement the shuffle pipe gets the issue rate.
+            sfu_rate: m
+                .compute
+                .sfu_tflops
+                .as_ref()
+                .map_or(m.compute.non_mma_issue_rate_per_sm_gips.value, |v| {
+                    v.value * 1e3 / (f64::from(p.specs.sm_count) * 32.0)
+                }),
+            shfl_rate: m.compute.non_mma_issue_rate_per_sm_gips.value,
             smem_bw: m.memory.smem_bw_per_sm_gbps.value,
             local_bw: m
                 .spill
@@ -292,15 +305,17 @@ pub struct Prediction {
     pub events: u64,
     /// Fraction of CTA-time during which each resource of `RESOURCES` was the
     /// bound of the CTA's current phase.
-    pub bound_fraction: [f64; 10],
+    pub bound_fraction: [f64; 12],
 }
 
 /// Resources a phase can be bound by, in `Prediction::bound_fraction` order.
-pub const RESOURCES: [&str; 10] = [
+pub const RESOURCES: [&str; 12] = [
     "mma",
     "issue",
     "smem",
     "local",
+    "sfu",
+    "shfl",
     "sync",
     "l2_latency",
     "dram_latency",
@@ -309,12 +324,12 @@ pub const RESOURCES: [&str; 10] = [
     "launch",
 ];
 const MMA: usize = 0;
-const SYNC: usize = 4;
-const L2_LATENCY: usize = 5;
-const DRAM_LATENCY: usize = 6;
-const L2_BANDWIDTH: usize = 7;
-const DRAM_BANDWIDTH: usize = 8;
-const LAUNCH: usize = 9;
+const SYNC: usize = 6;
+const L2_LATENCY: usize = 7;
+const DRAM_LATENCY: usize = 8;
+const L2_BANDWIDTH: usize = 9;
+const DRAM_BANDWIDTH: usize = 10;
+const LAUNCH: usize = 11;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Phase {
@@ -328,7 +343,11 @@ enum Phase {
 #[derive(Debug, Clone, Default)]
 struct Demand {
     flops: f64,
+    /// Non-MMA warp instructions (issue slots); the special-function and
+    /// shuffle ones among them also use their own pipes.
     warp_insts: f64,
+    sfu_insts: f64,
+    shfl_insts: f64,
     smem_bytes: f64,
     /// Spill bytes served by L1.
     local_bytes: f64,
@@ -463,7 +482,7 @@ impl<'a, L: L2> Sim<'a, L> {
     fn demand(&mut self, phase: Phase, sm: u32, program: u32, tile: u32) -> Demand {
         let k = self.k;
         let tl = &k.tile;
-        let n = tl.iterations;
+        let n = k.iterations(program, tile);
         let d = tl.prefetch_distance.min(n);
         let (compute, steps, loads, stores, round_trips) = match phase {
             Phase::Launch => {
@@ -520,7 +539,13 @@ impl<'a, L: L2> Sim<'a, L> {
         let steps = f64::from(steps);
         Demand {
             flops: compute.mma_flops * steps,
-            warp_insts: compute.alu_insts_per_warp * f64::from(k.num_warps) * steps,
+            warp_insts: (compute.alu_insts_per_warp
+                + compute.sfu_insts_per_warp
+                + compute.shfl_insts_per_warp)
+                * f64::from(k.num_warps)
+                * steps,
+            sfu_insts: compute.sfu_insts_per_warp * f64::from(k.num_warps) * steps,
+            shfl_insts: compute.shfl_insts_per_warp * f64::from(k.num_warps) * steps,
             smem_bytes: compute.smem_bytes * steps,
             local_bytes: spill_l1,
             bytes: load_bytes + stores + spill_l2 + spill_dram,
@@ -563,13 +588,17 @@ impl<'a, L: L2> Sim<'a, L> {
 
     /// Whether `phase` has no work at all, decided from the kernel alone so
     /// that phase transitions never need the L2 model.
-    fn phase_empty(&self, phase: Phase) -> bool {
+    fn phase_empty(&self, phase: Phase, program: u32, tile: u32) -> bool {
         let k = self.k;
         let tl = &k.tile;
-        let idle =
-            |w: &Work| w.mma_flops == 0.0 && w.alu_insts_per_warp == 0.0 && w.smem_bytes == 0.0;
+        let idle = |w: &Work| {
+            w.mma_flops == 0.0
+                && w.alu_insts_per_warp + w.sfu_insts_per_warp + w.shfl_insts_per_warp == 0.0
+                && w.smem_bytes == 0.0
+        };
+        let n = k.iterations(program, tile);
         let spills = |scope: SpillScope| k.spill.scope == scope && k.spill.bytes_per_thread > 0.0;
-        let d = tl.prefetch_distance.min(tl.iterations);
+        let d = tl.prefetch_distance.min(n);
         match phase {
             Phase::Launch => self.m.cta_launch_ns == 0.0,
             Phase::Prologue => {
@@ -581,10 +610,10 @@ impl<'a, L: L2> Sim<'a, L> {
             }
             Phase::Main => {
                 let w = &tl.per_iteration;
-                tl.iterations == 0
+                n == 0
                     || (idle(w)
                         && w.stores.is_empty()
-                        && (w.loads.is_empty() || d == tl.iterations)
+                        && (w.loads.is_empty() || d == n)
                         && !matches!(k.spill.scope, SpillScope::PerIteration { .. }))
             }
             Phase::Epilogue => {
@@ -615,7 +644,7 @@ impl<'a, L: L2> Sim<'a, L> {
                     c.phase = Phase::Prologue;
                 }
             }
-            if !self.phase_empty(c.phase) {
+            if !self.phase_empty(c.phase, c.program, c.tile) {
                 return true;
             }
         }
@@ -636,7 +665,7 @@ impl<'a, L: L2> Sim<'a, L> {
             remaining: 1.0,
             demand: Demand::default(),
         };
-        if self.phase_empty(Phase::Launch) && !self.step(&mut c, events) {
+        if self.phase_empty(Phase::Launch, program, 0) && !self.step(&mut c, events) {
             return None;
         }
         Some(c)
@@ -684,7 +713,7 @@ struct Parts {
     exposed: f64,
     exposed_kind: usize,
     /// Shared compute path: pipes by `RESOURCES` index, plus synchronization.
-    pipes: [f64; 4],
+    pipes: [f64; 6],
     sync: f64,
     /// Steady state as a closed queueing network, when it applies: the time
     /// mean value analysis gives instead of the round-trip bound.
@@ -747,6 +776,8 @@ impl Parts {
                 (p[1], 1),
                 (p[2], 2),
                 (p[3], 3),
+                (p[4], 4),
+                (p[5], 5),
                 (self.sync, SYNC),
             ])
         }
@@ -758,6 +789,8 @@ impl Parts {
 struct Scratch {
     mma_users: Vec<u32>,
     issue_users: Vec<u32>,
+    sfu_users: Vec<u32>,
+    shfl_users: Vec<u32>,
     smem_users: Vec<u32>,
     local_users: Vec<u32>,
     resident: Vec<u32>,
@@ -779,6 +812,10 @@ fn rates(ctas: &[Cta], m: &Machine, mma_per_cta: &[f64], lat: Latency, s: &mut S
     s.mma_users.resize(n_sm, 0);
     s.issue_users.clear();
     s.issue_users.resize(n_sm, 0);
+    s.sfu_users.clear();
+    s.sfu_users.resize(n_sm, 0);
+    s.shfl_users.clear();
+    s.shfl_users.resize(n_sm, 0);
     s.smem_users.clear();
     s.smem_users.resize(n_sm, 0);
     s.local_users.clear();
@@ -790,6 +827,8 @@ fn rates(ctas: &[Cta], m: &Machine, mma_per_cta: &[f64], lat: Latency, s: &mut S
         s.resident[i] += 1;
         s.mma_users[i] += u32::from(c.demand.flops > 0.0);
         s.issue_users[i] += u32::from(c.demand.warp_insts > 0.0);
+        s.sfu_users[i] += u32::from(c.demand.sfu_insts > 0.0);
+        s.shfl_users[i] += u32::from(c.demand.shfl_insts > 0.0);
         s.smem_users[i] += u32::from(c.demand.smem_bytes > 0.0);
         s.local_users[i] += u32::from(c.demand.local_bytes > 0.0);
     }
@@ -815,6 +854,16 @@ fn rates(ctas: &[Cta], m: &Machine, mma_per_cta: &[f64], lat: Latency, s: &mut S
         } else {
             0.0
         };
+        let t_sfu = if d.sfu_insts > 0.0 {
+            d.sfu_insts * f64::from(s.sfu_users[i]) / m.sfu_rate
+        } else {
+            0.0
+        };
+        let t_shfl = if d.shfl_insts > 0.0 {
+            d.shfl_insts * f64::from(s.shfl_users[i]) / m.shfl_rate
+        } else {
+            0.0
+        };
         let t_local = if d.local_bytes > 0.0 {
             d.local_bytes * f64::from(s.local_users[i]) / m.local_bw
         } else {
@@ -830,6 +879,8 @@ fn rates(ctas: &[Cta], m: &Machine, mma_per_cta: &[f64], lat: Latency, s: &mut S
             d.warp_insts / m.issue_rate,
             d.smem_bytes / m.smem_bw,
             d.local_bytes / m.local_bw,
+            d.sfu_insts / m.sfu_rate,
+            d.shfl_insts / m.shfl_rate,
         ];
         let (kind, &longest) =
             alone
@@ -853,7 +904,7 @@ fn rates(ctas: &[Cta], m: &Machine, mma_per_cta: &[f64], lat: Latency, s: &mut S
             dram_latency,
             exposed: d.exposed_compute * longest,
             exposed_kind: kind,
-            pipes: [t_mma, t_issue, t_smem, t_local],
+            pipes: [t_mma, t_issue, t_smem, t_local, t_sfu, t_shfl],
             sync: d.sync_ns * f64::from(s.resident[i]),
             queued,
         };
@@ -985,7 +1036,7 @@ pub fn simulate<L: L2>(
     let mut freed: Vec<u32> = Vec::new();
     let mut busy_sm_ns = 0.0;
     let mut events = 0u64;
-    let mut bound_ns = [0.0f64; 10];
+    let mut bound_ns = [0.0f64; 12];
     // Latency depends on the DRAM and L2 utilization and the utilization on
     // the rates, which depend on latency. DRAM utilization falls as the
     // latency it implies rises, so the equilibrium is unique and bisection

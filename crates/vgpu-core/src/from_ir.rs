@@ -39,7 +39,9 @@ fn work(ops: &[Op], mma_key: &mut Option<String>) -> Result<Work, ModelError> {
                 let [mi, ni, ki] = m.inst_mnk.map(f64::from);
                 w.mma_flops += 2.0 * mi * ni * ki * m.count as f64;
             }
-            Op::Alu(a) | Op::Sfu(a) | Op::Shfl(a) => w.alu_insts_per_warp += a.count as f64,
+            Op::Alu(a) => w.alu_insts_per_warp += a.count as f64,
+            Op::Sfu(a) => w.sfu_insts_per_warp += a.count as f64,
+            Op::Shfl(a) => w.shfl_insts_per_warp += a.count as f64,
             Op::Barrier(_) => {}
         }
     }
@@ -68,10 +70,6 @@ pub fn kernel_from_ir(ir: &KernelIR) -> Result<Kernel, ModelError> {
     if ir.body.epilogue.overlaps_next_tile {
         return Err(unsupported("epilogue overlapping the next tile"));
     }
-    let iterations = match &ir.body.pipeline_loop.trip_counts {
-        ir::TripCounts::Uniform(n) => u32_of(*n, "pipeline trip count")?,
-        ir::TripCounts::PerItem(_) => return Err(unsupported("per-tile pipeline trip counts")),
-    };
     let tiles_per_program = match &ir.body.outer_loop.trip_counts {
         ir::TripCounts::Uniform(n) => TripCounts::Uniform(u32_of(*n, "outer trip count")?),
         ir::TripCounts::PerItem(v) => TripCounts::PerProgram(
@@ -81,6 +79,30 @@ pub fn kernel_from_ir(ir: &KernelIR) -> Result<Kernel, ModelError> {
         ),
     };
 
+    let grid = u32_of(ir.total_ctas(), "grid size")?;
+    let tiles_of = |p: u32| match &tiles_per_program {
+        TripCounts::Uniform(n) => *n,
+        TripCounts::PerProgram(v) => v[p as usize],
+    };
+    // Pipeline iterations, uniform or per tile (causal attention).
+    let (iterations, tile_iterations) = match &ir.body.pipeline_loop.trip_counts {
+        ir::TripCounts::Uniform(n) => (u32_of(*n, "pipeline trip count")?, None),
+        ir::TripCounts::PerItem(_) => {
+            let per_tile = (0..grid)
+                .map(|p| {
+                    (0..tiles_of(p))
+                        .map(|t| {
+                            let n = ir.inner_trip_count(p, t).ok_or_else(|| {
+                                unsupported("pipeline trip count missing for a tile")
+                            })?;
+                            u32_of(n, "pipeline trip count")
+                        })
+                        .collect::<Result<Vec<_>, _>>()
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            (0, Some(per_tile))
+        }
+    };
     let mut mma_key = None;
     let tile = Tile {
         prologue: work(&ir.body.prologue.ops, &mut mma_key)?,
@@ -101,7 +123,7 @@ pub fn kernel_from_ir(ir: &KernelIR) -> Result<Kernel, ModelError> {
         },
     };
     Ok(Kernel {
-        grid: u32_of(ir.total_ctas(), "grid size")?,
+        grid,
         num_warps: ir.launch.num_warps,
         registers_per_thread: ir.resources.registers_per_thread,
         smem_per_cta_bytes: ir.total_smem_bytes(),
@@ -110,6 +132,7 @@ pub fn kernel_from_ir(ir: &KernelIR) -> Result<Kernel, ModelError> {
         tile,
         spill,
         async_loads: ir.body.pipeline_loop.async_copy != ir::AsyncCopyKind::None,
+        tile_iterations,
     })
 }
 
