@@ -8,7 +8,7 @@ To contribute a profile for a GPU you have access to, see [`docs/contributing-a-
 
 | File | SKU | Arch | Memory | Revision | Source | Clocks | Driver / Toolkit |
 |---|---|---|---|---|---|---|---|
-| [`rtx4070.json`](rtx4070.json) | NVIDIA GeForce RTX 4070 | `sm_89` | Discrete (GDDR6X) | `0.8.0-m3` | `partial` | Unlocked (WSL2, 2550–2865 MHz SM / 10251 MHz Mem) | `610.88` / `13.5` |
+| [`rtx4070.json`](rtx4070.json) | NVIDIA GeForce RTX 4070 | `sm_89` | Discrete (GDDR6X) | `0.9.0-m3` | `partial` | Unlocked (WSL2, 2550–2865 MHz SM / 10251 MHz Mem) | `610.88` / `13.5` |
 
 ## Where Each Field Comes From
 
@@ -20,7 +20,7 @@ Every profile is built from public APIs and isolated synthetic microbenchmarks �
 | `provenance` | `nvidia-smi`, OS & collector | Suite/driver/toolkit versions, UTC timestamp, `source` label, `power_limit_w`, and `clock_policy`. |
 | `specs` | CUDA Runtime API (`cudaGetDeviceProperties` / `cudaDeviceGetAttribute`) | Exact hardware limits: `sm_count`, `warp_size`, `registers_per_sm`, `shared_mem_per_sm_bytes`, carveout options, `l2_size_bytes`, `l2_line_bytes`, `l2_sector_bytes`, `capabilities`, and supported `mma_shapes`. |
 | `measured.memory` | `vgpu_bench` (`dram-bw`, `l2`, `latency`, `latency-curve`, `l2-rescan`, `mlp`, `closed-loop`, `closed-loop-mma`, `l2-merge`) | Achievable DRAM/L2/SMEM bandwidth, active-SM scaling curves, bytes-in-flight MLP curves, closed-loop latency/bandwidth tables, L2 effective capacity, L2 rescan hit-rate curve, and MSHR miss-merging rates. |
-| `measured.compute` | `vgpu_bench` (`mma`) + estimates | Measured `mma_tflops_per_sm_by_warps` and `fp32_fma_tflops`. Currently `non_mma_issue_rate_per_sm_gips` and `sfu_tflops` are tagged `source: "estimated"`. |
+| `measured.compute` | `vgpu_bench` (`mma`, `mma-chain`) + estimates | Measured `mma_tflops_per_sm_by_warps`, `mma_chain` dependency throughput, and `fp32_fma_tflops`. Currently `non_mma_issue_rate_per_sm_gips` and `sfu_tflops` are tagged `source: "estimated"`. |
 | `measured.async_pipeline` & `measured.pipeline` | `vgpu_bench` (`cp-async`, `stage-overhead`) | `cp.async` per-SM bandwidth, per-stage synchronization overhead, and minimum async roundtrip latency (TMA fields are `null` on architectures without TMA). |
 | `measured.spill` | Estimates (pending spill microbenchmark) | Per-SM local-memory L1 hit/miss bandwidth, latency, and L1-to-L2 spill threshold; currently tagged `source: "estimated"`. |
 | `measured.overhead` | `vgpu_bench` (`launch`) | Device launch overhead (CUDA Graph), host launch overhead, and per-CTA launch latency. |

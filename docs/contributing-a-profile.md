@@ -86,7 +86,7 @@ Useful CLI options:
 - `--samples`: Timed iterations per benchmark point (default: `15`).
 - `--repeats`: Repeats per CTA dispatch probe (default: `5`).
 
-**What it runs & expected runtime:** `collect_profile.py` runs 15 isolated microbenchmark modes (`query`, `dram-bw`, `mma`, `l2`, `cp-async`, `latency`, `launch`, `latency-curve`, `l2-rescan`, `mlp`, `closed-loop`, `l2-merge`, `stage-overhead`, `closed-loop-mma`, and `cta-dispatch`), polls `nvidia-smi` for active clocks and thermal throttling, computes bootstrap 95% confidence intervals, validates the result against `schemas/gpu_profile.schema.json`, and writes the JSON profile. A full run typically takes **1 to 3 minutes** depending on GPU memory size and bandwidth.
+**What it runs & measured runtime:** `collect_profile.py` runs 16 isolated microbenchmark modes (`query`, `dram-bw`, `mma`, `l2`, `cp-async`, `latency`, `launch`, `latency-curve`, `l2-rescan`, `mlp`, `closed-loop`, `l2-merge`, `stage-overhead`, `closed-loop-mma`, `mma-chain`, and `cta-dispatch`), polls `nvidia-smi` for active clocks and thermal throttling, computes bootstrap 95% confidence intervals, validates the result against `schemas/gpu_profile.schema.json`, and writes the JSON profile. On an NVIDIA GeForce RTX 4070 (`sm_89`) with default settings (`suite_version` `0.9.0`), a full end-to-end run measured **15.3 seconds** wall-clock (~11.7 s across the 16 `vgpu_bench` modes — led by `closed-loop` at 4.2 s, `mlp` at 1.1 s, and `latency-curve` at 1.0 s — plus ~3.6 s for `nvidia-smi` polling, bootstrap CIs, and schema validation). Runtime scales with GPU memory size and bandwidth.
 
 ## Step 4: Self-Check Before Opening a PR
 
