@@ -245,6 +245,14 @@ These were also the configs whose KernelIR carried the `linear_access_fallback` 
 
 **Effect on users.** For these configs, rely on the indistinguishable verdict rather than the point prediction: autotuning keeps them in the shortlist for measurement on the real GPU instead of ruling them out.
 
+### 9.2 Next-version residuals
+
+These are residuals of the next version's core on the development set, not of `phase1-final`.
+
+**Synchronous loads in GEMM.** Since `e51f8ef` (a round trip takes at least the idle latency plus its bytes through the SM's port), GEMM configs with `num_stages = 1`, which stage their loads through registers (`ld.global`, then `st.shared`), are predicted systematically slow: median error about +11% warm and +5% cold on the development set, against +3.6% and +0.2% before. The two errors used to cancel: the round trip was too short, and the register-staged loop is charged too much. The cause of the second is that staging loads through registers breaks the overlap of the loads with the MMAs, not the `st.shared` itself (`sync_stage_loop_ablation`, profile `0.17.0`: removing the stores leaves the extra cost, and it grows with the MMA work). Taking the shared memory stores off a CTA's dependent chain fixes the fill-only loops of `serial_stage_fill` but makes `sync_stage_loop` worse, so it is not done. This waits for a model of synchronous-load staging (next-version mechanism (c)).
+
+The serial-fill explanation ruled out in 9.1 was ruled out as an addition to the round trip. `e51f8ef` uses it as a floor under the round trip instead, which the MLP curves, indexed by bytes in flight over the whole GPU, do not provide.
+
 ## 10. Related work
 
 - [GPGPU-Sim](https://github.com/gpgpu-sim/gpgpu-sim_distribution) / [Accel-Sim](https://accel-sim.github.io/): cycle-level NVIDIA simulation; detailed but hours per large kernel and behind on recent architectures.
