@@ -278,7 +278,8 @@
           "properties": {
             "trip_count_mode": {
               "type": "string",
-              "enum": ["uniform", "per_outer_iter"]
+              "enum": ["uniform", "per_cta", "per_outer_iter"],
+              "description": "uniform: single integer for all CTAs; per_cta: array of length prod(launch.grid) (e.g., causal attention); per_outer_iter: array of length total_outer_tiles."
             },
             "trip_counts": {
               "oneOf": [
@@ -488,7 +489,11 @@
       ],
       "properties": {
         "op_id": { "type": "string", "minLength": 1 },
-        "kind": { "type": "string", "enum": ["alu", "sfu"] },
+        "kind": {
+          "type": "string",
+          "enum": ["alu", "sfu", "shfl"],
+          "description": "alu: general scalar/vector ALU; sfu: special function unit (e.g., exp2, rcp); shfl: warp/wavefront register shuffle or cross-lane reduction (e.g., PTX shfl.sync, AMDGPU ds_swizzle)."
+        },
         "warp_group_id": { "type": "integer", "minimum": 0 },
         "stage_offset": { "type": "integer", "minimum": 0 },
         "dtype": { "type": "string", "minLength": 1 },
