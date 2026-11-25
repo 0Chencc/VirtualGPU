@@ -79,7 +79,16 @@ Every calibration and validation dataset records the GPU, driver, clocks and ker
 
 ## Status
 
-Design complete. Implementation of Phase 1 is next. Nothing runs yet.
+Phase 1 is in progress on an RTX 4070. The full pipeline runs end to end: Triton kernel, ahead-of-time compilation, Kernel IR, GPU profile, performance model, and scoring against measured hardware. On the development set (cold L2), VirtualGPU ranks configs better than a learned baseline trained on the same GPU, without using any GEMM timing. The workload holdout is still sealed.
+
+GPU-free autotuning works today:
+
+```
+virtualgpu autotune --kernel my_module:matmul --shape 2048 8192 4096 \
+    --profile profiles/rtx4070.json --cache cold
+```
+
+The Phase 2 cross-GPU evaluation on DGX Spark is preregistered in [validation/phase2-preregistration.md](validation/phase2-preregistration.md).
 
 ## License
 
