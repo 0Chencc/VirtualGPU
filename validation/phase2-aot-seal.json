@@ -1,0 +1,30 @@
+{
+  "target": "sm_121",
+  "ptx_target": "sm_121a",
+  "compiler": "triton 3.9.0",
+  "assembler": "ptxas-blackwell 13.4 (V13.4.59)",
+  "artifact_hash_version": "2",
+  "enable_fp_fusion": true,
+  "source": {
+    "commit": "129a6f55d3dcbf5c261a8397296400f91f291fe1",
+    "python_dirty": false,
+    "validation_dirty": false
+  },
+  "source_manifests": {
+    "primary": "cbfe410e95f327943f6f0cd59250f217b874cbb4654a3a161f7e52e3756698d4",
+    "secondary": "b6c8fd089543ec8444e820993acc962f25eb3e662f9d47d3fe3bb79dbf03eaf1"
+  },
+  "recorded_utc": "2026-11-25T10:20:40.737731+00:00",
+  "aot_index_sha256": "4cd542f206529442650638fe7fb148ca0ddf642d573998284e0c00329203f3d0",
+  "indexed_files": 604,
+  "artifacts": {
+    "primary": 255,
+    "secondary": 324,
+    "diagnostic": 3
+  },
+  "failures": {
+    "primary": 0,
+    "secondary": 0,
+    "diagnostic": 0
+  }
+}

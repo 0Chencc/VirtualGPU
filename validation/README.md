@@ -170,3 +170,31 @@ To score a sealed case, supply `--sealed-audit validation/holdout-seal.json`,
 The scorer checks the tag, the archive digest and build provenance, and the
 committed audit before it accesses the timing reports. It checks each
 report digest before parsing it and restores the no-read permissions.
+
+## GB10 transfer
+
+Follow [the preregistration](phase2-preregistration.md). Run the AOT and
+prediction entry points with the phase1-final checkout as the working
+directory. Put its root and its `python/` directory first on `PYTHONPATH`,
+followed by the validation harness checkout. Pass the frozen development
+manifest and workload-holdout manifest to `python -m validation.phase2_aot`.
+The artifact directory must be new. Record the resulting index digest in the
+AOT seal before running `python -m validation.phase2_predict` with the frozen
+fit, published GB10 profile commit, and published AOT seal commit.
+
+Collection uses the committed harness checkout on Spark 1, with the tagged
+`python/` directory on `PYTHONPATH`. Reserve the GPU, review uptime and GPU
+usage, and use the lock for each case-session:
+
+```sh
+flock /tmp/virtualgpu-gpu.lock python -m validation.phase2_capture capture \
+  "$artifact_dir" "$phase1_final_checkout" "$cohort" "$case_id" "$session" \
+  "$published_amendment"
+```
+
+The collector checks the amendment against `origin/main` and verifies the
+AOT index, three-method prediction archive, and measurement policy digests.
+The policy binds the harness commit, GPU driver, L2 capacity, clock policy,
+and power mode to calibration. Collection writes mode-zero reports and
+separate receipts. Use `validation.phase2_capture audit` to check the full
+receipt census without opening labels.

@@ -1,4 +1,4 @@
-"""Measure development GEMM configurations on the RTX 4070."""
+"""Measure GEMM configurations on an explicitly selected evaluation device."""
 
 import argparse
 from datetime import datetime, timezone
@@ -155,7 +155,7 @@ def cache_control(evict, l2_bytes):
     return {"warm": [warm() for _ in range(8)], "cold": [cold() for _ in range(8)]}
 
 
-def prepare_candidates(case, configs, seed):
+def prepare_candidates(case, configs, seed, arch=89, kernel=dense_gemm, tensor_copy=False):
     m, n, k = case["shape"]
     torch.manual_seed(seed)
     a = torch.randn((m, k), device="cuda", dtype=torch.float16).mul_(0.25)
@@ -163,7 +163,7 @@ def prepare_candidates(case, configs, seed):
     out = torch.empty((m, n), device="cuda", dtype=torch.float16)
     torch.backends.cuda.matmul.allow_tf32 = False
     reference = (a.float() @ b.float()).half()
-    ptxas = Path(get_ptxas(89).path)
+    ptxas = Path(get_ptxas(arch).path)
     assembler_version = get_ptxas_version(str(ptxas))
     operations = {}
     artifacts = {}
@@ -171,22 +171,30 @@ def prepare_candidates(case, configs, seed):
     for cfg in configs:
         key = cfg["config_id"]
         bm, bn, bk = cfg["tile"]
-        grid = (triton.cdiv(m, bm) * triton.cdiv(n, bn),)
-        kernel_args = (a, b, out, m, n, k, bm, bn, bk, cfg["group_m"])
+        tiles = (triton.cdiv(m, bm), triton.cdiv(n, bn))
+        grid = tiles if tensor_copy else (math.prod(tiles),)
+        kernel_args = (a, b, out, m, n, k, bm, bn, bk)
+        if not tensor_copy:
+            kernel_args += (cfg["group_m"],)
         options = dict(num_warps=cfg["num_warps"], num_stages=cfg["num_stages"],
                        enable_fp_fusion=True)
 
         def operation(grid=grid, kernel_args=kernel_args, options=options):
-            return dense_gemm[grid](*kernel_args, **options)
+            return kernel[grid](*kernel_args, **options)
 
         try:
-            compiled = dense_gemm.run(*kernel_args, grid=grid, warmup=True, **options)
+            compiled = kernel.run(*kernel_args, grid=grid, warmup=True, **options)
         except (triton.CompilationError, PTXASError) as error:
             artifacts[key] = {"status": "compile_failed", "reason": str(error)}
             continue
 
         ptx = compiled.asm["ptx"]
         mma_shapes = re.findall(r"mma\.sync\.aligned\.m(\d+)n(\d+)k(\d+)\.row\.col\.f32\.f16\.f16\.f32", ptx)
+        if tensor_copy and not (
+            "cp.async.bulk.tensor" in ptx and "mbarrier" in ptx and mma_shapes
+        ):
+            artifacts[key] = {"status": "unsupported", "reason": "Expected TMA, barrier, and MMA PTX"}
+            continue
         row = {
             "tile": cfg["tile"],
             "num_warps": cfg["num_warps"],
@@ -200,7 +208,7 @@ def prepare_candidates(case, configs, seed):
                 "compiler_version": triton.__version__,
                 "assembler": ptxas.name,
                 "assembler_version": assembler_version,
-                "target_sm_compiled": detect_ptx_target(ptx, 89),
+                "target_sm_compiled": detect_ptx_target(ptx, arch),
                 "enable_fp_fusion": compiled.metadata.enable_fp_fusion,
                 "ptx_options": compiled.metadata.ptx_options,
                 "disable_ptxas_opt": triton.knobs.nvidia.disable_ptxas_opt,
@@ -225,53 +233,89 @@ def prepare_candidates(case, configs, seed):
     return operations, artifacts
 
 
-def measure(case, configs, input_seed, args, manifest_sha, verify_artifacts=None):
+def measure(case, configs, input_seed, args, manifest_sha, verify_artifacts=None, *,
+            device_arch=89, kernel=dense_gemm, tensor_copy=False, spark=None):
     source = source_info()
     if torch.cuda.device_count() != 1:
-        raise RuntimeError("The M1 runner requires exactly one visible CUDA device")
+        raise RuntimeError("Require exactly one visible CUDA device")
     gpu = torch.cuda.get_device_properties(0)
-    if gpu.name != "NVIDIA GeForce RTX 4070" or (gpu.major, gpu.minor) != (8, 9):
-        raise RuntimeError(f"Only the RTX 4070 is authorized in M1: {gpu.name}")
+    if (gpu.major * 10 + gpu.minor != device_arch
+            or (device_arch == 89 and gpu.name != "NVIDIA GeForce RTX 4070")):
+        raise RuntimeError(f"Unexpected evaluation device: {gpu.name} (SM {gpu.major}.{gpu.minor})")
     l2_bytes = l2_capacity()
-    operations, artifacts = prepare_candidates(case, configs, input_seed)
+    if spark is not None and l2_bytes != spark.l2_bytes:
+        raise ValueError("CUDA L2 capacity differs from the frozen GB10 profile")
+    operations, artifacts = prepare_candidates(case, configs, input_seed, device_arch, kernel, tensor_copy)
     if verify_artifacts is not None:
         verify_artifacts(artifacts)
+        operations = {key: operation for key, operation in operations.items()
+                      if artifacts[key]["status"] == "ok"}
     caches = ("warm", "cold") if args.cache == "both" else (args.cache,)
     eviction_bytes = 0
     evict = None
     if "cold" in caches and operations:
         evict, eviction_bytes = make_read_flush(l2_bytes)
-    control = cache_control(evict, l2_bytes) if evict else {}
-    trials = {(cache, key): timed_graph(evict if cache == "cold" else operation, operation)
-              for key, operation in operations.items() for cache in caches}
 
+    def make_trials():
+        control = cache_control(evict, l2_bytes) if evict else {}
+        trials = {(cache, key): timed_graph(evict if cache == "cold" else operation, operation)
+                  for key, operation in operations.items() for cache in caches}
+        return control, trials
+
+    if spark is None:
+        control, trials = make_trials()
     rng = random.Random(args.seed)
-    samples, telemetry = [], []
-    order = list(trials)
+    samples, telemetry, rejected_blocks = [], [], []
     pynvml.nvmlInit()
     try:
         uuid = str(gpu.uuid)
         handle = pynvml.nvmlDeviceGetHandleByUUID(uuid if uuid.startswith("GPU-") else "GPU-" + uuid)
         driver_version = pynvml.nvmlSystemGetDriverVersion()
+        if spark is not None and driver_version != spark.driver_version:
+            raise ValueError("Spark GPU driver differs from calibration")
         stop = Event()
         monitor = Thread(target=record_telemetry, args=(handle, telemetry, stop))
         monitor.start()
         try:
-            deadline = time.monotonic() + args.warmup_seconds
-            while operations and time.monotonic() < deadline:
+            def warmup():
                 for operation in operations.values():
                     operation()
                 torch.cuda.synchronize()
+
+            if spark is not None:
+                spark.stabilize(warmup, telemetry, bool(operations))
+                control, trials = make_trials()
+            else:
+                deadline = time.monotonic() + args.warmup_seconds
+                while operations and time.monotonic() < deadline:
+                    warmup()
+            order = list(trials)
             for block in range(args.blocks):
                 rng.shuffle(order)
-                for cache, key in order:
-                    latency = trials[cache, key]()
-                    if not math.isfinite(latency) or latency <= 0:
-                        raise RuntimeError("Invalid CUDA event duration")
-                    samples.append({
-                        "block": block, "cache": cache, "config_id": key,
-                        "latency_ns": latency, "monotonic_ns": time.monotonic_ns(),
-                    })
+                for attempt in range(3 if spark is not None else 1):
+                    block_samples = []
+                    block_state = spark.begin_block() if spark and order else None
+                    start_ns = time.monotonic_ns()
+                    for cache, key in order:
+                        latency = trials[cache, key]()
+                        if not math.isfinite(latency) or latency <= 0:
+                            raise RuntimeError("Invalid CUDA event duration")
+                        block_samples.append({
+                            "block": block, "cache": cache, "config_id": key,
+                            "latency_ns": latency, "monotonic_ns": time.monotonic_ns(),
+                        })
+                    reason = (spark.check_block(handle, telemetry, start_ns, block_state)
+                              if block_state is not None else None)
+                    if reason is None:
+                        samples.extend(block_samples)
+                        break
+                    rejected_blocks.append({"block": block, "attempt": attempt + 1,
+                                            "reason": reason, "samples": block_samples})
+                    if attempt < 2:
+                        spark.stabilize(warmup, telemetry, True)
+                else:
+                    # Retain the failed session and its rejected trials in the seal.
+                    break
         finally:
             stop.set()
             monitor.join()
@@ -282,6 +326,8 @@ def measure(case, configs, input_seed, args, manifest_sha, verify_artifacts=None
     for cache, key in sorted(order):
         times = [row["latency_ns"] for row in samples
                  if row["cache"] == cache and row["config_id"] == key]
+        if len(times) < 2:
+            continue
         median = statistics.median(times)
         low, high = median_ci95([times], seed=args.seed)
         stdev = statistics.stdev(times)
@@ -302,13 +348,13 @@ def measure(case, configs, input_seed, args, manifest_sha, verify_artifacts=None
         "case_id": case["case_id"],
         "split": case["split"],
         "shape": case["shape"],
-        "gpu": {"name": gpu.name, "uuid": uuid, "arch": "sm_89", "driver": driver_version},
+        "gpu": {"name": gpu.name, "uuid": uuid, "arch": f"sm_{device_arch}", "driver": driver_version},
         "software": {"os": platform.release(), "torch": torch.__version__,
                      "triton": triton.__version__, "cuda": torch.version.cuda},
-        "kernel_sha256": hashlib.sha256(dense_gemm.src.encode()).hexdigest(),
+        "kernel_sha256": hashlib.sha256(kernel.src.encode()).hexdigest(),
         "manifest_sha256": manifest_sha,
         "source": source,
-        "protocol": {"clock_policy": "record_only", "timer": "cuda_graph_single_launch",
+        "protocol": {"clock_policy": spark.clock_policy if spark else "record_only", "timer": "cuda_graph_single_launch",
                      "l2_bytes": l2_bytes, "cache_states": list(caches),
                      "cold_flush": "read_cg" if "cold" in caches else None,
                      "eviction_bytes": eviction_bytes, "blocks": args.blocks,
@@ -318,6 +364,8 @@ def measure(case, configs, input_seed, args, manifest_sha, verify_artifacts=None
         "samples": samples,
         "telemetry": telemetry,
         "summary": summary,
+        **({"spark": spark.provenance(), "rejected_blocks": rejected_blocks,
+            "complete_blocks": len({row["block"] for row in samples})} if spark else {}),
     }
 
 
