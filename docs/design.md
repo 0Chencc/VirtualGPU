@@ -229,19 +229,7 @@ No constant per-stage correction fits both signs. Explanations ruled out, each b
 - **Tensor, issue, shared memory port, and scheduler contention between co-resident CTAs.** In the MMA-contention closed loop (`dram_closed_loop_mma`, 150 points, 4 and 8 warps, 0 to 32 KB of `ldmatrix` per stage), two CTAs per SM are never slower than one, and the model's queueing network predicts delivered bandwidth with median error 1.0% to 1.9% and at most 16%.
 - **Register spills.** `ptxas` reports no spills for any of these configs.
 
-Open evidence: every config whose KernelIR carries the `linear_access_fallback` diagnostic (all 12 are `num_stages = 1`, the synchronous-load path) has a larger error. The frontend could not recover their access map, and the L2 model's reuse and miss merging use it. Median absolute error:
-
-| Case | Warm: fallback / other | Cold: fallback / other |
-|---|---|---|
-| decode-1 | 13.1% / 4.2% | 4.2% / 2.4% |
-| decode-16 | 1.7% / 3.0% | 1.0% / 2.0% |
-| decode-32 | 6.0% / 0.9% | 5.3% / 1.5% |
-| mask-m | 12.2% / 6.8% | 10.6% / 8.6% |
-| sm-round-below | 16.2% / 5.1% | 14.5% / 5.0% |
-| sm-round-exact | 17.6% / 4.2% | 15.0% / 5.0% |
-| sm-round-above | 13.0% / 2.7% | 10.8% / 4.4% |
-
-The fallback does not explain the `num_stages = 2` rows of the first table, which have an exact access map. Not covered by any measurement: L2 working-set growth when two large-tile CTAs share an SM.
+Not yet explained: the residual of these configs is still under investigation and this section will be updated with the result.
 
 **Effect on users.** For these configs, rely on the indistinguishable verdict rather than the point prediction: autotuning keeps them in the shortlist for measurement on the real GPU instead of ruling them out.
 
