@@ -539,6 +539,9 @@ int main(int argc, char** argv) {
   if (mode == "spill-latency") {
     return run_spill_latency(device, samples, warmup);
   }
+  if (mode == "strided-mlp") {
+    return run_strided_mlp(device, samples, warmup);
+  }
   std::fprintf(stderr, "Unknown mode: %s\n", mode.c_str());
   return 2;
 }

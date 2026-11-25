@@ -7,13 +7,13 @@
     "memory_type": "unified"
   },
   "provenance": {
-    "profile_revision": "0.11.0-m3",
+    "profile_revision": "0.13.0-posthoc",
     "calibration_run_id": "cal-20261125T102038Z-sm_121",
     "calibration_manifest_digest": null,
     "source": "partial",
     "driver_version": "580.173.02",
     "toolkit_version": "13.0",
-    "suite_version": "0.11.0",
+    "suite_version": "0.13.0",
     "host_os": "linux",
     "is_wsl": false,
     "power_limit_w": null,
@@ -32639,7 +32639,689 @@
         "method": "cuda_smem_pchase",
         "source": "measured",
         "perturb_group": null
-      }
+      },
+      "dram_bw_by_bytes_in_flight_strided": [
+        {
+          "segment_bytes": 128,
+          "stride_bytes": 4096,
+          "bytes_in_flight": 16384,
+          "active_ctas": 4,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 32.912,
+            "ci95_low": 32.9,
+            "ci95_high": 33.045,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg128_str4096",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 128,
+          "stride_bytes": 4096,
+          "bytes_in_flight": 32768,
+          "active_ctas": 8,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 64.047,
+            "ci95_low": 64.047,
+            "ci95_high": 64.48,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg128_str4096",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 128,
+          "stride_bytes": 4096,
+          "bytes_in_flight": 65536,
+          "active_ctas": 16,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 120.471,
+            "ci95_low": 117.264,
+            "ci95_high": 120.665,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg128_str4096",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 128,
+          "stride_bytes": 4096,
+          "bytes_in_flight": 131072,
+          "active_ctas": 32,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 182.361,
+            "ci95_low": 163.38,
+            "ci95_high": 186.579,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg128_str4096",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 128,
+          "stride_bytes": 4096,
+          "bytes_in_flight": 196608,
+          "active_ctas": 48,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 209.735,
+            "ci95_low": 209.735,
+            "ci95_high": 209.904,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg128_str4096",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 128,
+          "stride_bytes": 4096,
+          "bytes_in_flight": 393216,
+          "active_ctas": 48,
+          "bytes_per_cta": 8192,
+          "bw_gbps": {
+            "value": 221.78,
+            "ci95_low": 219.797,
+            "ci95_high": 223.609,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg128_str4096",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 128,
+          "stride_bytes": 4096,
+          "bytes_in_flight": 786432,
+          "active_ctas": 48,
+          "bytes_per_cta": 16384,
+          "bw_gbps": {
+            "value": 224.631,
+            "ci95_low": 200.416,
+            "ci95_high": 226.703,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg128_str4096",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 128,
+          "stride_bytes": 4096,
+          "bytes_in_flight": 1572864,
+          "active_ctas": 96,
+          "bytes_per_cta": 16384,
+          "bw_gbps": {
+            "value": 226.084,
+            "ci95_low": 216.708,
+            "ci95_high": 229.247,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg128_str4096",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 128,
+          "stride_bytes": 4096,
+          "bytes_in_flight": 2359296,
+          "active_ctas": 144,
+          "bytes_per_cta": 16384,
+          "bw_gbps": {
+            "value": 227.791,
+            "ci95_low": 224.974,
+            "ci95_high": 228.6,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg128_str4096",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 128,
+          "stride_bytes": 4096,
+          "bytes_in_flight": 4718592,
+          "active_ctas": 144,
+          "bytes_per_cta": 32768,
+          "bw_gbps": {
+            "value": 229.727,
+            "ci95_low": 228.041,
+            "ci95_high": 230.056,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg128_str4096",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 128,
+          "stride_bytes": 16384,
+          "bytes_in_flight": 16384,
+          "active_ctas": 4,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 32.701,
+            "ci95_low": 27.777,
+            "ci95_high": 32.78,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg128_str16384",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 128,
+          "stride_bytes": 16384,
+          "bytes_in_flight": 32768,
+          "active_ctas": 8,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 55.829,
+            "ci95_low": 37.316,
+            "ci95_high": 64.008,
+            "rel_uncertainty": 0.2391,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg128_str16384",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 128,
+          "stride_bytes": 16384,
+          "bytes_in_flight": 65536,
+          "active_ctas": 16,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 120.637,
+            "ci95_low": 120.637,
+            "ci95_high": 120.637,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg128_str16384",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 128,
+          "stride_bytes": 16384,
+          "bytes_in_flight": 131072,
+          "active_ctas": 32,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 186.513,
+            "ci95_low": 182.679,
+            "ci95_high": 186.579,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg128_str16384",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 128,
+          "stride_bytes": 16384,
+          "bytes_in_flight": 196608,
+          "active_ctas": 48,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 204.639,
+            "ci95_low": 204.479,
+            "ci95_high": 209.399,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg128_str16384",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 128,
+          "stride_bytes": 16384,
+          "bytes_in_flight": 393216,
+          "active_ctas": 48,
+          "bytes_per_cta": 8192,
+          "bw_gbps": {
+            "value": 217.848,
+            "ci95_low": 215.934,
+            "ci95_high": 218.029,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg128_str16384",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 128,
+          "stride_bytes": 16384,
+          "bytes_in_flight": 786432,
+          "active_ctas": 48,
+          "bytes_per_cta": 16384,
+          "bw_gbps": {
+            "value": 222.596,
+            "ci95_low": 221.437,
+            "ci95_high": 224.631,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg128_str16384",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 128,
+          "stride_bytes": 16384,
+          "bytes_in_flight": 1572864,
+          "active_ctas": 96,
+          "bytes_per_cta": 16384,
+          "bw_gbps": {
+            "value": 226.084,
+            "ci95_low": 222.486,
+            "ci95_high": 227.654,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg128_str16384",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 128,
+          "stride_bytes": 16384,
+          "bytes_in_flight": 2359296,
+          "active_ctas": 144,
+          "bytes_per_cta": 16384,
+          "bw_gbps": {
+            "value": 228.263,
+            "ci95_low": 227.853,
+            "ci95_high": 228.65,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg128_str16384",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 128,
+          "stride_bytes": 16384,
+          "bytes_in_flight": 4718592,
+          "active_ctas": 144,
+          "bytes_per_cta": 32768,
+          "bw_gbps": {
+            "value": 228.454,
+            "ci95_low": 218.462,
+            "ci95_high": 228.843,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg128_str16384",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 512,
+          "stride_bytes": 16384,
+          "bytes_in_flight": 16384,
+          "active_ctas": 4,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 32.012,
+            "ci95_low": 32.01,
+            "ci95_high": 32.023,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg512_str16384",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 512,
+          "stride_bytes": 16384,
+          "bytes_in_flight": 32768,
+          "active_ctas": 8,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 62.579,
+            "ci95_low": 62.579,
+            "ci95_high": 62.609,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg512_str16384",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 512,
+          "stride_bytes": 16384,
+          "bytes_in_flight": 65536,
+          "active_ctas": 16,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 118.886,
+            "ci95_low": 118.859,
+            "ci95_high": 118.886,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg512_str16384",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 512,
+          "stride_bytes": 16384,
+          "bytes_in_flight": 131072,
+          "active_ctas": 32,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 190.928,
+            "ci95_low": 190.928,
+            "ci95_high": 195.193,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg512_str16384",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 512,
+          "stride_bytes": 16384,
+          "bytes_in_flight": 196608,
+          "active_ctas": 48,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 215.268,
+            "ci95_low": 215.268,
+            "ci95_high": 221.007,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg512_str16384",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 512,
+          "stride_bytes": 16384,
+          "bytes_in_flight": 393216,
+          "active_ctas": 48,
+          "bytes_per_cta": 8192,
+          "bw_gbps": {
+            "value": 227.885,
+            "ci95_low": 225.856,
+            "ci95_high": 227.951,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg512_str16384",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 512,
+          "stride_bytes": 16384,
+          "bytes_in_flight": 786432,
+          "active_ctas": 48,
+          "bytes_per_cta": 16384,
+          "bw_gbps": {
+            "value": 234.266,
+            "ci95_low": 234.266,
+            "ci95_high": 235.388,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg512_str16384",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 512,
+          "stride_bytes": 16384,
+          "bytes_in_flight": 1572864,
+          "active_ctas": 96,
+          "bytes_per_cta": 16384,
+          "bw_gbps": {
+            "value": 235.847,
+            "ci95_low": 235.371,
+            "ci95_high": 236.414,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg512_str16384",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 512,
+          "stride_bytes": 16384,
+          "bytes_in_flight": 2359296,
+          "active_ctas": 144,
+          "bytes_per_cta": 16384,
+          "bw_gbps": {
+            "value": 234.401,
+            "ci95_low": 231.483,
+            "ci95_high": 234.849,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg512_str16384",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 512,
+          "stride_bytes": 16384,
+          "bytes_in_flight": 4718592,
+          "active_ctas": 144,
+          "bytes_per_cta": 32768,
+          "bw_gbps": {
+            "value": 235.893,
+            "ci95_low": 235.054,
+            "ci95_high": 236.764,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg512_str16384",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 4096,
+          "stride_bytes": 16384,
+          "bytes_in_flight": 16384,
+          "active_ctas": 4,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 32.389,
+            "ci95_low": 32.014,
+            "ci95_high": 32.391,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg4096_str16384",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 4096,
+          "stride_bytes": 16384,
+          "bytes_in_flight": 32768,
+          "active_ctas": 8,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 63.061,
+            "ci95_low": 52.199,
+            "ci95_high": 63.068,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg4096_str16384",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 4096,
+          "stride_bytes": 16384,
+          "bytes_in_flight": 65536,
+          "active_ctas": 16,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 120.637,
+            "ci95_low": 120.637,
+            "ci95_high": 120.637,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg4096_str16384",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 4096,
+          "stride_bytes": 16384,
+          "bytes_in_flight": 131072,
+          "active_ctas": 32,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 190.928,
+            "ci95_low": 190.928,
+            "ci95_high": 190.928,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg4096_str16384",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 4096,
+          "stride_bytes": 16384,
+          "bytes_in_flight": 196608,
+          "active_ctas": 48,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 221.101,
+            "ci95_low": 220.914,
+            "ci95_high": 221.101,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg4096_str16384",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 4096,
+          "stride_bytes": 16384,
+          "bytes_in_flight": 393216,
+          "active_ctas": 48,
+          "bytes_per_cta": 8192,
+          "bw_gbps": {
+            "value": 234.476,
+            "ci95_low": 232.26,
+            "ci95_high": 236.877,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg4096_str16384",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 4096,
+          "stride_bytes": 16384,
+          "bytes_in_flight": 786432,
+          "active_ctas": 48,
+          "bytes_per_cta": 16384,
+          "bw_gbps": {
+            "value": 239.985,
+            "ci95_low": 238.819,
+            "ci95_high": 239.985,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg4096_str16384",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 4096,
+          "stride_bytes": 16384,
+          "bytes_in_flight": 1572864,
+          "active_ctas": 96,
+          "bytes_per_cta": 16384,
+          "bw_gbps": {
+            "value": 240.444,
+            "ci95_low": 239.876,
+            "ci95_high": 240.462,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg4096_str16384",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 4096,
+          "stride_bytes": 16384,
+          "bytes_in_flight": 2359296,
+          "active_ctas": 144,
+          "bytes_per_cta": 16384,
+          "bw_gbps": {
+            "value": 239.995,
+            "ci95_low": 239.555,
+            "ci95_high": 240.367,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg4096_str16384",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "segment_bytes": 4096,
+          "stride_bytes": 16384,
+          "bytes_in_flight": 4718592,
+          "active_ctas": 144,
+          "bytes_per_cta": 32768,
+          "bw_gbps": {
+            "value": 239.335,
+            "ci95_low": 238.472,
+            "ci95_high": 239.377,
+            "rel_uncertainty": 0.15,
+            "unit": "GB/s",
+            "method": "cuda_strided_mlp_dram_seg4096_str16384",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        }
+      ]
     },
     "compute": {
       "mma_tflops_per_sm_by_warps": {

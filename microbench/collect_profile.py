@@ -292,6 +292,7 @@ def build_profile(
     sync_loop_raw: dict[str, Any],
     gmem_issue_raw: dict[str, Any],
     spill_lat_raw: dict[str, Any],
+    strided_mlp_raw: dict[str, Any],
     smi_samples: list[dict[str, Any]],
 ) -> dict[str, Any]:
     major = int(query["major"])
@@ -1016,6 +1017,27 @@ def build_profile(
             ),
         })
 
+    dram_strided_mlp: list[dict[str, Any]] = []
+    for pt in strided_mlp_raw["dram_bw_by_bytes_in_flight_strided"]:
+        seg = int(pt["segment_bytes"])
+        stride = int(pt["stride_bytes"])
+        dram_strided_mlp.append({
+            "segment_bytes": seg,
+            "stride_bytes": stride,
+            "bytes_in_flight": int(pt["bytes_in_flight"]),
+            "active_ctas": int(pt["active_ctas"]),
+            "bytes_per_cta": int(pt["bytes_per_cta"]),
+            "bw_gbps": make_measured(
+                [float(x) for x in pt["gbps_samples"]],
+                unit="GB/s",
+                method=f"cuda_strided_mlp_dram_seg{seg}_str{stride}",
+                perturb_group="dram_bw",
+                clock_range=mem_range,
+                locked=False,
+                throttle_events=throttle_events,
+            ),
+        })
+
     sm_clock_ghz = (
         (statistics.median(sm_clocks) / 1000.0)
         if sm_clocks
@@ -1100,6 +1122,7 @@ def build_profile(
                 "dram_bw_write_gbps": full_write_mv,
                 "dram_bw_by_active_sms": read_curve_points,
                 "dram_bw_by_bytes_in_flight": dram_mlp_curve,
+                "dram_bw_by_bytes_in_flight_strided": dram_strided_mlp,
                 "dram_closed_loop": dram_closed_loop,
                 "dram_closed_loop_mma": dram_closed_loop_mma,
                 "l2_bw_read_gbps": full_l2_read_mv,
@@ -1228,11 +1251,14 @@ def main() -> int:
     spill_lat_raw, smi_sp = run_bench_with_clock_polling(
         args.binary, "spill-latency", args.device, ["--samples", "11", "--warmup", "2"]
     )
+    strided_mlp_raw, smi_sm = run_bench_with_clock_polling(
+        args.binary, "strided-mlp", args.device, ["--samples", "7", "--warmup", "1"]
+    )
     dispatch_raw, smi_disp = run_bench_with_clock_polling(
         args.binary, "cta-dispatch", args.device, ["--repeats", str(args.repeats)]
     )
     smi_samples = (
-        smi_dram + smi_mma + smi_l2 + smi_cp + smi_lat + smi_launch + smi_lc + smi_rs + smi_mlp + smi_cl + smi_mg + smi_so + smi_clm + smi_mc + smi_sf + smi_sl + smi_gi + smi_sp + smi_disp
+        smi_dram + smi_mma + smi_l2 + smi_cp + smi_lat + smi_launch + smi_lc + smi_rs + smi_mlp + smi_cl + smi_mg + smi_so + smi_clm + smi_mc + smi_sf + smi_sl + smi_gi + smi_sp + smi_sm + smi_disp
     )
 
     profile = build_profile(
@@ -1240,7 +1266,7 @@ def main() -> int:
         latency_raw, launch_raw, lat_curve_raw, l2_rescan_raw, mlp_raw,
         closed_loop_raw, l2_merge_raw, stage_oh_raw, closed_loop_mma_raw,
         mma_chain_raw, serial_fill_raw, sync_loop_raw, gmem_issue_raw,
-        spill_lat_raw, smi_samples
+        spill_lat_raw, strided_mlp_raw, smi_samples
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("w", encoding="utf-8") as fh:

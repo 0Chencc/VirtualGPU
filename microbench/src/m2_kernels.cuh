@@ -3656,3 +3656,179 @@ static int run_spill_latency(int device, int samples, int warmup) {
   CUDA_CHECK(cudaFree(d_sink));
   return 0;
 }
+
+// ---------------------------------------------------------------------------
+// 18. Post-hoc Group 3: Segmented / strided MLP variant (decode B-matrix style)
+// ---------------------------------------------------------------------------
+
+template <int STAGES, int SUB_PER_STAGE, int SEG_U4, int STRIDE_U4>
+__global__ void strided_mlp_cp_async_kernel(const uint4* __restrict__ src,
+                                            uint4* __restrict__ sink,
+                                            size_t n_vec4_mask,
+                                            int steps) {
+  extern __shared__ uint4 smem[];
+  const uint32_t tid = threadIdx.x;
+  const size_t n_vec4 = n_vec4_mask + 1ULL;
+  const size_t total_strides = n_vec4 / static_cast<size_t>(STRIDE_U4);
+  const size_t total_strides_mask = total_strides - 1ULL;
+  const size_t lin_per_stage = static_cast<size_t>(SUB_PER_STAGE) * 256ULL;
+  const size_t segs_per_grid_stage = (static_cast<size_t>(gridDim.x) * lin_per_stage) / static_cast<size_t>(SEG_U4);
+  size_t base_seg = (static_cast<size_t>(blockIdx.x) * lin_per_stage) / static_cast<size_t>(SEG_U4);
+
+  auto issue_group = [&](int slot, size_t cur_base_seg) {
+    #pragma unroll
+    for (int sub = 0; sub < SUB_PER_STAGE; ++sub) {
+      size_t lin = static_cast<size_t>(sub) * 256ULL + tid;
+      size_t seg_idx = cur_base_seg + (lin / static_cast<size_t>(SEG_U4));
+      size_t in_seg = lin & static_cast<size_t>(SEG_U4 - 1);
+      // Advance in-stride segment phase on each buffer wrap so all 256 MiB are touched uniquely (no L2 reuse).
+      size_t wrap = seg_idx / total_strides;
+      size_t row = seg_idx & total_strides_mask;
+      size_t phase = (wrap * static_cast<size_t>(SEG_U4)) & static_cast<size_t>(STRIDE_U4 - 1);
+      size_t g_idx = (row * static_cast<size_t>(STRIDE_U4) + phase + in_seg) & n_vec4_mask;
+      size_t smem_off = (static_cast<size_t>(slot) * SUB_PER_STAGE + sub) * 256ULL + tid;
+      uint32_t smem_addr = static_cast<uint32_t>(__cvta_generic_to_shared(&smem[smem_off]));
+      const void* gptr = src + g_idx;
+      asm volatile("cp.async.cg.shared.global [%0], [%1], 16;\n" :: "r"(smem_addr), "l"(gptr) : "memory");
+    }
+    asm volatile("cp.async.commit_group;\n" ::: "memory");
+  };
+
+  #pragma unroll
+  for (int s = 0; s < STAGES; ++s) {
+    issue_group(s, base_seg);
+    base_seg += segs_per_grid_stage;
+  }
+
+  for (int step = STAGES; step < steps; ++step) {
+    if constexpr (STAGES == 1) asm volatile("cp.async.wait_group 0;\n" ::);
+    else if constexpr (STAGES == 2) asm volatile("cp.async.wait_group 1;\n" ::);
+    else if constexpr (STAGES == 4) asm volatile("cp.async.wait_group 3;\n" ::);
+    issue_group(step % STAGES, base_seg);
+    base_seg += segs_per_grid_stage;
+  }
+  asm volatile("cp.async.wait_all;\n" ::);
+  __syncthreads();
+  uint4 v = smem[tid];
+  if (v.x == 0xdeadbeefu && v.y == 0xdeadbeefu) {
+    sink[tid] = v;
+  }
+}
+
+template <int SEG_U4, int STRIDE_U4>
+static void dispatch_strided_mlp(int mult, int ctas, size_t dyn_smem,
+                                 const uint4* d_dram, uint4* d_sink, size_t dram_mask, int steps) {
+  if (mult == 1) strided_mlp_cp_async_kernel<1, 1, SEG_U4, STRIDE_U4><<<ctas, 256, dyn_smem>>>(d_dram, d_sink, dram_mask, steps);
+  else if (mult == 2) strided_mlp_cp_async_kernel<2, 1, SEG_U4, STRIDE_U4><<<ctas, 256, dyn_smem>>>(d_dram, d_sink, dram_mask, steps);
+  else if (mult == 4) strided_mlp_cp_async_kernel<4, 1, SEG_U4, STRIDE_U4><<<ctas, 256, dyn_smem>>>(d_dram, d_sink, dram_mask, steps);
+  else strided_mlp_cp_async_kernel<4, 2, SEG_U4, STRIDE_U4><<<ctas, 256, dyn_smem>>>(d_dram, d_sink, dram_mask, steps);
+}
+
+static int run_strided_mlp(int device, int samples, int warmup) {
+  cudaDeviceProp prop{};
+  CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
+  const int sm_count = prop.multiProcessorCount;
+
+  const size_t dram_bytes = 256ULL * 1024ULL * 1024ULL;
+  const size_t dram_mask = (dram_bytes / sizeof(uint4)) - 1ULL;
+  const size_t flush_vec4 = dram_bytes / sizeof(uint4);
+
+  uint4* d_dram = nullptr;
+  uint4* d_flush = nullptr;
+  uint4* d_sink = nullptr;
+  CUDA_CHECK(cudaMalloc(&d_dram, dram_bytes));
+  CUDA_CHECK(cudaMalloc(&d_flush, dram_bytes));
+  CUDA_CHECK(cudaMalloc(&d_sink, 1024 * sizeof(uint4)));
+  CUDA_CHECK(cudaMemset(d_dram, 31, dram_bytes));
+  CUDA_CHECK(cudaMemset(d_flush, 32, dram_bytes));
+
+  cudaEvent_t ev_start, ev_stop;
+  CUDA_CHECK(cudaEventCreate(&ev_start));
+  CUDA_CHECK(cudaEventCreate(&ev_stop));
+
+  struct StrideCfg { int seg_bytes; int stride_bytes; };
+  const std::vector<StrideCfg> cfgs = {
+      {128, 4096},
+      {128, 16384},
+      {512, 16384},
+      {4096, 16384},
+  };
+  struct MlpPt { int ctas; int mult; };
+  const std::vector<MlpPt> pts = {
+      {4, 1},            // 16 KB
+      {8, 1},            // 32 KB
+      {16, 1},           // 64 KB
+      {32, 1},           // 128 KB
+      {sm_count, 1},     // 184-192 KB
+      {sm_count, 2},     // 368-384 KB
+      {sm_count, 4},     // 736-768 KB
+      {sm_count * 2, 4}, // ~1.5 MB
+      {sm_count * 3, 4}, // ~2.2 MB
+      {sm_count * 3, 8}, // ~4.4 MB
+  };
+
+  std::printf("{\n  \"samples\": %d,\n  \"dram_bw_by_bytes_in_flight_strided\": [", samples);
+  bool first = true;
+
+  for (const auto& cfg : cfgs) {
+    for (const auto& pt : pts) {
+      const int ctas = pt.ctas;
+      const int mult = pt.mult;
+      const size_t bytes_per_cta = static_cast<size_t>(mult) * 4096ULL;
+      const size_t bif = static_cast<size_t>(ctas) * bytes_per_cta;
+      const int cp_sub = (mult <= 4) ? 1 : (mult / 4);
+      const int cp_stages = (mult <= 4) ? mult : 4;
+      const size_t dyn_smem = static_cast<size_t>(cp_stages) * static_cast<size_t>(cp_sub) * 4096ULL;
+      const size_t target_bytes = std::min<size_t>(dram_bytes / 2ULL, std::max<size_t>(16ULL * 1024ULL * 1024ULL, bif * 64ULL));
+      const int steps = std::max(cp_stages * 4, static_cast<int>(target_bytes / (static_cast<size_t>(ctas) * 4096ULL * cp_sub)));
+      const double actual_bytes = static_cast<double>(ctas) * 4096.0 * cp_sub * steps;
+
+      auto launch_once = [&]() {
+        if (cfg.seg_bytes == 128 && cfg.stride_bytes == 4096)
+          dispatch_strided_mlp<8, 256>(mult, ctas, dyn_smem, d_dram, d_sink, dram_mask, steps);
+        else if (cfg.seg_bytes == 128 && cfg.stride_bytes == 16384)
+          dispatch_strided_mlp<8, 1024>(mult, ctas, dyn_smem, d_dram, d_sink, dram_mask, steps);
+        else if (cfg.seg_bytes == 512 && cfg.stride_bytes == 16384)
+          dispatch_strided_mlp<32, 1024>(mult, ctas, dyn_smem, d_dram, d_sink, dram_mask, steps);
+        else
+          dispatch_strided_mlp<256, 1024>(mult, ctas, dyn_smem, d_dram, d_sink, dram_mask, steps);
+      };
+
+      for (int w = 0; w < warmup; ++w) {
+        l2_read_cg_kernel<<<sm_count * 4, 512>>>(d_flush, d_sink, flush_vec4, 1);
+        launch_once();
+      }
+      CUDA_CHECK(cudaDeviceSynchronize());
+
+      std::vector<double> gbps;
+      gbps.reserve(samples);
+      for (int s = 0; s < samples; ++s) {
+        l2_read_cg_kernel<<<sm_count * 4, 512>>>(d_flush, d_sink, flush_vec4, 1);
+        CUDA_CHECK(cudaEventRecord(ev_start));
+        launch_once();
+        CUDA_CHECK(cudaEventRecord(ev_stop));
+        CUDA_CHECK(cudaEventSynchronize(ev_stop));
+        float ms = 0.0f;
+        CUDA_CHECK(cudaEventElapsedTime(&ms, ev_start, ev_stop));
+        gbps.push_back((actual_bytes / 1e9) / (static_cast<double>(ms) / 1e3));
+      }
+
+      if (!first) std::printf(",");
+      first = false;
+      std::printf(
+          "\n    {\"segment_bytes\": %d, \"stride_bytes\": %d, \"bytes_in_flight\": %zu, "
+          "\"active_ctas\": %d, \"bytes_per_cta\": %zu, \"gbps_samples\": [",
+          cfg.seg_bytes, cfg.stride_bytes, bif, ctas, bytes_per_cta);
+      for (size_t k = 0; k < gbps.size(); ++k) { if (k) std::printf(", "); std::printf("%.3f", gbps[k]); }
+      std::printf("]}");
+    }
+  }
+  std::printf("\n  ]\n}\n");
+
+  CUDA_CHECK(cudaEventDestroy(ev_start));
+  CUDA_CHECK(cudaEventDestroy(ev_stop));
+  CUDA_CHECK(cudaFree(d_dram));
+  CUDA_CHECK(cudaFree(d_flush));
+  CUDA_CHECK(cudaFree(d_sink));
+  return 0;
+}

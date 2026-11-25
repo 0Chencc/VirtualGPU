@@ -42,6 +42,7 @@ def test_rtx4070_profile_is_valid() -> None:
     assert len(mem["dram_latency_by_bw"]) >= 5
     assert len(mem["l2_latency_by_bw"]) >= 5
     assert len(mem["dram_bw_by_bytes_in_flight"]) >= 40
+    assert len(mem["dram_bw_by_bytes_in_flight_strided"]) >= 40
     assert len(mem["l2_bw_by_bytes_in_flight"]) >= 40
     assert max(pt["bytes_in_flight"] for pt in mem["dram_bw_by_bytes_in_flight"]) >= 6 * 1024 * 1024
     assert max(pt["bytes_in_flight"] for pt in mem["l2_bw_by_bytes_in_flight"]) >= 6 * 1024 * 1024
@@ -83,6 +84,7 @@ def test_gb10_profile_is_valid() -> None:
     assert mem["dram_bw_read_gbps"]["source"] == "measured"
     assert mem["l2_bw_read_gbps"]["source"] == "measured"
     assert len(mem["dram_bw_by_bytes_in_flight"]) >= 40
+    assert len(mem["dram_bw_by_bytes_in_flight_strided"]) >= 40
     assert len(mem["dram_closed_loop_mma"]) >= 140
     assert len(profile["measured"]["pipeline"]["serial_stage_fill"]) >= 32
     assert len(profile["measured"]["compute"]["mma_chain_latency"]) >= 128

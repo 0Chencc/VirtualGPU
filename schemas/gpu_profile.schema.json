@@ -237,6 +237,11 @@
               "minItems": 1,
               "items": { "$ref": "#/$defs/BytesInFlightBwPoint" }
             },
+            "dram_bw_by_bytes_in_flight_strided": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/StridedBytesInFlightBwPoint" }
+            },
             "dram_closed_loop": {
               "type": "array",
               "minItems": 1,
@@ -850,6 +855,26 @@
         "iter_time_ns": { "$ref": "#/$defs/MeasuredValue" },
         "extra_ns_vs_zero": { "$ref": "#/$defs/MeasuredValue" },
         "ns_per_reload": { "$ref": "#/$defs/MeasuredValue" }
+      }
+    },
+    "StridedBytesInFlightBwPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "segment_bytes",
+        "stride_bytes",
+        "bytes_in_flight",
+        "active_ctas",
+        "bytes_per_cta",
+        "bw_gbps"
+      ],
+      "properties": {
+        "segment_bytes": { "type": "integer", "minimum": 1 },
+        "stride_bytes": { "type": "integer", "minimum": 1 },
+        "bytes_in_flight": { "type": "integer", "minimum": 1 },
+        "active_ctas": { "type": "integer", "minimum": 1 },
+        "bytes_per_cta": { "type": "integer", "minimum": 1 },
+        "bw_gbps": { "$ref": "#/$defs/MeasuredValue" }
       }
     }
   }
