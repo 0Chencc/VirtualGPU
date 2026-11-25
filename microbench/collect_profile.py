@@ -21,8 +21,8 @@ sys.path.insert(0, str(REPO_ROOT / "python"))
 from virtualgpu.profile import validate_profile  # noqa: E402
 
 DEFAULT_BIN = Path(__file__).resolve().parent / "build" / "vgpu_bench"
-SUITE_VERSION = "0.11.0"
-PROFILE_REVISION = "0.11.0-m3"
+SUITE_VERSION = "0.12.0"
+PROFILE_REVISION = "0.12.0-posthoc"
 
 
 def find_nvidia_smi() -> str | None:
@@ -289,6 +289,7 @@ def build_profile(
     closed_loop_mma_raw: dict[str, Any],
     mma_chain_raw: dict[str, Any],
     serial_fill_raw: dict[str, Any],
+    sync_loop_raw: dict[str, Any],
     smi_samples: list[dict[str, Any]],
 ) -> dict[str, Any]:
     major = int(query["major"])
@@ -905,6 +906,50 @@ def build_profile(
             ),
         })
 
+    sync_stage_loop: list[dict[str, Any]] = []
+    for pt in sync_loop_raw["sync_stage_loop"]:
+        level = str(pt["mem_level"])
+        t_mode = str(pt["transfer_mode"])
+        clk_rng = mem_range if level == "dram" else sm_range
+        p_grp = "dram_bw" if level == "dram" else "l2_bw"
+        sync_stage_loop.append({
+            "mem_level": level,
+            "transfer_mode": t_mode,
+            "ctas_per_sm": int(pt["ctas_per_sm"]),
+            "active_ctas": int(pt["active_ctas"]),
+            "num_warps": int(pt["num_warps"]),
+            "stage_bytes": int(pt["stage_bytes"]),
+            "mma_chain_len": int(pt["mma_chain_len"]),
+            "solo_compute_ns": float(pt["solo_compute_ns"]),
+            "delivered_bw_gbps": make_measured(
+                [float(x) for x in pt["bw_gbps_samples"]],
+                unit="GB/s",
+                method=f"cuda_sync_loop_{level}_{t_mode}",
+                perturb_group=p_grp,
+                clock_range=clk_rng,
+                locked=False,
+                throttle_events=throttle_events,
+            ),
+            "mean_stage_turnaround_ns": make_measured(
+                [float(x) for x in pt["turnaround_ns_samples"]],
+                unit="ns",
+                method=f"cuda_sync_loop_{level}_{t_mode}",
+                perturb_group=None,
+                clock_range=clk_rng,
+                locked=False,
+                throttle_events=throttle_events,
+            ),
+            "achieved_mma_tflops_per_sm": make_measured(
+                [float(x) for x in pt["mma_tflops_per_sm_samples"]],
+                unit="TFLOP/s",
+                method=f"cuda_sync_loop_{level}_{t_mode}",
+                perturb_group="mma_dense",
+                clock_range=sm_range,
+                locked=False,
+                throttle_events=throttle_events,
+            ),
+        })
+
     sm_clock_ghz = (
         (statistics.median(sm_clocks) / 1000.0)
         if sm_clocks
@@ -1029,6 +1074,7 @@ def build_profile(
                 "fixed_sync_ns": fixed_sync_ns,
                 "min_async_roundtrip_ns": min_async_rt_mv,
                 "serial_stage_fill": serial_stage_fill,
+                "sync_stage_loop": sync_stage_loop,
             },
             "spill": {
                 "local_mem_l1_hit_bw_per_sm_gbps": make_estimated(150.0, "GB/s", "m2_estimated", "spill_l1"),
@@ -1105,18 +1151,21 @@ def main() -> int:
     serial_fill_raw, smi_sf = run_bench_with_clock_polling(
         args.binary, "serial-fill", args.device, ["--samples", "11", "--warmup", "2"]
     )
+    sync_loop_raw, smi_sl = run_bench_with_clock_polling(
+        args.binary, "sync-loop", args.device, ["--samples", "5", "--warmup", "1"]
+    )
     dispatch_raw, smi_disp = run_bench_with_clock_polling(
         args.binary, "cta-dispatch", args.device, ["--repeats", str(args.repeats)]
     )
     smi_samples = (
-        smi_dram + smi_mma + smi_l2 + smi_cp + smi_lat + smi_launch + smi_lc + smi_rs + smi_mlp + smi_cl + smi_mg + smi_so + smi_clm + smi_mc + smi_sf + smi_disp
+        smi_dram + smi_mma + smi_l2 + smi_cp + smi_lat + smi_launch + smi_lc + smi_rs + smi_mlp + smi_cl + smi_mg + smi_so + smi_clm + smi_mc + smi_sf + smi_sl + smi_disp
     )
 
     profile = build_profile(
         query, dram_raw, dispatch_raw, mma_raw, l2_raw, cp_async_raw,
         latency_raw, launch_raw, lat_curve_raw, l2_rescan_raw, mlp_raw,
         closed_loop_raw, l2_merge_raw, stage_oh_raw, closed_loop_mma_raw,
-        mma_chain_raw, serial_fill_raw, smi_samples
+        mma_chain_raw, serial_fill_raw, sync_loop_raw, smi_samples
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("w", encoding="utf-8") as fh:

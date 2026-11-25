@@ -530,6 +530,9 @@ int main(int argc, char** argv) {
   if (mode == "serial-fill") {
     return run_serial_fill(device, samples, warmup);
   }
+  if (mode == "sync-loop") {
+    return run_sync_loop(device, samples, warmup);
+  }
   std::fprintf(stderr, "Unknown mode: %s\n", mode.c_str());
   return 2;
 }
