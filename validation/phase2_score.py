@@ -11,7 +11,7 @@ import stat
 from validation.experiment import development_gates, summarize
 from validation.holdout import read_committed_audit, require_release, sha256
 from validation.phase2_aot import REVISION, write_json
-from validation.phase2_capture import verify_release
+from validation.phase2_capture import thermal_harness_revision, verify_release
 from validation.provenance import require_formal_build
 from validation.score import PRACTICAL_MARGIN, check_artifact, pair_observations, score
 
@@ -148,6 +148,10 @@ def main():
     if output.exists():
         raise FileExistsError(output)
     index, policy, digest = verify_release(args.directory, args.amendment)
+    thermal_revision = thermal_harness_revision(policy)
+    approved_harnesses = {policy["harness_commit"]}
+    if thermal_revision is not None:
+        approved_harnesses.add(thermal_revision)
     archive = require_release(REVISION, args.directory / "predictions.json", digest)
     require_formal_build(archive["build"], REVISION, "GB10 prediction archive")
     if (set(archive["cohorts"]) != {"primary", "secondary", "diagnostic"}
@@ -165,7 +169,7 @@ def main():
         uuid = uuid or report["gpu"]["uuid"]
         if (report["timestamp_utc"] != audit["reports"][name]["timestamp_utc"]
                 or report["frozen_revision"] != REVISION or report["cohort"] != cohort
-                or report["source"]["commit"] != policy["harness_commit"]
+                or report["source"]["commit"] not in approved_harnesses
                 or report["prediction_archive_sha256"] != digest or report["gpu"]["arch"] != "sm_121"
                 or report["gpu"]["uuid"] != uuid or report["gpu"]["driver"] != policy["driver_version"]
                 or report["manifest_sha256"] != index["files"][f"{cohort}/manifest.json"]
