@@ -19,10 +19,9 @@ CPU and GPU share LPDDR5x system memory. [NVIDIA compute capability table](https
   before any timed GB10 GEMM. The formal binary must report the tagged
   snapshot SHA, `dirty=false`, and `result_class=formal`.
 - AOT extraction uses the tagged clean checkout, hash protocol v2, and FP
-  fusion enabled. Triton `3.9.0` is a candidate pending the minimal GB10
-  compatibility check. The reported driver is 580 (CUDA 13.0), and the
-  Triton candidate bundles `ptxas-blackwell` 13.4. Resolve any toolchain
-  change before freezing the toolchain and opening the Phase 1 holdout.
+  fusion enabled. Retain Triton `3.9.0` after the GB10 compatibility
+  check below. Resolve any future toolchain change before freezing the
+  toolchain and opening the Phase 1 holdout.
   Record the exact Triton release, bundled assembler version, PTX target
   suffix, and codegen options for both AOT and JIT.
 - The validation owner may adapt the hardware harness and data-loading
@@ -35,6 +34,18 @@ CPU and GPU share LPDDR5x system memory. [NVIDIA compute capability table](https
   opening timing labels to the model and baseline authors. Record
   SHA-256 digests and UTC timestamps. A change to the plan requires a reviewed
   amendment before timing. Later changes belong to a separately labeled run.
+
+### GB10 toolchain compatibility
+
+The coordinator reported a successful correctness smoke on 2026-11-25 on
+Spark 1 (GB10) with driver `580.173.02` reporting CUDA `13.0`. Triton
+`3.9.0` used its bundled `ptxas-blackwell` `13.4`. Vector add and a GEMM
+with `M=N=K=1024`, tile `(128,128,32)`, and three requested stages
+produced correct results. The GEMM PTX targeted `sm_121` and contained
+`mma.sync` and `cp.async`. The environment used Python `3.12`, PyTorch
+`2.14.0+cu132`, and NumPy `2.3.5`. This record covers toolchain
+correctness. The timed GB10 GEMM gate still requires the `phase1-final`
+tag and the committed preregistration revision specifying the freeze.
 
 ## Candidate matrix
 
