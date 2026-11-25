@@ -38,7 +38,12 @@ fn main() {
         for p in [
             format!("{git_dir}/HEAD"),
             format!("{git_dir}/index"),
+            // Appended on every commit, checkout and reset in this worktree,
+            // so a new commit is seen even when no watched file's mtime moves.
+            format!("{git_dir}/logs/HEAD"),
             format!("{common}/refs/heads"),
+            // Branch tips after `git gc` or `git pack-refs`.
+            format!("{common}/packed-refs"),
         ] {
             println!("cargo:rerun-if-changed={p}");
         }
