@@ -81,3 +81,19 @@ The measured times fall into three groups, while the model puts all 36 configs b
 
 - A strided-chunk variant of the MLP microbenchmark (chunk 128 B to 4 KB, stride up to 16 KB) on both GPUs, to test whether access granularity changes the delivered bandwidth or effective latency.
 - Repeated GB10 memory microbenchmarks with intervals, to separate noise from structure in the MLP and closed-loop curves.
+
+## 3. The synchronous-load residual of phase 1
+
+Phase 1 Known limits (`docs/design.md` 9.1) left one residual unexplained: configs with synchronous loads (`num_stages = 1`, `ld.global` into registers, then `st.shared`) have two to four times the error of the others. A post-hoc microbenchmark (`measured.pipeline.sync_stage_loop`, profile `0.12.0-posthoc`) compares that path with single-buffer `cp.async` stage by stage. With at most two 16-byte loads per thread per stage the two paths take the same time; from four on, the synchronous path costs 96 to 160 ns more per stage with L2-resident data, and 184 to 448 ns more with DRAM data and MMA work when one CTA runs per SM, because each thread stages its loads through registers and stores them to shared memory in sequence.
+
+The core's shortfall on the development set (prediction below measurement, core `18af028`, all 168 synchronous-load config and cache points across seven cases) follows the same threshold:
+
+| 16-byte loads per thread per stage | Points | Median shortfall (ns per iteration) | Range |
+|---|---|---|---|
+| up to 2 | 42 | 0 | -566 to 95 |
+| 2.5 to 3 | 42 | 13 | -320 to 130 |
+| 4 | 14 | 26 | -42 to 98 |
+| 6 | 28 | 147 | -498 to 277 |
+| 8 to 16 | 42 | 287 | -128 to 837 |
+
+The loads per thread per stage are the stage's global load bytes over `num_warps * 32 * 16`. This is a candidate mechanism for the next version, not a fitted correction: modeling it needs the per-stage cost as a function of loads per thread, warps, and memory level from that microbenchmark, then a check against `sync_stage_loop` itself before any development-set comparison.
