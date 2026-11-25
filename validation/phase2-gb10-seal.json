@@ -1,0 +1,234 @@
+{
+  "device": "GB10",
+  "utc": "2026-11-25T13:01:18.906009+00:00",
+  "reports": {
+    "primary/sealed/decode-1-session-1.json": {
+      "sha256": "c4a65f1dad43665e467477ccc972cbb9ffe5aa05c8e176f3409f16eb4e8a4dcb",
+      "timestamp_utc": "2026-11-25T10:34:10.079768+00:00"
+    },
+    "primary/sealed/decode-1-session-2.json": {
+      "sha256": "f9754b73ef63e514875337c477a7aac8de8299a3142be8b28c96c202966ebbc7",
+      "timestamp_utc": "2026-11-25T11:43:41.583791+00:00"
+    },
+    "primary/sealed/decode-1-session-3.json": {
+      "sha256": "aef577f93992ecd47db565156fe12e30098039d85fe222144124aaacf992fc57",
+      "timestamp_utc": "2026-11-25T12:18:02.313324+00:00"
+    },
+    "primary/sealed/decode-16-session-1.json": {
+      "sha256": "7eaa796f26f58b2f23b10bab83464c171095e727ee9ce7d89feef670f8885bbb",
+      "timestamp_utc": "2026-11-25T10:35:18.279671+00:00"
+    },
+    "primary/sealed/decode-16-session-2.json": {
+      "sha256": "09ddb1676e22713f58e6cf98b87decb8335def22085e2f1d9a0790d138105d69",
+      "timestamp_utc": "2026-11-25T11:45:34.774318+00:00"
+    },
+    "primary/sealed/decode-16-session-3.json": {
+      "sha256": "dec3bd0835b774a455c22302af0f57ca9e9b7e4ef906496ee3219708e25de5f4",
+      "timestamp_utc": "2026-11-25T12:19:05.532861+00:00"
+    },
+    "primary/sealed/decode-32-session-1.json": {
+      "sha256": "c9cc274c5b3f82bc2b2d534b0e06302d472bacefad90e8d7ab5cf6693322efc6",
+      "timestamp_utc": "2026-11-25T10:36:26.707050+00:00"
+    },
+    "primary/sealed/decode-32-session-2.json": {
+      "sha256": "a3c9cc62bd65db7eb2c74308845ef4593fe590640e03fc8630f70ea03454a496",
+      "timestamp_utc": "2026-11-25T11:47:18.294747+00:00"
+    },
+    "primary/sealed/decode-32-session-3.json": {
+      "sha256": "9269c357b3994cad81992620d9e1aae8da51231a4bd328c4fed7fa5c454e3e13",
+      "timestamp_utc": "2026-11-25T12:22:19.142427+00:00"
+    },
+    "primary/sealed/m1-cube-session-1.json": {
+      "sha256": "8e734eca10a01f71059477cad50277a996854d263a19060f85151e375cdb3830",
+      "timestamp_utc": "2026-11-25T10:32:57.406697+00:00"
+    },
+    "primary/sealed/m1-cube-session-2.json": {
+      "sha256": "4898fae105f92e260e40ebbbecb47d32f0f1588d4c3f695dcd15f07d30cf8977",
+      "timestamp_utc": "2026-11-25T11:53:10.655306+00:00"
+    },
+    "primary/sealed/m1-cube-session-3.json": {
+      "sha256": "8d26849fad644781eaa6992284a048e235c12568e158c351488733e7b1d65684",
+      "timestamp_utc": "2026-11-25T12:40:09.221954+00:00"
+    },
+    "primary/sealed/mask-m-session-1.json": {
+      "sha256": "d9edec88850f259eb909d4071abbee0f3fdc8f63b648f53c5550844a61144871",
+      "timestamp_utc": "2026-11-25T10:37:43.959917+00:00"
+    },
+    "primary/sealed/mask-m-session-2.json": {
+      "sha256": "cecd1452e7059b7513fc2b29e20c2ee47cf8d8ba308c8eed77a87b2fc431f5d2",
+      "timestamp_utc": "2026-11-25T11:49:15.421376+00:00"
+    },
+    "primary/sealed/mask-m-session-3.json": {
+      "sha256": "056bbb7e212b5250af9c343af33ab44d5de4795b9f7d9f5f6d218c898f43906d",
+      "timestamp_utc": "2026-11-25T12:23:39.406667+00:00"
+    },
+    "primary/sealed/sm-round-above-session-1.json": {
+      "sha256": "80d84d4a2b2a90ced57df2e083f7e3b1cdcab1257173d1ec6c002175eb7c8171",
+      "timestamp_utc": "2026-11-25T10:42:10.482091+00:00"
+    },
+    "primary/sealed/sm-round-above-session-2.json": {
+      "sha256": "e305196ef635e2a9c103703758100a8a3ae9643a89d4abb42410f3cb70d86237",
+      "timestamp_utc": "2026-11-25T11:59:14.792617+00:00"
+    },
+    "primary/sealed/sm-round-above-session-3.json": {
+      "sha256": "921fccb4de1cc2f1e4694b1534de0d177240efdf8d3e41e64e6058a5f0e7f24e",
+      "timestamp_utc": "2026-11-25T12:45:31.395021+00:00"
+    },
+    "primary/sealed/sm-round-below-session-1.json": {
+      "sha256": "ad7b90da97162508f04d1c2da02dfc6539f67b8c3dce925633ea98e1dcfd6240",
+      "timestamp_utc": "2026-11-25T10:39:54.494846+00:00"
+    },
+    "primary/sealed/sm-round-below-session-2.json": {
+      "sha256": "69d0ab24d28ebec9cdc7204e8cb83e410fdf39a6ccc5863f6aea8ecf85b8e7c2",
+      "timestamp_utc": "2026-11-25T11:55:52.613812+00:00"
+    },
+    "primary/sealed/sm-round-below-session-3.json": {
+      "sha256": "9be468b6e7d18a833a5e1630f11567b2293ed9313ff5e221e6c8d65dafe8b3bf",
+      "timestamp_utc": "2026-11-25T12:42:29.472595+00:00"
+    },
+    "primary/sealed/sm-round-exact-session-1.json": {
+      "sha256": "661d3fcb71f49b4b44608cc4776a27cb84fd70fa6ee72721d52f9a24a9fbf2cf",
+      "timestamp_utc": "2026-11-25T10:41:02.452215+00:00"
+    },
+    "primary/sealed/sm-round-exact-session-2.json": {
+      "sha256": "345b65d406ba953fdb3057aa58c740a7488114e7a9120488576dac5bf646d9ac",
+      "timestamp_utc": "2026-11-25T11:57:37.691958+00:00"
+    },
+    "primary/sealed/sm-round-exact-session-3.json": {
+      "sha256": "07904f9469be326875a43d669a365c449c80046f19adb9f543059b409dc4a446",
+      "timestamp_utc": "2026-11-25T12:43:52.405690+00:00"
+    },
+    "primary/sealed/swizzle-320-session-1.json": {
+      "sha256": "6c804506378c7019d2e304c60d94a937dd69c48960b097ca69cd67e559616f47",
+      "timestamp_utc": "2026-11-25T10:38:46.504613+00:00"
+    },
+    "primary/sealed/swizzle-320-session-2.json": {
+      "sha256": "e149d2074b195e76de9bf9cc99c4ba8e7e00d9262f24baa8056959a1458781e4",
+      "timestamp_utc": "2026-11-25T11:51:24.036584+00:00"
+    },
+    "primary/sealed/swizzle-320-session-3.json": {
+      "sha256": "27b558ff13d07515f046d4e124eb7aeec15e2ce34af06d4b452032a0f731e1fc",
+      "timestamp_utc": "2026-11-25T12:24:51.807191+00:00"
+    },
+    "secondary/sealed/l2-working-set-above-session-1.json": {
+      "sha256": "5649d713f7053f3f9dd976218174f8ff2cb83b422aa60a92863c467310b5b6fb",
+      "timestamp_utc": "2026-11-25T11:40:53.676955+00:00"
+    },
+    "secondary/sealed/l2-working-set-above-session-2.json": {
+      "sha256": "3f800c2d97a9622867be30ecbf20ff93349749bebbc70ccc117c6b66b0cac6f1",
+      "timestamp_utc": "2026-11-25T12:14:34.788012+00:00"
+    },
+    "secondary/sealed/l2-working-set-above-session-3.json": {
+      "sha256": "4f9d421ece642992a1765594e22f9a760da0154fa35b947ac1b524fbf9e50331",
+      "timestamp_utc": "2026-11-25T12:59:56.052760+00:00"
+    },
+    "secondary/sealed/l2-working-set-below-session-1.json": {
+      "sha256": "5b2f939993c010b470a4d7196404119118bdde0e17567e41fed938307f9f185d",
+      "timestamp_utc": "2026-11-25T11:39:26.364737+00:00"
+    },
+    "secondary/sealed/l2-working-set-below-session-2.json": {
+      "sha256": "058348f3096033ada308ba6321a958747195013bf03db838f4cf596404633cd0",
+      "timestamp_utc": "2026-11-25T12:13:24.078772+00:00"
+    },
+    "secondary/sealed/l2-working-set-below-session-3.json": {
+      "sha256": "5e99d871a44eb20516918edbfd3133fdade85f98fb52b24f2ffa2b24fd239934",
+      "timestamp_utc": "2026-11-25T12:58:52.888160+00:00"
+    },
+    "secondary/sealed/mask-mnk-session-1.json": {
+      "sha256": "ec6fa624d252728a16c17c3f5fb82effcb75949aed9ef92c8fe281587ee21873",
+      "timestamp_utc": "2026-11-25T11:33:05.724949+00:00"
+    },
+    "secondary/sealed/mask-mnk-session-2.json": {
+      "sha256": "c5b59504ed22a863673bc0eb86bc1bc5224ffdf57e238e4436665db7245654aa",
+      "timestamp_utc": "2026-11-25T12:05:51.034981+00:00"
+    },
+    "secondary/sealed/mask-mnk-session-3.json": {
+      "sha256": "66a6f5f8127f46787e8c1bdc443578b576f4242ee61ecc44d7ec8c2dd465f71c",
+      "timestamp_utc": "2026-11-25T12:52:14.340252+00:00"
+    },
+    "secondary/sealed/prefill-1024-session-1.json": {
+      "sha256": "dd3c9de571fe018f68d9cdcea97e03c25fe92b20af005819488288a85f19e31a",
+      "timestamp_utc": "2026-11-25T11:29:04.259861+00:00"
+    },
+    "secondary/sealed/prefill-1024-session-2.json": {
+      "sha256": "67b546d1995967a0f9b79c74d3b0bdf6d91a70e045e265dd7c8faca41e2d4843",
+      "timestamp_utc": "2026-11-25T12:02:07.101207+00:00"
+    },
+    "secondary/sealed/prefill-1024-session-3.json": {
+      "sha256": "4d6175647835137e984f593185961fa39ed9871e4c521b9dd6d7190be6122394",
+      "timestamp_utc": "2026-11-25T12:48:08.927755+00:00"
+    },
+    "secondary/sealed/prefill-2048-session-1.json": {
+      "sha256": "a4e8c4cba5ea60097168620cdff29cb767aaf94a91184805c2ab41104816e86b",
+      "timestamp_utc": "2026-11-25T11:31:03.517169+00:00"
+    },
+    "secondary/sealed/prefill-2048-session-2.json": {
+      "sha256": "828d98c166ab152add3aa4848f5da9d19c18850b59145710b08c22df0aedd10d",
+      "timestamp_utc": "2026-11-25T12:04:20.450061+00:00"
+    },
+    "secondary/sealed/prefill-2048-session-3.json": {
+      "sha256": "29d9c18197ed0c3ab8fa34099c43efc0f7b53d6ae7a30b338f3fe56286f0b5eb",
+      "timestamp_utc": "2026-11-25T12:50:39.603714+00:00"
+    },
+    "secondary/sealed/prefill-256-session-1.json": {
+      "sha256": "97960e27b3c72906147b209637e2e84873dba5275851fe5ae70de010721b52f0",
+      "timestamp_utc": "2026-11-25T10:43:22.631780+00:00"
+    },
+    "secondary/sealed/prefill-256-session-2.json": {
+      "sha256": "88fc842630fd237729a4d9106a04adb8c1900c76fdc0702e2e9df0725cae0bd5",
+      "timestamp_utc": "2026-11-25T12:00:59.043447+00:00"
+    },
+    "secondary/sealed/prefill-256-session-3.json": {
+      "sha256": "2ff8ed2454eb3815d70ca46da76a52ccb87ef0ae50ad4430c8149d302aa6031c",
+      "timestamp_utc": "2026-11-25T12:47:00.618227+00:00"
+    },
+    "secondary/sealed/resident-wave-above-session-1.json": {
+      "sha256": "e896d3b17cb8f3bcb27318b41e102639711d3a5938b818be7c206fc91e3ba401",
+      "timestamp_utc": "2026-11-25T11:37:53.150456+00:00"
+    },
+    "secondary/sealed/resident-wave-above-session-2.json": {
+      "sha256": "a772fe165885ca80989e4f1117b6a105c2948528b793be6099a1264ec9142911",
+      "timestamp_utc": "2026-11-25T12:11:04.178836+00:00"
+    },
+    "secondary/sealed/resident-wave-above-session-3.json": {
+      "sha256": "5a0971218542898a3b1df550abd0ff9cd6b0272ac247c0a84ac58a055e5dbe9d",
+      "timestamp_utc": "2026-11-25T12:57:13.889010+00:00"
+    },
+    "secondary/sealed/resident-wave-below-session-1.json": {
+      "sha256": "a1ceb4f1f78a64d20f37f145609e97073143feabe39689874eabcc0328804e19",
+      "timestamp_utc": "2026-11-25T11:34:48.828921+00:00"
+    },
+    "secondary/sealed/resident-wave-below-session-2.json": {
+      "sha256": "66e278ceb61961c2853a873fadfcc4fd9e0a5f898a1725346d7daf934e166202",
+      "timestamp_utc": "2026-11-25T12:07:59.642960+00:00"
+    },
+    "secondary/sealed/resident-wave-below-session-3.json": {
+      "sha256": "990989468b3ae45247ef55e7865ef7520b219f9f7f7e053b53639a5be8615cc4",
+      "timestamp_utc": "2026-11-25T12:54:25.139784+00:00"
+    },
+    "secondary/sealed/resident-wave-exact-session-1.json": {
+      "sha256": "db53b2f452456a6b6ebd5c042128170ad07cf10d1bcc3e76ad13caa76b9a8054",
+      "timestamp_utc": "2026-11-25T11:35:58.527597+00:00"
+    },
+    "secondary/sealed/resident-wave-exact-session-2.json": {
+      "sha256": "974bc92bbfa6de4ac2d72f683b6b436fce611c9adc2e1ee3262403cd80aff432",
+      "timestamp_utc": "2026-11-25T12:09:04.231886+00:00"
+    },
+    "secondary/sealed/resident-wave-exact-session-3.json": {
+      "sha256": "5e4c1041bccb7dfe1ef9e4566bdc906e79f063ba77f6f807d203d5954202e9ed",
+      "timestamp_utc": "2026-11-25T12:55:29.990899+00:00"
+    },
+    "diagnostic/sealed/gb10-tma-session-1.json": {
+      "sha256": "51fca76d734ce18f0975a89957219ccd1062587f0dc06c29d2727de0b5b80a87",
+      "timestamp_utc": "2026-11-25T11:42:11.539332+00:00"
+    },
+    "diagnostic/sealed/gb10-tma-session-2.json": {
+      "sha256": "83b1a857dab5c175fb8b3e90b03b9e721a271ec76c99a52e01811003379f1b1b",
+      "timestamp_utc": "2026-11-25T12:15:37.210827+00:00"
+    },
+    "diagnostic/sealed/gb10-tma-session-3.json": {
+      "sha256": "9c0c9dfd95f8cfe6ca9a854f6bffc2a9aa13f013d16f1527ab2a9dd8c565c678",
+      "timestamp_utc": "2026-11-25T13:01:08.456634+00:00"
+    }
+  }
+}
