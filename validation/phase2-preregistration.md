@@ -229,3 +229,44 @@ For each cache regime, the core must meet all three thresholds:
 Report the decision for warm and cold individually. An overall pass requires
 both regimes to pass on the primary transfer cohort. Report the secondary
 workload-holdout cohort and the GB10 TMA diagnostic separately.
+
+## GB10 prediction freeze
+
+GB10 labels remained sealed while this amendment was prepared. The formal
+core build is the same clean `phase1-final` build recorded above.
+The GB10 profile `0.11.0-m3` comes from
+`4be40fe1df65a0b5c1e2cd5ffcb85e6d37c0de14`, calibration run
+`cal-20261125T102038Z-sm_121`. It is a partial measured profile.
+The NeuSight-style predictor reuses the frozen RTX 4070 fit verbatim.
+
+The published collection harness is `d42128eea58ba09d831deb6e62861b59de122bbb`.
+The 582 AOT artifacts use the frozen frontend and Triton 3.9.0, bundled
+`ptxas-blackwell` 13.4 (V13.4.59), exact PTX target `sm_121a`, FP fusion
+enabled, and hash protocol v2. The Spark 1 JIT environment uses aarch64,
+Python 3.12.3, PyTorch 2.14.0+cu132, and the same compiler and assembler
+versions. Record the actual JIT target and options and check them against
+AOT before accepting a label.
+
+Both clock domains use the calibration's record-only policy. NVML exposes
+SM frequency, temperature and clock-event reasons. The memory frequency
+query is unavailable. The host has no `nvpmodel` or `powerprofilesctl`
+command, reports no GPU power limit, and uses the `performance` CPU
+governor. Keep the default power mode and fixed display activity.
+The CUDA-reported L2 capacity is 24 MiB, so the read-only eviction buffer
+is 128 MiB. Record uptime and GPU processes at each session boundary.
+
+The archive contains 510 primary and 648 secondary records per method
+and six core-only TMA diagnostic records. The core uses draw 0 plus 32
+shared perturbations, seed 17, and the fixed 5% band. No GB10 GEMM timings
+were used to generate or select these predictions.
+
+| Artifact | SHA-256 | UTC recorded |
+| --- | --- | --- |
+| GB10 profile | `6494b25720a6ff3be84e1f8ea8a9b34df3990b3adf22240e864e0f71f10d36f4` | 2026-11-25T10:20:38Z |
+| GB10 AOT index | `4cd542f206529442650638fe7fb148ca0ddf642d573998284e0c00329203f3d0` | 2026-11-25T10:20:40.737731+00:00 |
+| GB10 measurement policy | `86430a0121577e89355ada56887fc9f531563fa54feef426e8f6d3c394985541` | 2026-11-25T10:27:05.321316+00:00 |
+| GB10 prediction archive | `8d1744a806d7b45a1e2e4b86dd74a43dce3c9eca599ca3ee43a808ffc172b635` | 2026-11-25T10:29:57.674713+00:00 |
+
+Start GB10 timing only after this amendment is published on main. Verify
+the archive and timing policy digests before capture. Seal the completed
+reports and verify the committed receipt digests before scoring.
