@@ -209,7 +209,10 @@ the seal digest. Supply the prediction build's full SHA with
 `--aot CONFIG_ID=KERNEL_IR_JSON` per scored config.
 
 The scorer logs every access attempt before opening any bytes in
-`results/post-hoc-access.jsonl`. On Linux, it pins the mode-zero inode,
+`results/post-hoc-access.jsonl`. After the access attempt, it appends the UTC
+time, prediction revision, purpose, and requested entries from the seal to
+[the tracked access log](post-hoc-access-log.md). Include this summary in the
+next commit. On Linux, the scorer pins the mode-zero inode,
 temporarily opens a read descriptor, then restores mode zero before reading
 through that descriptor. It verifies every selected seal digest before
 parsing any reports. No readable copy is retained. The output carries

@@ -402,6 +402,7 @@ class PostHocAccessTest(unittest.TestCase):
             name = "secondary/sealed/fixture.json"
             path = root / name
             path.parent.mkdir(parents=True)
+            (root / "validation").mkdir()
             report = {"timestamp_utc": "fixture", "gpu": {"arch": "sm_121"}, "cohort": "secondary"}
             receipt = seal_report(path, report)
             release = ("seal", "report", "a" * 40, {"reports": {name: receipt}})
@@ -415,6 +416,13 @@ class PostHocAccessTest(unittest.TestCase):
             self.assertEqual(len(events), 2)
             self.assertEqual(json.loads(events[0])["prediction_revision"], revision)
             self.assertEqual(json.loads(events[0])["purpose"], "diagnosis")
+            summary = (root / "validation/post-hoc-access-log.md").read_text().splitlines()
+            self.assertEqual(len(summary), 2)
+            for event, line in zip(events, summary, strict=True):
+                self.assertIn(json.loads(event)["timestamp_utc"], line)
+                for value in (revision, "diagnosis", "seal", name):
+                    self.assertIn(value, line)
+                self.assertNotIn("prediction_sha256", line)
             self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0)
 
 

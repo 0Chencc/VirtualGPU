@@ -66,6 +66,17 @@ def read_sealed_bytes(path):
         os.close(handle)
 
 
+def format_access_summary(event):
+    """Render the public fields without raw paths, timing labels, or prediction data."""
+    purpose = json.dumps(event["purpose"].strip(), ensure_ascii=True).replace("`", r"`")
+    reports = ", ".join(f"`{name}`" for name in event["reports"])
+    return (
+        f"- Post-hoc at {event['timestamp_utc']} with prediction revision "
+        f"`{event['prediction_revision']}`. Purpose `{purpose}`. "
+        f"Seal `{event['seal']}`. Requested reports {reports}.\n"
+    )
+
+
 def read_posthoc_reports(paths, release, revision, purpose, prediction_digest):
     seal_path, report_path, published_revision, seal = release
     gb10 = "manifest_sha256" not in seal
@@ -79,7 +90,7 @@ def read_posthoc_reports(paths, release, revision, purpose, prediction_digest):
     fd = os.open(audit, os.O_WRONLY | os.O_CREAT | os.O_APPEND | os.O_NOFOLLOW, 0o600)
     with os.fdopen(fd, "a") as stream:
         fcntl.flock(stream, fcntl.LOCK_EX)
-        stream.write(json.dumps({
+        event = {
             "timestamp_utc": datetime.now(timezone.utc).isoformat(),
             "result_class": "post-hoc",
             "prediction_revision": revision,
@@ -89,15 +100,23 @@ def read_posthoc_reports(paths, release, revision, purpose, prediction_digest):
             "published_report": report_path,
             "seal": seal_path,
             "reports": names,
-        }, allow_nan=False) + "\n")
-        stream.flush()
-        os.fsync(stream.fileno())
-        verified = []
-        for path, name in zip(paths, names, strict=True):
-            data = read_sealed_bytes(path)
-            if sha256(data) != seal["reports"][name]["sha256"]:
-                raise ValueError(f"{name}: report digest does not match the published seal")
-            verified.append(data)
+        }
+        summary_path = REPO_ROOT / "validation" / "post-hoc-access-log.md"
+        with summary_path.open("a", encoding="ascii") as summary:
+            stream.write(json.dumps(event, allow_nan=False) + "\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+            verified = []
+            try:
+                for path, name in zip(paths, names, strict=True):
+                    data = read_sealed_bytes(path)
+                    if sha256(data) != seal["reports"][name]["sha256"]:
+                        raise ValueError(f"{name}: report digest does not match the published seal")
+                    verified.append(data)
+            finally:
+                summary.write(format_access_summary(event))
+                summary.flush()
+                os.fsync(summary.fileno())
 
     records = [json.loads(data) for data in verified]
     for name, record in zip(names, records, strict=True):
