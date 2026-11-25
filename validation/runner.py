@@ -173,7 +173,8 @@ def prepare_candidates(case, configs, seed):
         bm, bn, bk = cfg["tile"]
         grid = (triton.cdiv(m, bm) * triton.cdiv(n, bn),)
         kernel_args = (a, b, out, m, n, k, bm, bn, bk, cfg["group_m"])
-        options = dict(num_warps=cfg["num_warps"], num_stages=cfg["num_stages"])
+        options = dict(num_warps=cfg["num_warps"], num_stages=cfg["num_stages"],
+                       enable_fp_fusion=True)
 
         def operation(grid=grid, kernel_args=kernel_args, options=options):
             return dense_gemm[grid](*kernel_args, **options)
