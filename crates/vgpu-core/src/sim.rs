@@ -13,7 +13,7 @@
 
 use crate::kernel::{Access, Kernel, Spill, SpillScope, Work};
 use crate::occupancy::{occupancy, Occupancy, OccupancyError};
-use crate::profile::{interpolate, MlpPoint, Profile};
+use crate::profile::{interpolate, MlpPoint, Profile, WarpRate};
 
 /// Where the bytes of an access are served from.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
@@ -126,11 +126,12 @@ pub struct Machine {
     pub l2_mlp: [Vec<(f64, f64)>; 2],
     /// (MMA-issuing warps on the SM, FLOP per ns for the whole SM).
     pub mma: Vec<(f64, f64)>,
-    /// Warp instructions per ns per SM: issue, special-function pipe, and
-    /// shuffle pipe.
+    /// Warp instructions per ns per SM.
     pub issue_rate: f64,
-    pub sfu_rate: f64,
-    pub shfl_rate: f64,
+    /// (warps on the SM issuing them, warp instructions per ns for the whole
+    /// SM) of the special-function and shuffle pipes.
+    pub sfu: Vec<(f64, f64)>,
+    pub shfl: Vec<(f64, f64)>,
     /// Shared memory bytes per ns per SM.
     pub smem_bw: f64,
     /// L1-resident local memory (spill) bytes per ns per SM.
@@ -154,6 +155,24 @@ fn curve<T>(
     }
     v.sort_by(|a, b| a.0.total_cmp(&b.0));
     Ok(v)
+}
+
+/// A measured (warps, rate) curve, or a flat one at `fallback`.
+fn warp_curve(points: &[WarpRate], fallback: f64) -> Vec<(f64, f64)> {
+    curve(
+        points,
+        |q| (q.warps_per_sm.into(), q.rate.value),
+        "warp_rate",
+    )
+    .unwrap_or_else(|_| vec![(1.0, fallback)])
+}
+
+/// Throughput of each of `u` CTAs using a pipe on one SM, at index `u`.
+#[derive(Debug, Clone, Copy)]
+struct PerCta {
+    mma: f64,
+    sfu: f64,
+    shfl: f64,
 }
 
 /// MLP curves per issue mode, `[cp_async, ld_global_v4]`. A missing mode
@@ -258,16 +277,22 @@ impl Machine {
                 "mma_tflops_per_sm_by_warps",
             )?,
             issue_rate: m.compute.non_mma_issue_rate_per_sm_gips.value,
-            // Lane operations per second over the SMs and the 32 lanes of a
-            // warp; without a measurement the shuffle pipe gets the issue rate.
-            sfu_rate: m
-                .compute
-                .sfu_tflops
-                .as_ref()
-                .map_or(m.compute.non_mma_issue_rate_per_sm_gips.value, |v| {
-                    v.value * 1e3 / (f64::from(p.specs.sm_count) * 32.0)
-                }),
-            shfl_rate: m.compute.non_mma_issue_rate_per_sm_gips.value,
+            // Without a measured curve, the special-function pipe gets the
+            // lane rate over the SMs and the 32 lanes of a warp, and the
+            // shuffle pipe the issue rate.
+            sfu: warp_curve(
+                &m.compute.sfu_issue_rate_per_sm_gips,
+                m.compute
+                    .sfu_tflops
+                    .as_ref()
+                    .map_or(m.compute.non_mma_issue_rate_per_sm_gips.value, |v| {
+                        v.value * 1e3 / (f64::from(p.specs.sm_count) * 32.0)
+                    }),
+            ),
+            shfl: warp_curve(
+                &m.compute.shfl_issue_rate_per_sm_gips,
+                m.compute.non_mma_issue_rate_per_sm_gips.value,
+            ),
             smem_bw: m.memory.smem_bw_per_sm_gbps.value,
             local_bw: m
                 .spill
@@ -805,8 +830,7 @@ struct Scratch {
     bound: Vec<usize>,
 }
 
-/// `mma_per_cta[u]` is the tensor throughput of each of `u` MMA-issuing CTAs on one SM.
-fn rates(ctas: &[Cta], m: &Machine, mma_per_cta: &[f64], lat: Latency, s: &mut Scratch) {
+fn rates(ctas: &[Cta], m: &Machine, per_cta: &[PerCta], lat: Latency, s: &mut Scratch) {
     let n_sm = m.sm_count as usize;
     s.mma_users.clear();
     s.mma_users.resize(n_sm, 0);
@@ -840,7 +864,7 @@ fn rates(ctas: &[Cta], m: &Machine, mma_per_cta: &[f64], lat: Latency, s: &mut S
         let d = &c.demand;
         let i = c.sm as usize;
         let t_mma = if d.flops > 0.0 {
-            d.flops / mma_per_cta[s.mma_users[i] as usize]
+            d.flops / per_cta[s.mma_users[i] as usize].mma
         } else {
             0.0
         };
@@ -855,12 +879,12 @@ fn rates(ctas: &[Cta], m: &Machine, mma_per_cta: &[f64], lat: Latency, s: &mut S
             0.0
         };
         let t_sfu = if d.sfu_insts > 0.0 {
-            d.sfu_insts * f64::from(s.sfu_users[i]) / m.sfu_rate
+            d.sfu_insts / per_cta[s.sfu_users[i] as usize].sfu
         } else {
             0.0
         };
         let t_shfl = if d.shfl_insts > 0.0 {
-            d.shfl_insts * f64::from(s.shfl_users[i]) / m.shfl_rate
+            d.shfl_insts / per_cta[s.shfl_users[i] as usize].shfl
         } else {
             0.0
         };
@@ -875,12 +899,12 @@ fn rates(ctas: &[Cta], m: &Machine, mma_per_cta: &[f64], lat: Latency, s: &mut S
         // shared rate only bounds the average. Synchronization stalls the SM
         // for every resident CTA in turn.
         let alone = [
-            d.flops / mma_per_cta[1],
+            d.flops / per_cta[1].mma,
             d.warp_insts / m.issue_rate,
             d.smem_bytes / m.smem_bw,
             d.local_bytes / m.local_bw,
-            d.sfu_insts / m.sfu_rate,
-            d.shfl_insts / m.shfl_rate,
+            d.sfu_insts / per_cta[1].sfu,
+            d.shfl_insts / per_cta[1].shfl,
         ];
         let (kind, &longest) =
             alone
@@ -1026,10 +1050,15 @@ pub fn simulate<L: L2>(
     sim.settle(&mut tile_events, &mut changed, &mut ctas);
 
     let warps = f64::from(k.num_warps);
-    let mma_per_cta: Vec<f64> = (0..=occ.ctas_per_sm)
+    let per_cta: Vec<PerCta> = (0..=occ.ctas_per_sm)
         .map(|u| {
             let users = f64::from(u.max(1));
-            interpolate(&m.mma, users * warps) / users
+            let at = |c: &[(f64, f64)]| interpolate(c, users * warps) / users;
+            PerCta {
+                mma: at(&m.mma),
+                sfu: at(&m.sfu),
+                shfl: at(&m.shfl),
+            }
         })
         .collect();
     let mut s = Scratch::default();
@@ -1066,7 +1095,7 @@ pub fn simulate<L: L2>(
                 rates(
                     &ctas,
                     m,
-                    &mma_per_cta,
+                    &per_cta,
                     Latency {
                         dram: mid,
                         l2: l2_lat,
@@ -1094,7 +1123,7 @@ pub fn simulate<L: L2>(
             rates(
                 &ctas,
                 m,
-                &mma_per_cta,
+                &per_cta,
                 Latency {
                     dram: (lo * hi).sqrt(),
                     l2: l2_lat,
@@ -1105,7 +1134,7 @@ pub fn simulate<L: L2>(
             let (mut lo, mut hi) = (0.0, 1.0);
             for _ in 0..EQUILIBRIUM_STEPS {
                 let mid = 0.5 * (lo + hi);
-                rates(&ctas, m, &mma_per_cta, m.latency(mid, l2_util), &mut s);
+                rates(&ctas, m, &per_cta, m.latency(mid, l2_util), &mut s);
                 let (d, l) = achieved(&ctas, &s.rate);
                 l2_util = l / l2_peak;
                 if d / dram_peak > mid {
@@ -1117,7 +1146,7 @@ pub fn simulate<L: L2>(
             rates(
                 &ctas,
                 m,
-                &mma_per_cta,
+                &per_cta,
                 m.latency(0.5 * (lo + hi), l2_util),
                 &mut s,
             );

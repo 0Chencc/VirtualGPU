@@ -618,9 +618,10 @@ fn special_function_and_shuffle_pipes_bound_their_instructions() {
         ..Work::default()
     };
     let mut m = machine(&k);
-    m.sfu_rate = 1.0;
+    // Four warps per SM read the 4-warp point of each curve.
+    m.sfu = vec![(1.0, 0.25), (4.0, 1.0), (32.0, 4.0)];
     m.issue_rate = 10.0;
-    m.shfl_rate = 2.0;
+    m.shfl = vec![(1.0, 0.5), (4.0, 2.0), (32.0, 8.0)];
     let sfu = run(&k, m.clone());
     assert!(
         close(sfu.makespan_ns, 64.0 * 4.0 * 100.0 / 1.0),

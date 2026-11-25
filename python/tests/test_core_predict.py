@@ -77,9 +77,13 @@ def test_predict_batch_names_a_malformed_variant():
         _core.predict_batch([IR, "{}"], PROFILE)
 
 
-def test_causal_attention_predicts_and_is_flagged_unvalidated():
+def test_causal_attention_is_unvalidated_only_without_measured_pipes():
     attn = (ROOT / "schemas/examples/flash_attention_causal_gqa_sm89.json").read_text()
     r = _core.predict(attn, PROFILE, draws=2)
     assert r["status"] == "ok"
-    assert "unvalidated_feature" in r["flags"]
+    assert "unvalidated_feature" not in r["flags"]
+    profile = json.loads(PROFILE)
+    del profile["measured"]["compute"]["shfl_issue_rate_per_sm_gips"]
+    unmeasured = _core.predict(attn, json.dumps(profile), draws=2)
+    assert "unvalidated_feature" in unmeasured["flags"]
     assert set(r["bound_fraction"]) >= {"sfu", "shfl"}

@@ -127,16 +127,22 @@ fn record<'py>(
     if ir.resources.spill_loads_bytes + ir.resources.spill_stores_bytes > 0 {
         flags.push("spill".into());
     }
-    // The profile has no measured shuffle throughput and only an estimated
-    // special-function one, so kernels using them are not validated yet.
-    let uses_sfu_or_shfl = [
+    // Special-function and shuffle instructions are validated only where the
+    // profile measured their throughput.
+    let compute = &all[0].profile.measured.compute;
+    let uses_unmeasured_pipe = [
         &ir.body.prologue.ops,
         &ir.body.pipeline_loop.ops,
         &ir.body.epilogue.ops,
     ]
     .iter()
-    .any(|ops| ops.iter().any(|op| matches!(op, Op::Sfu(_) | Op::Shfl(_))));
-    if !ir.diagnostics.is_empty() || uses_sfu_or_shfl {
+    .flat_map(|ops| ops.iter())
+    .any(|op| match op {
+        Op::Sfu(_) => compute.sfu_issue_rate_per_sm_gips.is_empty(),
+        Op::Shfl(_) => compute.shfl_issue_rate_per_sm_gips.is_empty(),
+        _ => false,
+    });
+    if !ir.diagnostics.is_empty() || uses_unmeasured_pipe {
         flags.push("unvalidated_feature".into());
     }
     let dispatch = &all[0].profile.measured.cta_dispatch;

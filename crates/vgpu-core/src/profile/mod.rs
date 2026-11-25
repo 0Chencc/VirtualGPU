@@ -156,6 +156,18 @@ pub struct Compute {
     /// Special-function lane operations per second for the whole GPU.
     #[serde(default)]
     pub sfu_tflops: Option<MeasuredValue>,
+    /// `ex2.approx` and butterfly `shfl.sync` warp instructions per second
+    /// per SM, by the warps issuing them.
+    #[serde(default)]
+    pub sfu_issue_rate_per_sm_gips: Vec<WarpRate>,
+    #[serde(default)]
+    pub shfl_issue_rate_per_sm_gips: Vec<WarpRate>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct WarpRate {
+    pub warps_per_sm: u32,
+    pub rate: MeasuredValue,
 }
 
 #[derive(Debug, Clone, Deserialize)]
