@@ -21,8 +21,8 @@ sys.path.insert(0, str(REPO_ROOT / "python"))
 from virtualgpu.profile import validate_profile  # noqa: E402
 
 DEFAULT_BIN = Path(__file__).resolve().parent / "build" / "vgpu_bench"
-SUITE_VERSION = "0.8.0"
-PROFILE_REVISION = "0.8.0-m3"
+SUITE_VERSION = "0.9.0"
+PROFILE_REVISION = "0.9.0-m3"
 
 
 def find_nvidia_smi() -> str | None:
@@ -287,6 +287,7 @@ def build_profile(
     l2_merge_raw: dict[str, Any],
     stage_oh_raw: dict[str, Any],
     closed_loop_mma_raw: dict[str, Any],
+    mma_chain_raw: dict[str, Any],
     smi_samples: list[dict[str, Any]],
 ) -> dict[str, Any]:
     major = int(query["major"])
@@ -796,6 +797,82 @@ def build_profile(
             ),
         })
 
+    mma_chain_latency: list[dict[str, Any]] = []
+    chain_groups: dict[tuple[str, int, int, int], list[tuple[int, list[float]]]] = {}
+    for pt in mma_chain_raw["mma_chain_latency"]:
+        variant = str(pt["variant"])
+        warps = int(pt["num_warps"])
+        tb = int(pt["tile_bytes"])
+        ld_n = int(pt["ldmatrix_x4_per_warp"])
+        m_len = int(pt["mma_chain_len"])
+        t_samples = [float(x) for x in pt["stage_time_ns_samples"]]
+        mma_chain_latency.append({
+            "variant": variant,
+            "num_warps": warps,
+            "tile_bytes": tb,
+            "ldmatrix_x4_per_warp": ld_n,
+            "mma_chain_len": m_len,
+            "stage_time_ns": make_measured(
+                t_samples,
+                unit="ns",
+                method=f"cuda_mma_chain_{variant}",
+                perturb_group="mma_dense",
+                clock_range=sm_range,
+                locked=False,
+                throttle_events=throttle_events,
+            ),
+        })
+        chain_groups.setdefault((variant, warps, tb, ld_n), []).append((m_len, t_samples))
+
+    serial_stage_overhead_ns: list[dict[str, Any]] = []
+    for (variant, warps, tb, ld_n), pts in chain_groups.items():
+        pts.sort(key=lambda x: x[0])
+        xs = [float(p[0]) for p in pts]
+        n_samp = min(len(p[1]) for p in pts)
+        mx = sum(xs) / len(xs)
+        denom = sum((x - mx) ** 2 for x in xs)
+        slope_samples: list[float] = []
+        inter_samples: list[float] = []
+        for si in range(n_samp):
+            ys = [p[1][si] for p in pts]
+            my = sum(ys) / len(ys)
+            slope = sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / denom if denom > 0 else 0.0
+            inter = max(0.0, my - slope * mx)
+            slope_samples.append(max(0.0, slope))
+            inter_samples.append(inter)
+        med_ys = [float(statistics.median(p[1])) for p in pts]
+        my_med = sum(med_ys) / len(med_ys)
+        sl_med = sum((x - mx) * (y - my_med) for x, y in zip(xs, med_ys)) / denom if denom > 0 else 0.0
+        in_med = my_med - sl_med * mx
+        ss_res = sum((y - (sl_med * x + in_med)) ** 2 for x, y in zip(xs, med_ys))
+        ss_tot = sum((y - my_med) ** 2 for y in med_ys)
+        r2 = max(0.0, min(1.0, 1.0 - ss_res / ss_tot)) if ss_tot > 0 else 1.0
+        serial_stage_overhead_ns.append({
+            "variant": variant,
+            "num_warps": warps,
+            "tile_bytes": tb,
+            "ldmatrix_x4_per_warp": ld_n,
+            "intercept_ns": make_measured(
+                inter_samples,
+                unit="ns",
+                method=f"cuda_mma_chain_ols_intercept_{variant}",
+                perturb_group=None,
+                clock_range=sm_range,
+                locked=False,
+                throttle_events=throttle_events,
+            ),
+            "slope_ns_per_mma": make_measured(
+                slope_samples,
+                unit="ns",
+                method=f"cuda_mma_chain_ols_slope_{variant}",
+                perturb_group="mma_dense",
+                clock_range=sm_range,
+                locked=False,
+                throttle_events=throttle_events,
+            ),
+            "r_squared": round(r2, 6),
+        })
+
     sm_clock_ghz = (
         (statistics.median(sm_clocks) / 1000.0)
         if sm_clocks
@@ -904,6 +981,8 @@ def build_profile(
                 "non_mma_issue_rate_per_sm_gips": make_estimated(4.0 * sm_clock_ghz, "Ginst/s", "m2_estimated", None),
                 "fp32_fma_tflops": fp32_fma_mv,
                 "sfu_tflops": make_estimated(sm_count * 16.0 * sm_clock_ghz / 1000.0, "TFLOP/s", "m2_estimated", None),
+                "mma_chain_latency": mma_chain_latency,
+                "serial_stage_overhead_ns": serial_stage_overhead_ns,
             },
             "occupancy": {
                 "smem_carveout_observed": [],
@@ -987,17 +1066,21 @@ def main() -> int:
     closed_loop_mma_raw, smi_clm = run_bench_with_clock_polling(
         args.binary, "closed-loop-mma", args.device, ["--samples", "5", "--warmup", "1"]
     )
+    mma_chain_raw, smi_mc = run_bench_with_clock_polling(
+        args.binary, "mma-chain", args.device, ["--samples", "9", "--warmup", "2"]
+    )
     dispatch_raw, smi_disp = run_bench_with_clock_polling(
         args.binary, "cta-dispatch", args.device, ["--repeats", str(args.repeats)]
     )
     smi_samples = (
-        smi_dram + smi_mma + smi_l2 + smi_cp + smi_lat + smi_launch + smi_lc + smi_rs + smi_mlp + smi_cl + smi_mg + smi_so + smi_clm + smi_disp
+        smi_dram + smi_mma + smi_l2 + smi_cp + smi_lat + smi_launch + smi_lc + smi_rs + smi_mlp + smi_cl + smi_mg + smi_so + smi_clm + smi_mc + smi_disp
     )
 
     profile = build_profile(
         query, dram_raw, dispatch_raw, mma_raw, l2_raw, cp_async_raw,
         latency_raw, launch_raw, lat_curve_raw, l2_rescan_raw, mlp_raw,
-        closed_loop_raw, l2_merge_raw, stage_oh_raw, closed_loop_mma_raw, smi_samples
+        closed_loop_raw, l2_merge_raw, stage_oh_raw, closed_loop_mma_raw,
+        mma_chain_raw, smi_samples
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("w", encoding="utf-8") as fh:

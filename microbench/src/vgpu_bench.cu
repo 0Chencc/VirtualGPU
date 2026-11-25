@@ -524,6 +524,9 @@ int main(int argc, char** argv) {
   if (mode == "closed-loop-mma") {
     return run_closed_loop_mma(device, samples, warmup);
   }
+  if (mode == "mma-chain") {
+    return run_mma_chain(device, samples, warmup);
+  }
   std::fprintf(stderr, "Unknown mode: %s\n", mode.c_str());
   return 2;
 }

@@ -326,7 +326,17 @@
             },
             "non_mma_issue_rate_per_sm_gips": { "$ref": "#/$defs/MeasuredValue" },
             "fp32_fma_tflops": { "$ref": "#/$defs/MeasuredValue" },
-            "sfu_tflops": { "$ref": "#/$defs/MeasuredValue" }
+            "sfu_tflops": { "$ref": "#/$defs/MeasuredValue" },
+            "mma_chain_latency": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/MmaChainPoint" }
+            },
+            "serial_stage_overhead_ns": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/SerialStageOverheadSummary" }
+            }
           }
         },
         "occupancy": {
@@ -657,6 +667,64 @@
         "working_set_ratio_to_l2": { "type": "number", "exclusiveMinimum": 0 },
         "pass2_bw_gbps": { "$ref": "#/$defs/MeasuredValue" },
         "estimated_hit_rate": { "$ref": "#/$defs/MeasuredValue" }
+      }
+    },
+    "MmaChainPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "variant",
+        "num_warps",
+        "tile_bytes",
+        "ldmatrix_x4_per_warp",
+        "mma_chain_len",
+        "stage_time_ns"
+      ],
+      "properties": {
+        "variant": {
+          "type": "string",
+          "enum": [
+            "mma_only_independent",
+            "mma_only_dependent",
+            "ldmatrix_independent",
+            "ldmatrix_dependent"
+          ]
+        },
+        "num_warps": { "type": "integer", "minimum": 1 },
+        "tile_bytes": { "type": "integer", "minimum": 0 },
+        "ldmatrix_x4_per_warp": { "type": "integer", "minimum": 0 },
+        "mma_chain_len": { "type": "integer", "minimum": 1 },
+        "stage_time_ns": { "$ref": "#/$defs/MeasuredValue" }
+      }
+    },
+    "SerialStageOverheadSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "variant",
+        "num_warps",
+        "tile_bytes",
+        "ldmatrix_x4_per_warp",
+        "intercept_ns",
+        "slope_ns_per_mma",
+        "r_squared"
+      ],
+      "properties": {
+        "variant": {
+          "type": "string",
+          "enum": [
+            "mma_only_independent",
+            "mma_only_dependent",
+            "ldmatrix_independent",
+            "ldmatrix_dependent"
+          ]
+        },
+        "num_warps": { "type": "integer", "minimum": 1 },
+        "tile_bytes": { "type": "integer", "minimum": 0 },
+        "ldmatrix_x4_per_warp": { "type": "integer", "minimum": 0 },
+        "intercept_ns": { "$ref": "#/$defs/MeasuredValue" },
+        "slope_ns_per_mma": { "$ref": "#/$defs/MeasuredValue" },
+        "r_squared": { "type": "number", "minimum": 0, "maximum": 1 }
       }
     }
   }

@@ -2419,3 +2419,278 @@ static int run_closed_loop_mma(int device, int samples, int warmup) {
   CUDA_CHECK(cudaFree(d_sink_f));
   return 0;
 }
+
+// ---------------------------------------------------------------------------
+// 13. MMA chain length & ldmatrix serial stage overhead (1 CTA/SM, no GMEM)
+// ---------------------------------------------------------------------------
+
+template <int M_CHAIN, int LD_PER_WARP, bool DEPENDENT>
+__global__ void mma_chain_stage_kernel(const uint4* __restrict__ init_src,
+                                       float* __restrict__ sink,
+                                       int steps) {
+  extern __shared__ uint4 smem[];
+  const uint32_t tid = threadIdx.x;
+  const uint32_t warp_id = tid >> 5;
+  const uint32_t lane = tid & 31u;
+  const uint32_t num_warps = blockDim.x >> 5;
+  const size_t tile_u4 = static_cast<size_t>(LD_PER_WARP) * static_cast<size_t>(num_warps) * 32ULL;
+
+  // Initialize shared memory from runtime buffer (filled with f16 1.0) so ptxas cannot constant-fold.
+  if constexpr (LD_PER_WARP > 0) {
+    for (size_t i = tid; i < 2ULL * tile_u4; i += blockDim.x) {
+      smem[i] = init_src[i];
+    }
+    __syncthreads();
+  }
+
+  constexpr int REGS_N = (LD_PER_WARP > 0) ? LD_PER_WARP : 1;
+  uint32_t reg[REGS_N][4];
+  #pragma unroll
+  for (int r = 0; r < REGS_N; ++r) {
+    reg[r][0] = 0x3c003c00u;
+    reg[r][1] = 0x3c003c00u;
+    reg[r][2] = 0x3c003c00u;
+    reg[r][3] = 0x3c003c00u;
+  }
+  uint32_t live_acc = 0u;
+  float c00 = 0.f, c01 = 0.f, c02 = 0.f, c03 = 0.f;
+  float c10 = 0.f, c11 = 0.f, c12 = 0.f, c13 = 0.f;
+  float c20 = 0.f, c21 = 0.f, c22 = 0.f, c23 = 0.f;
+  float c30 = 0.f, c31 = 0.f, c32 = 0.f, c33 = 0.f;
+
+  for (int step = 0; step < steps; ++step) {
+    if constexpr (LD_PER_WARP > 0) {
+      const size_t slot_base = static_cast<size_t>(step & 1) * tile_u4;
+      #pragma unroll
+      for (int r = 0; r < LD_PER_WARP; ++r) {
+        size_t off_u4 = slot_base + (static_cast<size_t>(r) * num_warps + warp_id) * 32ULL + lane;
+        uint32_t saddr = static_cast<uint32_t>(__cvta_generic_to_shared(smem + off_u4));
+        asm volatile("ldmatrix.sync.aligned.x4.m8n8.shared.b16 {%0,%1,%2,%3}, [%4];\n"
+                     : "=r"(reg[r][0]), "=r"(reg[r][1]), "=r"(reg[r][2]), "=r"(reg[r][3])
+                     : "r"(saddr) : "memory");
+      }
+    }
+
+    if constexpr (DEPENDENT) {
+      #pragma unroll
+      for (int i = 0; i < M_CHAIN; ++i) {
+        const int ra = (LD_PER_WARP > 0) ? (i % REGS_N) : 0;
+        const int rb = (LD_PER_WARP > 0) ? ((i + 1) % REGS_N) : 0;
+        asm volatile(
+            "mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 "
+            "{%0,%1,%2,%3}, {%4,%5,%6,%7}, {%8,%9}, {%0,%1,%2,%3};\n"
+            : "+f"(c00), "+f"(c01), "+f"(c02), "+f"(c03)
+            : "r"(reg[ra][0]), "r"(reg[ra][1]), "r"(reg[ra][2]), "r"(reg[ra][3]),
+              "r"(reg[rb][0]), "r"(reg[rb][1]));
+      }
+    } else {
+      constexpr int FULL_GROUPS = M_CHAIN / 4;
+      constexpr int REM = M_CHAIN % 4;
+      #pragma unroll
+      for (int g = 0; g < FULL_GROUPS; ++g) {
+        const int i0 = g * 4;
+        const int ra0 = (LD_PER_WARP > 0) ? ((i0 + 0) % REGS_N) : 0;
+        const int rb0 = (LD_PER_WARP > 0) ? ((i0 + 1) % REGS_N) : 0;
+        const int ra1 = (LD_PER_WARP > 0) ? ((i0 + 1) % REGS_N) : 0;
+        const int rb1 = (LD_PER_WARP > 0) ? ((i0 + 2) % REGS_N) : 0;
+        const int ra2 = (LD_PER_WARP > 0) ? ((i0 + 2) % REGS_N) : 0;
+        const int rb2 = (LD_PER_WARP > 0) ? ((i0 + 3) % REGS_N) : 0;
+        const int ra3 = (LD_PER_WARP > 0) ? ((i0 + 3) % REGS_N) : 0;
+        const int rb3 = (LD_PER_WARP > 0) ? ((i0 + 4) % REGS_N) : 0;
+        asm volatile(
+            "mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 "
+            "{%0,%1,%2,%3}, {%4,%5,%6,%7}, {%8,%9}, {%0,%1,%2,%3};\n"
+            : "+f"(c00), "+f"(c01), "+f"(c02), "+f"(c03)
+            : "r"(reg[ra0][0]), "r"(reg[ra0][1]), "r"(reg[ra0][2]), "r"(reg[ra0][3]),
+              "r"(reg[rb0][0]), "r"(reg[rb0][1]));
+        asm volatile(
+            "mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 "
+            "{%0,%1,%2,%3}, {%4,%5,%6,%7}, {%8,%9}, {%0,%1,%2,%3};\n"
+            : "+f"(c10), "+f"(c11), "+f"(c12), "+f"(c13)
+            : "r"(reg[ra1][0]), "r"(reg[ra1][1]), "r"(reg[ra1][2]), "r"(reg[ra1][3]),
+              "r"(reg[rb1][0]), "r"(reg[rb1][1]));
+        asm volatile(
+            "mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 "
+            "{%0,%1,%2,%3}, {%4,%5,%6,%7}, {%8,%9}, {%0,%1,%2,%3};\n"
+            : "+f"(c20), "+f"(c21), "+f"(c22), "+f"(c23)
+            : "r"(reg[ra2][0]), "r"(reg[ra2][1]), "r"(reg[ra2][2]), "r"(reg[ra2][3]),
+              "r"(reg[rb2][0]), "r"(reg[rb2][1]));
+        asm volatile(
+            "mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 "
+            "{%0,%1,%2,%3}, {%4,%5,%6,%7}, {%8,%9}, {%0,%1,%2,%3};\n"
+            : "+f"(c30), "+f"(c31), "+f"(c32), "+f"(c33)
+            : "r"(reg[ra3][0]), "r"(reg[ra3][1]), "r"(reg[ra3][2]), "r"(reg[ra3][3]),
+              "r"(reg[rb3][0]), "r"(reg[rb3][1]));
+      }
+      if constexpr (REM >= 1) {
+        const int rb0 = (LD_PER_WARP > 0) ? (1 % REGS_N) : 0;
+        asm volatile(
+            "mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 "
+            "{%0,%1,%2,%3}, {%4,%5,%6,%7}, {%8,%9}, {%0,%1,%2,%3};\n"
+            : "+f"(c00), "+f"(c01), "+f"(c02), "+f"(c03)
+            : "r"(reg[0][0]), "r"(reg[0][1]), "r"(reg[0][2]), "r"(reg[0][3]),
+              "r"(reg[rb0][0]), "r"(reg[rb0][1]));
+      }
+      if constexpr (REM >= 2) {
+        const int ra1 = (LD_PER_WARP > 0) ? (1 % REGS_N) : 0;
+        const int rb1 = (LD_PER_WARP > 0) ? (2 % REGS_N) : 0;
+        asm volatile(
+            "mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 "
+            "{%0,%1,%2,%3}, {%4,%5,%6,%7}, {%8,%9}, {%0,%1,%2,%3};\n"
+            : "+f"(c10), "+f"(c11), "+f"(c12), "+f"(c13)
+            : "r"(reg[ra1][0]), "r"(reg[ra1][1]), "r"(reg[ra1][2]), "r"(reg[ra1][3]),
+              "r"(reg[rb1][0]), "r"(reg[rb1][1]));
+      }
+      if constexpr (REM >= 3) {
+        const int ra2 = (LD_PER_WARP > 0) ? (2 % REGS_N) : 0;
+        const int rb2 = (LD_PER_WARP > 0) ? (3 % REGS_N) : 0;
+        asm volatile(
+            "mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 "
+            "{%0,%1,%2,%3}, {%4,%5,%6,%7}, {%8,%9}, {%0,%1,%2,%3};\n"
+            : "+f"(c20), "+f"(c21), "+f"(c22), "+f"(c23)
+            : "r"(reg[ra2][0]), "r"(reg[ra2][1]), "r"(reg[ra2][2]), "r"(reg[ra2][3]),
+              "r"(reg[rb2][0]), "r"(reg[rb2][1]));
+      }
+    }
+
+    // Keep any ldmatrix outputs live when M_CHAIN < LD_PER_WARP so ptxas cannot elide them.
+    if constexpr (LD_PER_WARP > M_CHAIN) {
+      #pragma unroll
+      for (int r = M_CHAIN; r < LD_PER_WARP; ++r) {
+        live_acc ^= (reg[r][0] ^ reg[r][1] ^ reg[r][2] ^ reg[r][3]);
+      }
+    }
+
+    asm volatile("bar.sync 0;\n" ::: "memory");
+  }
+
+  float sum = c00 + c01 + c02 + c03 + c10 + c11 + c12 + c13 +
+              c20 + c21 + c22 + c23 + c30 + c31 + c32 + c33 + static_cast<float>(live_acc & 1u);
+  if (sum == -999999.0f) {
+    sink[blockIdx.x * blockDim.x + tid] = sum;
+  }
+}
+
+template <int LD_PER_WARP, bool DEPENDENT>
+static void dispatch_mma_chain_len(int m_chain, int grid, int threads, size_t dyn_smem,
+                                   const uint4* d_init, float* d_sink, int steps) {
+  switch (m_chain) {
+    case 1: mma_chain_stage_kernel<1, LD_PER_WARP, DEPENDENT><<<grid, threads, dyn_smem>>>(d_init, d_sink, steps); break;
+    case 2: mma_chain_stage_kernel<2, LD_PER_WARP, DEPENDENT><<<grid, threads, dyn_smem>>>(d_init, d_sink, steps); break;
+    case 4: mma_chain_stage_kernel<4, LD_PER_WARP, DEPENDENT><<<grid, threads, dyn_smem>>>(d_init, d_sink, steps); break;
+    case 8: mma_chain_stage_kernel<8, LD_PER_WARP, DEPENDENT><<<grid, threads, dyn_smem>>>(d_init, d_sink, steps); break;
+    case 16: mma_chain_stage_kernel<16, LD_PER_WARP, DEPENDENT><<<grid, threads, dyn_smem>>>(d_init, d_sink, steps); break;
+    case 32: mma_chain_stage_kernel<32, LD_PER_WARP, DEPENDENT><<<grid, threads, dyn_smem>>>(d_init, d_sink, steps); break;
+    case 64: mma_chain_stage_kernel<64, LD_PER_WARP, DEPENDENT><<<grid, threads, dyn_smem>>>(d_init, d_sink, steps); break;
+    case 128: mma_chain_stage_kernel<128, LD_PER_WARP, DEPENDENT><<<grid, threads, dyn_smem>>>(d_init, d_sink, steps); break;
+    default: break;
+  }
+}
+
+template <bool DEPENDENT>
+static void dispatch_mma_chain(int ld_per_warp, int m_chain, int grid, int threads, size_t dyn_smem,
+                               const uint4* d_init, float* d_sink, int steps) {
+  switch (ld_per_warp) {
+    case 0: dispatch_mma_chain_len<0, DEPENDENT>(m_chain, grid, threads, dyn_smem, d_init, d_sink, steps); break;
+    case 2: dispatch_mma_chain_len<2, DEPENDENT>(m_chain, grid, threads, dyn_smem, d_init, d_sink, steps); break;
+    case 3: dispatch_mma_chain_len<3, DEPENDENT>(m_chain, grid, threads, dyn_smem, d_init, d_sink, steps); break;
+    case 4: dispatch_mma_chain_len<4, DEPENDENT>(m_chain, grid, threads, dyn_smem, d_init, d_sink, steps); break;
+    case 6: dispatch_mma_chain_len<6, DEPENDENT>(m_chain, grid, threads, dyn_smem, d_init, d_sink, steps); break;
+    case 8: dispatch_mma_chain_len<8, DEPENDENT>(m_chain, grid, threads, dyn_smem, d_init, d_sink, steps); break;
+    default: break;
+  }
+}
+
+static int run_mma_chain(int device, int samples, int warmup) {
+  cudaDeviceProp prop{};
+  CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
+  const int sm_count = prop.multiProcessorCount;
+
+  const size_t max_init_u4 = (2ULL * 16384ULL) / sizeof(uint4);
+  std::vector<uint4> h_init(max_init_u4, make_uint4(0x3c003c00u, 0x3c003c00u, 0x3c003c00u, 0x3c003c00u));
+  uint4* d_init = nullptr;
+  float* d_sink = nullptr;
+  CUDA_CHECK(cudaMalloc(&d_init, max_init_u4 * sizeof(uint4)));
+  CUDA_CHECK(cudaMemcpy(d_init, h_init.data(), max_init_u4 * sizeof(uint4), cudaMemcpyHostToDevice));
+  CUDA_CHECK(cudaMalloc(&d_sink, static_cast<size_t>(sm_count) * 256 * sizeof(float)));
+
+  cudaEvent_t ev_start, ev_stop;
+  CUDA_CHECK(cudaEventCreate(&ev_start));
+  CUDA_CHECK(cudaEventCreate(&ev_stop));
+
+  struct ChainConfig {
+    const char* variant;
+    int tile_bytes;
+    bool dependent;
+  };
+  const std::vector<ChainConfig> configs = {
+      {"mma_only_independent", 0, false},
+      {"mma_only_dependent", 0, true},
+      {"ldmatrix_independent", 8192, false},
+      {"ldmatrix_independent", 12288, false},
+      {"ldmatrix_independent", 16384, false},
+      {"ldmatrix_dependent", 8192, true},
+      {"ldmatrix_dependent", 12288, true},
+      {"ldmatrix_dependent", 16384, true},
+  };
+  const std::vector<int> warp_list = {4, 8};
+  const std::vector<int> m_list = {1, 2, 4, 8, 16, 32, 64, 128};
+
+  std::printf("{\n  \"samples\": %d,\n  \"mma_chain_latency\": [", samples);
+  bool first = true;
+
+  for (const auto& cfg : configs) {
+    for (int warps : warp_list) {
+      int threads = warps * 32;
+      int ld_per_warp = cfg.tile_bytes / (warps * 512);
+      size_t dyn_smem = static_cast<size_t>(cfg.tile_bytes) * 2ULL;
+
+      for (int m : m_list) {
+        // Keep each kernel launch ~0.35 ms to avoid GPU Boost thermal/power droop at large m.
+        int est_ns = std::max(20, (warps / 4) * 12 * m + 30);
+        int steps = std::max(128, std::min(16384, 350000 / est_ns));
+        auto launch_once = [&]() {
+          if (cfg.dependent) {
+            dispatch_mma_chain<true>(ld_per_warp, m, sm_count, threads, dyn_smem, d_init, d_sink, steps);
+          } else {
+            dispatch_mma_chain<false>(ld_per_warp, m, sm_count, threads, dyn_smem, d_init, d_sink, steps);
+          }
+        };
+
+        for (int w = 0; w < warmup; ++w) launch_once();
+        CUDA_CHECK(cudaDeviceSynchronize());
+
+        std::vector<double> ns_samples;
+        ns_samples.reserve(samples);
+        for (int s = 0; s < samples; ++s) {
+          CUDA_CHECK(cudaEventRecord(ev_start));
+          launch_once();
+          CUDA_CHECK(cudaEventRecord(ev_stop));
+          CUDA_CHECK(cudaEventSynchronize(ev_stop));
+          float ms = 0.0f;
+          CUDA_CHECK(cudaEventElapsedTime(&ms, ev_start, ev_stop));
+          ns_samples.push_back((static_cast<double>(ms) * 1e6) / static_cast<double>(steps));
+        }
+
+        if (!first) std::printf(",");
+        first = false;
+        std::printf(
+            "\n    {\"variant\": \"%s\", \"num_warps\": %d, \"tile_bytes\": %d, "
+            "\"ldmatrix_x4_per_warp\": %d, \"mma_chain_len\": %d, \"stage_time_ns_samples\": [",
+            cfg.variant, warps, cfg.tile_bytes, ld_per_warp, m);
+        for (size_t i = 0; i < ns_samples.size(); ++i) {
+          if (i) std::printf(", ");
+          std::printf("%.3f", ns_samples[i]);
+        }
+        std::printf("]}");
+      }
+    }
+  }
+  std::printf("\n  ]\n}\n");
+
+  CUDA_CHECK(cudaEventDestroy(ev_start));
+  CUDA_CHECK(cudaEventDestroy(ev_stop));
+  CUDA_CHECK(cudaFree(d_init));
+  CUDA_CHECK(cudaFree(d_sink));
+  return 0;
+}

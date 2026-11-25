@@ -57,6 +57,8 @@ def test_rtx4070_profile_is_valid() -> None:
     mma_f16 = profile["measured"]["compute"]["mma_tflops_per_sm_by_warps"]["mma.sync:f16:f16:f32:16x8x16"]
     assert len(mma_f16) >= 4
     assert all(pt["tflops_per_sm"]["source"] == "measured" for pt in mma_f16)
+    assert len(profile["measured"]["compute"]["mma_chain_latency"]) >= 128
+    assert len(profile["measured"]["compute"]["serial_stage_overhead_ns"]) >= 16
 
 
 def test_rejects_missing_required_field() -> None:
