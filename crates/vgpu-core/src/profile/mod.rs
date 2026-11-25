@@ -123,6 +123,9 @@ pub struct L2RescanPoint {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Memory {
+    /// Global load warp instructions per SM with a known number in flight.
+    #[serde(default)]
+    pub gmem_load_issue_controlled: Vec<GmemIssuePoint>,
     pub dram_bw_by_active_sms: Vec<BwPoint>,
     pub l2_bw_by_active_sms: Vec<BwPoint>,
     pub l2_effective_capacity_bytes: MeasuredValue,
@@ -162,6 +165,12 @@ pub struct Compute {
     pub sfu_issue_rate_per_sm_gips: Vec<WarpRate>,
     #[serde(default)]
     pub shfl_issue_rate_per_sm_gips: Vec<WarpRate>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct GmemIssuePoint {
+    pub load_width_bytes: u32,
+    pub issue_rate_gwarp_inst_per_sm: MeasuredValue,
 }
 
 #[derive(Debug, Clone, Deserialize)]

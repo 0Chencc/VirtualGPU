@@ -9,6 +9,8 @@ pub struct Access {
     pub op_id: String,
     /// Unmasked bytes per CTA per step (per iteration, or per phase execution).
     pub nominal_bytes: f64,
+    /// Bytes each thread moves per memory instruction.
+    pub width_bytes: f64,
 }
 
 /// Work done by one CTA in one pipeline iteration, or in one execution of the

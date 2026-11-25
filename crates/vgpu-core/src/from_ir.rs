@@ -20,10 +20,12 @@ fn work(ops: &[Op], mma_key: &mut Option<String>) -> Result<Work, ModelError> {
             Op::GmemLoad(g) => w.loads.push(Access {
                 op_id: g.op_id.clone(),
                 nominal_bytes: g.nominal_bytes_per_cta as f64,
+                width_bytes: f64::from(g.transfer_width_bytes),
             }),
             Op::GmemStore(g) => w.stores.push(Access {
                 op_id: g.op_id.clone(),
                 nominal_bytes: g.nominal_bytes_per_cta as f64,
+                width_bytes: f64::from(g.transfer_width_bytes),
             }),
             Op::SmemLoad(s) | Op::SmemStore(s) => w.smem_bytes += s.bytes_per_cta as f64,
             Op::Mma(m) => {

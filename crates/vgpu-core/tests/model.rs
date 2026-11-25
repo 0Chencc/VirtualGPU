@@ -13,6 +13,7 @@ fn access(op: &str, bytes: f64) -> Access {
     Access {
         op_id: op.to_string(),
         nominal_bytes: bytes,
+        width_bytes: 16.0,
     }
 }
 
@@ -398,6 +399,38 @@ fn mlp_curve_sets_latency_from_bytes_in_flight() {
         "{} vs {expected}",
         p.makespan_ns
     );
+}
+
+#[test]
+fn narrow_loads_are_bound_by_memory_instruction_issue() {
+    // 46 CTAs of 2-byte loads, two stages, no compute: 64 B per warp
+    // instruction, so 64 KiB per iteration is 1024 warp instructions, and at
+    // one per ns per SM the loop takes 1024 ns per iteration however fast
+    // memory is, after one 1 ns round trip to fill the pipeline.
+    let mut k = compute_only(46);
+    k.tile.per_iteration = Work {
+        loads: vec![Access {
+            op_id: "load".into(),
+            nominal_bytes: 65536.0,
+            width_bytes: 2.0,
+        }],
+        ..Work::default()
+    };
+    k.tile.prefetch_distance = 1;
+    let mut m = machine(&k);
+    m.dram_bw = vec![(1.0, 1e9)];
+    m.l2_bw = vec![(1.0, 1e9)];
+    m.l2_latency_ns = 1.0;
+    m.l2_latency_loaded_ns = 1.0;
+    m.dram_latency_ns = 1.0;
+    m.dram_latency_loaded_ns = 1.0;
+    m.dram_mlp = [vec![], vec![]];
+    m.l2_mlp = [vec![], vec![]];
+    m.fixed_sync.clear();
+    m.lsu_rate = 1.0;
+    let p = run(&k, m);
+    assert!(close(p.makespan_ns, 64.0 * 1024.0 + 1.0), "{}", p.makespan_ns);
+    assert!(p.bound_fraction[6] > 0.99, "{:?}", p.bound_fraction);
 }
 
 #[test]

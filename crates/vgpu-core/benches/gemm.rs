@@ -15,6 +15,7 @@ fn access(op: &str, bytes: f64) -> Access {
     Access {
         op_id: op.to_string(),
         nominal_bytes: bytes,
+        width_bytes: 16.0,
     }
 }
 

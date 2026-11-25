@@ -133,6 +133,9 @@ pub struct Machine {
     /// SM) of the special-function and shuffle pipes.
     pub sfu: Vec<(f64, f64)>,
     pub shfl: Vec<(f64, f64)>,
+    /// Global memory warp instructions per ns per SM; infinite without a
+    /// measurement.
+    pub lsu_rate: f64,
     /// Shared memory bytes per ns per SM.
     pub smem_bw: f64,
     /// L1-resident local memory (spill) bytes per ns per SM.
@@ -310,6 +313,22 @@ impl Machine {
                 &m.compute.shfl_issue_rate_per_sm_gips,
                 m.compute.non_mma_issue_rate_per_sm_gips.value,
             ),
+            // The narrowest loads measured, where issue rather than bytes
+            // limits; the fastest rate the SM sustained for them.
+            lsu_rate: m
+                .memory
+                .gmem_load_issue_controlled
+                .iter()
+                .min_by_key(|q| q.load_width_bytes)
+                .map(|q| q.load_width_bytes)
+                .map_or(f64::INFINITY, |w| {
+                    m.memory
+                        .gmem_load_issue_controlled
+                        .iter()
+                        .filter(|q| q.load_width_bytes == w)
+                        .map(|q| q.issue_rate_gwarp_inst_per_sm.value)
+                        .fold(0.0, f64::max)
+                }),
             smem_bw: m.memory.smem_bw_per_sm_gbps.value,
             local_bw: m
                 .spill
@@ -347,17 +366,18 @@ pub struct Prediction {
     pub events: u64,
     /// Fraction of CTA-time during which each resource of `RESOURCES` was the
     /// bound of the CTA's current phase.
-    pub bound_fraction: [f64; 12],
+    pub bound_fraction: [f64; 13],
 }
 
 /// Resources a phase can be bound by, in `Prediction::bound_fraction` order.
-pub const RESOURCES: [&str; 12] = [
+pub const RESOURCES: [&str; 13] = [
     "mma",
     "issue",
     "smem",
     "local",
     "sfu",
     "shfl",
+    "lsu",
     "sync",
     "l2_latency",
     "dram_latency",
@@ -366,12 +386,12 @@ pub const RESOURCES: [&str; 12] = [
     "launch",
 ];
 const MMA: usize = 0;
-const SYNC: usize = 6;
-const L2_LATENCY: usize = 7;
-const DRAM_LATENCY: usize = 8;
-const L2_BANDWIDTH: usize = 9;
-const DRAM_BANDWIDTH: usize = 10;
-const LAUNCH: usize = 11;
+const SYNC: usize = 7;
+const L2_LATENCY: usize = 8;
+const DRAM_LATENCY: usize = 9;
+const L2_BANDWIDTH: usize = 10;
+const DRAM_BANDWIDTH: usize = 11;
+const LAUNCH: usize = 12;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Phase {
@@ -391,6 +411,8 @@ struct Demand {
     sfu_insts: f64,
     shfl_insts: f64,
     smem_bytes: f64,
+    /// Global load and store warp instructions.
+    mem_insts: f64,
     /// Spill bytes served by L1.
     local_bytes: f64,
     /// All bytes through L2 (loads and stores).
@@ -589,6 +611,13 @@ impl<'a, L: L2> Sim<'a, L> {
             sfu_insts: compute.sfu_insts_per_warp * f64::from(k.num_warps) * steps,
             shfl_insts: compute.shfl_insts_per_warp * f64::from(k.num_warps) * steps,
             smem_bytes: compute.smem_bytes * steps,
+            mem_insts: compute
+                .loads
+                .iter()
+                .chain(&compute.stores)
+                .map(|a| a.nominal_bytes / (32.0 * a.width_bytes))
+                .sum::<f64>()
+                * steps,
             local_bytes: spill_l1,
             bytes: load_bytes + stores + spill_l2 + spill_dram,
             dram_bytes: misses + stores + spill_dram,
@@ -755,7 +784,7 @@ struct Parts {
     exposed: f64,
     exposed_kind: usize,
     /// Shared compute path: pipes by `RESOURCES` index, plus synchronization.
-    pipes: [f64; 6],
+    pipes: [f64; 7],
     sync: f64,
     /// One CTA's dependent chain, a floor under the shared path.
     chain: f64,
@@ -822,6 +851,7 @@ impl Parts {
                 (p[3], 3),
                 (p[4], 4),
                 (p[5], 5),
+                (p[6], 6),
                 (self.sync, SYNC),
                 (self.chain, self.exposed_kind),
             ])
@@ -908,6 +938,7 @@ fn rates(ctas: &[Cta], m: &Machine, per_cta: &[PerCta], lat: Latency, s: &mut Sc
         } else {
             0.0
         };
+        let t_lsu = d.mem_insts * f64::from(s.resident[i]) / m.lsu_rate;
         let t_local = if d.local_bytes > 0.0 {
             d.local_bytes * f64::from(s.local_users[i]) / m.local_bw
         } else {
@@ -925,6 +956,9 @@ fn rates(ctas: &[Cta], m: &Machine, per_cta: &[PerCta], lat: Latency, s: &mut Sc
             d.local_bytes / m.local_bw,
             d.sfu_insts / per_cta[1].sfu,
             d.shfl_insts / per_cta[1].shfl,
+            // Issuing loads overlaps the wait for the ones in flight, so
+            // memory issue bounds only the SM's throughput.
+            0.0,
         ];
         // The other pipes' work in an iteration depends on its MMA results
         // and the next MMAs on that work (the softmax between attention's two
@@ -954,7 +988,7 @@ fn rates(ctas: &[Cta], m: &Machine, per_cta: &[PerCta], lat: Latency, s: &mut Sc
             dram_latency,
             exposed: d.exposed_compute * longest,
             exposed_kind: kind,
-            pipes: [t_mma, t_issue, t_smem, t_local, t_sfu, t_shfl],
+            pipes: [t_mma, t_issue, t_smem, t_local, t_sfu, t_shfl, t_lsu],
             sync: d.sync_ns * f64::from(s.resident[i]),
             chain: longest + d.sync_ns,
             queued,
@@ -1092,7 +1126,7 @@ pub fn simulate<L: L2>(
     let mut freed: Vec<u32> = Vec::new();
     let mut busy_sm_ns = 0.0;
     let mut events = 0u64;
-    let mut bound_ns = [0.0f64; 12];
+    let mut bound_ns = [0.0f64; 13];
     // Latency depends on the DRAM and L2 utilization and the utilization on
     // the rates, which depend on latency. DRAM utilization falls as the
     // latency it implies rises, so the equilibrium is unique and bisection
