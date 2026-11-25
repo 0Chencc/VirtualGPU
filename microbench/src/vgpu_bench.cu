@@ -533,6 +533,12 @@ int main(int argc, char** argv) {
   if (mode == "sync-loop") {
     return run_sync_loop(device, samples, warmup);
   }
+  if (mode == "gmem-issue") {
+    return run_gmem_issue(device, samples, warmup);
+  }
+  if (mode == "spill-latency") {
+    return run_spill_latency(device, samples, warmup);
+  }
   std::fprintf(stderr, "Unknown mode: %s\n", mode.c_str());
   return 2;
 }

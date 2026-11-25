@@ -294,7 +294,17 @@
               "minItems": 1,
               "items": { "$ref": "#/$defs/L2RescanPoint" }
             },
-            "smem_latency_ns": { "$ref": "#/$defs/MeasuredValue" }
+            "smem_latency_ns": { "$ref": "#/$defs/MeasuredValue" },
+            "gmem_load_issue_per_sm": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/GmemLoadIssuePoint" }
+            },
+            "spill_reload_latency_by_count": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/SpillReloadLatencyPoint" }
+            }
           }
         },
         "compute": {
@@ -800,6 +810,46 @@
         "delivered_bw_gbps": { "$ref": "#/$defs/MeasuredValue" },
         "mean_stage_turnaround_ns": { "$ref": "#/$defs/MeasuredValue" },
         "achieved_mma_tflops_per_sm": { "$ref": "#/$defs/MeasuredValue" }
+      }
+    },
+    "GmemLoadIssuePoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "active_sms",
+        "load_width_bytes",
+        "num_warps",
+        "issue_rate_gwarp_inst_per_sm",
+        "delivered_bw_per_sm_gbps"
+      ],
+      "properties": {
+        "active_sms": { "type": "integer", "minimum": 1 },
+        "load_width_bytes": { "type": "integer", "enum": [2, 4, 8, 16] },
+        "num_warps": { "type": "integer", "minimum": 1 },
+        "issue_rate_gwarp_inst_per_sm": { "$ref": "#/$defs/MeasuredValue" },
+        "delivered_bw_per_sm_gbps": { "$ref": "#/$defs/MeasuredValue" }
+      }
+    },
+    "SpillReloadLatencyPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "regime",
+        "dependency_mode",
+        "num_warps",
+        "reload_count",
+        "iter_time_ns",
+        "extra_ns_vs_zero",
+        "ns_per_reload"
+      ],
+      "properties": {
+        "regime": { "type": "string", "enum": ["l1_hit", "l2_spill"] },
+        "dependency_mode": { "type": "string", "enum": ["serial_chain", "batch_before_dep"] },
+        "num_warps": { "type": "integer", "minimum": 1 },
+        "reload_count": { "type": "integer", "minimum": 0 },
+        "iter_time_ns": { "$ref": "#/$defs/MeasuredValue" },
+        "extra_ns_vs_zero": { "$ref": "#/$defs/MeasuredValue" },
+        "ns_per_reload": { "$ref": "#/$defs/MeasuredValue" }
       }
     }
   }

@@ -21,8 +21,8 @@ sys.path.insert(0, str(REPO_ROOT / "python"))
 from virtualgpu.profile import validate_profile  # noqa: E402
 
 DEFAULT_BIN = Path(__file__).resolve().parent / "build" / "vgpu_bench"
-SUITE_VERSION = "0.12.0"
-PROFILE_REVISION = "0.12.0-posthoc"
+SUITE_VERSION = "0.13.0"
+PROFILE_REVISION = "0.13.0-posthoc"
 
 
 def find_nvidia_smi() -> str | None:
@@ -290,6 +290,8 @@ def build_profile(
     mma_chain_raw: dict[str, Any],
     serial_fill_raw: dict[str, Any],
     sync_loop_raw: dict[str, Any],
+    gmem_issue_raw: dict[str, Any],
+    spill_lat_raw: dict[str, Any],
     smi_samples: list[dict[str, Any]],
 ) -> dict[str, Any]:
     major = int(query["major"])
@@ -950,6 +952,70 @@ def build_profile(
             ),
         })
 
+    gmem_load_issue_per_sm: list[dict[str, Any]] = []
+    for pt in gmem_issue_raw["gmem_load_issue_per_sm"]:
+        w_bytes = int(pt["load_width_bytes"])
+        gmem_load_issue_per_sm.append({
+            "active_sms": int(pt["active_sms"]),
+            "load_width_bytes": w_bytes,
+            "num_warps": int(pt["num_warps"]),
+            "issue_rate_gwarp_inst_per_sm": make_measured(
+                [float(x) for x in pt["issue_rate_gwarp_inst_per_sm_samples"]],
+                unit="Gwarp-inst/s",
+                method=f"cuda_gmem_cg_load_issue_{w_bytes}b",
+                perturb_group="l2_bw",
+                clock_range=sm_range,
+                locked=False,
+                throttle_events=throttle_events,
+            ),
+            "delivered_bw_per_sm_gbps": make_measured(
+                [float(x) for x in pt["delivered_bw_per_sm_gbps_samples"]],
+                unit="GB/s",
+                method=f"cuda_gmem_cg_load_issue_{w_bytes}b",
+                perturb_group="l2_bw",
+                clock_range=sm_range,
+                locked=False,
+                throttle_events=throttle_events,
+            ),
+        })
+
+    # Compute spill reload extra_ns_vs_zero and ns_per_reload relative to reload_count=0 baseline.
+    spill_zero_med: dict[tuple[str, str], float] = {}
+    for pt in spill_lat_raw["reload_latency_by_count"]:
+        if int(pt["reload_count"]) == 0:
+            spill_zero_med[(str(pt["regime"]), str(pt["dependency_mode"]))] = float(
+                statistics.median([float(x) for x in pt["iter_time_ns_samples"]])
+            )
+
+    reload_latency_by_count: list[dict[str, Any]] = []
+    for pt in spill_lat_raw["reload_latency_by_count"]:
+        regime = str(pt["regime"])
+        dep_mode = str(pt["dependency_mode"])
+        rc = int(pt["reload_count"])
+        raw_s = [float(x) for x in pt["iter_time_ns_samples"]]
+        base_ns = spill_zero_med.get((regime, dep_mode), 0.0)
+        extra_s = [max(0.0, x - base_ns) for x in raw_s]
+        per_r_s = [e / rc for e in extra_s] if rc > 0 else [0.0 for _ in extra_s]
+        p_grp = "spill_l1" if regime == "l1_hit" else "spill_l2"
+        reload_latency_by_count.append({
+            "regime": regime,
+            "dependency_mode": dep_mode,
+            "num_warps": int(pt["num_warps"]),
+            "reload_count": rc,
+            "iter_time_ns": make_measured(
+                raw_s, unit="ns", method=f"cuda_spill_reload_{regime}_{dep_mode}",
+                perturb_group=p_grp, clock_range=sm_range, locked=False, throttle_events=throttle_events,
+            ),
+            "extra_ns_vs_zero": make_measured(
+                extra_s, unit="ns", method=f"cuda_spill_reload_{regime}_{dep_mode}",
+                perturb_group=p_grp, clock_range=sm_range, locked=False, throttle_events=throttle_events,
+            ),
+            "ns_per_reload": make_measured(
+                per_r_s, unit="ns", method=f"cuda_spill_reload_{regime}_{dep_mode}",
+                perturb_group=p_grp, clock_range=sm_range, locked=False, throttle_events=throttle_events,
+            ),
+        })
+
     sm_clock_ghz = (
         (statistics.median(sm_clocks) / 1000.0)
         if sm_clocks
@@ -1052,6 +1118,8 @@ def build_profile(
                 "l2_latency_by_bw": l2_lat_curve,
                 "l2_rescan_hit_rate_by_working_set": l2_rescan_curve,
                 "smem_latency_ns": smem_lat_mv,
+                "gmem_load_issue_per_sm": gmem_load_issue_per_sm,
+                "spill_reload_latency_by_count": reload_latency_by_count,
             },
             "compute": {
                 "mma_tflops_per_sm_by_warps": mma_curves,
@@ -1154,18 +1222,25 @@ def main() -> int:
     sync_loop_raw, smi_sl = run_bench_with_clock_polling(
         args.binary, "sync-loop", args.device, ["--samples", "5", "--warmup", "1"]
     )
+    gmem_issue_raw, smi_gi = run_bench_with_clock_polling(
+        args.binary, "gmem-issue", args.device, ["--samples", "11", "--warmup", "2"]
+    )
+    spill_lat_raw, smi_sp = run_bench_with_clock_polling(
+        args.binary, "spill-latency", args.device, ["--samples", "11", "--warmup", "2"]
+    )
     dispatch_raw, smi_disp = run_bench_with_clock_polling(
         args.binary, "cta-dispatch", args.device, ["--repeats", str(args.repeats)]
     )
     smi_samples = (
-        smi_dram + smi_mma + smi_l2 + smi_cp + smi_lat + smi_launch + smi_lc + smi_rs + smi_mlp + smi_cl + smi_mg + smi_so + smi_clm + smi_mc + smi_sf + smi_sl + smi_disp
+        smi_dram + smi_mma + smi_l2 + smi_cp + smi_lat + smi_launch + smi_lc + smi_rs + smi_mlp + smi_cl + smi_mg + smi_so + smi_clm + smi_mc + smi_sf + smi_sl + smi_gi + smi_sp + smi_disp
     )
 
     profile = build_profile(
         query, dram_raw, dispatch_raw, mma_raw, l2_raw, cp_async_raw,
         latency_raw, launch_raw, lat_curve_raw, l2_rescan_raw, mlp_raw,
         closed_loop_raw, l2_merge_raw, stage_oh_raw, closed_loop_mma_raw,
-        mma_chain_raw, serial_fill_raw, sync_loop_raw, smi_samples
+        mma_chain_raw, serial_fill_raw, sync_loop_raw, gmem_issue_raw,
+        spill_lat_raw, smi_samples
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("w", encoding="utf-8") as fh:

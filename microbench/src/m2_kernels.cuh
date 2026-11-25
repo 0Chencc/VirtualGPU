@@ -3402,3 +3402,257 @@ static int run_sync_loop(int device, int samples, int warmup) {
   CUDA_CHECK(cudaFree(d_sink_f));
   return 0;
 }
+
+// ---------------------------------------------------------------------------
+// 16. Post-hoc Group 1: Global load issue throughput by width (2/4/8/16 B)
+// ---------------------------------------------------------------------------
+
+template <int WIDTH_BYTES>
+__global__ void gmem_load_issue_kernel(const uint8_t* __restrict__ src,
+                                       uint32_t* __restrict__ sink,
+                                       size_t elem_mask,
+                                       int iters) {
+  const uint32_t tid = threadIdx.x;
+  const uint32_t threads = blockDim.x;
+  size_t idx = (static_cast<size_t>(blockIdx.x) * threads * 8ULL + tid) & elem_mask;
+  const size_t step = static_cast<size_t>(threads) * 8ULL;
+  uint32_t acc = 0u;
+
+  for (int it = 0; it < iters; ++it) {
+    #pragma unroll
+    for (int u = 0; u < 8; ++u) {
+      size_t cur = (idx + static_cast<size_t>(u) * threads) & elem_mask;
+      if constexpr (WIDTH_BYTES == 2) {
+        const uint16_t* p = reinterpret_cast<const uint16_t*>(src) + cur;
+        uint16_t v = 0;
+        asm volatile("ld.global.cg.u16 %0, [%1];\n" : "=h"(v) : "l"(p));
+        acc ^= static_cast<uint32_t>(v);
+      } else if constexpr (WIDTH_BYTES == 4) {
+        const uint32_t* p = reinterpret_cast<const uint32_t*>(src) + cur;
+        uint32_t v = 0;
+        asm volatile("ld.global.cg.u32 %0, [%1];\n" : "=r"(v) : "l"(p));
+        acc ^= v;
+      } else if constexpr (WIDTH_BYTES == 8) {
+        const uint2* p = reinterpret_cast<const uint2*>(src) + cur;
+        uint32_t x = 0, y = 0;
+        asm volatile("ld.global.cg.v2.u32 {%0, %1}, [%2];\n" : "=r"(x), "=r"(y) : "l"(p));
+        acc ^= (x ^ y);
+      } else {
+        const uint4* p = reinterpret_cast<const uint4*>(src) + cur;
+        uint32_t x = 0, y = 0, z = 0, w = 0;
+        asm volatile("ld.global.cg.v4.u32 {%0, %1, %2, %3}, [%4];\n"
+                     : "=r"(x), "=r"(y), "=r"(z), "=r"(w) : "l"(p));
+        acc ^= (x ^ y ^ z ^ w);
+      }
+    }
+    idx = (idx + step) & elem_mask;
+  }
+
+  if (acc == 0xdeadbeefu) {
+    sink[blockIdx.x * threads + tid] = acc;
+  }
+}
+
+static int run_gmem_issue(int device, int samples, int warmup) {
+  cudaDeviceProp prop{};
+  CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
+  const int sm_count = prop.multiProcessorCount;
+
+  // 4 MiB hot L2 buffer (fits comfortably in both 36 MiB RTX 4070 L2 and 24 MiB GB10 L2).
+  const size_t l2_bytes = 4ULL * 1024ULL * 1024ULL;
+  uint8_t* d_l2 = nullptr;
+  uint32_t* d_sink = nullptr;
+  CUDA_CHECK(cudaMalloc(&d_l2, l2_bytes));
+  CUDA_CHECK(cudaMalloc(&d_sink, static_cast<size_t>(sm_count) * 512 * sizeof(uint32_t)));
+  CUDA_CHECK(cudaMemset(d_l2, 0x5a, l2_bytes));
+
+  cudaEvent_t ev_start, ev_stop;
+  CUDA_CHECK(cudaEventCreate(&ev_start));
+  CUDA_CHECK(cudaEventCreate(&ev_stop));
+
+  const std::vector<int> grid_list = {1, sm_count};
+  const std::vector<int> width_list = {2, 4, 8, 16};
+  const std::vector<int> warp_list = {4, 8, 16};
+
+  std::printf("{\n  \"samples\": %d,\n  \"gmem_load_issue_per_sm\": [", samples);
+  bool first = true;
+
+  for (int active_sms : grid_list) {
+    for (int width : width_list) {
+      const size_t elem_mask = (l2_bytes / static_cast<size_t>(width)) - 1ULL;
+      for (int warps : warp_list) {
+        const int threads = warps * 32;
+        const int iters = (active_sms == 1) ? 4096 : 2048;
+        const double warp_insts_per_sm = static_cast<double>(warps) * static_cast<double>(iters) * 8.0;
+        const double bytes_per_sm = warp_insts_per_sm * 32.0 * static_cast<double>(width);
+
+        auto launch_once = [&]() {
+          if (width == 2) gmem_load_issue_kernel<2><<<active_sms, threads>>>(d_l2, d_sink, elem_mask, iters);
+          else if (width == 4) gmem_load_issue_kernel<4><<<active_sms, threads>>>(d_l2, d_sink, elem_mask, iters);
+          else if (width == 8) gmem_load_issue_kernel<8><<<active_sms, threads>>>(d_l2, d_sink, elem_mask, iters);
+          else gmem_load_issue_kernel<16><<<active_sms, threads>>>(d_l2, d_sink, elem_mask, iters);
+        };
+
+        for (int w = 0; w < warmup; ++w) launch_once();
+        CUDA_CHECK(cudaDeviceSynchronize());
+
+        std::vector<double> ginst_s, bw_s;
+        ginst_s.reserve(samples);
+        bw_s.reserve(samples);
+        for (int s = 0; s < samples; ++s) {
+          CUDA_CHECK(cudaEventRecord(ev_start));
+          launch_once();
+          CUDA_CHECK(cudaEventRecord(ev_stop));
+          CUDA_CHECK(cudaEventSynchronize(ev_stop));
+          float ms = 0.0f;
+          CUDA_CHECK(cudaEventElapsedTime(&ms, ev_start, ev_stop));
+          double sec = static_cast<double>(ms) / 1e3;
+          ginst_s.push_back((warp_insts_per_sm / 1e9) / sec);
+          bw_s.push_back((bytes_per_sm / 1e9) / sec);
+        }
+
+        if (!first) std::printf(",");
+        first = false;
+        std::printf(
+            "\n    {\"active_sms\": %d, \"load_width_bytes\": %d, \"num_warps\": %d, "
+            "\"issue_rate_gwarp_inst_per_sm_samples\": [",
+            active_sms, width, warps);
+        for (size_t i = 0; i < ginst_s.size(); ++i) { if (i) std::printf(", "); std::printf("%.4f", ginst_s[i]); }
+        std::printf("], \"delivered_bw_per_sm_gbps_samples\": [");
+        for (size_t i = 0; i < bw_s.size(); ++i) { if (i) std::printf(", "); std::printf("%.3f", bw_s[i]); }
+        std::printf("]}");
+      }
+    }
+  }
+  std::printf("\n  ]\n}\n");
+
+  CUDA_CHECK(cudaEventDestroy(ev_start));
+  CUDA_CHECK(cudaEventDestroy(ev_stop));
+  CUDA_CHECK(cudaFree(d_l2));
+  CUDA_CHECK(cudaFree(d_sink));
+  return 0;
+}
+
+// ---------------------------------------------------------------------------
+// 17. Post-hoc Group 2: Spill reload latency in dependent compute loop
+// ---------------------------------------------------------------------------
+
+template <int FRAME_U32, bool SERIAL_CHAIN>
+__global__ void spill_reload_latency_kernel(uint32_t* __restrict__ sink,
+                                            int reload_count,
+                                            int stride_u32,
+                                            int steps) {
+  // Runtime-indexed local array forces real .local frame allocation (LDL/STL).
+  uint32_t loc[FRAME_U32];
+  const uint32_t tid = threadIdx.x;
+  const uint32_t mask = static_cast<uint32_t>(FRAME_U32 - 1);
+
+  for (int i = 0; i < FRAME_U32; ++i) {
+    loc[i] = static_cast<uint32_t>((i + stride_u32) & mask);
+  }
+
+  uint32_t idx = (tid * 7u) & mask;
+  float dep = 1.0f + static_cast<float>(tid & 7u) * 0.01f;
+
+  for (int s = 0; s < steps; ++s) {
+    uint32_t r_acc = 0u;
+    if constexpr (SERIAL_CHAIN) {
+      // Each local reload feeds the next reload's address (strict critical-path chain).
+      for (int k = 0; k < reload_count; ++k) {
+        uint32_t v = loc[idx];
+        r_acc ^= v;
+        idx = (v + static_cast<uint32_t>(stride_u32)) & mask;
+      }
+    } else {
+      // All reloads issued as a batch before feeding the loop-carried dependency.
+      uint32_t base_idx = idx;
+      for (int k = 0; k < reload_count; ++k) {
+        r_acc ^= loc[(base_idx + static_cast<uint32_t>(k * stride_u32)) & mask];
+      }
+      idx = (base_idx + static_cast<uint32_t>(stride_u32) + (r_acc & 1u)) & mask;
+    }
+
+    // Small dependent FP32 compute chain consuming r_acc.
+    dep = dep * 0.9999f + static_cast<float>(r_acc & 15u) * 0.001f;
+    #pragma unroll
+    for (int f = 0; f < 8; ++f) {
+      dep = fmaf(dep, 1.0001f, 0.0001f);
+    }
+    idx = (idx + (dep < -1e9f ? 1u : 0u)) & mask;
+  }
+
+  if (dep == -999999.0f) {
+    sink[blockIdx.x * blockDim.x + tid] = static_cast<uint32_t>(dep);
+  }
+}
+
+static int run_spill_latency(int device, int samples, int warmup) {
+  cudaDeviceProp prop{};
+  CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
+  const int sm_count = prop.multiProcessorCount;
+
+  uint32_t* d_sink = nullptr;
+  CUDA_CHECK(cudaMalloc(&d_sink, static_cast<size_t>(sm_count) * 128 * sizeof(uint32_t)));
+
+  cudaEvent_t ev_start, ev_stop;
+  CUDA_CHECK(cudaEventCreate(&ev_start));
+  CUDA_CHECK(cudaEventCreate(&ev_stop));
+
+  // 4 warps/CTA (128 threads/SM):
+  //   l1_hit:   FRAME_U32 = 128  (512 B/thread x 128 = 64 KB < 128 KB L1)
+  //   l2_spill: FRAME_U32 = 1024 (4096 B/thread x 128 = 512 KB >> 128 KB L1, << L2)
+  const std::vector<int> reload_counts = {0, 8, 32, 68, 128};
+
+  std::printf("{\n  \"samples\": %d,\n  \"reload_latency_by_count\": [", samples);
+  bool first = true;
+
+  for (bool is_l2 : {false, true}) {
+    const char* regime = is_l2 ? "l2_spill" : "l1_hit";
+    // Stride 32 uint32 = 128 B (1 cache line) in l2_spill to force L1 misses; stride 1 in l1_hit.
+    const int stride_u32 = is_l2 ? 33 : 1;
+    for (bool serial : {true, false}) {
+      const char* dep_mode = serial ? "serial_chain" : "batch_before_dep";
+      for (int rc : reload_counts) {
+        int est_ns = 30 + rc * (is_l2 ? (serial ? 150 : 30) : (serial ? 25 : 4));
+        int steps = std::max(64, std::min(4096, 400000 / est_ns));
+
+        auto launch_once = [&]() {
+          if (!is_l2 && serial) spill_reload_latency_kernel<128, true><<<sm_count, 128>>>(d_sink, rc, stride_u32, steps);
+          else if (!is_l2 && !serial) spill_reload_latency_kernel<128, false><<<sm_count, 128>>>(d_sink, rc, stride_u32, steps);
+          else if (is_l2 && serial) spill_reload_latency_kernel<1024, true><<<sm_count, 128>>>(d_sink, rc, stride_u32, steps);
+          else spill_reload_latency_kernel<1024, false><<<sm_count, 128>>>(d_sink, rc, stride_u32, steps);
+        };
+
+        for (int w = 0; w < warmup; ++w) launch_once();
+        CUDA_CHECK(cudaDeviceSynchronize());
+
+        std::vector<double> ns_samples;
+        ns_samples.reserve(samples);
+        for (int s = 0; s < samples; ++s) {
+          CUDA_CHECK(cudaEventRecord(ev_start));
+          launch_once();
+          CUDA_CHECK(cudaEventRecord(ev_stop));
+          CUDA_CHECK(cudaEventSynchronize(ev_stop));
+          float ms = 0.0f;
+          CUDA_CHECK(cudaEventElapsedTime(&ms, ev_start, ev_stop));
+          ns_samples.push_back((static_cast<double>(ms) * 1e6) / static_cast<double>(steps));
+        }
+
+        if (!first) std::printf(",");
+        first = false;
+        std::printf(
+            "\n    {\"regime\": \"%s\", \"dependency_mode\": \"%s\", \"num_warps\": 4, "
+            "\"reload_count\": %d, \"iter_time_ns_samples\": [",
+            regime, dep_mode, rc);
+        for (size_t i = 0; i < ns_samples.size(); ++i) { if (i) std::printf(", "); std::printf("%.3f", ns_samples[i]); }
+        std::printf("]}");
+      }
+    }
+  }
+  std::printf("\n  ]\n}\n");
+
+  CUDA_CHECK(cudaEventDestroy(ev_start));
+  CUDA_CHECK(cudaEventDestroy(ev_stop));
+  CUDA_CHECK(cudaFree(d_sink));
+  return 0;
+}
