@@ -7,13 +7,13 @@
     "memory_type": "discrete"
   },
   "provenance": {
-    "profile_revision": "0.14.0-posthoc",
+    "profile_revision": "0.15.0-posthoc",
     "calibration_run_id": "cal-20261124T220249Z-sm_89",
     "calibration_manifest_digest": null,
     "source": "partial",
     "driver_version": "610.88",
     "toolkit_version": "13.5",
-    "suite_version": "0.14.0",
+    "suite_version": "0.15.0",
     "host_os": "linux",
     "is_wsl": true,
     "power_limit_w": 200.0,
@@ -37160,7 +37160,1305 @@
         "method": "cuda_ptx_shfl_sync_bfly_chain",
         "source": "measured",
         "perturb_group": null
-      }
+      },
+      "mma_softmax_chain": [
+        {
+          "ctas_per_sm": 1,
+          "num_warps": 4,
+          "mma_per_half": 4,
+          "softmax_ops": 16,
+          "solo_mma_ns": 103.52,
+          "solo_softmax_ns": 71.81,
+          "iter_time_ns": {
+            "value": 239.54,
+            "ci95_low": 239.47,
+            "ci95_high": 239.54,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 1,
+          "num_warps": 4,
+          "mma_per_half": 4,
+          "softmax_ops": 64,
+          "solo_mma_ns": 103.52,
+          "solo_softmax_ns": 213.97,
+          "iter_time_ns": {
+            "value": 323.35,
+            "ci95_low": 319.91,
+            "ci95_high": 458.44,
+            "rel_uncertainty": 0.2142,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 1,
+          "num_warps": 4,
+          "mma_per_half": 4,
+          "softmax_ops": 256,
+          "solo_mma_ns": 103.52,
+          "solo_softmax_ns": 673.32,
+          "iter_time_ns": {
+            "value": 775.81,
+            "ci95_low": 775.41,
+            "ci95_high": 785.01,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 1,
+          "num_warps": 4,
+          "mma_per_half": 8,
+          "softmax_ops": 16,
+          "solo_mma_ns": 205.42,
+          "solo_softmax_ns": 71.81,
+          "iter_time_ns": {
+            "value": 347.05,
+            "ci95_low": 346.33,
+            "ci95_high": 357.04,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 1,
+          "num_warps": 4,
+          "mma_per_half": 8,
+          "softmax_ops": 64,
+          "solo_mma_ns": 205.42,
+          "solo_softmax_ns": 213.97,
+          "iter_time_ns": {
+            "value": 428.69,
+            "ci95_low": 427.91,
+            "ci95_high": 441.84,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 1,
+          "num_warps": 4,
+          "mma_per_half": 8,
+          "softmax_ops": 256,
+          "solo_mma_ns": 205.42,
+          "solo_softmax_ns": 673.32,
+          "iter_time_ns": {
+            "value": 894.67,
+            "ci95_low": 894.67,
+            "ci95_high": 928.6,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 1,
+          "num_warps": 4,
+          "mma_per_half": 16,
+          "softmax_ops": 16,
+          "solo_mma_ns": 407.94,
+          "solo_softmax_ns": 71.81,
+          "iter_time_ns": {
+            "value": 545.2,
+            "ci95_low": 543.92,
+            "ci95_high": 551.58,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 1,
+          "num_warps": 4,
+          "mma_per_half": 16,
+          "softmax_ops": 64,
+          "solo_mma_ns": 407.94,
+          "solo_softmax_ns": 213.97,
+          "iter_time_ns": {
+            "value": 634.35,
+            "ci95_low": 632.79,
+            "ci95_high": 634.35,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 1,
+          "num_warps": 4,
+          "mma_per_half": 16,
+          "softmax_ops": 256,
+          "solo_mma_ns": 407.94,
+          "solo_softmax_ns": 673.32,
+          "iter_time_ns": {
+            "value": 1091.02,
+            "ci95_low": 1090.6,
+            "ci95_high": 1092.69,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 1,
+          "num_warps": 4,
+          "mma_per_half": 32,
+          "softmax_ops": 16,
+          "solo_mma_ns": 815.78,
+          "solo_softmax_ns": 71.81,
+          "iter_time_ns": {
+            "value": 944.68,
+            "ci95_low": 942.27,
+            "ci95_high": 944.68,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 1,
+          "num_warps": 4,
+          "mma_per_half": 32,
+          "softmax_ops": 64,
+          "solo_mma_ns": 815.78,
+          "solo_softmax_ns": 213.97,
+          "iter_time_ns": {
+            "value": 1029.36,
+            "ci95_low": 1029.36,
+            "ci95_high": 1045.28,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 1,
+          "num_warps": 4,
+          "mma_per_half": 32,
+          "softmax_ops": 256,
+          "solo_mma_ns": 815.78,
+          "solo_softmax_ns": 673.32,
+          "iter_time_ns": {
+            "value": 1499.84,
+            "ci95_low": 1496.03,
+            "ci95_high": 1522.44,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 1,
+          "num_warps": 8,
+          "mma_per_half": 4,
+          "softmax_ops": 16,
+          "solo_mma_ns": 205.73,
+          "solo_softmax_ns": 76.69,
+          "iter_time_ns": {
+            "value": 319.68,
+            "ci95_low": 319.68,
+            "ci95_high": 324.01,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 1,
+          "num_warps": 8,
+          "mma_per_half": 4,
+          "softmax_ops": 64,
+          "solo_mma_ns": 205.73,
+          "solo_softmax_ns": 304.95,
+          "iter_time_ns": {
+            "value": 482.72,
+            "ci95_low": 481.29,
+            "ci95_high": 489.86,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 1,
+          "num_warps": 8,
+          "mma_per_half": 4,
+          "softmax_ops": 256,
+          "solo_mma_ns": 205.73,
+          "solo_softmax_ns": 992.78,
+          "iter_time_ns": {
+            "value": 1175.02,
+            "ci95_low": 1171.34,
+            "ci95_high": 1175.02,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 1,
+          "num_warps": 8,
+          "mma_per_half": 8,
+          "softmax_ops": 16,
+          "solo_mma_ns": 409.6,
+          "solo_softmax_ns": 76.69,
+          "iter_time_ns": {
+            "value": 499.86,
+            "ci95_low": 498.43,
+            "ci95_high": 507.0,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 1,
+          "num_warps": 8,
+          "mma_per_half": 8,
+          "softmax_ops": 64,
+          "solo_mma_ns": 409.6,
+          "solo_softmax_ns": 304.95,
+          "iter_time_ns": {
+            "value": 679.35,
+            "ci95_low": 677.35,
+            "ci95_high": 689.31,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 1,
+          "num_warps": 8,
+          "mma_per_half": 8,
+          "softmax_ops": 256,
+          "solo_mma_ns": 409.6,
+          "solo_softmax_ns": 992.78,
+          "iter_time_ns": {
+            "value": 1375.6,
+            "ci95_low": 1372.41,
+            "ci95_high": 1397.91,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 1,
+          "num_warps": 8,
+          "mma_per_half": 16,
+          "softmax_ops": 16,
+          "solo_mma_ns": 815.89,
+          "solo_softmax_ns": 76.69,
+          "iter_time_ns": {
+            "value": 893.29,
+            "ci95_low": 891.21,
+            "ci95_high": 893.77,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 1,
+          "num_warps": 8,
+          "mma_per_half": 16,
+          "softmax_ops": 64,
+          "solo_mma_ns": 815.89,
+          "solo_softmax_ns": 304.95,
+          "iter_time_ns": {
+            "value": 1080.2,
+            "ci95_low": 1080.2,
+            "ci95_high": 1082.83,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 1,
+          "num_warps": 8,
+          "mma_per_half": 16,
+          "softmax_ops": 256,
+          "solo_mma_ns": 815.89,
+          "solo_softmax_ns": 992.78,
+          "iter_time_ns": {
+            "value": 1785.3,
+            "ci95_low": 1783.79,
+            "ci95_high": 1785.3,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 1,
+          "num_warps": 8,
+          "mma_per_half": 32,
+          "softmax_ops": 16,
+          "solo_mma_ns": 1628.25,
+          "solo_softmax_ns": 76.69,
+          "iter_time_ns": {
+            "value": 1716.28,
+            "ci95_low": 1711.47,
+            "ci95_high": 1745.13,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 1,
+          "num_warps": 8,
+          "mma_per_half": 32,
+          "softmax_ops": 64,
+          "solo_mma_ns": 1628.25,
+          "solo_softmax_ns": 304.95,
+          "iter_time_ns": {
+            "value": 1859.35,
+            "ci95_low": 1854.99,
+            "ci95_high": 1887.16,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 1,
+          "num_warps": 8,
+          "mma_per_half": 32,
+          "softmax_ops": 256,
+          "solo_mma_ns": 1628.25,
+          "solo_softmax_ns": 992.78,
+          "iter_time_ns": {
+            "value": 2407.16,
+            "ci95_low": 2407.16,
+            "ci95_high": 2414.81,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 2,
+          "num_warps": 4,
+          "mma_per_half": 4,
+          "softmax_ops": 16,
+          "solo_mma_ns": 103.52,
+          "solo_softmax_ns": 71.81,
+          "iter_time_ns": {
+            "value": 265.1,
+            "ci95_low": 264.99,
+            "ci95_high": 270.29,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 2,
+          "num_warps": 4,
+          "mma_per_half": 4,
+          "softmax_ops": 64,
+          "solo_mma_ns": 103.52,
+          "solo_softmax_ns": 213.97,
+          "iter_time_ns": {
+            "value": 395.25,
+            "ci95_low": 392.75,
+            "ci95_high": 428.45,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 2,
+          "num_warps": 4,
+          "mma_per_half": 4,
+          "softmax_ops": 256,
+          "solo_mma_ns": 103.52,
+          "solo_softmax_ns": 673.32,
+          "iter_time_ns": {
+            "value": 1093.99,
+            "ci95_low": 1090.3,
+            "ci95_high": 1093.99,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 2,
+          "num_warps": 4,
+          "mma_per_half": 8,
+          "softmax_ops": 16,
+          "solo_mma_ns": 205.42,
+          "solo_softmax_ns": 71.81,
+          "iter_time_ns": {
+            "value": 512.54,
+            "ci95_low": 511.29,
+            "ci95_high": 512.71,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 2,
+          "num_warps": 4,
+          "mma_per_half": 8,
+          "softmax_ops": 64,
+          "solo_mma_ns": 205.42,
+          "solo_softmax_ns": 213.97,
+          "iter_time_ns": {
+            "value": 476.14,
+            "ci95_low": 475.52,
+            "ci95_high": 478.13,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 2,
+          "num_warps": 4,
+          "mma_per_half": 8,
+          "softmax_ops": 256,
+          "solo_mma_ns": 205.42,
+          "solo_softmax_ns": 673.32,
+          "iter_time_ns": {
+            "value": 1227.95,
+            "ci95_low": 1223.7,
+            "ci95_high": 1227.95,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 2,
+          "num_warps": 4,
+          "mma_per_half": 16,
+          "softmax_ops": 16,
+          "solo_mma_ns": 407.94,
+          "solo_softmax_ns": 71.81,
+          "iter_time_ns": {
+            "value": 903.98,
+            "ci95_low": 903.66,
+            "ci95_high": 903.98,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 2,
+          "num_warps": 4,
+          "mma_per_half": 16,
+          "softmax_ops": 64,
+          "solo_mma_ns": 407.94,
+          "solo_softmax_ns": 213.97,
+          "iter_time_ns": {
+            "value": 1033.37,
+            "ci95_low": 1030.24,
+            "ci95_high": 1036.49,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 2,
+          "num_warps": 4,
+          "mma_per_half": 16,
+          "softmax_ops": 256,
+          "solo_mma_ns": 407.94,
+          "solo_softmax_ns": 673.32,
+          "iter_time_ns": {
+            "value": 1324.23,
+            "ci95_low": 1324.23,
+            "ci95_high": 1324.23,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 2,
+          "num_warps": 4,
+          "mma_per_half": 32,
+          "softmax_ops": 16,
+          "solo_mma_ns": 815.78,
+          "solo_softmax_ns": 71.81,
+          "iter_time_ns": {
+            "value": 1734.91,
+            "ci95_low": 1730.7,
+            "ci95_high": 1735.51,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 2,
+          "num_warps": 4,
+          "mma_per_half": 32,
+          "softmax_ops": 64,
+          "solo_mma_ns": 815.78,
+          "solo_softmax_ns": 213.97,
+          "iter_time_ns": {
+            "value": 1860.36,
+            "ci95_low": 1854.99,
+            "ci95_high": 1860.36,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 2,
+          "num_warps": 4,
+          "mma_per_half": 32,
+          "softmax_ops": 256,
+          "solo_mma_ns": 815.78,
+          "solo_softmax_ns": 673.32,
+          "iter_time_ns": {
+            "value": 1772.18,
+            "ci95_low": 1765.25,
+            "ci95_high": 1772.9,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 2,
+          "num_warps": 8,
+          "mma_per_half": 4,
+          "softmax_ops": 16,
+          "solo_mma_ns": 205.73,
+          "solo_softmax_ns": 76.69,
+          "iter_time_ns": {
+            "value": 524.99,
+            "ci95_low": 521.53,
+            "ci95_high": 526.73,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 2,
+          "num_warps": 8,
+          "mma_per_half": 4,
+          "softmax_ops": 64,
+          "solo_mma_ns": 205.73,
+          "solo_softmax_ns": 304.95,
+          "iter_time_ns": {
+            "value": 649.3,
+            "ci95_low": 649.3,
+            "ci95_high": 695.06,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 2,
+          "num_warps": 8,
+          "mma_per_half": 4,
+          "softmax_ops": 256,
+          "solo_mma_ns": 205.73,
+          "solo_softmax_ns": 992.78,
+          "iter_time_ns": {
+            "value": 2010.71,
+            "ci95_low": 2003.8,
+            "ci95_high": 2048.0,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 2,
+          "num_warps": 8,
+          "mma_per_half": 8,
+          "softmax_ops": 16,
+          "solo_mma_ns": 409.6,
+          "solo_softmax_ns": 76.69,
+          "iter_time_ns": {
+            "value": 912.45,
+            "ci95_low": 909.59,
+            "ci95_high": 926.75,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 2,
+          "num_warps": 8,
+          "mma_per_half": 8,
+          "softmax_ops": 64,
+          "solo_mma_ns": 409.6,
+          "solo_softmax_ns": 304.95,
+          "iter_time_ns": {
+            "value": 1007.94,
+            "ci95_low": 999.1,
+            "ci95_high": 1015.16,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 2,
+          "num_warps": 8,
+          "mma_per_half": 8,
+          "softmax_ops": 256,
+          "solo_mma_ns": 409.6,
+          "solo_softmax_ns": 992.78,
+          "iter_time_ns": {
+            "value": 2255.5,
+            "ci95_low": 2248.0,
+            "ci95_high": 2264.0,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 2,
+          "num_warps": 8,
+          "mma_per_half": 16,
+          "softmax_ops": 16,
+          "solo_mma_ns": 815.89,
+          "solo_softmax_ns": 76.69,
+          "iter_time_ns": {
+            "value": 1672.64,
+            "ci95_low": 1510.4,
+            "ci95_high": 1725.44,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 2,
+          "num_warps": 8,
+          "mma_per_half": 16,
+          "softmax_ops": 64,
+          "solo_mma_ns": 815.89,
+          "solo_softmax_ns": 304.95,
+          "iter_time_ns": {
+            "value": 1685.85,
+            "ci95_low": 1685.85,
+            "ci95_high": 1690.34,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 2,
+          "num_warps": 8,
+          "mma_per_half": 16,
+          "softmax_ops": 256,
+          "solo_mma_ns": 815.89,
+          "solo_softmax_ns": 992.78,
+          "iter_time_ns": {
+            "value": 2262.75,
+            "ci95_low": 2248.0,
+            "ci95_high": 2304.0,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 2,
+          "num_warps": 8,
+          "mma_per_half": 32,
+          "softmax_ops": 16,
+          "solo_mma_ns": 1628.25,
+          "solo_softmax_ns": 76.69,
+          "iter_time_ns": {
+            "value": 2984.0,
+            "ci95_low": 2983.0,
+            "ci95_high": 3023.75,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 2,
+          "num_warps": 8,
+          "mma_per_half": 32,
+          "softmax_ops": 64,
+          "solo_mma_ns": 1628.25,
+          "solo_softmax_ns": 304.95,
+          "iter_time_ns": {
+            "value": 3045.25,
+            "ci95_low": 3040.0,
+            "ci95_high": 3048.0,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 2,
+          "num_warps": 8,
+          "mma_per_half": 32,
+          "softmax_ops": 256,
+          "solo_mma_ns": 1628.25,
+          "solo_softmax_ns": 992.78,
+          "iter_time_ns": {
+            "value": 3535.75,
+            "ci95_low": 3525.25,
+            "ci95_high": 3544.0,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 3,
+          "num_warps": 4,
+          "mma_per_half": 4,
+          "softmax_ops": 16,
+          "solo_mma_ns": 103.52,
+          "solo_softmax_ns": 71.81,
+          "iter_time_ns": {
+            "value": 346.96,
+            "ci95_low": 346.96,
+            "ci95_high": 363.86,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 3,
+          "num_warps": 4,
+          "mma_per_half": 4,
+          "softmax_ops": 64,
+          "solo_mma_ns": 103.52,
+          "solo_softmax_ns": 213.97,
+          "iter_time_ns": {
+            "value": 438.49,
+            "ci95_low": 434.88,
+            "ci95_high": 439.16,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 3,
+          "num_warps": 4,
+          "mma_per_half": 4,
+          "softmax_ops": 256,
+          "solo_mma_ns": 103.52,
+          "solo_softmax_ns": 673.32,
+          "iter_time_ns": {
+            "value": 1372.71,
+            "ci95_low": 1367.18,
+            "ci95_high": 1433.6,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 3,
+          "num_warps": 4,
+          "mma_per_half": 8,
+          "softmax_ops": 16,
+          "solo_mma_ns": 205.42,
+          "solo_softmax_ns": 71.81,
+          "iter_time_ns": {
+            "value": 644.82,
+            "ci95_low": 642.68,
+            "ci95_high": 649.1,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 3,
+          "num_warps": 4,
+          "mma_per_half": 8,
+          "softmax_ops": 64,
+          "solo_mma_ns": 205.42,
+          "solo_softmax_ns": 213.97,
+          "iter_time_ns": {
+            "value": 632.91,
+            "ci95_low": 632.91,
+            "ci95_high": 635.9,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 3,
+          "num_warps": 4,
+          "mma_per_half": 8,
+          "softmax_ops": 256,
+          "solo_mma_ns": 205.42,
+          "solo_softmax_ns": 673.32,
+          "iter_time_ns": {
+            "value": 1526.46,
+            "ci95_low": 1526.46,
+            "ci95_high": 1653.66,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 3,
+          "num_warps": 4,
+          "mma_per_half": 16,
+          "softmax_ops": 16,
+          "solo_mma_ns": 407.94,
+          "solo_softmax_ns": 71.81,
+          "iter_time_ns": {
+            "value": 1188.91,
+            "ci95_low": 1177.17,
+            "ci95_high": 1200.42,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 3,
+          "num_warps": 4,
+          "mma_per_half": 16,
+          "softmax_ops": 64,
+          "solo_mma_ns": 407.94,
+          "solo_softmax_ns": 213.97,
+          "iter_time_ns": {
+            "value": 1299.29,
+            "ci95_low": 1293.88,
+            "ci95_high": 1303.82,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 3,
+          "num_warps": 4,
+          "mma_per_half": 16,
+          "softmax_ops": 256,
+          "solo_mma_ns": 407.94,
+          "solo_softmax_ns": 673.32,
+          "iter_time_ns": {
+            "value": 1784.0,
+            "ci95_low": 1743.5,
+            "ci95_high": 1784.0,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 3,
+          "num_warps": 4,
+          "mma_per_half": 32,
+          "softmax_ops": 16,
+          "solo_mma_ns": 815.78,
+          "solo_softmax_ns": 71.81,
+          "iter_time_ns": {
+            "value": 2269.3,
+            "ci95_low": 2264.34,
+            "ci95_high": 2466.25,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 3,
+          "num_warps": 4,
+          "mma_per_half": 32,
+          "softmax_ops": 64,
+          "solo_mma_ns": 815.78,
+          "solo_softmax_ns": 213.97,
+          "iter_time_ns": {
+            "value": 2360.0,
+            "ci95_low": 2334.0,
+            "ci95_high": 2368.0,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 3,
+          "num_warps": 4,
+          "mma_per_half": 32,
+          "softmax_ops": 256,
+          "solo_mma_ns": 815.78,
+          "solo_softmax_ns": 673.32,
+          "iter_time_ns": {
+            "value": 2712.0,
+            "ci95_low": 2680.0,
+            "ci95_high": 2728.0,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 3,
+          "num_warps": 8,
+          "mma_per_half": 4,
+          "softmax_ops": 16,
+          "solo_mma_ns": 205.73,
+          "solo_softmax_ns": 76.69,
+          "iter_time_ns": {
+            "value": 647.15,
+            "ci95_low": 644.55,
+            "ci95_high": 657.54,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 3,
+          "num_warps": 8,
+          "mma_per_half": 4,
+          "softmax_ops": 64,
+          "solo_mma_ns": 205.73,
+          "solo_softmax_ns": 304.95,
+          "iter_time_ns": {
+            "value": 860.79,
+            "ci95_low": 838.43,
+            "ci95_high": 904.03,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 3,
+          "num_warps": 8,
+          "mma_per_half": 4,
+          "softmax_ops": 256,
+          "solo_mma_ns": 205.73,
+          "solo_softmax_ns": 992.78,
+          "iter_time_ns": {
+            "value": 2599.5,
+            "ci95_low": 2560.0,
+            "ci95_high": 2672.0,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 3,
+          "num_warps": 8,
+          "mma_per_half": 8,
+          "softmax_ops": 16,
+          "solo_mma_ns": 409.6,
+          "solo_softmax_ns": 76.69,
+          "iter_time_ns": {
+            "value": 1182.53,
+            "ci95_low": 1181.46,
+            "ci95_high": 1203.95,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 3,
+          "num_warps": 8,
+          "mma_per_half": 8,
+          "softmax_ops": 64,
+          "solo_mma_ns": 409.6,
+          "solo_softmax_ns": 304.95,
+          "iter_time_ns": {
+            "value": 1323.42,
+            "ci95_low": 1315.74,
+            "ci95_high": 1347.37,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 3,
+          "num_warps": 8,
+          "mma_per_half": 8,
+          "softmax_ops": 256,
+          "solo_mma_ns": 409.6,
+          "solo_softmax_ns": 992.78,
+          "iter_time_ns": {
+            "value": 2792.0,
+            "ci95_low": 2782.25,
+            "ci95_high": 2888.0,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 3,
+          "num_warps": 8,
+          "mma_per_half": 16,
+          "softmax_ops": 16,
+          "solo_mma_ns": 815.89,
+          "solo_softmax_ns": 76.69,
+          "iter_time_ns": {
+            "value": 2248.18,
+            "ci95_low": 2240.48,
+            "ci95_high": 2255.4,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 3,
+          "num_warps": 8,
+          "mma_per_half": 16,
+          "softmax_ops": 64,
+          "solo_mma_ns": 815.89,
+          "solo_softmax_ns": 304.95,
+          "iter_time_ns": {
+            "value": 2424.0,
+            "ci95_low": 2416.0,
+            "ci95_high": 2520.0,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 3,
+          "num_warps": 8,
+          "mma_per_half": 16,
+          "softmax_ops": 256,
+          "solo_mma_ns": 815.89,
+          "solo_softmax_ns": 992.78,
+          "iter_time_ns": {
+            "value": 3080.0,
+            "ci95_low": 3072.0,
+            "ci95_high": 3095.25,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 3,
+          "num_warps": 8,
+          "mma_per_half": 32,
+          "softmax_ops": 16,
+          "solo_mma_ns": 1628.25,
+          "solo_softmax_ns": 76.69,
+          "iter_time_ns": {
+            "value": 4424.0,
+            "ci95_low": 4416.0,
+            "ci95_high": 4464.0,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 3,
+          "num_warps": 8,
+          "mma_per_half": 32,
+          "softmax_ops": 64,
+          "solo_mma_ns": 1628.25,
+          "solo_softmax_ns": 304.95,
+          "iter_time_ns": {
+            "value": 4552.0,
+            "ci95_low": 4512.0,
+            "ci95_high": 4624.0,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        },
+        {
+          "ctas_per_sm": 3,
+          "num_warps": 8,
+          "mma_per_half": 32,
+          "softmax_ops": 256,
+          "solo_mma_ns": 1628.25,
+          "solo_softmax_ns": 992.78,
+          "iter_time_ns": {
+            "value": 5040.0,
+            "ci95_low": 5032.0,
+            "ci95_high": 5224.0,
+            "rel_uncertainty": 0.1082,
+            "unit": "ns",
+            "method": "cuda_mma_softmax_chain",
+            "source": "measured",
+            "perturb_group": "mma_dense"
+          }
+        }
+      ]
     },
     "occupancy": {
       "smem_carveout_observed": []

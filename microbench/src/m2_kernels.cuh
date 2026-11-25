@@ -4004,3 +4004,233 @@ static int run_sfu_shfl(int device, int samples, int warmup) {
   CUDA_CHECK(cudaFree(d_sink_u));
   return 0;
 }
+
+// ---------------------------------------------------------------------------
+// 20. Phase 4 Attention: Dependent MMA -> Softmax (ALU/SFU/SHFL) -> MMA chain
+//     measuring serial vs overlapped execution across 1/2/3 CTAs/SM
+// ---------------------------------------------------------------------------
+
+template <int M_HALF, int K_SOFTMAX>
+__global__ void mma_softmax_chain_kernel(float* __restrict__ sink, int steps) {
+  const uint32_t tid = threadIdx.x;
+  uint32_t a0 = 0x3c003c00u, a1 = 0x3c003c00u, a2 = 0x3c003c00u, a3 = 0x3c003c00u;
+  uint32_t b0 = 0x3c003c00u, b1 = 0x3c003c00u;
+  float c00 = 0.f, c01 = 0.f, c02 = 0.f, c03 = 0.f;
+  float c10 = 0.f, c11 = 0.f, c12 = 0.f, c13 = 0.f;
+  float c20 = 0.f, c21 = 0.f, c22 = 0.f, c23 = 0.f;
+  float c30 = 0.f, c31 = 0.f, c32 = 0.f, c33 = 0.f;
+  float o00 = 0.f, o01 = 0.f, o02 = 0.f, o03 = 0.f;
+  float o10 = 0.f, o11 = 0.f, o12 = 0.f, o13 = 0.f;
+  float o20 = 0.f, o21 = 0.f, o22 = 0.f, o23 = 0.f;
+  float o30 = 0.f, o31 = 0.f, o32 = 0.f, o33 = 0.f;
+  float sf_acc = -0.5f - static_cast<float>(tid & 7u) * 0.01f;
+
+  auto run_mma_block = [&](float& r00, float& r01, float& r02, float& r03,
+                           float& r10, float& r11, float& r12, float& r13,
+                           float& r20, float& r21, float& r22, float& r23,
+                           float& r30, float& r31, float& r32, float& r33) {
+    constexpr int GROUPS = M_HALF / 4;
+    #pragma unroll
+    for (int g = 0; g < GROUPS; ++g) {
+      asm volatile(
+          "mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 "
+          "{%0,%1,%2,%3}, {%4,%5,%6,%7}, {%8,%9}, {%0,%1,%2,%3};\n"
+          : "+f"(r00), "+f"(r01), "+f"(r02), "+f"(r03)
+          : "r"(a0), "r"(a1), "r"(a2), "r"(a3), "r"(b0), "r"(b1));
+      asm volatile(
+          "mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 "
+          "{%0,%1,%2,%3}, {%4,%5,%6,%7}, {%8,%9}, {%0,%1,%2,%3};\n"
+          : "+f"(r10), "+f"(r11), "+f"(r12), "+f"(r13)
+          : "r"(a0), "r"(a1), "r"(a2), "r"(a3), "r"(b0), "r"(b1));
+      asm volatile(
+          "mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 "
+          "{%0,%1,%2,%3}, {%4,%5,%6,%7}, {%8,%9}, {%0,%1,%2,%3};\n"
+          : "+f"(r20), "+f"(r21), "+f"(r22), "+f"(r23)
+          : "r"(a0), "r"(a1), "r"(a2), "r"(a3), "r"(b0), "r"(b1));
+      asm volatile(
+          "mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 "
+          "{%0,%1,%2,%3}, {%4,%5,%6,%7}, {%8,%9}, {%0,%1,%2,%3};\n"
+          : "+f"(r30), "+f"(r31), "+f"(r32), "+f"(r33)
+          : "r"(a0), "r"(a1), "r"(a2), "r"(a3), "r"(b0), "r"(b1));
+    }
+  };
+
+  for (int step = 0; step < steps; ++step) {
+    // 1. QK^T MMA block.
+    if constexpr (M_HALF > 0) {
+      run_mma_block(c00, c01, c02, c03, c10, c11, c12, c13,
+                    c20, c21, c22, c23, c30, c31, c32, c33);
+    }
+
+    // 2. Dependent softmax block (shfl.bfly max/sum reduction + ex2.approx + fmax/fmul).
+    if constexpr (K_SOFTMAX > 0) {
+      float x0 = -0.5f - static_cast<float>(__float_as_uint(c00) & 7u) * 0.01f + sf_acc * 0.01f;
+      float x1 = -0.5f - static_cast<float>(__float_as_uint(c10) & 7u) * 0.01f;
+      float x2 = -0.5f - static_cast<float>(__float_as_uint(c20) & 7u) * 0.01f;
+      float x3 = -0.5f - static_cast<float>(__float_as_uint(c30) & 7u) * 0.01f;
+
+      // Row-max butterfly reduction (2 shfl.bfly).
+      float m_val = fmaxf(fmaxf(x0, x1), fmaxf(x2, x3));
+      uint32_t mb = __float_as_uint(m_val);
+      uint32_t sh1 = 0u, sh2 = 0u;
+      asm volatile("shfl.sync.bfly.b32 %0, %1, 1, 0x1f, 0xffffffff;\n" : "=r"(sh1) : "r"(mb));
+      m_val = fmaxf(m_val, __uint_as_float(sh1));
+      mb = __float_as_uint(m_val);
+      asm volatile("shfl.sync.bfly.b32 %0, %1, 2, 0x1f, 0xffffffff;\n" : "=r"(sh2) : "r"(mb));
+      m_val = fmaxf(m_val, __uint_as_float(sh2));
+
+      // K_SOFTMAX/2 ex2.approx + K_SOFTMAX/2 ALU (fsub/fmul/fma), 4-way unrolled.
+      constexpr int SF_ROUNDS = K_SOFTMAX / 8;
+      float sum0 = 0.f, sum1 = 0.f, sum2 = 0.f, sum3 = 0.f;
+      #pragma unroll 4
+      for (int r = 0; r < SF_ROUNDS; ++r) {
+        float e0, e1, e2, e3;
+        asm volatile("ex2.approx.f32 %0, %1;\n" : "=f"(e0) : "f"(x0));
+        asm volatile("ex2.approx.f32 %0, %1;\n" : "=f"(e1) : "f"(x1));
+        asm volatile("ex2.approx.f32 %0, %1;\n" : "=f"(e2) : "f"(x2));
+        asm volatile("ex2.approx.f32 %0, %1;\n" : "=f"(e3) : "f"(x3));
+        sum0 = fmaf(e0, 0.5f, sum0);
+        sum1 = fmaf(e1, 0.5f, sum1);
+        sum2 = fmaf(e2, 0.5f, sum2);
+        sum3 = fmaf(e3, 0.5f, sum3);
+        x0 = -e0; x1 = -e1; x2 = -e2; x3 = -e3;
+      }
+
+      // Row-sum butterfly reduction (2 shfl.bfly).
+      float l_val = (sum0 + sum1) + (sum2 + sum3) + m_val * 0.001f;
+      uint32_t lb = __float_as_uint(l_val);
+      asm volatile("shfl.sync.bfly.b32 %0, %1, 1, 0x1f, 0xffffffff;\n" : "=r"(sh1) : "r"(lb));
+      l_val += __uint_as_float(sh1);
+      lb = __float_as_uint(l_val);
+      asm volatile("shfl.sync.bfly.b32 %0, %1, 2, 0x1f, 0xffffffff;\n" : "=r"(sh2) : "r"(lb));
+      l_val += __uint_as_float(sh2);
+      sf_acc = l_val;
+
+      // Feed softmax result into PV MMA operand a0 (keeps normal f16 values near 1.0).
+      a0 = 0x3c003c00u ^ (__float_as_uint(l_val) & 1u);
+    }
+
+    // 3. PV MMA block depending on a0 from softmax.
+    if constexpr (M_HALF > 0) {
+      run_mma_block(o00, o01, o02, o03, o10, o11, o12, o13,
+                    o20, o21, o22, o23, o30, o31, o32, o33);
+      a1 = 0x3c003c00u ^ (__float_as_uint(o00) & 1u);
+    }
+
+    // 4. Stage barrier.
+    asm volatile("bar.sync 0;\n" ::: "memory");
+  }
+
+  float sum = c00 + c10 + c20 + c30 + o00 + o10 + o20 + o30 + sf_acc;
+  if (sum == -999999.0f) {
+    sink[blockIdx.x * blockDim.x + tid] = sum;
+  }
+}
+
+template <int M_HALF>
+static void dispatch_mma_softmax_k(int k_sf, int grid, int threads, float* d_sink, int steps) {
+  switch (k_sf) {
+    case 0: mma_softmax_chain_kernel<M_HALF, 0><<<grid, threads>>>(d_sink, steps); break;
+    case 16: mma_softmax_chain_kernel<M_HALF, 16><<<grid, threads>>>(d_sink, steps); break;
+    case 64: mma_softmax_chain_kernel<M_HALF, 64><<<grid, threads>>>(d_sink, steps); break;
+    case 256: mma_softmax_chain_kernel<M_HALF, 256><<<grid, threads>>>(d_sink, steps); break;
+    default: break;
+  }
+}
+
+static void dispatch_mma_softmax(int m_half, int k_sf, int grid, int threads, float* d_sink, int steps) {
+  switch (m_half) {
+    case 0: dispatch_mma_softmax_k<0>(k_sf, grid, threads, d_sink, steps); break;
+    case 4: dispatch_mma_softmax_k<4>(k_sf, grid, threads, d_sink, steps); break;
+    case 8: dispatch_mma_softmax_k<8>(k_sf, grid, threads, d_sink, steps); break;
+    case 16: dispatch_mma_softmax_k<16>(k_sf, grid, threads, d_sink, steps); break;
+    case 32: dispatch_mma_softmax_k<32>(k_sf, grid, threads, d_sink, steps); break;
+    default: break;
+  }
+}
+
+static int run_mma_softmax_chain(int device, int samples, int warmup) {
+  cudaDeviceProp prop{};
+  CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
+  const int sm_count = prop.multiProcessorCount;
+
+  float* d_sink = nullptr;
+  CUDA_CHECK(cudaMalloc(&d_sink, static_cast<size_t>(sm_count) * 3 * 256 * sizeof(float)));
+
+  cudaEvent_t ev_start, ev_stop;
+  CUDA_CHECK(cudaEventCreate(&ev_start));
+  CUDA_CHECK(cudaEventCreate(&ev_stop));
+
+  const std::vector<int> cps_list = {1, 2, 3};
+  const std::vector<int> warp_list = {4, 8};
+  const std::vector<int> m_list = {4, 8, 16, 32};
+  const std::vector<int> k_list = {16, 64, 256};
+
+  auto measure_one = [&](int cps, int warps, int m_half, int k_sf) -> std::vector<double> {
+    int threads = warps * 32;
+    int grid = sm_count * cps;
+    int est_ns = std::max(30, cps * (warps / 4) * (24 * m_half + 2 * k_sf + 20));
+    int steps = std::max(128, std::min(8192, 350000 / est_ns));
+    for (int w = 0; w < warmup; ++w) dispatch_mma_softmax(m_half, k_sf, grid, threads, d_sink, steps);
+    CUDA_CHECK(cudaDeviceSynchronize());
+    std::vector<double> out;
+    out.reserve(samples);
+    for (int s = 0; s < samples; ++s) {
+      CUDA_CHECK(cudaEventRecord(ev_start));
+      dispatch_mma_softmax(m_half, k_sf, grid, threads, d_sink, steps);
+      CUDA_CHECK(cudaEventRecord(ev_stop));
+      CUDA_CHECK(cudaEventSynchronize(ev_stop));
+      float ms = 0.0f;
+      CUDA_CHECK(cudaEventElapsedTime(&ms, ev_start, ev_stop));
+      out.push_back((static_cast<double>(ms) * 1e6) / static_cast<double>(steps));
+    }
+    return out;
+  };
+
+  auto vec_median = [](std::vector<double> v) -> double {
+    std::sort(v.begin(), v.end());
+    return v[v.size() / 2];
+  };
+
+  // Calibrate solo MMA (k=0) and solo softmax (m=0) at ctas_per_sm=1.
+  double solo_mma[2][4] = {};
+  double solo_sf[2][3] = {};
+  for (size_t wi = 0; wi < warp_list.size(); ++wi) {
+    for (size_t mi = 0; mi < m_list.size(); ++mi) {
+      solo_mma[wi][mi] = vec_median(measure_one(1, warp_list[wi], m_list[mi], 0));
+    }
+    for (size_t ki = 0; ki < k_list.size(); ++ki) {
+      solo_sf[wi][ki] = vec_median(measure_one(1, warp_list[wi], 0, k_list[ki]));
+    }
+  }
+
+  std::printf("{\n  \"samples\": %d,\n  \"mma_softmax_chain\": [", samples);
+  bool first = true;
+  for (int cps : cps_list) {
+    for (size_t wi = 0; wi < warp_list.size(); ++wi) {
+      int warps = warp_list[wi];
+      for (size_t mi = 0; mi < m_list.size(); ++mi) {
+        int m_half = m_list[mi];
+        for (size_t ki = 0; ki < k_list.size(); ++ki) {
+          int k_sf = k_list[ki];
+          auto ns_s = measure_one(cps, warps, m_half, k_sf);
+          if (!first) std::printf(",");
+          first = false;
+          std::printf(
+              "\n    {\"ctas_per_sm\": %d, \"num_warps\": %d, \"mma_per_half\": %d, "
+              "\"softmax_ops\": %d, \"solo_mma_ns\": %.2f, \"solo_softmax_ns\": %.2f, "
+              "\"iter_time_ns_samples\": [",
+              cps, warps, m_half, k_sf, solo_mma[wi][mi], solo_sf[wi][ki]);
+          for (size_t i = 0; i < ns_s.size(); ++i) { if (i) std::printf(", "); std::printf("%.2f", ns_s[i]); }
+          std::printf("]}");
+        }
+      }
+    }
+  }
+  std::printf("\n  ]\n}\n");
+
+  CUDA_CHECK(cudaEventDestroy(ev_start));
+  CUDA_CHECK(cudaEventDestroy(ev_stop));
+  CUDA_CHECK(cudaFree(d_sink));
+  return 0;
+}

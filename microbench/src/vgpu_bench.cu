@@ -545,6 +545,9 @@ int main(int argc, char** argv) {
   if (mode == "sfu-shfl") {
     return run_sfu_shfl(device, samples, warmup);
   }
+  if (mode == "mma-softmax-chain") {
+    return run_mma_softmax_chain(device, samples, warmup);
+  }
   std::fprintf(stderr, "Unknown mode: %s\n", mode.c_str());
   return 2;
 }

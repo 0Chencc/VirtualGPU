@@ -372,7 +372,12 @@
               "minItems": 1,
               "items": { "$ref": "#/$defs/WarpIssueRatePoint" }
             },
-            "shfl_latency_ns": { "$ref": "#/$defs/MeasuredValue" }
+            "shfl_latency_ns": { "$ref": "#/$defs/MeasuredValue" },
+            "mma_softmax_chain": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/MmaSoftmaxChainPoint" }
+            }
           }
         },
         "occupancy": {
@@ -905,6 +910,28 @@
       "properties": {
         "warps_per_sm": { "type": "integer", "minimum": 1 },
         "rate": { "$ref": "#/$defs/MeasuredValue" }
+      }
+    },
+    "MmaSoftmaxChainPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ctas_per_sm",
+        "num_warps",
+        "mma_per_half",
+        "softmax_ops",
+        "solo_mma_ns",
+        "solo_softmax_ns",
+        "iter_time_ns"
+      ],
+      "properties": {
+        "ctas_per_sm": { "type": "integer", "minimum": 1 },
+        "num_warps": { "type": "integer", "minimum": 1 },
+        "mma_per_half": { "type": "integer", "minimum": 1 },
+        "softmax_ops": { "type": "integer", "minimum": 1 },
+        "solo_mma_ns": { "type": "number", "minimum": 0 },
+        "solo_softmax_ns": { "type": "number", "minimum": 0 },
+        "iter_time_ns": { "$ref": "#/$defs/MeasuredValue" }
       }
     }
   }
