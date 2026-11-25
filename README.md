@@ -33,6 +33,69 @@ Triton comes first: tile shapes, layouts, `num_warps` and `num_stages` are expli
 
 See [docs/design.md](docs/design.md) for the full design. The Kernel IR is independent of language and vendor: Triton is the first frontend, and a PTX frontend follows. The model core is written in Rust with Python bindings.
 
+## Installation
+
+Prebuilt Linux `abi3` wheels (`x86_64` and `aarch64`, Python 3.10–3.13) and source distributions are attached to [GitHub Releases](https://github.com/VirtualGPU/VirtualGPU/releases).
+
+```bash
+# Install a GitHub Release wheel with Triton 3.9 (not published to PyPI):
+pip install "virtualgpu-0.2.0-cp310-abi3-manylinux_2_34_x86_64.whl[triton]"
+
+# Or build from source (requires Rust toolchain and maturin):
+pip install ".[triton]"
+```
+
+The base `virtualgpu` package includes the Rust performance model core (`virtualgpu._core`), embedded JSON schemas, and bundled GPU profiles (`rtx4070`, `gb10`). Add the `[triton]` extra when extracting or autotuning Triton kernels.
+
+## Quickstart
+
+### 1. Choose a GPU profile
+
+Bundled profiles can be passed by short name (`rtx4070`, `gb10`) or by path to any valid profile JSON (see [profiles/README.md](profiles/README.md) to measure a new GPU):
+
+```python
+import virtualgpu
+
+print(virtualgpu.list_profiles())          # ['gb10', 'rtx4070']
+print(virtualgpu.profile_path("rtx4070"))  # path to bundled rtx4070.json
+```
+
+### 2. Run GPU-free autotuning (CLI)
+
+Given a `@triton.autotune`-decorated GEMM kernel `my_module:matmul`, rank all configs on a CPU-only machine:
+
+```bash
+virtualgpu autotune \
+    --kernel my_module:matmul \
+    --shape 2048 8192 4096 \
+    --profile rtx4070 \
+    --cache cold \
+    --top-k 5
+```
+
+Or use `@virtualgpu.autotune` in Python to prune a large search space down to `top_k=5` candidates before benchmarking on real hardware (set `VIRTUALGPU_PROFILE=rtx4070` or pass `profile="rtx4070"`):
+
+```python
+import virtualgpu
+
+@virtualgpu.autotune(configs=CONFIGS, key=["M", "N", "K"], profile="rtx4070", top_k=5)
+def matmul(...):
+    ...
+```
+
+### 3. Reading the output
+
+`virtualgpu autotune` prints the JSON report, or with `--out report.json` writes it there and prints a short summary:
+
+- **`ranking`**: configs ordered by predicted runtime on the nominal profile (`nominal_latency_ns`), each with its predictions under the perturbed profile draws (`draws`). Lower is faster. Configs the model cannot handle come last, with `status: unsupported` and a reason.
+- **`shortlist`**: the top-k candidate configs recommended for final hardware verification (`top_k=5` by default; `top_k=1` skips hardware verification and explicitly marks the result as unverified).
+- **`indistinguishable_pairs`**: pairs the model cannot order: a pair is ordered only if every draw agrees on which is faster by at least 5%. Treat these as tied.
+- **`primary_bottleneck`**: per config, the cause that bounds the largest share of its time and that share (one of `mma`, `issue`, `smem`, `local`, `sfu`, `shfl`, `lsu`, `sync`, `l2_latency`, `dram_latency`, `l2_bandwidth`, `dram_bandwidth`, `launch`), explaining *why* one tile beats another.
+
+### Limitations
+
+VirtualGPU predicts relative performance using public specifications and microbenchmark profiles rather than cycle-accurate simulation. Known modeling limits — including register-spill L1 transition and reload latency (planned for v0.3), dynamic scheduling effects, and unmodeled kernel idioms — are documented in [Known limits (`docs/design.md`, section 9)](docs/design.md#9-known-limits). Any kernel construct the frontend or core cannot safely model is reported explicitly as `unsupported` rather than guessed.
+
 ## Target architectures
 
 | Vendor | Architecture | Examples | Priority |

@@ -24,6 +24,12 @@ def _load_profile(profile: str | Path | Mapping[str, Any]) -> tuple[str, dict[st
     if path.is_file():
         text = path.read_text(encoding="utf-8")
         return text, json.loads(text)
+    if path.parent == Path("."):
+        # A bare name such as "rtx4070": a bundled profile.
+        from virtualgpu.profile import profile_path
+
+        text = profile_path(str(path)).read_text(encoding="utf-8")
+        return text, json.loads(text)
     raise FileNotFoundError(f"Profile file not found: {profile}")
 
 

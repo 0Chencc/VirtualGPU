@@ -3,7 +3,7 @@
 try:
     from virtualgpu._core import __version__
 except ImportError:
-    __version__ = "0.1.0"
+    __version__ = "0.2.0"
 
 from virtualgpu.api import (
     extract_gemm_configs,
@@ -17,6 +17,7 @@ from virtualgpu.autotune import (
     autotune_offline,
     prune_configs_by,
 )
+from virtualgpu.profile import list_profiles, profile_path
 
 __all__ = [
     "__version__",
@@ -25,7 +26,9 @@ __all__ = [
     "autotune_offline",
     "prune_configs_by",
     "extract_gemm_configs",
+    "list_profiles",
     "predict_gemm_configs",
     "predict_ir_dir",
     "predict_kernel_ir",
+    "profile_path",
 ]

@@ -177,3 +177,17 @@ def test_rejects_latency_curve_bw_exceeding_peak() -> None:
     ]
     with pytest.raises(ProfileValidationError, match="dram_bw_read_gbps"):
         validate_profile(profile)
+
+
+def test_bundled_profiles_load_by_name_as_str_or_path():
+    from pathlib import Path
+
+    import virtualgpu
+    from virtualgpu.api import _load_profile
+
+    assert {"rtx4070", "gb10"} <= set(virtualgpu.list_profiles())
+    for name in ("rtx4070", Path("rtx4070"), "rtx4070.json"):
+        _, data = _load_profile(name)
+        assert data["measured"]
+    with pytest.raises(FileNotFoundError, match="Available bundled profiles"):
+        _load_profile("no-such-gpu")

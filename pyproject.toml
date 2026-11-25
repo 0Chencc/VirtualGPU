@@ -4,11 +4,30 @@ build-backend = "maturin"
 
 [project]
 name = "virtualgpu"
-version = "0.1.0"
+version = "0.2.0"
 description = "Predict the relative performance of GPU kernel variants without the GPU"
+readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Rust",
+    "Topic :: Scientific/Engineering",
+]
 dependencies = ["jsonschema>=4"]
+
+[project.urls]
+Homepage = "https://github.com/VirtualGPU/VirtualGPU"
+Repository = "https://github.com/VirtualGPU/VirtualGPU"
 
 [project.scripts]
 virtualgpu = "virtualgpu.cli:main"
@@ -30,3 +49,11 @@ manifest-path = "crates/vgpu-core/Cargo.toml"
 python-source = "python"
 module-name = "virtualgpu._core"
 features = ["python"]
+include = [
+    { path = "schemas/*.json", format = "sdist" },
+    { path = "profiles/*.json", format = "sdist" },
+    { path = "python/virtualgpu/profiles/*.json", format = ["sdist", "wheel"] },
+]
+exclude = [
+    "python/virtualgpu/frontend/tests/**",
+]

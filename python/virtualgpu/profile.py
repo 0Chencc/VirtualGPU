@@ -14,6 +14,36 @@ DEFAULT_SCHEMA_PATH = (
 )
 
 
+def _profile_search_dirs() -> list[Path]:
+    """Directories holding bundled GPU profiles: inside the installed package,
+    or the repository's profiles/ in a source checkout."""
+    pkg_dir = Path(__file__).resolve().parent
+    candidates = [pkg_dir / "profiles", pkg_dir.parents[1] / "profiles"]
+    return [d for d in candidates if d.is_dir()]
+
+
+def list_profiles() -> list[str]:
+    """Return sorted names (without .json) of bundled GPU profiles."""
+    names: set[str] = set()
+    for d in _profile_search_dirs():
+        for p in d.glob("*.json"):
+            if p.is_file():
+                names.add(p.stem)
+    return sorted(names)
+
+
+def profile_path(name: str) -> Path:
+    """Resolve a bundled profile name (e.g. 'rtx4070' or 'gb10') to its JSON path."""
+    stem = name[:-5] if name.endswith(".json") else name
+    for d in _profile_search_dirs():
+        candidate = d / f"{stem}.json"
+        if candidate.is_file():
+            return candidate
+    available = list_profiles()
+    hint = f" Available bundled profiles: {', '.join(available)}" if available else ""
+    raise FileNotFoundError(f"Bundled GPU profile not found: {name!r}.{hint}")
+
+
 class ProfileValidationError(ValueError):
     """Raised when a GPU profile fails schema or semantic validation."""
 
