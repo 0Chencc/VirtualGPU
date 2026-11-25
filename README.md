@@ -86,6 +86,7 @@ Every calibration and validation dataset records the GPU, driver, clocks and ker
 | Kendall tau-b, warm / cold | **0.787 / 0.750** | 0.387 / 0.476 | 0.512 / 0.514 |
 | Mean top-5 regret, warm / cold | 3.11% / 3.02% | **1.19% / 1.24%** | 9.30% / 9.25% |
 
+- When VirtualGPU says one config is faster than another, the GPU agrees about 95% of the time and disagrees about 2% of the time; the baselines are reversed about 20% of the time. See [docs/phase1-summary.md](docs/phase1-summary.md).
 - Ranking passed by a wide margin: the learned baseline, trained on RTX 4070 GEMM timings, did not generalize to new shapes; VirtualGPU uses no GEMM timings at all.
 - The shortlist criteria failed. Six of nine shapes have 0% top-5 regret; the mean is dominated by one shape with M, N and K all unaligned (24% warm, 22% cold). The cause is being investigated as a post-hoc analysis, which cannot change the Phase 1 decision. Known model limits are listed in [docs/design.md](docs/design.md) section 9.
 
