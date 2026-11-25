@@ -97,7 +97,18 @@ virtualgpu autotune --kernel my_module:matmul --shape 2048 8192 4096 \
     --profile profiles/rtx4070.json --cache cold
 ```
 
-Phase 2, profile-only transfer to a DGX Spark (GB10), is preregistered in [validation/phase2-preregistration.md](validation/phase2-preregistration.md) and uses the same frozen `phase1-final` snapshot.
+**Phase 2 (transfer to a DGX Spark GB10) is complete, and it also formally failed, by a narrow margin.** The same frozen `phase1-final` model received only a GB10 profile, measured in 24 seconds by the microbenchmark suite; it never saw a GB10 GEMM timing. Full results: [validation/phase2-gb10-report.md](validation/phase2-gb10-report.md).
+
+| GB10 | VirtualGPU | Learned baseline (trained on RTX 4070) | Roofline + wave |
+|---|---:|---:|---:|
+| Primary cohort tau-b, warm / cold | **0.446 / 0.597** | 0.311 / 0.501 | 0.213 / 0.247 |
+| Primary cohort top-5 regret, warm / cold | 1.10% / **0.16%** | 1.33% / 1.59% | 1.95% / 1.02% |
+| Unseen shapes on unseen GPU, tau-b warm / cold | **0.762 / 0.749** | 0.432 / -0.194 | 0.523 / 0.519 |
+| Unseen shapes on unseen GPU, top-5 regret warm / cold | **0.14% / 0.13%** | 36.8% / 45.2% | 4.1% / 3.9% |
+| Ordered verdicts that agree with GB10 | **95% to 98%** | 41% to 53% | 43% to 70% |
+
+- Cold passed every criterion. Warm missed the 1% absolute regret ceiling by 0.095 percentage points and passed everything else; the preregistration requires both.
+- On a GPU the model was not built on, when VirtualGPU says one config is faster, GB10 agrees 95% to 98% of the time and disagrees less than 1% of the time. The learned baseline, trained on RTX 4070 timings, is reversed 15% to 41% of the time.
 
 ## License
 
