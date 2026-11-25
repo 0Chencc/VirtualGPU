@@ -39,7 +39,7 @@ fn work(ops: &[Op], mma_key: &mut Option<String>) -> Result<Work, ModelError> {
                 let [mi, ni, ki] = m.inst_mnk.map(f64::from);
                 w.mma_flops += 2.0 * mi * ni * ki * m.count as f64;
             }
-            Op::Alu(a) | Op::Sfu(a) => w.alu_insts_per_warp += a.count as f64,
+            Op::Alu(a) | Op::Sfu(a) | Op::Shfl(a) => w.alu_insts_per_warp += a.count as f64,
             Op::Barrier(_) => {}
         }
     }

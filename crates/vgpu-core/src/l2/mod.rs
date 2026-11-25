@@ -2,7 +2,7 @@
 
 use crate::ir::{AccessEntry, CachePolicy, KernelIR, Op, Strided2dEntry};
 use crate::profile::{interpolate, Profile};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum L2InitState {
@@ -174,12 +174,27 @@ struct OpBinding {
 struct ResidentChunk {
     key: ChunkKey,
     step_aligned_bytes: u64,
+    effective_steps: u64,
     full_stream_bytes: u64,
 }
 
 #[derive(Debug, Clone)]
 struct ResidentTile {
     chunks: Vec<ResidentChunk>,
+}
+
+#[derive(Debug, Clone)]
+struct ActiveChunk {
+    /// Effective inner-step trip counts of each currently resident CTA sharing this chunk.
+    trips: Vec<u64>,
+    max_streamed_steps: u64,
+    max_streamed_bytes: u64,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct LastSeen {
+    stream_clock_bytes: u64,
+    covered_steps: u64,
 }
 
 /// Stateful, instance-local L2 reuse model driven by Agent 4's event scheduler.
@@ -192,12 +207,12 @@ pub struct L2Model<'a> {
     load_bindings: Vec<OpBinding>,
     total_read_footprint_bytes: u64,
     resident_tiles: HashMap<(u32, u32), ResidentTile>,
-    active_chunks: HashMap<ChunkKey, (u32, u64)>,
+    active_chunks: HashMap<ChunkKey, ActiveChunk>,
     active_working_set_bytes: u64,
     /// Monotonic counter of unique full-K-stream bytes that have flowed through L2.
     stream_clock_bytes: u64,
-    /// O(1) map from ChunkKey to the `stream_clock_bytes` when it last completed streaming.
-    last_seen_stream_byte: HashMap<ChunkKey, u64>,
+    /// O(1) map from ChunkKey to its last stream clock and prefix step coverage.
+    last_seen_stream_byte: HashMap<ChunkKey, LastSeen>,
     spill_l2_pressure_bytes: u64,
 }
 
@@ -274,7 +289,7 @@ impl<'a> L2Model<'a> {
         if self.resident_tiles.contains_key(&tile_key) {
             return;
         }
-        let inner_trips = self.ir.inner_trip_count(cta_id, outer_idx).unwrap_or(1).max(1);
+        let inner_trips = self.ir.inner_trip_count(cta_id, outer_idx).unwrap_or(1);
         let mut chunks = Vec::with_capacity(self.load_bindings.len());
         for b in &self.load_bindings {
             if let Some(entry) = self.lookup_strided(&b.access_ref, cta_id, outer_idx) {
@@ -283,16 +298,24 @@ impl<'a> L2Model<'a> {
                 if step_aligned == 0 {
                     continue;
                 }
-                let full_stream = full_chunk_stream_bytes(step_aligned, entry, inner_trips);
-                let entry_ref = self.active_chunks.entry(ckey).or_insert((0, step_aligned));
-                if entry_ref.0 == 0 {
+                let effective_steps = effective_chunk_steps(entry, inner_trips);
+                let full_stream = step_aligned.saturating_mul(effective_steps);
+                let slot = self.active_chunks.entry(ckey).or_insert_with(|| ActiveChunk {
+                    trips: Vec::new(),
+                    max_streamed_steps: 0,
+                    max_streamed_bytes: 0,
+                });
+                if slot.trips.is_empty() {
                     self.active_working_set_bytes =
                         self.active_working_set_bytes.saturating_add(step_aligned);
                 }
-                entry_ref.0 += 1;
+                slot.trips.push(effective_steps);
+                slot.max_streamed_steps = slot.max_streamed_steps.max(effective_steps);
+                slot.max_streamed_bytes = slot.max_streamed_bytes.max(full_stream);
                 chunks.push(ResidentChunk {
                     key: ckey,
                     step_aligned_bytes: step_aligned,
+                    effective_steps,
                     full_stream_bytes: full_stream,
                 });
             }
@@ -306,8 +329,14 @@ impl<'a> L2Model<'a> {
         };
         for rc in tile.chunks {
             if let Some(slot) = self.active_chunks.get_mut(&rc.key) {
-                slot.0 = slot.0.saturating_sub(1);
-                if slot.0 == 0 {
+                if let Some(pos) = slot.trips.iter().position(|&t| t == rc.effective_steps) {
+                    slot.trips.swap_remove(pos);
+                }
+                slot.max_streamed_steps = slot.max_streamed_steps.max(rc.effective_steps);
+                slot.max_streamed_bytes = slot.max_streamed_bytes.max(rc.full_stream_bytes);
+                if slot.trips.is_empty() {
+                    let streamed_bytes = slot.max_streamed_bytes;
+                    let streamed_steps = slot.max_streamed_steps;
                     self.active_chunks.remove(&rc.key);
                     self.active_working_set_bytes = self
                         .active_working_set_bytes
@@ -315,10 +344,15 @@ impl<'a> L2Model<'a> {
                     // Advance L2 stream clock by the full K-stream volume in O(1).
                     self.stream_clock_bytes = self
                         .stream_clock_bytes
-                        .saturating_add(rc.full_stream_bytes);
+                        .saturating_add(streamed_bytes);
                     if self.options.cross_wave_reuse {
-                        self.last_seen_stream_byte
-                            .insert(rc.key, self.stream_clock_bytes);
+                        self.last_seen_stream_byte.insert(
+                            rc.key,
+                            LastSeen {
+                                stream_clock_bytes: self.stream_clock_bytes,
+                                covered_steps: streamed_steps,
+                            },
+                        );
                     }
                 }
             }
@@ -366,24 +400,43 @@ impl<'a> L2Model<'a> {
         }
 
         let ckey = make_chunk_key(binding.tensor_idx, entry);
+        // Effective concurrent sharing over [k_begin, k_end): each resident CTA j with trip count
+        // T_j overlaps on min(k_end, T_j) - k_begin steps. Reduces to exact integer R when all
+        // resident CTAs have T_j >= k_end (e.g., uniform GEMM or non-causal attention).
         let sharing_count = self
             .active_chunks
             .get(&ckey)
-            .map(|(cnt, _)| (*cnt).max(1))
-            .unwrap_or(1) as f64;
+            .map(|slot| {
+                let overlap_sum: f64 = slot
+                    .trips
+                    .iter()
+                    .map(|&t_j| {
+                        let ov = k_end.min(t_j).saturating_sub(k_begin);
+                        ov as f64 / steps as f64
+                    })
+                    .sum();
+                overlap_sum.max(1.0)
+            })
+            .unwrap_or(1.0);
 
         // 1. Resident L2 hits (data already in L2 at request time -> L2 latency):
-        //    from cross-wave reuse or warm initial L2 state, evaluated on the empirical rescan curve.
+        //    from cross-wave reuse (scaled by prefix overlap with covered_steps) or warm L2.
         let mut resident_raw = 0.0f64;
         if self.options.cross_wave_reuse {
-            if let Some(&prev_clock) = self.last_seen_stream_byte.get(&ckey) {
-                let inner_trips = self.ir.inner_trip_count(cta_id, outer_idx).unwrap_or(1).max(1);
-                let full_stream = full_chunk_stream_bytes(step_aligned, entry, inner_trips);
-                let reuse_dist = self
-                    .stream_clock_bytes
-                    .saturating_sub(prev_clock)
-                    .max(full_stream);
-                resident_raw = resident_raw.max(self.eval_rescan_hit(reuse_dist as f64));
+            if let Some(&last) = self.last_seen_stream_byte.get(&ckey) {
+                let overlap = k_end.min(last.covered_steps).saturating_sub(k_begin);
+                if overlap > 0 {
+                    let inner_trips = self.ir.inner_trip_count(cta_id, outer_idx).unwrap_or(1);
+                    let eff_steps = effective_chunk_steps(entry, inner_trips);
+                    let full_stream = step_aligned.saturating_mul(eff_steps);
+                    let reuse_dist = self
+                        .stream_clock_bytes
+                        .saturating_sub(last.stream_clock_bytes)
+                        .max(full_stream);
+                    let prefix_frac = overlap as f64 / steps as f64;
+                    resident_raw =
+                        resident_raw.max(self.eval_rescan_hit(reuse_dist as f64) * prefix_frac);
+                }
             }
         }
         if self.initial_state == L2InitState::Warm {
@@ -538,27 +591,27 @@ impl<'a> L2Model<'a> {
     }
 
     fn compute_total_read_footprint(&self) -> u64 {
-        let mut seen = HashSet::new();
-        let mut total: u64 = 0;
+        let mut max_per_chunk: HashMap<ChunkKey, u64> = HashMap::new();
         let total_ctas = self.ir.total_ctas() as u32;
         for cta_id in 0..total_ctas {
             let outer_trips = self.ir.outer_trip_count(cta_id).unwrap_or(1) as u32;
             for outer_idx in 0..outer_trips {
-                let inner_trips = self.ir.inner_trip_count(cta_id, outer_idx).unwrap_or(1).max(1);
+                let inner_trips = self.ir.inner_trip_count(cta_id, outer_idx).unwrap_or(1);
                 for b in &self.load_bindings {
                     if let Some(entry) = self.lookup_strided(&b.access_ref, cta_id, outer_idx) {
                         let ckey = make_chunk_key(b.tensor_idx, entry);
-                        if seen.insert(ckey) {
-                            let step_aligned = self.sector_aligned_step_bytes(entry);
-                            let full_stream =
-                                full_chunk_stream_bytes(step_aligned, entry, inner_trips);
-                            total = total.saturating_add(full_stream);
-                        }
+                        let step_aligned = self.sector_aligned_step_bytes(entry);
+                        let eff_steps = effective_chunk_steps(entry, inner_trips);
+                        let full_stream = step_aligned.saturating_mul(eff_steps);
+                        let slot = max_per_chunk.entry(ckey).or_insert(0);
+                        *slot = (*slot).max(full_stream);
                     }
                 }
             }
         }
-        total
+        max_per_chunk
+            .values()
+            .fold(0u64, |acc, &v| acc.saturating_add(v))
     }
 
     fn lookup_strided(&self, access_ref: &str, cta_id: u32, outer_idx: u32) -> Option<Strided2dEntry> {
@@ -580,11 +633,11 @@ impl<'a> L2Model<'a> {
     }
 }
 
-fn full_chunk_stream_bytes(step_aligned: u64, entry: Strided2dEntry, inner_trips: u64) -> u64 {
+fn effective_chunk_steps(entry: Strided2dEntry, inner_trips: u64) -> u64 {
     if entry.inner_step_byte_stride() == 0 {
-        step_aligned
+        1
     } else {
-        step_aligned.saturating_mul(inner_trips)
+        inner_trips
     }
 }
 
@@ -932,5 +985,73 @@ mod tests {
         assert!((pb.dram_bytes - ptot * 0.0625).abs() < 1e-3);
         assert!((pb.l2_bytes - (pb.resident_hit_bytes + pb.merged_bytes)).abs() < 1e-6);
         assert!((pb.l2_bytes + pb.dram_bytes - ptot).abs() < 1e-3);
+    }
+
+    #[test]
+    fn causal_gqa_attention_footprint_and_kv_sharing() {
+        let ir_json = include_str!("../../../../schemas/examples/flash_attention_causal_gqa_sm89.json");
+        let ir = KernelIR::from_json_str(ir_json).unwrap();
+        let prof = synthetic_l2_profile();
+        let mut l2 = L2Model::new(&ir, prof, L2InitState::Cold, L2Options::default());
+
+        // Total read footprint: Q (8 * 128 KiB = 1 MiB) + K (2 * 128 KiB) + V (2 * 128 KiB) = 1.5 MiB.
+        // Must take max prefix across causal CTAs rather than cta_id=0's 1-step prefix.
+        assert_eq!(l2.total_read_footprint_bytes(), 1536 * 1024);
+
+        // Concurrent CTAs sharing KV head 0:
+        // - cta 15: h_q=0, qb=15 (trips=16)
+        // - cta 31: h_q=1, qb=15 (trips=16, GQA partner sharing h_kv=0)
+        // - cta  7: h_q=0, qb=7  (trips=8, same Q head, shorter causal prefix)
+        // Plus cta 79: h_q=4, qb=15 (h_kv=1, different KV head -> must NOT share with h_kv=0).
+        l2.begin_tile(0, 15, 0, 0.0);
+        l2.begin_tile(1, 31, 0, 0.0);
+        l2.begin_tile(2, 7, 0, 0.0);
+        l2.begin_tile(3, 79, 0, 0.0);
+
+        // Over [0, 16), cta 15 sees effective_R = 1.0 + 1.0 + 8/16 = 2.5 -> merged = 1.5/2.5 = 0.6.
+        let res_long = l2.split(0, 15, 0, "load_K", 0, 16, false, CachePolicy::Default, 0.0);
+        assert!((res_long.hit_ratio - 0.6).abs() < 1e-6, "expected 0.6, got {}", res_long.hit_ratio);
+        assert!(res_long.resident_hit_bytes.abs() < 1e-6);
+
+        // Over [0, 8), all three h_kv=0 CTAs fully overlap -> R = 3.0 -> merged = 2/3.
+        let res_short = l2.split(2, 7, 0, "load_K", 0, 8, false, CachePolicy::Default, 0.0);
+        assert!(
+            (res_short.hit_ratio - (2.0 / 3.0)).abs() < 1e-6,
+            "expected 2/3, got {}",
+            res_short.hit_ratio
+        );
+
+        // cta 79 belongs to h_kv=1 alone -> zero sharing.
+        let res_other_kv = l2.split(3, 79, 0, "load_K", 0, 16, false, CachePolicy::Default, 0.0);
+        assert!(res_other_kv.hit_ratio.abs() < 1e-6);
+    }
+
+    #[test]
+    fn causal_cross_wave_short_cta_only_warms_its_prefix() {
+        let ir_json = include_str!("../../../../schemas/examples/flash_attention_causal_gqa_sm89.json");
+        let ir = KernelIR::from_json_str(ir_json).unwrap();
+        let prof = synthetic_l2_profile();
+        let mut l2 = L2Model::new(&ir, prof, L2InitState::Cold, L2Options::default());
+
+        // Wave 1: solo short CTA (cta=1, h_q=0, qb=1, trips=2) streams only KV steps 0..2.
+        l2.begin_tile(0, 1, 0, 0.0);
+        l2.end_tile(0, 1, 0, 100.0);
+
+        // Wave 2: solo long CTA (cta=15, h_q=0, qb=15, trips=16) on same h_kv=0.
+        l2.begin_tile(0, 15, 0, 100.0);
+        // Full [0, 16) only overlaps on steps 0..2 -> resident hit ratio = 2/16 = 0.125.
+        let full = l2.split(0, 15, 0, "load_K", 0, 16, false, CachePolicy::Default, 100.0);
+        assert!(
+            (full.hit_ratio - 0.125).abs() < 1e-6,
+            "short 2-step CTA must only warm 2/16 of a 16-step CTA, got {}",
+            full.hit_ratio
+        );
+        assert!((full.resident_hit_bytes - full.l2_bytes).abs() < 1e-6);
+
+        // Prefix [0, 2) is 100% resident; tail [2, 16) is 0% resident.
+        let prefix = l2.split(0, 15, 0, "load_K", 0, 2, false, CachePolicy::Default, 100.0);
+        let tail = l2.split(0, 15, 0, "load_K", 2, 16, false, CachePolicy::Default, 100.0);
+        assert!((prefix.hit_ratio - 1.0).abs() < 1e-6);
+        assert!(tail.hit_ratio.abs() < 1e-6);
     }
 }

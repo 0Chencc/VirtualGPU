@@ -155,6 +155,7 @@ pub struct PipelineLoop {
 #[serde(rename_all = "snake_case")]
 pub enum InnerTripCountMode {
     Uniform,
+    PerCta,
     PerOuterIter,
 }
 
@@ -190,6 +191,7 @@ pub enum Op {
     Mma(MmaOp),
     Alu(ScalarOp),
     Sfu(ScalarOp),
+    Shfl(ScalarOp),
     Barrier(BarrierOp),
 }
 
@@ -199,7 +201,7 @@ impl Op {
             Op::GmemLoad(o) | Op::GmemStore(o) => &o.op_id,
             Op::SmemLoad(o) | Op::SmemStore(o) => &o.op_id,
             Op::Mma(o) => &o.op_id,
-            Op::Alu(o) | Op::Sfu(o) => &o.op_id,
+            Op::Alu(o) | Op::Sfu(o) | Op::Shfl(o) => &o.op_id,
             Op::Barrier(o) => &o.op_id,
         }
     }
@@ -209,7 +211,7 @@ impl Op {
             Op::GmemLoad(o) | Op::GmemStore(o) => o.warp_group_id,
             Op::SmemLoad(o) | Op::SmemStore(o) => o.warp_group_id,
             Op::Mma(o) => o.warp_group_id,
-            Op::Alu(o) | Op::Sfu(o) => o.warp_group_id,
+            Op::Alu(o) | Op::Sfu(o) | Op::Shfl(o) => o.warp_group_id,
             Op::Barrier(o) => o.warp_group_id,
         }
     }
@@ -405,12 +407,17 @@ impl KernelIR {
     }
 
     pub fn inner_trip_count(&self, cta_id: u32, outer_idx: u32) -> Option<u64> {
-        match &self.body.pipeline_loop.trip_counts {
-            TripCounts::Uniform(n) => Some(*n),
-            TripCounts::PerItem(v) => {
+        match (
+            self.body.pipeline_loop.trip_count_mode,
+            &self.body.pipeline_loop.trip_counts,
+        ) {
+            (InnerTripCountMode::Uniform, TripCounts::Uniform(n)) => Some(*n),
+            (InnerTripCountMode::PerCta, TripCounts::PerItem(v)) => v.get(cta_id as usize).copied(),
+            (InnerTripCountMode::PerOuterIter, TripCounts::PerItem(v)) => {
                 let idx = self.dense_tile_index(cta_id, outer_idx)?;
                 v.get(idx).copied()
             }
+            _ => None,
         }
     }
 
@@ -549,6 +556,15 @@ impl KernelIR {
             &self.body.pipeline_loop.trip_counts,
         ) {
             (InnerTripCountMode::Uniform, TripCounts::Uniform(_)) => {}
+            (InnerTripCountMode::PerCta, TripCounts::PerItem(v)) => {
+                if v.len() as u64 != self.total_ctas() {
+                    return Err(IrValidationError::new(format!(
+                        "pipeline_loop per_cta length ({}) != total_ctas ({})",
+                        v.len(),
+                        self.total_ctas()
+                    )));
+                }
+            }
             (InnerTripCountMode::PerOuterIter, TripCounts::PerItem(v)) => {
                 if v.len() as u64 != total_outer_tiles {
                     return Err(IrValidationError::new(format!(
@@ -620,7 +636,7 @@ impl KernelIR {
                         )));
                     }
                 }
-                Op::SmemLoad(_) | Op::SmemStore(_) | Op::Alu(_) | Op::Sfu(_) => {}
+                Op::SmemLoad(_) | Op::SmemStore(_) | Op::Alu(_) | Op::Sfu(_) | Op::Shfl(_) => {}
             }
         }
 
@@ -688,5 +704,31 @@ mod tests {
         ir.access_map.remove("acc_A");
         let err = ir.validate().unwrap_err();
         assert!(err.message.contains("acc_A"));
+    }
+
+    #[test]
+    fn parse_and_validate_flash_attention_causal_gqa_example() {
+        let json = include_str!("../../../../schemas/examples/flash_attention_causal_gqa_sm89.json");
+        let ir = KernelIR::from_json_str(json)
+            .expect("flash_attention_causal_gqa_sm89.json should deserialize");
+        ir.validate()
+            .expect("flash_attention_causal_gqa_sm89.json should validate");
+        assert_eq!(ir.total_ctas(), 128);
+        assert_eq!(ir.body.pipeline_loop.trip_count_mode, InnerTripCountMode::PerCta);
+        assert_eq!(ir.inner_trip_count(0, 0), Some(1));
+        assert_eq!(ir.inner_trip_count(15, 0), Some(16));
+        assert_eq!(ir.inner_trip_count(16, 0), Some(1));
+        assert!(ir
+            .body
+            .pipeline_loop
+            .ops
+            .iter()
+            .any(|op| matches!(op, Op::Shfl(_))));
+        assert!(ir
+            .body
+            .pipeline_loop
+            .ops
+            .iter()
+            .any(|op| matches!(op, Op::Sfu(_))));
     }
 }
