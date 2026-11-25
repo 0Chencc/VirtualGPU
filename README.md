@@ -87,7 +87,7 @@ Every calibration and validation dataset records the GPU, driver, clocks and ker
 | Mean top-5 regret, warm / cold | 3.11% / 3.02% | **1.19% / 1.24%** | 9.30% / 9.25% |
 
 - Ranking passed by a wide margin: the learned baseline, trained on RTX 4070 GEMM timings, did not generalize to new shapes; VirtualGPU uses no GEMM timings at all.
-- The shortlist criteria failed. Six of nine shapes have 0% top-5 regret; the mean is dominated by one shape with M, N and K all unaligned (24% warm, 22% cold). Masked edge tiles are a known weakness, see [docs/design.md](docs/design.md) section 9.
+- The shortlist criteria failed. Six of nine shapes have 0% top-5 regret; the mean is dominated by one shape with M, N and K all unaligned (24% warm, 22% cold). The cause is being investigated as a post-hoc analysis, which cannot change the Phase 1 decision. Known model limits are listed in [docs/design.md](docs/design.md) section 9.
 
 GPU-free autotuning works today:
 
