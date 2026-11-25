@@ -334,6 +334,57 @@ fn spills_cost_local_memory_bandwidth_per_scope() {
     assert!(run(&per_iter, m.clone()).bound_fraction[3] > 0.99);
 }
 
+/// Warm loads; every spill byte served by L2.
+struct SpillToL2;
+impl L2 for SpillToL2 {
+    fn split(
+        &mut self,
+        _: u32,
+        _: u32,
+        _: u32,
+        a: &Access,
+        k0: u32,
+        k1: u32,
+        _: bool,
+        _: f64,
+    ) -> Traffic {
+        Traffic {
+            resident: a.nominal_bytes * f64::from(k1 - k0),
+            merged: 0.0,
+            dram: 0.0,
+        }
+    }
+    fn spill(&mut self, _: u32, threads: u32, s: &Spill) -> (f64, f64, f64) {
+        (0.0, s.bytes_per_thread * f64::from(threads), 0.0)
+    }
+}
+
+#[test]
+fn spills_served_by_l2_still_take_the_local_port() {
+    // Spill traffic that overflows L1 still passes the SM's L1 and LSU: with
+    // ample L2 bandwidth it costs the same local-port time as L1-resident
+    // spills, not less.
+    let mut k = compute_only(46);
+    k.spill = Spill {
+        bytes_per_thread: 4096.0,
+        stack_frame_bytes: 64,
+        scope: SpillScope::PerIteration { assumed: false },
+    };
+    let mut m = machine(&k);
+    m.local_bw = 1.0;
+    m.l2_bw = vec![(1.0, 1e9)];
+    m.launch_overhead_ns = 0.0;
+    let p = profile();
+    let in_l1 = simulate(&k, &p, &m, &mut ConstantHitRatio(1.0)).unwrap();
+    let in_l2 = simulate(&k, &p, &m, &mut SpillToL2).unwrap();
+    assert!(
+        close(in_l2.makespan_ns, in_l1.makespan_ns),
+        "{} vs {}",
+        in_l2.makespan_ns,
+        in_l1.makespan_ns
+    );
+}
+
 #[test]
 fn steep_load_latency_settles_at_the_littles_law_equilibrium() {
     // 46 CTAs with one 16 KiB stage in flight each, all from DRAM. With

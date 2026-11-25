@@ -620,7 +620,8 @@ impl<'a, L: L2> Sim<'a, L> {
                 .map(|a| a.nominal_bytes / (32.0 * a.width_bytes))
                 .sum::<f64>()
                 * steps,
-            local_bytes: spill_l1,
+            // Local accesses go through the SM's L1 and LSU wherever they are served.
+            local_bytes: spill_l1 + spill_l2 + spill_dram,
             bytes: load_bytes + stores + spill_l2 + spill_dram,
             dram_bytes: misses + stores + spill_dram,
             fixed_latency_ns: 0.0,
