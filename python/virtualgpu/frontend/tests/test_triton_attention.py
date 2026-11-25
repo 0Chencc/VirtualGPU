@@ -419,7 +419,10 @@ def test_attention_ptx_ground_truth_mma_barriers_and_smem(
     jsonschema.validate(instance=ir, schema=schema)
     ops = {op["op_id"]: op for op in ir["body"]["pipeline_loop"]["ops"]}
     assert ops["mma_qk"]["count"] + ops["mma_pv"]["count"] == expected_mma
-    assert ("mma_count_ptx_override" in ir["diagnostics"]) is expect_override
+    override_diags = [d for d in ir["diagnostics"] if d.startswith("mma_count_ptx_override:")]
+    assert bool(override_diags) is expect_override
+    if expect_override:
+        assert override_diags == ["mma_count_ptx_override:ptx=384,tile=256"]
     if expect_smem_store:
         assert ops["sync_loop"]["count"] >= 6
         assert "smem_store_loop" in ops and ops["smem_store_loop"]["bytes_per_cta"] > 0

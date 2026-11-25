@@ -457,14 +457,14 @@ def _extract_all_dots(
     ptx: str,
     ptx_loop: str = "",
     num_warps: int = 4,
-) -> tuple[list[MmaDotInfo], bool]:
+) -> tuple[list[MmaDotInfo], str | None]:
     """Extract all tt.dot operations inside the loop body with PTX-verified instruction counts.
 
-    Returns (dots, ptx_overrode_tile_count).
+    Returns (dots, override_diagnostic_or_none).
     """
     base_mma = _extract_mma(ttgir, ptx)
     if base_mma is None:
-        return [], False
+        return [], None
     im, in_, ik = base_mma.inst_mnk
     dots: list[MmaDotInfo] = []
     source = loop_body if loop_body else ttgir
@@ -490,7 +490,7 @@ def _extract_all_dots(
 
     # Override analytical counts with actual PTX loop mma.sync counts * num_warps
     # so warp-replicated layouts (e.g. BM=64, 8 warps) reflect real hardware issue.
-    overrode = False
+    override_diag: str | None = None
     if dots and ptx_loop and base_mma.op_class == "mma.sync":
         lines = ptx_loop.splitlines()
         mma_idxs = [i for i, ln in enumerate(lines) if "mma.sync.aligned" in ln]
@@ -504,7 +504,8 @@ def _extract_all_dots(
                     before = sum(1 for i in mma_idxs if i < split) * num_warps
                     after = sum(1 for i in mma_idxs if i > split) * num_warps
                     if before > 0 and after > 0:
-                        overrode = (before != dots[0].count) or (after != dots[1].count)
+                        if before != dots[0].count or after != dots[1].count:
+                            override_diag = f"mma_count_ptx_override:ptx={before + after},tile={analytical_total}"
                         dots[0] = MmaDotInfo(
                             op_class=dots[0].op_class,
                             tile_mnk=dots[0].tile_mnk,
@@ -523,9 +524,10 @@ def _extract_all_dots(
                             acc_dtype=dots[1].acc_dtype,
                             count=after,
                         )
-                        return dots, overrode
+                        return dots, override_diag
             if len(dots) == 1:
-                overrode = total_ptx != analytical_total
+                if total_ptx != analytical_total:
+                    override_diag = f"mma_count_ptx_override:ptx={total_ptx},tile={analytical_total}"
                 dots[0] = MmaDotInfo(
                     op_class=dots[0].op_class,
                     tile_mnk=dots[0].tile_mnk,
@@ -536,7 +538,7 @@ def _extract_all_dots(
                     count=total_ptx,
                 )
             elif total_ptx != analytical_total and analytical_total > 0:
-                overrode = True
+                override_diag = f"mma_count_ptx_override:ptx={total_ptx},tile={analytical_total}"
                 remaining = total_ptx
                 for idx, d in enumerate(dots):
                     if idx == len(dots) - 1:
@@ -553,7 +555,7 @@ def _extract_all_dots(
                         acc_dtype=d.acc_dtype,
                         count=scaled,
                     )
-    return dots, overrode
+    return dots, override_diag
 
 
 def parse_ttgir_summary(
@@ -657,9 +659,9 @@ def parse_ttgir_summary(
         loop_barriers = 1
 
     mma = _extract_mma(ttgir, ptx)
-    mma_dots, mma_overrode = _extract_all_dots(loop_body, ttgir, ptx, ptx_loop=ptx_loop, num_warps=num_warps)
-    if mma_overrode:
-        diagnostics.append("mma_count_ptx_override")
+    mma_dots, mma_override_diag = _extract_all_dots(loop_body, ttgir, ptx, ptx_loop=ptx_loop, num_warps=num_warps)
+    if mma_override_diag is not None:
+        diagnostics.append(mma_override_diag)
     loop_alu_per_warp, loop_sfu_per_warp, loop_shfl_per_warp = _count_ptx_loop_scalar_ops(ptx_loop)
     loop_ptx_barriers, loop_ptx_st_shared_bytes, loop_ptx_ld_shared_bytes = _extract_ptx_loop_sync_and_smem(
         ptx_loop, num_warps, warp_size
