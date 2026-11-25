@@ -145,3 +145,28 @@ rerunning warm trials. Keep the original sessions in place and pass the
 replacement directory to both `validation.predict` and `validation.experiment`
 through `--cold-results`. The experiment reads only warm samples from the
 original sessions and requires read-only eviction for every cold sample.
+
+## Sealed workload holdout
+
+Generate the holdout manifest and AOT files before measurement. The
+holdout collector checks the compiled artifacts before timing. It writes
+raw reports with no read permissions and produces separate digest receipts.
+Use the GPU lock and suppress the runtime output during sealed capture.
+
+```sh
+.venv/bin/python -m validation.aot results/holdout-sealed/manifest.json \
+  results/holdout-sealed/aot --holdout
+flock /tmp/virtualgpu-gpu.lock .venv/bin/python -m validation.holdout \
+  capture results/holdout-sealed prefill-256 1
+.venv/bin/python -m validation.holdout audit results/holdout-sealed \
+  validation/holdout-seal.json
+```
+
+The audit command reads receipt files and report metadata only. Commit the
+digest index and keep the raw reports in the ignored results directory.
+To score a sealed case, supply `--sealed-audit validation/holdout-seal.json`,
+`--core-revision` with the full `phase1-final` SHA, and
+`--prediction-sha256` from the separately archived formal prediction file.
+The scorer checks the tag, the archive digest and build provenance, and the
+committed audit before it accesses the timing reports. It checks each
+report digest before parsing it and restores the no-read permissions.

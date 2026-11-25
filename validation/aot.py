@@ -43,17 +43,18 @@ def main():
     parser.add_argument("manifest", type=Path)
     parser.add_argument("output", type=Path)
     parser.add_argument("--case", action="append", help="Development case ID, repeatable")
+    parser.add_argument("--holdout", action="store_true", help="Compile workload-holdout artifacts offline")
     args = parser.parse_args()
     suite = json.loads(args.manifest.read_text())
-    development = {case["case_id"]: case for case in suite["cases"]
-                   if case["split"] == "development"}
-    keys = args.case or list(development)
-    if not set(keys) <= development.keys():
-        parser.error("Only development cases are accepted")
+    split = "holdout" if args.holdout else "development"
+    cases = {case["case_id"]: case for case in suite["cases"] if case["split"] == split}
+    keys = args.case or list(cases)
+    if not keys or not set(keys) <= cases.keys():
+        parser.error(f"Select cases in the {split} split")
     configs = {config["config_id"]: config for config in suite["configs"]}
     source = source_info()
     for key in keys:
-        case = development[key]
+        case = cases[key]
         failures = compile_case(case, configs, args.output / key, source)
         print(f"{key}: {len(case['config_ids']) - len(failures)} artifacts, {len(failures)} failures",
               flush=True)

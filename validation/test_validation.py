@@ -3,6 +3,8 @@
 import json
 import math
 from pathlib import Path
+import stat
+from types import SimpleNamespace
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -11,6 +13,7 @@ from virtualgpu.frontend.compiler import ARTIFACT_HASH_VERSION
 
 from validation.baseline import gemm_work, latency_ns, predict
 from validation.experiment import core_records, development_gates, load_case, validate_core_builds
+from validation.holdout import read_verified_report, require_release, seal_report, sha256
 from validation.neusight import TileFeatures, fit, leave_one_case_out
 from validation.provenance import read_core_revision, require_formal_build
 from validation.score import check_artifact, kendall_tau_b, median_ci95, observed_pair, predicted_pair, score
@@ -259,6 +262,39 @@ class ProvenanceTest(unittest.TestCase):
         rows["failed"]["build"] = clean
         with self.assertRaisesRegex(ValueError, "Diagnostic prediction bundles"):
             validate_core_builds(dict(bundle, result_class="diagnostic"), self.revision)
+
+
+class HoldoutSealTest(unittest.TestCase):
+    def test_report_digest_verified_and_permissions_restored(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "fixture.json"
+            report = {"split": "holdout", "manifest_sha256": "fixture",
+                      "timestamp_utc": "2026-01-01T00:00:00+00:00", "samples": []}
+            receipt = seal_report(path, report)
+            self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0)
+            audit = {"manifest_sha256": "fixture", "reports": {path.name: receipt}}
+            self.assertEqual(read_verified_report(path, audit), report)
+            receipt["sha256"] = "invalid"
+            with self.assertRaisesRegex(ValueError, "digest does not match"):
+                read_verified_report(path, audit)
+            self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0)
+
+    def test_release_requires_tag_before_archive_read(self):
+        revision = "a" * 40
+        with tempfile.TemporaryDirectory() as tmp:
+            archive = Path(tmp) / "archive.json"
+            with patch("validation.holdout.subprocess.run", return_value=SimpleNamespace(
+                returncode=1, stdout="",
+            )):
+                with self.assertRaisesRegex(ValueError, "phase1-final"):
+                    require_release(revision, archive, "unused")
+            archive.write_bytes(b"[]")
+            with patch("validation.holdout.subprocess.run", return_value=SimpleNamespace(
+                returncode=0, stdout=revision + "\n",
+            )):
+                with self.assertRaisesRegex(ValueError, "archive digest"):
+                    require_release(revision, archive, "invalid")
+                self.assertEqual(require_release(revision, archive, sha256(b"[]")), [])
 
 
 if __name__ == "__main__":

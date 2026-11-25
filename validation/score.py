@@ -6,10 +6,12 @@ import json
 import math
 from pathlib import Path
 import random
+import stat
 import statistics
 
 from virtualgpu.frontend.compiler import ARTIFACT_HASH_VERSION
 
+from validation.holdout import read_committed_audit, read_verified_report, require_release
 from validation.provenance import read_core_revision, require_formal_build
 
 PRACTICAL_MARGIN = 0.05
@@ -179,6 +181,8 @@ def main():
     parser.add_argument("--profile-revision", required=True)
     parser.add_argument("--cache", choices=("warm", "cold"), required=True)
     parser.add_argument("--top-k", type=int, default=5)
+    parser.add_argument("--sealed-audit", type=Path, help="Committed digest index for sealed holdout labels")
+    parser.add_argument("--prediction-sha256", help="Independently archived prediction digest for holdout release")
     gate = parser.add_mutually_exclusive_group(required=True)
     gate.add_argument("--aot", action="append", default=[], metavar="CONFIG_ID=KERNEL_IR_JSON",
                       help="Require matching AOT output for every scored configuration")
@@ -190,7 +194,19 @@ def main():
     args = parser.parse_args()
     if args.core_revision and args.unchecked:
         parser.error("Formal scoring requires --aot")
-    input_predictions = json.loads(args.predictions.read_text())
+    seal = None
+    if args.sealed_audit:
+        if not args.core_revision or not args.prediction_sha256:
+            parser.error("Holdout scoring requires the phase1-final revision and archived prediction digest")
+        try:
+            input_predictions = require_release(args.core_revision, args.predictions, args.prediction_sha256)
+            seal = read_committed_audit(args.sealed_audit)
+        except ValueError as error:
+            parser.error(str(error))
+    else:
+        if args.prediction_sha256 or any(stat.S_IMODE(path.stat().st_mode) == 0 for path in args.measurements):
+            parser.error("Sealed labels require --sealed-audit")
+        input_predictions = json.loads(args.predictions.read_text())
     if args.core_revision:
         try:
             for row in input_predictions:
@@ -204,7 +220,13 @@ def main():
         if not sep or not key or not path or key in artifacts:
             parser.error("Supply one --aot CONFIG_ID=KERNEL_IR_JSON per configuration")
         artifacts[key] = json.loads(Path(path).read_text())
-    sessions = [json.loads(path.read_text()) for path in args.measurements]
+    try:
+        sessions = ([read_verified_report(path, seal) for path in args.measurements] if seal is not None
+                    else [json.loads(path.read_text()) for path in args.measurements])
+    except ValueError as error:
+        parser.error(str(error))
+    if any(session.get("split") == "holdout" for session in sessions) and seal is None:
+        parser.error("Holdout scoring requires verified sealed reports")
     case_id = sessions[0]["case_id"]
     identity = ("case_id", "gpu", "kernel_sha256", "manifest_sha256")
     timings = {}

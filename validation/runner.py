@@ -225,7 +225,7 @@ def prepare_candidates(case, configs, seed):
     return operations, artifacts
 
 
-def measure(case, configs, input_seed, args, manifest_sha):
+def measure(case, configs, input_seed, args, manifest_sha, verify_artifacts=None):
     source = source_info()
     if torch.cuda.device_count() != 1:
         raise RuntimeError("The M1 runner requires exactly one visible CUDA device")
@@ -234,6 +234,8 @@ def measure(case, configs, input_seed, args, manifest_sha):
         raise RuntimeError(f"Only the RTX 4070 is authorized in M1: {gpu.name}")
     l2_bytes = l2_capacity()
     operations, artifacts = prepare_candidates(case, configs, input_seed)
+    if verify_artifacts is not None:
+        verify_artifacts(artifacts)
     caches = ("warm", "cold") if args.cache == "both" else (args.cache,)
     eviction_bytes = 0
     evict = None
