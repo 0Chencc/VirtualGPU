@@ -204,6 +204,47 @@ The measured data is a deliverable in its own right: kernel source, config, shap
 - **Fine-grained effects.** Bank conflicts, instruction scheduling, power and clock throttling are not modeled.
 - **Model resolution.** Differences smaller than the model's error cannot be resolved; real hardware decides those.
 
+### 9.1 Phase 1 residuals on the RTX 4070
+
+Measured with core `562fa39`, profile `0.11.0-m3`, development set only; the holdout set was not opened.
+
+**Serial large tiles.** Configs with `BLOCK_K = 64`, a 128-row tile, and no load overlap in the loop (prefetch distance 0, which includes `num_stages = 2`) have errors whose sign depends on the warp count. Warm, `decode-16`:
+
+| Config | Prefetch distance | CTAs per SM | Measured (us) | Predicted (us) | Error |
+|---|---|---|---|---|---|
+| `m128n128k64-w4-s1-g1` | 0 | 2 | 213.5 | 197.2 | -7.6% |
+| `m128n128k64-w4-s2-g1` | 0 | 2 | 211.5 | 196.7 | -7.0% |
+| `m128n128k64-w8-s1-g1` | 0 | 2 | 242.7 | 197.2 | -18.7% |
+| `m128n128k64-w8-s2-g1` | 0 | 1 | 226.3 | 233.7 | +3.3% |
+| `m128n64k64-w4-s1-g1` | 0 | 3 | 156.7 | 154.3 | -1.5% |
+| `m128n64k64-w4-s2-g1` | 0 | 3 | 165.9 | 154.3 | -7.0% |
+| `m128n64k64-w8-s1-g1` | 0 | 2 | 191.0 | 213.8 | +11.9% |
+| `m128n64k64-w8-s2-g1` | 0 | 2 | 176.1 | 212.5 | +20.6% |
+
+No constant per-stage correction fits both signs. Explanations ruled out, each by a microbenchmark that does not use GEMM timings:
+
+- **MMA chain fill and drain.** Dependent `mma.sync` chains have an intercept of 3 to 5 ns per stage (`mma_chain_latency`).
+- **Shared memory to register latency.** The `ldmatrix` intercept is 7 to 45 ns per stage (`serial_stage_overhead_ns`), under 10% of the 180 to 830 ns per iteration these configs missed before the queueing model.
+- **Serial shared memory fill.** One CTA fills shared memory at about 80 B/ns (`serial_stage_fill`, linear within 7% on held-out points), but adding stage bytes over that rate to serial stages overshoots the remaining error by 2 to 6 times, because the MLP curves already include part of it.
+- **Tensor, issue, shared memory port, and scheduler contention between co-resident CTAs.** In the MMA-contention closed loop (`dram_closed_loop_mma`, 150 points, 4 and 8 warps, 0 to 32 KB of `ldmatrix` per stage), two CTAs per SM are never slower than one, and the model's queueing network predicts delivered bandwidth with median error 1.0% to 1.9% and at most 16%.
+- **Register spills.** `ptxas` reports no spills for any of these configs.
+
+Open evidence: every config whose KernelIR carries the `linear_access_fallback` diagnostic (all 12 are `num_stages = 1`, the synchronous-load path) has a larger error. The frontend could not recover their access map, and the L2 model's reuse and miss merging use it. Median absolute error:
+
+| Case | Warm: fallback / other | Cold: fallback / other |
+|---|---|---|
+| decode-1 | 13.1% / 4.2% | 4.2% / 2.4% |
+| decode-16 | 1.7% / 3.0% | 1.0% / 2.0% |
+| decode-32 | 6.0% / 0.9% | 5.3% / 1.5% |
+| mask-m | 12.2% / 6.8% | 10.6% / 8.6% |
+| sm-round-below | 16.2% / 5.1% | 14.5% / 5.0% |
+| sm-round-exact | 17.6% / 4.2% | 15.0% / 5.0% |
+| sm-round-above | 13.0% / 2.7% | 10.8% / 4.4% |
+
+The fallback does not explain the `num_stages = 2` rows of the first table, which have an exact access map. Not covered by any measurement: L2 working-set growth when two large-tile CTAs share an SM.
+
+**Effect on users.** For these configs, rely on the indistinguishable verdict rather than the point prediction: autotuning keeps them in the shortlist for measurement on the real GPU instead of ruling them out.
+
 ## 10. Related work
 
 - [GPGPU-Sim](https://github.com/gpgpu-sim/gpgpu-sim_distribution) / [Accel-Sim](https://accel-sim.github.io/): cycle-level NVIDIA simulation; detailed but hours per large kernel and behind on recent architectures.
