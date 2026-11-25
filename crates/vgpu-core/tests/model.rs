@@ -401,6 +401,36 @@ fn mlp_curve_sets_latency_from_bytes_in_flight() {
 }
 
 #[test]
+fn a_single_buffer_waits_the_latency_then_streams_through_the_sm_port() {
+    // One CTA on one SM, one 16 KiB stage in flight, all from L2: each
+    // iteration is the idle latency plus 16 KiB at the SM's 10 B/ns, though
+    // the MLP curve, indexed by bytes in flight over the GPU, would allow
+    // more.
+    let mut k = compute_only(1);
+    k.tile.per_iteration = Work {
+        loads: vec![access("load", 16384.0)],
+        ..Work::default()
+    };
+    k.tile.prefetch_distance = 0;
+    let mut m = machine(&k);
+    m.l2_bw = vec![(1.0, 10.0), (46.0, 460.0)];
+    m.l2_mlp = [
+        vec![(4096.0, 40.0), (1e9, 1e3)],
+        vec![(4096.0, 40.0), (1e9, 1e3)],
+    ];
+    m.l2_latency_ns = 100.0;
+    m.fixed_sync.clear();
+    m.launch_overhead_ns = 0.0;
+    let p = simulate(&k, &profile(), &m, &mut ConstantHitRatio(1.0)).unwrap();
+    let expected = 64.0 * (100.0 + 16384.0 / 10.0);
+    assert!(
+        close(p.makespan_ns, expected),
+        "{} vs {expected}",
+        p.makespan_ns
+    );
+}
+
+#[test]
 fn other_ctas_compute_while_a_synchronous_cta_waits() {
     // Compute per iteration equals the round trip. One CTA per SM pays both
     // in turn; two CTAs per SM overlap one's wait with the other's compute.
@@ -620,7 +650,11 @@ fn one_cta_runs_its_mma_and_the_work_depending_on_it_in_series() {
     let mma = k.tile.per_iteration.mma_flops / (0.60 * 1e3);
     let sfu = 4.0 * 100.0 / 1.0;
     let p = run(&k, m);
-    assert!(close(p.makespan_ns, 64.0 * (mma + sfu)), "{}", p.makespan_ns);
+    assert!(
+        close(p.makespan_ns, 64.0 * (mma + sfu)),
+        "{}",
+        p.makespan_ns
+    );
 }
 
 #[test]

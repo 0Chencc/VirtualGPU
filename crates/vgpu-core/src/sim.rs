@@ -225,6 +225,22 @@ impl Machine {
         }
     }
 
+    /// A round trip takes at least the idle latency plus streaming its bytes
+    /// through the SM's own port, shared by the CTAs resident on the SM: the
+    /// MLP curves are indexed by bytes in flight over the whole GPU and do
+    /// not see one SM receiving them all.
+    fn port_floor(&self, lat: Latency, d: &Demand, resident: u32) -> Latency {
+        if d.round_trips == 0.0 {
+            return lat;
+        }
+        let port = interpolate(&self.l2_bw, 1.0);
+        let transfer = d.load_bytes / d.round_trips * f64::from(resident) / port;
+        Latency {
+            dram: lat.dram.max(self.dram_latency_ns + transfer),
+            l2: lat.l2.max(self.l2_latency_ns + transfer),
+        }
+    }
+
     /// Per-stage synchronization cost for the measured warp count and buffer
     /// count nearest the kernel's, or zero if the profile has none.
     fn sync_ns(&self, warps: u32, buffers: u32) -> f64 {
@@ -920,7 +936,8 @@ fn rates(ctas: &[Cta], m: &Machine, per_cta: &[PerCta], lat: Latency, s: &mut Sc
                 .fold((0, &0.0), |b, x| if x.1 > b.1 { x } else { b });
         let kind = if alone[0] >= t_other { MMA } else { other + 1 };
         let longest = alone[0] + t_other;
-        let (launch, l2_latency, dram_latency) = d.latency_parts(lat);
+        let (launch, l2_latency, dram_latency) =
+            d.latency_parts(m.port_floor(lat, d, s.resident[i]));
         // Steady state with compute and loads: the stage buffers of all CTAs
         // on the SM queue for the SM's pipes (service: a stage's compute alone
         // plus its synchronization) and wait a round trip between stages.
