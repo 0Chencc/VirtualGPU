@@ -18,13 +18,18 @@ from validation.holdout import seal_report
 from validation.provenance import source_info
 from validation.score import check_artifact
 
+# Triton's native binder caches dtype objects by identity for the process.
+_AOT_POINTERS = tuple(MockTensor(dtype) for dtype in ("f16", "f16", "f16", "f16", "f32"))
+_EXPECTED_POINTER_TYPES = {"Q": "*fp16", "K": "*fp16", "V": "*fp16", "O": "*fp16", "LSE": "*fp32"}
+
 
 def compile_artifact(case, config, target):
     grid, constants, options = launch_spec(case, config)
-    pointers = tuple(MockTensor(dtype) for dtype in ("f16", "f16", "f16", "f16", "f32"))
     parsed, signature, constexprs, attrs = specialize_triton_call(
-        fused_attention, target, (*pointers, *constants), options,
+        fused_attention, target, (*_AOT_POINTERS, *constants), options,
     )
+    if any(signature.get(key) != dtype for key, dtype in _EXPECTED_POINTER_TYPES.items()):
+        raise ValueError("Attention AOT pointer types do not match the JIT input types")
     artifact = compile_triton_aot(
         fused_attention, signature, constexprs, target,
         options["num_warps"], options["num_stages"], attrs=attrs, options=parsed,
