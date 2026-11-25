@@ -17,6 +17,7 @@ from virtualgpu.profile import (
 REPO_ROOT = Path(__file__).resolve().parents[2]
 EXAMPLE_PROFILE = REPO_ROOT / "schemas" / "examples" / "profile_example.json"
 RTX4070_PROFILE = REPO_ROOT / "profiles" / "rtx4070.json"
+GB10_PROFILE = REPO_ROOT / "profiles" / "gb10.json"
 
 
 def test_example_profile_is_valid() -> None:
@@ -64,6 +65,24 @@ def test_rtx4070_profile_is_valid() -> None:
     assert all(pt["tflops_per_sm"]["source"] == "measured" for pt in mma_f16)
     assert len(profile["measured"]["compute"]["mma_chain_latency"]) >= 128
     assert len(profile["measured"]["compute"]["serial_stage_overhead_ns"]) >= 16
+
+
+def test_gb10_profile_is_valid() -> None:
+    if not GB10_PROFILE.is_file():
+        pytest.skip("profiles/gb10.json not present")
+    profile = load_profile(GB10_PROFILE)
+    assert profile["identity"]["arch"] == "sm_121"
+    assert profile["identity"]["memory_type"] == "unified"
+    assert profile["specs"]["sm_count"] == 48
+    assert profile["specs"]["capabilities"]["tma"] is True
+    assert profile["specs"]["capabilities"]["tcgen05_tmem"] is False
+    mem = profile["measured"]["memory"]
+    assert mem["dram_bw_read_gbps"]["source"] == "measured"
+    assert mem["l2_bw_read_gbps"]["source"] == "measured"
+    assert len(mem["dram_bw_by_bytes_in_flight"]) >= 40
+    assert len(mem["dram_closed_loop_mma"]) >= 140
+    assert len(profile["measured"]["pipeline"]["serial_stage_fill"]) >= 32
+    assert len(profile["measured"]["compute"]["mma_chain_latency"]) >= 128
 
 
 def test_rejects_missing_required_field() -> None:

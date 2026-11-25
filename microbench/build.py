@@ -15,7 +15,12 @@ SRC_FILE = MICROBENCH_DIR / "src" / "vgpu_bench.cu"
 DEFAULT_OUT = MICROBENCH_DIR / "build" / "vgpu_bench"
 
 
-def find_cuda_root() -> Path | None:
+def find_cuda_root(nvcc_path: Path | None = None) -> Path | None:
+    if nvcc_path is not None:
+        resolved = nvcc_path.resolve()
+        if not resolved.is_file():
+            raise RuntimeError(f"Specified --nvcc path does not exist: {nvcc_path}")
+        return resolved.parents[1]
     site_packages = Path(sysconfig.get_paths()["purelib"])
     nvidia_dir = site_packages / "nvidia"
     if nvidia_dir.is_dir():
@@ -30,11 +35,11 @@ def find_cuda_root() -> Path | None:
     return None
 
 
-def build(arch: str, output: Path) -> Path:
-    cuda_root = find_cuda_root()
+def build(arch: str, output: Path, nvcc_path: Path | None = None) -> Path:
+    cuda_root = find_cuda_root(nvcc_path)
     if cuda_root is None:
         raise RuntimeError(
-            "nvcc not found. Install nvidia-cuda-nvcc and nvidia-cuda-runtime in the project venv."
+            "nvcc not found. Pass --nvcc /path/to/nvcc or install nvidia-cuda-nvcc in the project venv."
         )
 
     nvcc = cuda_root / "bin" / "nvcc"
@@ -68,8 +73,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Build VirtualGPU CUDA microbenchmark binary.")
     parser.add_argument("--arch", default="sm_89", help="Target GPU arch, e.g. sm_89 or sm_121.")
     parser.add_argument("--output", type=Path, default=DEFAULT_OUT, help="Output binary path.")
+    parser.add_argument("--nvcc", type=Path, default=None, help="Optional explicit path to nvcc binary.")
     args = parser.parse_args()
-    out = build(args.arch, args.output)
+    out = build(args.arch, args.output, args.nvcc)
     print(f"Built {out}")
     return 0
 
