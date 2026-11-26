@@ -1,5 +1,6 @@
 """CPU-only tests for the host CPU quiet check of GB10 captures."""
 
+import json
 import os
 import unittest
 from unittest.mock import patch
@@ -15,6 +16,7 @@ def series(foreign_per_second, busy_share=0.03, seconds=4, parent=1):
         out.append(
             {
                 "total": 100 * cpus * i,
+                "ncpu": cpus,
                 "busy": round(busy_share * 100 * cpus * i),
                 "procs": {
                     10: ("capture", 0, 1),
@@ -40,6 +42,25 @@ class HostQuietTests(unittest.TestCase):
 
     def test_descendants_of_the_capture_are_its_own(self):
         self.assertEqual(host_quiet.check(series(60, parent=11), [10])["status"], "passed")
+
+
+class JsonRoundTripTests(unittest.TestCase):
+    def test_saved_samples_judge_the_same(self):
+        for samples in (series(0), series(60), series(60, parent=11)):
+            saved = json.loads(json.dumps(samples))
+            self.assertEqual(host_quiet.check(saved, [10]), host_quiet.check(samples, [10]))
+
+    def test_check_uses_the_sampled_cpu_count(self):
+        samples = series(3)  # 3 jiffies per second out of 100 per CPU
+        for s in samples:
+            s["ncpu"] = 1  # on a 1-CPU host this is 3% of a CPU, under the limit
+        self.assertEqual(host_quiet.check(samples, [10])["status"], "passed")
+
+    def test_reused_pid_is_not_compared(self):
+        samples = series(60)
+        samples[2]["procs"][50] = ("other", 0, 1)
+        samples[3]["procs"][50] = ("other", 60, 1)
+        self.assertEqual(host_quiet.check(samples, [10])["status"], "passed")
 
 
 class FakeClock:

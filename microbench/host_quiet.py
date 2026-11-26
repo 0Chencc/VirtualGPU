@@ -39,15 +39,20 @@ def sample():
         comm = raw[raw.index("(") + 1 : raw.rindex(")")]
         rest = raw[raw.rindex(")") + 2 :].split()
         procs[int(entry.name)] = (comm, int(rest[11]) + int(rest[12]), int(rest[1]))
-    return {"total": sum(fields), "busy": sum(fields) - fields[3] - fields[4], "procs": procs}
+    return {
+        "total": sum(fields),
+        "busy": sum(fields) - fields[3] - fields[4],
+        "ncpu": os.cpu_count(),
+        "procs": procs,
+    }
 
 
 def own_pids(snapshot, roots):
     """The roots and every descendant in `snapshot`."""
     children = {}
     for pid, (_, _, parent) in snapshot["procs"].items():
-        children.setdefault(parent, []).append(pid)
-    own, stack = set(), list(roots)
+        children.setdefault(int(parent), []).append(int(pid))
+    own, stack = set(), [int(r) for r in roots]
     while stack:
         pid = stack.pop()
         if pid not in own:
@@ -62,19 +67,22 @@ def check(samples, roots):
     `roots` are the capture's own process IDs (the runner and the benchmark); their
     descendants count as the capture too.
     """
-    ncpu = os.cpu_count()
     busy, offenders, previous = [], {}, set()
     for a, b in zip(samples, samples[1:]):
         dt = b["total"] - a["total"]
         if dt <= 0:
             continue
+        ncpu = b.get("ncpu") or os.cpu_count()
         busy.append((b["busy"] - a["busy"]) / dt)
         own = own_pids(b, roots)
+        before = {int(pid): v for pid, v in a["procs"].items()}
         heavy = set()
         for pid, (comm, jiffies, _) in b["procs"].items():
-            if pid in own or pid not in a["procs"]:
+            pid = int(pid)
+            # A new process, or a reused PID with another name, has no comparable delta.
+            if pid in own or pid not in before or before[pid][0] != comm:
                 continue
-            share = (jiffies - a["procs"][pid][1]) / dt * ncpu
+            share = (jiffies - before[pid][1]) / dt * ncpu
             if share > PROCESS_LIMIT:
                 heavy.add(pid)
                 if pid in previous:
