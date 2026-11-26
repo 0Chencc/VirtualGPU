@@ -566,3 +566,28 @@ static int run_stage_narrow_k1_calibrate(int device, int samples, int warmup) {
   std::printf("\n  ]\n}\n");
   return 0;
 }
+
+// GB10 DRAM dispersion study: 2 and 16 B DRAM points with long launches, one
+// process per condition (quiet desktop or a controlled CPU memory load).
+static int run_dram_dispersion(int device, int samples, int warmup) {
+  using namespace narrow;
+  cudaDeviceProp prop{};
+  CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
+  Buffers b;
+  Timer timer;
+  bool first = true;
+  std::printf("{\n  \"samples\": %d,\n  \"gmem_load_narrow\": [", samples);
+  for (size_t mib : {512, 2048}) {
+    const size_t bytes = mib << 20;
+    gmem_narrow_point<2, 24, true, kMaskNone>(prop, timer, b.data, b.sink, b.flush, b.flush_sink, b.flush_vec4,
+                                              true, false, 1, 8, 1, 64, samples, warmup, first, bytes);
+    gmem_narrow_point<2, 12, true, kMaskNone>(prop, timer, b.data, b.sink, b.flush, b.flush_sink, b.flush_vec4,
+                                              true, false, 3, 8, 1, 64, samples, warmup, first, bytes);
+    gmem_narrow_point<16, 24, true, kMaskNone>(prop, timer, b.data, b.sink, b.flush, b.flush_sink, b.flush_vec4,
+                                               true, false, 1, 8, 1, 512, samples, warmup, first, bytes);
+    gmem_narrow_point<16, 12, true, kMaskNone>(prop, timer, b.data, b.sink, b.flush, b.flush_sink, b.flush_vec4,
+                                               true, false, 3, 8, 1, 512, samples, warmup, first, bytes);
+  }
+  std::printf("\n  ]\n}\n");
+  return 0;
+}

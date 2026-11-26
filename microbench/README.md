@@ -11,6 +11,7 @@ CUDA C++ benchmarks that read a GPU's static limits and measure its real rates, 
 | `build.py` | Builds `vgpu_bench` for one architecture |
 | `collect_profile.py` | Runs every benchmark and writes the profile |
 | `run_narrow.py` | Repeats a narrow-load benchmark behind the thermal gate; not part of the profile |
+| `dram_dispersion.py`, `src/cpu_stream.c` | GB10 DRAM dispersion study: long DRAM launches (`dram-dispersion`) with and without a controlled CPU memory load |
 
 ## Build
 

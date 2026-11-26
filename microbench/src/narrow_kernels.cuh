@@ -133,7 +133,7 @@ inline size_t round_up(size_t x, size_t a) { return (x + a - 1) / a * a; }
 constexpr size_t kDramBytes = 256ULL << 20;   // requested bytes per DRAM sample
 constexpr size_t kL2Set = 12ULL << 20;        // L2-hot working set, far above L1
 constexpr size_t kL2Bytes = 256ULL << 20;     // requested bytes per L2 sample
-constexpr size_t kBufferBytes = 1088ULL << 20;
+constexpr size_t kBufferBytes = 2304ULL << 20;
 
 template <typename Kernel>
 void set_smem(Kernel k, int bytes) {

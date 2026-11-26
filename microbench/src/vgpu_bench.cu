@@ -651,6 +651,9 @@ int main(int argc, char** argv) {
   if (mode == "stage-narrow-k1-calibrate") {
     return run_stage_narrow_k1_calibrate(device, samples, warmup);
   }
+  if (mode == "dram-dispersion") {
+    return run_dram_dispersion(device, samples, warmup);
+  }
   std::fprintf(stderr, "Unknown mode: %s\n", mode.c_str());
   return 2;
 }
