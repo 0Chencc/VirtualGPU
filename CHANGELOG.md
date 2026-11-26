@@ -4,11 +4,11 @@ All notable changes to VirtualGPU are documented in this file.
 
 - **v0.1** corresponds to the `phase1-final` freeze (`129a6f5`, Phase 1/2 frozen baseline).
 - **v0.2** covers the post-Phase-2 model, frontend, measurement, and validation cycle up to `34529b2`.
-- L1 carveout spill transition curves and spill reload latency modeling are **not** included in v0.2 (retained on branch `s3/spill-step` for v0.3; see Known Limits).
+- L1 carveout spill transition curves and spill reload latency modeling are **not** included in v0.2 (measured and stored in the profiles, not yet implemented in the core; planned for v0.3, see Known Limits).
 
 ---
 
-## v0.2 (2026-11-26)
+## v0.2 (2026-11-25)
 
 ### Model Mechanisms
 
@@ -54,7 +54,7 @@ All notable changes to VirtualGPU are documented in this file.
 
 ### Known Limits
 
-- **Deferred to v0.3:** carveout-aware L1-to-L2 spill transition curves and spill reload latency modeling are not enabled in v0.2 (retained on branch `s3/spill-step`).
+- **Deferred to v0.3:** carveout-aware L1-to-L2 spill transition curves and spill reload latency modeling are not implemented in the v0.2 core. The measured curves are stored in the profiles but the core does not read them yet.
 - **Spill dynamic counts and causal dual-loop attribution:** static `ptxas` spill counts sum both causal `_attention_tiles` loops (main + 1-step diagonal) and do not report dynamic per-iteration reload counts; resolving this requires hardware performance counter (`ncu`) profiling.
 - **Synchronous-load GEMM residual:** `num_stages = 1` register-staged GEMM configs remain predicted slow (+9.1% warm / +2.2% cold median error on the development set; see `docs/design.md` section 9.2).
 - **Holdout validity for v0.2:** the RTX 4070 GEMM workload holdout and GB10 transfer datasets have been unsealed and **cannot** be reused to validate v0.2; v0.2 requires fresh held-out validation, for which the RTX 4070 attention holdout (`c1ac132`) remains sealed.
