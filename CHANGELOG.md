@@ -4,6 +4,7 @@
 
 ### Added
 
+- Candidate v0.3 GEMM and attention holdouts for RTX 4070 and GB10, with a historical shape audit and CPU AOT resource checks
 - NVIDIA RTX PRO 5000 72GB Blackwell (`sm_120`) profile
 - Draft the v0.3 workload holdout protocol and audit the two reference profiles for MLP repeat coverage
 - Post-hoc Nsight Compute capture for dynamic local loads and stores in the spill microbenchmark and causal attention

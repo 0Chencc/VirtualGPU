@@ -1,0 +1,710 @@
+{
+  "audit_class": "candidate_cpu_aot",
+  "recorded_utc": "2026-11-26T20:16:42.182493+00:00",
+  "source_revision": "07de592a2e2224a6c942d4f81adc0006bf69950b",
+  "host_arch": "x86_64",
+  "triton_version": "3.9.0",
+  "history_sha256": "1e8afe49294d478377a7302a4c7aac606da39eb3ed2725442ed6343497aeef32",
+  "manifests": {
+    "gemm": "cadd8eaebebb0c84d5d28501c2e1fc4f3600388cca54c1871db20e65347e5e70",
+    "attention": "d50343f183c09d76de35f4b70bcee188da555d7a2e20bf1a5c789d650f07b03e"
+  },
+  "cohorts": {
+    "rtx4070-gemm": {
+      "target": "sm_89",
+      "profile_sha256": "3bb13b7307eabb803465a05cbcd939b78a6252bb2c54f3dc761c069ac2a8ed91",
+      "profile_revision": "0.21.0-posthoc",
+      "cases": {
+        "v03-rtx4070-decode-small": {
+          "aot_file": "rtx4070-gemm-v03-rtx4070-decode-small.json",
+          "aot_sha256": "68410e278e52b60640c95fcc23bbf68d79214e1f70aaf2fba4e4473670966e5d",
+          "status_counts": {
+            "fits_profile": 36
+          },
+          "invalid": {}
+        },
+        "v03-rtx4070-decode-wide": {
+          "aot_file": "rtx4070-gemm-v03-rtx4070-decode-wide.json",
+          "aot_sha256": "c13a0b205b815f65724c6fcf2acabf6b1346873a71cd41ce533c28cdc093b2f4",
+          "status_counts": {
+            "fits_profile": 36
+          },
+          "invalid": {}
+        },
+        "v03-rtx4070-mask-mnk-small": {
+          "aot_file": "rtx4070-gemm-v03-rtx4070-mask-mnk-small.json",
+          "aot_sha256": "c829210148fb02a5b20406520061b352933adb40a396d98594e89d88bc192ef7",
+          "status_counts": {
+            "fits_profile": 36
+          },
+          "invalid": {}
+        },
+        "v03-rtx4070-mask-mnk-wide": {
+          "aot_file": "rtx4070-gemm-v03-rtx4070-mask-mnk-wide.json",
+          "aot_sha256": "3154470fad1d6501c950b275cf742688a1c839ae37d4666d5b52654a31bc3b40",
+          "status_counts": {
+            "fits_profile": 36
+          },
+          "invalid": {}
+        },
+        "v03-rtx4070-wave-below": {
+          "aot_file": "rtx4070-gemm-v03-rtx4070-wave-below.json",
+          "aot_sha256": "4a1a95e32136b25d8996a97a1ab64895356b18dc17f2d055f0746865b3a24f13",
+          "status_counts": {
+            "fits_profile": 36
+          },
+          "invalid": {},
+          "wave_reference": {
+            "config_id": "m64n128k32-w4-s4-g1",
+            "ctas": 91,
+            "full_wave_capacity": 92,
+            "resident_ctas_per_sm": 2,
+            "resources": {
+              "registers_per_thread": 128,
+              "static_smem_bytes": 36864
+            }
+          }
+        },
+        "v03-rtx4070-wave-exact": {
+          "aot_file": "rtx4070-gemm-v03-rtx4070-wave-exact.json",
+          "aot_sha256": "1ae0649091d30ed7683858443cb4559c1ad5c5d3a4887bc0629f91eb3816727e",
+          "status_counts": {
+            "fits_profile": 36
+          },
+          "invalid": {},
+          "wave_reference": {
+            "config_id": "m64n128k32-w4-s4-g1",
+            "ctas": 92,
+            "full_wave_capacity": 92,
+            "resident_ctas_per_sm": 2,
+            "resources": {
+              "registers_per_thread": 128,
+              "static_smem_bytes": 36864
+            }
+          }
+        },
+        "v03-rtx4070-wave-above": {
+          "aot_file": "rtx4070-gemm-v03-rtx4070-wave-above.json",
+          "aot_sha256": "1f2609266718c65ce659725fdd16e0699842921196d3cf422df3aa683b780ebd",
+          "status_counts": {
+            "fits_profile": 36
+          },
+          "invalid": {},
+          "wave_reference": {
+            "config_id": "m64n128k32-w4-s4-g1",
+            "ctas": 93,
+            "full_wave_capacity": 92,
+            "resident_ctas_per_sm": 2,
+            "resources": {
+              "registers_per_thread": 128,
+              "static_smem_bytes": 36864
+            }
+          }
+        },
+        "v03-rtx4070-prefill-small": {
+          "aot_file": "rtx4070-gemm-v03-rtx4070-prefill-small.json",
+          "aot_sha256": "8291224a58925de646937d855a2460e2a86d46a0f9e757c4f64aa0baf6eb614b",
+          "status_counts": {
+            "fits_profile": 36
+          },
+          "invalid": {}
+        },
+        "v03-rtx4070-prefill-wide": {
+          "aot_file": "rtx4070-gemm-v03-rtx4070-prefill-wide.json",
+          "aot_sha256": "681138ed571b5144ecc6a38eea9cdcc9a57a63c2671b0ed99826265a99d110c5",
+          "status_counts": {
+            "fits_profile": 36
+          },
+          "invalid": {}
+        }
+      }
+    },
+    "gb10-gemm": {
+      "target": "sm_121",
+      "profile_sha256": "d93e53a533041b39e05d889b7024fe86a7c3efefd59f44e230fb4a6e29ae31cb",
+      "profile_revision": "0.22.0-posthoc",
+      "cases": {
+        "v03-gb10-decode-small": {
+          "aot_file": "gb10-gemm-v03-gb10-decode-small.json",
+          "aot_sha256": "4ad5da1d6c66c8ddfbe49f8844038570cc0b1b187bfae89343e0d04ab904bc3b",
+          "status_counts": {
+            "fits_profile": 36
+          },
+          "invalid": {}
+        },
+        "v03-gb10-decode-wide": {
+          "aot_file": "gb10-gemm-v03-gb10-decode-wide.json",
+          "aot_sha256": "846779b635c498608824d9b3589e2ecc1e637ff408fdfc82dab2fcf7884f7e50",
+          "status_counts": {
+            "fits_profile": 36
+          },
+          "invalid": {}
+        },
+        "v03-gb10-mask-mnk-small": {
+          "aot_file": "gb10-gemm-v03-gb10-mask-mnk-small.json",
+          "aot_sha256": "576eb74ecaf773b46a72385862164c8ca558d20a0bf7092e5a5f5ce5babd4f27",
+          "status_counts": {
+            "fits_profile": 36
+          },
+          "invalid": {}
+        },
+        "v03-gb10-mask-mnk-wide": {
+          "aot_file": "gb10-gemm-v03-gb10-mask-mnk-wide.json",
+          "aot_sha256": "31b6cc8740fdb66743ba7abddfb1853888c4c50274e2dafe4dd4e25f72d73258",
+          "status_counts": {
+            "fits_profile": 36
+          },
+          "invalid": {}
+        },
+        "v03-gb10-wave-below": {
+          "aot_file": "gb10-gemm-v03-gb10-wave-below.json",
+          "aot_sha256": "44f02098790d289f335cfdadd1727a3e5e5ed4c7c198fb7ca8ad061d18ed71f7",
+          "status_counts": {
+            "fits_profile": 36
+          },
+          "invalid": {},
+          "wave_reference": {
+            "config_id": "m64n128k32-w4-s4-g1",
+            "ctas": 95,
+            "full_wave_capacity": 96,
+            "resident_ctas_per_sm": 2,
+            "resources": {
+              "registers_per_thread": 128,
+              "static_smem_bytes": 36864
+            }
+          }
+        },
+        "v03-gb10-wave-exact": {
+          "aot_file": "gb10-gemm-v03-gb10-wave-exact.json",
+          "aot_sha256": "78cb0064874a66e46ee185a7e6899a78f54be3b6037897f54184137d1a14cbcb",
+          "status_counts": {
+            "fits_profile": 36
+          },
+          "invalid": {},
+          "wave_reference": {
+            "config_id": "m64n128k32-w4-s4-g1",
+            "ctas": 96,
+            "full_wave_capacity": 96,
+            "resident_ctas_per_sm": 2,
+            "resources": {
+              "registers_per_thread": 128,
+              "static_smem_bytes": 36864
+            }
+          }
+        },
+        "v03-gb10-wave-above": {
+          "aot_file": "gb10-gemm-v03-gb10-wave-above.json",
+          "aot_sha256": "e54bbd433f6f111094c1034e033557a85ba8c17e71381b8820650a3d29e11f47",
+          "status_counts": {
+            "fits_profile": 36
+          },
+          "invalid": {},
+          "wave_reference": {
+            "config_id": "m64n128k32-w4-s4-g1",
+            "ctas": 97,
+            "full_wave_capacity": 96,
+            "resident_ctas_per_sm": 2,
+            "resources": {
+              "registers_per_thread": 128,
+              "static_smem_bytes": 36864
+            }
+          }
+        },
+        "v03-gb10-prefill-small": {
+          "aot_file": "gb10-gemm-v03-gb10-prefill-small.json",
+          "aot_sha256": "366df1ffc385251ac1105619093a626ff304c68b6dc407362ba553a15f66603a",
+          "status_counts": {
+            "fits_profile": 36
+          },
+          "invalid": {}
+        },
+        "v03-gb10-prefill-wide": {
+          "aot_file": "gb10-gemm-v03-gb10-prefill-wide.json",
+          "aot_sha256": "f6c992db7118b692a37b01968a976a82acb6c8ae6cf69a0a5f95957bf705443a",
+          "status_counts": {
+            "fits_profile": 36
+          },
+          "invalid": {}
+        }
+      }
+    },
+    "rtx4070-attention": {
+      "target": "sm_89",
+      "profile_sha256": "3bb13b7307eabb803465a05cbcd939b78a6252bb2c54f3dc761c069ac2a8ed91",
+      "profile_revision": "0.21.0-posthoc",
+      "cases": {
+        "b1-q16-kv16-s640-d64-full": {
+          "aot_file": "rtx4070-attention-b1-q16-kv16-s640-d64-full.json",
+          "aot_sha256": "ed7c43e1b537fe35acfec94c70c8d0f55f72bdbeb774e59dadfdf9e2a439ad6b",
+          "status_counts": {
+            "fits_profile": 24
+          },
+          "invalid": {}
+        },
+        "b2-q16-kv16-s2688-d128-full": {
+          "aot_file": "rtx4070-attention-b2-q16-kv16-s2688-d128-full.json",
+          "aot_sha256": "5c52dc94c7614f1f58162f68c5b9a099d2626d279a7d50ac3edd7cefb81eea01",
+          "status_counts": {
+            "fits_profile": 24,
+            "resource_exceeded": 12
+          },
+          "invalid": {
+            "m64n64-w4-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m64n64-w8-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m64n128-w4-s3": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m64n128-w8-s3": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m64n128-w4-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m64n128-w8-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n64-w4-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n64-w8-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n128-w4-s3": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n128-w8-s3": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n128-w4-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n128-w8-s4": [
+              "shared_per_cta",
+              "residency"
+            ]
+          }
+        },
+        "b2-q20-kv20-s1217-d64-causal": {
+          "aot_file": "rtx4070-attention-b2-q20-kv20-s1217-d64-causal.json",
+          "aot_sha256": "4c261a84d9fa2118f287d39eae1073d184c870439c914bd4bda670e3cab798b2",
+          "status_counts": {
+            "fits_profile": 24
+          },
+          "invalid": {}
+        },
+        "b1-q24-kv24-s3840-d128-causal": {
+          "aot_file": "rtx4070-attention-b1-q24-kv24-s3840-d128-causal.json",
+          "aot_sha256": "885df24f883bf4d3df83ffdcda2deaf5cc76aebbd3a6b76d2d079e679eea3c18",
+          "status_counts": {
+            "fits_profile": 22,
+            "resource_exceeded": 8
+          },
+          "invalid": {
+            "m64n64-w4-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m64n64-w8-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n64-w4-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n64-w8-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n128-w4-s3": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n128-w8-s3": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n128-w4-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n128-w8-s4": [
+              "shared_per_cta",
+              "residency"
+            ]
+          }
+        },
+        "b2-q24-kv6-s1347-d64-full": {
+          "aot_file": "rtx4070-attention-b2-q24-kv6-s1347-d64-full.json",
+          "aot_sha256": "115e6b0808fed0853ea971df778bd2cca71ea0efab18b119b285475aea11ead2",
+          "status_counts": {
+            "fits_profile": 24
+          },
+          "invalid": {}
+        },
+        "b1-q32-kv4-s3328-d128-full": {
+          "aot_file": "rtx4070-attention-b1-q32-kv4-s3328-d128-full.json",
+          "aot_sha256": "acaa94a56d59ceb47118b3f6e86e32eac299570bc6036a0fd5643c21f51b38aa",
+          "status_counts": {
+            "fits_profile": 24,
+            "resource_exceeded": 12
+          },
+          "invalid": {
+            "m64n64-w4-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m64n64-w8-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m64n128-w4-s3": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m64n128-w8-s3": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m64n128-w4-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m64n128-w8-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n64-w4-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n64-w8-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n128-w4-s3": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n128-w8-s3": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n128-w4-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n128-w8-s4": [
+              "shared_per_cta",
+              "residency"
+            ]
+          }
+        },
+        "b1-q32-kv8-s1795-d64-causal": {
+          "aot_file": "rtx4070-attention-b1-q32-kv8-s1795-d64-causal.json",
+          "aot_sha256": "69dd15efbd28fcf29aed23eaeb73218dccbcea0645c688121133d99b7d5a20c2",
+          "status_counts": {
+            "fits_profile": 24
+          },
+          "invalid": {}
+        },
+        "b2-q24-kv6-s2305-d128-causal": {
+          "aot_file": "rtx4070-attention-b2-q24-kv6-s2305-d128-causal.json",
+          "aot_sha256": "bfecba928c7116079e58b9a7cb41d086cf2e438244bf0797667e5e316cdf58e8",
+          "status_counts": {
+            "fits_profile": 22,
+            "resource_exceeded": 8
+          },
+          "invalid": {
+            "m64n64-w4-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m64n64-w8-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n64-w4-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n64-w8-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n128-w4-s3": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n128-w8-s3": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n128-w4-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n128-w8-s4": [
+              "shared_per_cta",
+              "residency"
+            ]
+          }
+        }
+      }
+    },
+    "gb10-attention": {
+      "target": "sm_121",
+      "profile_sha256": "d93e53a533041b39e05d889b7024fe86a7c3efefd59f44e230fb4a6e29ae31cb",
+      "profile_revision": "0.22.0-posthoc",
+      "cases": {
+        "b1-q20-kv20-s896-d64-full": {
+          "aot_file": "gb10-attention-b1-q20-kv20-s896-d64-full.json",
+          "aot_sha256": "74a5c9f1ef2e94c740429d0cb4944cfb0bb4f6692650815999b2cde99cb17b63",
+          "status_counts": {
+            "fits_profile": 24
+          },
+          "invalid": {}
+        },
+        "b2-q12-kv12-s2176-d128-full": {
+          "aot_file": "gb10-attention-b2-q12-kv12-s2176-d128-full.json",
+          "aot_sha256": "9920034f32949bbc6750fb3e14811d3fe3cb0207e4dc1c56eb9e123b06a36f2f",
+          "status_counts": {
+            "fits_profile": 24,
+            "resource_exceeded": 12
+          },
+          "invalid": {
+            "m64n64-w4-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m64n64-w8-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m64n128-w4-s3": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m64n128-w8-s3": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m64n128-w4-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m64n128-w8-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n64-w4-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n64-w8-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n128-w4-s3": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n128-w8-s3": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n128-w4-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n128-w8-s4": [
+              "shared_per_cta",
+              "residency"
+            ]
+          }
+        },
+        "b2-q24-kv24-s1407-d64-causal": {
+          "aot_file": "gb10-attention-b2-q24-kv24-s1407-d64-causal.json",
+          "aot_sha256": "2d7d853b369872ca2bccc96534a5cffd8c1cea7c12a11da9fc8a469ea6d64794",
+          "status_counts": {
+            "fits_profile": 24
+          },
+          "invalid": {}
+        },
+        "b1-q28-kv28-s4352-d128-causal": {
+          "aot_file": "gb10-attention-b1-q28-kv28-s4352-d128-causal.json",
+          "aot_sha256": "aa1059611300d5b0b2755795a7e199f66bcaa061ecd10f76da9b83c7c4704293",
+          "status_counts": {
+            "fits_profile": 22,
+            "resource_exceeded": 8
+          },
+          "invalid": {
+            "m64n64-w4-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m64n64-w8-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n64-w4-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n64-w8-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n128-w4-s3": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n128-w8-s3": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n128-w4-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n128-w8-s4": [
+              "shared_per_cta",
+              "residency"
+            ]
+          }
+        },
+        "b2-q28-kv7-s1539-d64-full": {
+          "aot_file": "gb10-attention-b2-q28-kv7-s1539-d64-full.json",
+          "aot_sha256": "ddd4e5b689d78b01ebd16746c4b34e961fac6ec7a24ffe989bbe583d38d550f1",
+          "status_counts": {
+            "fits_profile": 24
+          },
+          "invalid": {}
+        },
+        "b1-q36-kv6-s2944-d128-full": {
+          "aot_file": "gb10-attention-b1-q36-kv6-s2944-d128-full.json",
+          "aot_sha256": "85fc3869cbeab58a54f6848db3f432d801ef5bc8cf48be78e72fabdafa8ce54f",
+          "status_counts": {
+            "fits_profile": 24,
+            "resource_exceeded": 12
+          },
+          "invalid": {
+            "m64n64-w4-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m64n64-w8-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m64n128-w4-s3": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m64n128-w8-s3": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m64n128-w4-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m64n128-w8-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n64-w4-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n64-w8-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n128-w4-s3": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n128-w8-s3": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n128-w4-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n128-w8-s4": [
+              "shared_per_cta",
+              "residency"
+            ]
+          }
+        },
+        "b1-q48-kv8-s1985-d64-causal": {
+          "aot_file": "gb10-attention-b1-q48-kv8-s1985-d64-causal.json",
+          "aot_sha256": "a62791a741518d8601bba52046224af4c33861ef6da434c06cc01811c89b3374",
+          "status_counts": {
+            "fits_profile": 24
+          },
+          "invalid": {}
+        },
+        "b2-q32-kv8-s2563-d128-causal": {
+          "aot_file": "gb10-attention-b2-q32-kv8-s2563-d128-causal.json",
+          "aot_sha256": "e3fe74e7b9e2b2d092302a6cccd2ba3d24955a7f797035417373f2a94d98010c",
+          "status_counts": {
+            "fits_profile": 22,
+            "resource_exceeded": 8
+          },
+          "invalid": {
+            "m64n64-w4-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m64n64-w8-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n64-w4-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n64-w8-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n128-w4-s3": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n128-w8-s3": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n128-w4-s4": [
+              "shared_per_cta",
+              "residency"
+            ],
+            "m128n128-w8-s4": [
+              "shared_per_cta",
+              "residency"
+            ]
+          }
+        }
+      }
+    }
+  }
+}
