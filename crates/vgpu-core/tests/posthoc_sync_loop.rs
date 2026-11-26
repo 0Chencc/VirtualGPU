@@ -97,6 +97,8 @@ fn per_step_split_ns(p: &Profile, q: &Point, l2: &mut impl L2) -> f64 {
         registers_per_thread: 64,
         smem_per_cta_bytes: (99 * 1024 / u64::from(q.ctas_per_sm) - 1024)
             .max(u64::from(q.stage_bytes)),
+        ub_bytes: 0,
+        l0c_bytes: 0,
         tiles_per_program: TripCounts::Uniform(1),
         mma_key: MMA_KEY.to_string(),
         spill: Spill::default(),

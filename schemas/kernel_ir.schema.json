@@ -164,6 +164,35 @@
         "barriers": {
           "type": "integer",
           "minimum": 0
+        },
+        "vendor_extensions": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Optional target-specific resource footprints outside the vendor-neutral resource set.",
+          "properties": {
+            "ascend": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Huawei Ascend Da Vinci on-chip buffer and inter-core workspace footprints in bytes.",
+              "properties": {
+                "ub_bytes": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Unified Buffer (UB) footprint per AIV core in bytes."
+                },
+                "l0c_bytes": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "L0C accumulator buffer footprint per AIC core in bytes."
+                },
+                "workspace_bytes": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Global-memory Cube/Vector workspace size per AI Core in bytes."
+                }
+              }
+            }
+          }
         }
       }
     },

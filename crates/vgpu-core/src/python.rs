@@ -142,7 +142,13 @@ fn record<'py>(
         Op::Shfl(_) => compute.shfl_issue_rate_per_sm_gips.is_empty(),
         _ => false,
     });
-    if !ir.diagnostics.is_empty() || uses_unmeasured_pipe {
+    let mut diagnostics = ir.diagnostics.clone();
+    let is_unvalidated_vendor =
+        all[0].profile.identity.vendor == "ascend" || ir.metadata.target_vendor == "ascend";
+    if is_unvalidated_vendor && !diagnostics.iter().any(|d| d == "unvalidated_target_ascend") {
+        diagnostics.push("unvalidated_target_ascend".into());
+    }
+    if !diagnostics.is_empty() || uses_unmeasured_pipe {
         flags.push("unvalidated_feature".into());
     }
     let dispatch = &all[0].profile.measured.cta_dispatch;
@@ -150,7 +156,7 @@ fn record<'py>(
         flags.push("dispatch_ambiguous".into());
     }
     d.set_item("flags", flags)?;
-    d.set_item("diagnostics", ir.diagnostics.clone())?;
+    d.set_item("diagnostics", diagnostics)?;
     Ok(d)
 }
 

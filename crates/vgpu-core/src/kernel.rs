@@ -78,8 +78,12 @@ pub struct Kernel {
     pub grid: u32,
     pub num_warps: u32,
     pub registers_per_thread: u32,
-    /// Static plus dynamic shared memory per CTA.
+    /// Static plus dynamic shared memory per CTA (or L1 `cbuf` bytes on Ascend).
     pub smem_per_cta_bytes: u64,
+    /// Optional Ascend Unified Buffer (UB) footprint per AIV core (0 on non-Ascend).
+    pub ub_bytes: u64,
+    /// Optional Ascend L0C accumulator footprint per AIC core (0 on non-Ascend).
+    pub l0c_bytes: u64,
     /// Tiles processed by each program: one for ordinary kernels, more for
     /// persistent kernels.
     pub tiles_per_program: TripCounts,

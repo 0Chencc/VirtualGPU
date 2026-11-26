@@ -22,9 +22,23 @@ pub struct Occupancy {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum OccupancyError {
-    TooManyThreads { threads: u32, max: u32 },
-    TooManyRegisters { per_thread: u32, max: u32 },
-    TooMuchSharedMemory { bytes: u64, max: u64 },
+    TooManyThreads {
+        threads: u32,
+        max: u32,
+    },
+    TooManyRegisters {
+        per_thread: u32,
+        max: u32,
+    },
+    TooMuchSharedMemory {
+        bytes: u64,
+        max: u64,
+    },
+    TooMuchOnChipBuffer {
+        buffer: &'static str,
+        bytes: u64,
+        max: u64,
+    },
     DoesNotFit,
 }
 
@@ -52,6 +66,22 @@ pub fn occupancy(k: &Kernel, s: &Specs) -> Result<Occupancy, OccupancyError> {
             max: s.max_shared_mem_per_block_bytes,
         });
     }
+    if let Some(asc) = &s.ascend {
+        if k.ub_bytes > asc.ub_bytes {
+            return Err(OccupancyError::TooMuchOnChipBuffer {
+                buffer: "ub",
+                bytes: k.ub_bytes,
+                max: asc.ub_bytes,
+            });
+        }
+        if k.l0c_bytes > asc.l0c_bytes {
+            return Err(OccupancyError::TooMuchOnChipBuffer {
+                buffer: "l0c",
+                bytes: k.l0c_bytes,
+                max: asc.l0c_bytes,
+            });
+        }
+    }
 
     let regs_per_warp = round_up(
         u64::from(k.registers_per_thread.max(1)) * u64::from(s.warp_size),
@@ -70,13 +100,16 @@ pub fn occupancy(k: &Kernel, s: &Specs) -> Result<Occupancy, OccupancyError> {
         .max()
         .unwrap_or(s.shared_mem_per_sm_bytes)
         .min(s.shared_mem_per_sm_bytes);
+    let ctas_by_smem = smem_capacity
+        .checked_div(smem_per_cta)
+        .unwrap_or(u64::from(s.max_blocks_per_sm));
 
     let limits = [
         (Limiter::Warps, u64::from(s.max_warps_per_sm / k.num_warps)),
         (Limiter::Threads, u64::from(s.max_threads_per_sm / threads)),
         (Limiter::Blocks, u64::from(s.max_blocks_per_sm)),
         (Limiter::Registers, warps_by_regs / u64::from(k.num_warps)),
-        (Limiter::SharedMemory, smem_capacity / smem_per_cta),
+        (Limiter::SharedMemory, ctas_by_smem),
     ];
     let (limiter, ctas) = limits.iter().copied().min_by_key(|l| l.1).unwrap();
     if ctas == 0 {

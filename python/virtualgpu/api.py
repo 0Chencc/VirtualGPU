@@ -59,6 +59,7 @@ def normalize_gemm_config(entry: Mapping[str, Any], index: int = 0) -> tuple[str
         "BLOCK_SIZE_K",
         "num_warps",
         "num_stages",
+        "multibuffer",
         "maxnreg",
     ):
         if key in entry and entry[key] is not None:

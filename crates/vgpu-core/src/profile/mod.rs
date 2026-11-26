@@ -40,6 +40,18 @@ pub struct Identity {
     pub sku: String,
 }
 
+/// Optional Huawei Ascend Da Vinci on-chip SRAM and Cube/Vector core limits.
+#[derive(Debug, Clone, Deserialize)]
+pub struct AscendSpecs {
+    pub cube_cores: u32,
+    pub vector_cores: u32,
+    pub l1_bytes: u64,
+    pub l0a_bytes: u64,
+    pub l0b_bytes: u64,
+    pub l0c_bytes: u64,
+    pub ub_bytes: u64,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct Specs {
     pub sm_count: u32,
@@ -64,6 +76,8 @@ pub struct Specs {
     pub l1_size_bytes: u64,
     #[serde(default)]
     pub capabilities: BTreeMap<String, bool>,
+    #[serde(default)]
+    pub ascend: Option<AscendSpecs>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

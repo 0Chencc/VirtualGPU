@@ -4,6 +4,7 @@
 
 ### Added
 
+- Huawei Ascend 910B3 (`ascend910b3`) support: AscendC M1/M2 microbenchmark suite (`microbench/ascend/`), measured `profiles/ascend910b3.json` profile, optional `specs.ascend` and `resources.vendor_extensions.ascend` on-chip SRAM checks (`OccupancyError::TooMuchOnChipBuffer`), automatic `unvalidated_feature` / `unvalidated_target_ascend` flagging, and CPU-only Triton-Ascend HIVM GEMM frontend
 - Post-hoc microbenchmarks for the merged wait of single-buffer loops (delayed followers, free-running groups) and issue stamps for the attention ablation, with GB10 data
 - Post-hoc GB10 GEMM analysis of H3 and H4 with the `wave-rescan`, `b-stream` and `staged-mma` microbenchmarks and their frozen predictions
 - Post-hoc single-buffer loop microbenchmarks and a fused attention ablation for the `num_stages = 2` round trip, with RTX 4070 and GB10 data

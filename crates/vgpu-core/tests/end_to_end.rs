@@ -59,3 +59,78 @@ fn causal_attention_example_runs_with_per_tile_iterations() {
     let r = simulate(&k, &p, &m, &mut l2).unwrap();
     assert!(r.time_ns.is_finite() && r.time_ns > 0.0);
 }
+
+#[test]
+fn ascend910b3_profile_simulates_cube_gemm_and_enforces_sram_limits() {
+    use vgpu_core::occupancy::{occupancy, OccupancyError};
+
+    let p = Profile::from_json(include_str!("../../../profiles/ascend910b3.json")).unwrap();
+    assert_eq!(p.identity.vendor, "ascend");
+    assert_eq!(p.identity.arch, "ascend910b3");
+    assert_eq!(p.specs.sm_count, 20);
+    let asc = p.specs.ascend.as_ref().expect("ascend specs present");
+    assert_eq!(asc.l1_bytes, 524_288);
+    assert_eq!(asc.l0c_bytes, 131_072);
+    assert_eq!(asc.ub_bytes, 196_608);
+
+    // 2048x2048x2048 FP16 GEMM, 128x128x64 tile, auto-blockified onto 20 AI Cores (12-13 tiles/core).
+    let mut ir = KernelIR::from_json_str(IR).unwrap();
+    ir.metadata.target_vendor = "ascend".into();
+    ir.metadata.target_arch = "ascend910b3".into();
+    ir.metadata.frontend = "triton_ascend".into();
+    ir.launch.grid = [20, 1, 1];
+    ir.launch.num_warps = 1;
+    ir.launch.warp_size = 32;
+    ir.launch.warp_groups[0].num_warps = 1;
+    ir.resources.registers_per_thread = 1;
+    ir.resources.static_smem_bytes = 65_536;
+    ir.resources.vendor_extensions = Some(vgpu_core::ir::ResourceVendorExtensions {
+        ascend: Some(vgpu_core::ir::AscendResourceUsage {
+            ub_bytes: Some(0),
+            l0c_bytes: Some(65_536),
+            workspace_bytes: Some(0),
+        }),
+    });
+    ir.body.outer_loop.trip_count_mode = vgpu_core::ir::OuterTripCountMode::Uniform;
+    ir.body.outer_loop.trip_counts = vgpu_core::ir::TripCounts::Uniform(12);
+    ir.body.pipeline_loop.trip_counts = vgpu_core::ir::TripCounts::Uniform(32);
+    ir.body.pipeline_loop.num_stages = 2;
+    ir.body.pipeline_loop.prefetch_distance = 1;
+    for op in &mut ir.body.pipeline_loop.ops {
+        if let vgpu_core::ir::Op::Mma(m) = op {
+            m.op_class = "cube.mmad".into();
+            m.tile_mnk = [128, 128, 64];
+            m.inst_mnk = [16, 16, 16];
+            m.count = 8 * 8 * 4;
+        }
+    }
+    for entry in ir.access_map.values_mut() {
+        if let vgpu_core::ir::AccessEntry::Strided2dPerOuterTile { entries, .. } = entry {
+            entries.truncate(240);
+        }
+    }
+    ir.validate().unwrap();
+
+    let k = kernel_from_ir(&ir).unwrap();
+    let m = Machine::nominal(&p, &k.mma_key).unwrap();
+    let mut l2 = IrL2::new(&ir, &p, L2InitState::Cold, L2Options::default());
+    let r = simulate(&k, &p, &m, &mut l2).unwrap();
+    assert!(r.time_ns.is_finite() && r.time_ns > 0.0);
+    assert_eq!(r.occupancy.ctas_per_sm, 1);
+
+    // UB overflow (> 192 KiB) must be rejected with a dedicated on-chip buffer error.
+    let mut bad_ub = k.clone();
+    bad_ub.ub_bytes = asc.ub_bytes + 32;
+    assert!(matches!(
+        occupancy(&bad_ub, &p.specs),
+        Err(OccupancyError::TooMuchOnChipBuffer { buffer: "ub", .. })
+    ));
+
+    // L0C overflow (> 128 KiB) must be rejected with a dedicated on-chip buffer error.
+    let mut bad_l0c = k;
+    bad_l0c.l0c_bytes = asc.l0c_bytes + 32;
+    assert!(matches!(
+        occupancy(&bad_l0c, &p.specs),
+        Err(OccupancyError::TooMuchOnChipBuffer { buffer: "l0c", .. })
+    ));
+}

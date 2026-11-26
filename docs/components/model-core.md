@@ -47,7 +47,8 @@ Other `KernelIR` fields the core reads:
 - `launch.cluster_shape`.
 - `access_map` entries with `tile_coords` and `is_masked`: masked edge tiles are charged their valid bytes, not the full tile.
 - Top-level `unsupported_features`: any entry gives status `unsupported` with that entry as the reason.
-- Top-level `diagnostics`: the variant is still simulated, but any entry sets the `unvalidated_feature` flag (lower confidence, section 4) and is copied into the output diagnostics.
+- Top-level `diagnostics`: the variant is still simulated, but any entry sets the `unvalidated_feature` flag (lower confidence, section 4) and is copied into the output diagnostics. Targets without a sealed holdout (currently `vendor == "ascend"`) automatically receive `unvalidated_target_ascend` in `diagnostics` and `unvalidated_feature` in `flags` even if the input IR carries no diagnostics.
+- `resources.vendor_extensions.ascend` (`ub_bytes`, `l0c_bytes`): checked against `specs.ascend.{ub_bytes, l0c_bytes}` in occupancy (3.3).
 - `alu` / `sfu` counts in `insts_per_warp_per_iter`.
 - `gmem_load.nominal_bytes_per_cta` is the full-tile size; actual bytes for masked edge tiles come from `access_map`.
 
@@ -120,6 +121,8 @@ Later waves always use "first SM to free a slot", because that is the behavior t
 ### 3.3 Occupancy
 
 Computed analytically from the profile's allocation rules: CTAs per SM is the minimum over registers (rounded to allocation granularity), shared memory (rounded, for the carveout the runtime would pick), warps, and the CTA slot limit. The carveout choice is a known source of error: the model uses the smallest carveout that fits the maximum resident CTAs, and this rule must be checked against measurements on both test GPUs.
+
+When `specs.ascend` is present, the occupancy check also enforces the per-core Unified Buffer (`ub_bytes`) and L0C accumulator (`l0c_bytes`) limits from `resources.vendor_extensions.ascend`, rejecting overflows with `OccupancyError::TooMuchOnChipBuffer { buffer, bytes, max }` rather than `TooMuchSharedMemory`. The current Ascend profile maps onto the NVIDIA occupancy slot model using placeholder values (`max_warps_per_sm = 1`, `registers_per_sm = 1024`, `num_warps = 1`, `registers_per_thread = 1`); the physical 20 AIC / 40 AIV split and Cube/Vector concurrency are not modeled separately in the core yet (see [design.md section 9.4](../design.md#94-ascend-910b3-mapping-and-known-limits)).
 
 ### 3.4 Resource sharing: fluid processor sharing
 

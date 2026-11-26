@@ -243,7 +243,7 @@ The measured data is a deliverable in its own right: kernel source, config, shap
 
 - **Data-dependent kernels.** MoE routing, sparse attention, and paged KV cache depend on runtime data. They need a workload description (expert distribution, sparsity pattern, page table) as an extra input.
 - **Non-Triton kernels.** Not covered until the PTX frontend exists. Closed-source libraries without PTX are treated as measured black boxes.
-- **Hardware coverage.** Neither test GPU has Hopper `wgmma` or data-center Blackwell `tcgen05`. Kernels using those paths carry an "unvalidated feature" flag until such hardware is available.
+- **Hardware coverage.** Sealed holdouts cover only the RTX 4070 (`sm_89`) and GB10 (`sm_121`). Neither test GPU has Hopper `wgmma` or data-center Blackwell `tcgen05`. Huawei Ascend 910B3 (`ascend910b3`) has a measured hardware profile and a CPU-only Triton-Ascend GEMM frontend, but has not been through a sealed holdout yet; every Ascend prediction carries the `unvalidated_feature` flag and `unvalidated_target_ascend` diagnostic until a scored holdout exists. Kernels using uncalibrated paths carry an "unvalidated feature" flag until such hardware is validated.
 - **Fine-grained effects.** Bank conflicts, instruction scheduling, power and clock throttling are not modeled.
 - **Model resolution.** Differences smaller than the model's error cannot be resolved; real hardware decides those.
 
@@ -301,6 +301,14 @@ The serial-fill explanation ruled out in 9.1 was ruled out as an addition to the
 ### 9.3 Cross-wave L2 reuse near capacity
 
 The cross-wave reuse of 6.4 is a step at `l2_effective_capacity_bytes`: a forward re-read of a wave hits fully if the wave fits and not at all otherwise. On GB10 the hardware falls off a slope instead, 0.89 to 0.99 of a re-read hitting at 1.0 times L2 and 0.13 to 0.60 at 1.09 to 1.12 times (`wave-rescan`), so between 1.0 and 1.12 times L2 the error of the hit fraction is 0.23 on average. No smoothing parameter is fitted to it. The form is checked on GB10 only; on the RTX 4070 it is unvalidated until `wave-rescan` is captured there.
+
+### 9.4 Ascend 910B3 mapping and known limits
+
+Ascend 910B3 (`profiles/ascend910b3.json`, `0.3.0-ascend`) brings a second vendor into the existing schema and core, with three deliberate approximations left for follow-up work:
+
+- **Occupancy placeholders and unmodeled Cube/Vector split.** The profile maps 20 physical AI Cores onto `sm_count = 20` and fills the NVIDIA occupancy slots with placeholders (`max_warps_per_sm = 1`, `max_blocks_per_sm = 1`, `registers_per_sm = 1024`, `num_warps = 1`, `registers_per_thread = 1`). Per-core on-chip SRAM limits (`specs.ascend.{ub_bytes, l0c_bytes}`) are checked against `resources.vendor_extensions.ascend` and reject overflows with `OccupancyError::TooMuchOnChipBuffer`, but the 20 AIC (Cube) / 40 AIV (Vector) hardware split and concurrent Cube/Vector execution are not modeled separately in the core.
+- **MLP issue-mode naming.** The AscendC M2 MLP curves (`dram_bw_by_bytes_in_flight`, `l2_bw_by_bytes_in_flight`) reuse the existing schema enum names `cp_async` and `ld_global_v4` to represent 2-buffer asynchronous and 1-buffer synchronous MTE2 DMA transfers.
+- **GEMM residuals and scope.** Only the Triton-Ascend GEMM frontend is wired end-to-end (Attention and a sealed multi-shape holdout are follow-ups). In an informal 2-shape FP16 GEMM sanity check ([`docs/results/ascend910b3-gemm-sanity.md`](results/ascend910b3-gemm-sanity.md), not a holdout), `multibuffer = True` configs are predicted 18% to 28% fast because Cube `MTE1` (`L1 -> L0A/L0B`) and `Fixpipe` (`L0C -> GM` NZ-to-ND) pipelines are not modeled separately, while `multibuffer = False` configs are overestimated (~+100% to +127%) as DRAM-bandwidth bound. All Ascend predictions therefore carry `unvalidated_feature` and `unvalidated_target_ascend`.
 
 ## 10. Related work
 

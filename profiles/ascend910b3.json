@@ -1,0 +1,5633 @@
+{
+  "schema_version": "0.1",
+  "identity": {
+    "vendor": "ascend",
+    "arch": "ascend910b3",
+    "sku": "Huawei Ascend 910B3",
+    "memory_type": "discrete"
+  },
+  "provenance": {
+    "profile_revision": "0.3.0-ascend",
+    "calibration_run_id": "cal-20261126T193546Z-ascend910b3",
+    "calibration_manifest_digest": null,
+    "source": "partial",
+    "driver_version": "26.1.1",
+    "toolkit_version": "CANN 9.2.1",
+    "suite_version": "0.3.0-ascend",
+    "host_os": "linux",
+    "is_wsl": false,
+    "power_limit_w": null,
+    "timestamp_utc": "2026-11-26T19:35:46Z",
+    "clock_policy": {
+      "locked": false,
+      "sm_clock_locked": false,
+      "mem_clock_locked": false,
+      "sm_clock_mhz": 1800.0,
+      "mem_clock_mhz": null,
+      "observed_sm_clock_range_mhz": [
+        1800.0,
+        1800.0
+      ],
+      "observed_mem_clock_range_mhz": null,
+      "throttle_events": 0
+    }
+  },
+  "specs": {
+    "sm_count": 20,
+    "warp_size": 32,
+    "max_threads_per_sm": 32,
+    "max_warps_per_sm": 1,
+    "max_blocks_per_sm": 1,
+    "max_threads_per_block": 32,
+    "registers_per_sm": 1024,
+    "max_registers_per_thread": 32,
+    "register_alloc_granularity": "block",
+    "register_alloc_unit_regs": 32,
+    "l1_smem_unified_bytes": 524288,
+    "l1_size_bytes": 524288,
+    "shared_mem_per_sm_bytes": 524288,
+    "max_shared_mem_per_block_bytes": 524288,
+    "reserved_shared_mem_per_cta_bytes": 0,
+    "shared_mem_alloc_granularity_bytes": 32,
+    "shared_mem_carveout_options_bytes": [
+      524288
+    ],
+    "l2_size_bytes": 201326592,
+    "l2_line_bytes": 128,
+    "l2_sector_bytes": 32,
+    "l2_partitions": 1,
+    "l1_line_bytes": 32,
+    "capabilities": {
+      "cp_async": true,
+      "tma": false,
+      "wgmma": false,
+      "tcgen05_tmem": false,
+      "cluster": false,
+      "cube_vector_split": true
+    },
+    "ascend": {
+      "cube_cores": 20,
+      "vector_cores": 40,
+      "l1_bytes": 524288,
+      "l0a_bytes": 65536,
+      "l0b_bytes": 65536,
+      "l0c_bytes": 131072,
+      "ub_bytes": 196608
+    },
+    "mma_shapes": [
+      {
+        "op_class": "cube.mmad",
+        "a_dtype": "f16",
+        "b_dtype": "f16",
+        "acc_dtype": "f32",
+        "m": 16,
+        "n": 16,
+        "k": 16
+      },
+      {
+        "op_class": "cube.mmad",
+        "a_dtype": "bf16",
+        "b_dtype": "bf16",
+        "acc_dtype": "f32",
+        "m": 16,
+        "n": 16,
+        "k": 16
+      }
+    ]
+  },
+  "measured": {
+    "memory": {
+      "dram_bw_read_gbps": {
+        "value": 1525.5915,
+        "ci95_low": 1512.4402,
+        "ci95_high": 1529.329,
+        "rel_uncertainty": 0.1,
+        "unit": "GB/s",
+        "method": "ascendc_stream_read_cold_l2",
+        "source": "measured",
+        "perturb_group": "dram_bw"
+      },
+      "dram_bw_write_gbps": {
+        "value": 1694.7753,
+        "ci95_low": 1692.9583,
+        "ci95_high": 1696.4354,
+        "rel_uncertainty": 0.1,
+        "unit": "GB/s",
+        "method": "ascendc_stream_write_cold_l2",
+        "source": "measured",
+        "perturb_group": "dram_bw"
+      },
+      "dram_bw_by_active_sms": [
+        {
+          "active_sms": 1,
+          "bw_gbps": {
+            "value": 140.0497,
+            "ci95_low": 138.3438,
+            "ci95_high": 141.6411,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_stream_read_cold_l2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "active_sms": 2,
+          "bw_gbps": {
+            "value": 278.0332,
+            "ci95_low": 273.2376,
+            "ci95_high": 281.4482,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_stream_read_cold_l2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "active_sms": 4,
+          "bw_gbps": {
+            "value": 539.726,
+            "ci95_low": 534.6308,
+            "ci95_high": 544.0359,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_stream_read_cold_l2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "active_sms": 8,
+          "bw_gbps": {
+            "value": 1020.803,
+            "ci95_low": 1013.2507,
+            "ci95_high": 1029.2968,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_stream_read_cold_l2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "active_sms": 10,
+          "bw_gbps": {
+            "value": 1219.7176,
+            "ci95_low": 1175.6727,
+            "ci95_high": 1229.1282,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_stream_read_cold_l2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "active_sms": 15,
+          "bw_gbps": {
+            "value": 1513.6769,
+            "ci95_low": 1508.5729,
+            "ci95_high": 1517.5705,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_stream_read_cold_l2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "active_sms": 20,
+          "bw_gbps": {
+            "value": 1525.5915,
+            "ci95_low": 1512.4402,
+            "ci95_high": 1529.329,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_stream_read_cold_l2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        }
+      ],
+      "l2_bw_read_gbps": {
+        "value": 4617.053,
+        "ci95_low": 4248.741,
+        "ci95_high": 4636.9917,
+        "rel_uncertainty": 0.1,
+        "unit": "GB/s",
+        "method": "ascendc_stream_read_warm_l2",
+        "source": "measured",
+        "perturb_group": "l2_bw"
+      },
+      "l2_bw_write_gbps": {
+        "value": 3533.9053,
+        "ci95_low": 3318.9349,
+        "ci95_high": 3546.98,
+        "rel_uncertainty": 0.1,
+        "unit": "GB/s",
+        "method": "ascendc_stream_write_warm_l2",
+        "source": "measured",
+        "perturb_group": "l2_bw"
+      },
+      "l2_bw_by_active_sms": [
+        {
+          "active_sms": 1,
+          "bw_gbps": {
+            "value": 302.2343,
+            "ci95_low": 287.7399,
+            "ci95_high": 309.7142,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_stream_read_warm_l2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_sms": 2,
+          "bw_gbps": {
+            "value": 595.2797,
+            "ci95_low": 587.579,
+            "ci95_high": 611.4285,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_stream_read_warm_l2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_sms": 4,
+          "bw_gbps": {
+            "value": 1158.1976,
+            "ci95_low": 1134.7457,
+            "ci95_high": 1175.5439,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_stream_read_warm_l2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_sms": 8,
+          "bw_gbps": {
+            "value": 2192.3836,
+            "ci95_low": 2160.4463,
+            "ci95_high": 2270.0673,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_stream_read_warm_l2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_sms": 10,
+          "bw_gbps": {
+            "value": 2707.6402,
+            "ci95_low": 2672.5951,
+            "ci95_high": 2785.4671,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_stream_read_warm_l2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_sms": 15,
+          "bw_gbps": {
+            "value": 3839.1797,
+            "ci95_low": 3303.8211,
+            "ci95_high": 4189.0677,
+            "rel_uncertainty": 0.1153,
+            "unit": "GB/s",
+            "method": "ascendc_stream_read_warm_l2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_sms": 20,
+          "bw_gbps": {
+            "value": 4617.053,
+            "ci95_low": 4248.741,
+            "ci95_high": 4636.9917,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_stream_read_warm_l2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        }
+      ],
+      "l2_effective_capacity_bytes": {
+        "value": 201326592.0,
+        "ci95_low": 201326592.0,
+        "ci95_high": 201326592.0,
+        "rel_uncertainty": 0.1,
+        "unit": "bytes",
+        "method": "ascendc_l2_rescan_half_drop",
+        "source": "measured",
+        "perturb_group": null
+      },
+      "l2_rescan_hit_rate_by_working_set": [
+        {
+          "working_set_bytes": 16777216,
+          "working_set_ratio_to_l2": 0.0833,
+          "pass2_bw_gbps": {
+            "value": 3703.5797,
+            "ci95_low": 2989.259,
+            "ci95_high": 3963.902,
+            "rel_uncertainty": 0.1316,
+            "unit": "GB/s",
+            "method": "ascendc_l2_rescan_warm_read",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "estimated_hit_rate": {
+            "value": 0.8835,
+            "ci95_low": 0.7394,
+            "ci95_high": 0.9231,
+            "rel_uncertainty": 0.1039,
+            "unit": "ratio",
+            "method": "ascendc_l2_rescan_harmonic_estimate:(1/bw_dram-1/bw_ws)/(1/bw_dram-1/bw_l2)",
+            "source": "estimated",
+            "perturb_group": null
+          }
+        },
+        {
+          "working_set_bytes": 33554432,
+          "working_set_ratio_to_l2": 0.1667,
+          "pass2_bw_gbps": {
+            "value": 4406.3601,
+            "ci95_low": 3788.2509,
+            "ci95_high": 4460.5426,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_rescan_warm_read",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "estimated_hit_rate": {
+            "value": 0.9796,
+            "ci95_low": 0.897,
+            "ci95_high": 0.9858,
+            "rel_uncertainty": 0.1,
+            "unit": "ratio",
+            "method": "ascendc_l2_rescan_harmonic_estimate:(1/bw_dram-1/bw_ws)/(1/bw_dram-1/bw_l2)",
+            "source": "estimated",
+            "perturb_group": null
+          }
+        },
+        {
+          "working_set_bytes": 67108864,
+          "working_set_ratio_to_l2": 0.3333,
+          "pass2_bw_gbps": {
+            "value": 4290.8481,
+            "ci95_low": 4247.3967,
+            "ci95_high": 4633.79,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_rescan_warm_read",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "estimated_hit_rate": {
+            "value": 0.966,
+            "ci95_low": 0.9607,
+            "ci95_high": 1.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ratio",
+            "method": "ascendc_l2_rescan_harmonic_estimate:(1/bw_dram-1/bw_ws)/(1/bw_dram-1/bw_l2)",
+            "source": "estimated",
+            "perturb_group": null
+          }
+        },
+        {
+          "working_set_bytes": 100663296,
+          "working_set_ratio_to_l2": 0.5,
+          "pass2_bw_gbps": {
+            "value": 4534.3828,
+            "ci95_low": 4069.6703,
+            "ci95_high": 4566.2644,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_rescan_warm_read",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "estimated_hit_rate": {
+            "value": 0.9939,
+            "ci95_low": 0.9377,
+            "ci95_high": 0.9974,
+            "rel_uncertainty": 0.1,
+            "unit": "ratio",
+            "method": "ascendc_l2_rescan_harmonic_estimate:(1/bw_dram-1/bw_ws)/(1/bw_dram-1/bw_l2)",
+            "source": "estimated",
+            "perturb_group": null
+          }
+        },
+        {
+          "working_set_bytes": 134217728,
+          "working_set_ratio_to_l2": 0.6667,
+          "pass2_bw_gbps": {
+            "value": 4590.9947,
+            "ci95_low": 4275.8116,
+            "ci95_high": 4613.0857,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_rescan_warm_read",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "estimated_hit_rate": {
+            "value": 1.0,
+            "ci95_low": 0.9642,
+            "ci95_high": 1.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ratio",
+            "method": "ascendc_l2_rescan_harmonic_estimate:(1/bw_dram-1/bw_ws)/(1/bw_dram-1/bw_l2)",
+            "source": "estimated",
+            "perturb_group": null
+          }
+        },
+        {
+          "working_set_bytes": 167772160,
+          "working_set_ratio_to_l2": 0.8333,
+          "pass2_bw_gbps": {
+            "value": 4708.7332,
+            "ci95_low": 4395.3934,
+            "ci95_high": 4722.6503,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_rescan_warm_read",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "estimated_hit_rate": {
+            "value": 1.0,
+            "ci95_low": 0.9784,
+            "ci95_high": 1.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ratio",
+            "method": "ascendc_l2_rescan_harmonic_estimate:(1/bw_dram-1/bw_ws)/(1/bw_dram-1/bw_l2)",
+            "source": "estimated",
+            "perturb_group": null
+          }
+        },
+        {
+          "working_set_bytes": 201326592,
+          "working_set_ratio_to_l2": 1.0,
+          "pass2_bw_gbps": {
+            "value": 4522.1605,
+            "ci95_low": 4380.9509,
+            "ci95_high": 4739.3266,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_rescan_warm_read",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "estimated_hit_rate": {
+            "value": 0.9926,
+            "ci95_low": 0.9767,
+            "ci95_high": 1.0,
+            "rel_uncertainty": 0.1,
+            "unit": "ratio",
+            "method": "ascendc_l2_rescan_harmonic_estimate:(1/bw_dram-1/bw_ws)/(1/bw_dram-1/bw_l2)",
+            "source": "estimated",
+            "perturb_group": null
+          }
+        },
+        {
+          "working_set_bytes": 234881024,
+          "working_set_ratio_to_l2": 1.1667,
+          "pass2_bw_gbps": {
+            "value": 3427.669,
+            "ci95_low": 3310.0482,
+            "ci95_high": 3444.7608,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_rescan_warm_read",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "estimated_hit_rate": {
+            "value": 0.835,
+            "ci95_low": 0.8118,
+            "ci95_high": 0.8382,
+            "rel_uncertainty": 0.1,
+            "unit": "ratio",
+            "method": "ascendc_l2_rescan_harmonic_estimate:(1/bw_dram-1/bw_ws)/(1/bw_dram-1/bw_l2)",
+            "source": "estimated",
+            "perturb_group": null
+          }
+        },
+        {
+          "working_set_bytes": 268435456,
+          "working_set_ratio_to_l2": 1.3333,
+          "pass2_bw_gbps": {
+            "value": 2718.3337,
+            "ci95_low": 2655.2793,
+            "ci95_high": 2751.6321,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_rescan_warm_read",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "estimated_hit_rate": {
+            "value": 0.665,
+            "ci95_low": 0.6455,
+            "ci95_high": 0.6749,
+            "rel_uncertainty": 0.1,
+            "unit": "ratio",
+            "method": "ascendc_l2_rescan_harmonic_estimate:(1/bw_dram-1/bw_ws)/(1/bw_dram-1/bw_l2)",
+            "source": "estimated",
+            "perturb_group": null
+          }
+        },
+        {
+          "working_set_bytes": 335544320,
+          "working_set_ratio_to_l2": 1.6667,
+          "pass2_bw_gbps": {
+            "value": 1521.7429,
+            "ci95_low": 1466.6681,
+            "ci95_high": 1536.3751,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_rescan_warm_read",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "estimated_hit_rate": {
+            "value": 0.0192,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0332,
+            "rel_uncertainty": 0.8633,
+            "unit": "ratio",
+            "method": "ascendc_l2_rescan_harmonic_estimate:(1/bw_dram-1/bw_ws)/(1/bw_dram-1/bw_l2)",
+            "source": "estimated",
+            "perturb_group": null
+          }
+        },
+        {
+          "working_set_bytes": 402653184,
+          "working_set_ratio_to_l2": 2.0,
+          "pass2_bw_gbps": {
+            "value": 1505.3582,
+            "ci95_low": 1447.0394,
+            "ci95_high": 1511.5743,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_rescan_warm_read",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "estimated_hit_rate": {
+            "value": 0.0033,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0094,
+            "rel_uncertainty": 1.0,
+            "unit": "ratio",
+            "method": "ascendc_l2_rescan_harmonic_estimate:(1/bw_dram-1/bw_ws)/(1/bw_dram-1/bw_l2)",
+            "source": "estimated",
+            "perturb_group": null
+          }
+        },
+        {
+          "working_set_bytes": 536870912,
+          "working_set_ratio_to_l2": 2.6667,
+          "pass2_bw_gbps": {
+            "value": 1483.7246,
+            "ci95_low": 1462.2261,
+            "ci95_high": 1514.4455,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_rescan_warm_read",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "estimated_hit_rate": {
+            "value": 0.0,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0122,
+            "rel_uncertainty": 0.1,
+            "unit": "ratio",
+            "method": "ascendc_l2_rescan_harmonic_estimate:(1/bw_dram-1/bw_ws)/(1/bw_dram-1/bw_l2)",
+            "source": "estimated",
+            "perturb_group": null
+          }
+        },
+        {
+          "working_set_bytes": 805306368,
+          "working_set_ratio_to_l2": 4.0,
+          "pass2_bw_gbps": {
+            "value": 1498.7463,
+            "ci95_low": 1489.9286,
+            "ci95_high": 1525.7793,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_rescan_warm_read",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "estimated_hit_rate": {
+            "value": 0.0,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0231,
+            "rel_uncertainty": 0.1,
+            "unit": "ratio",
+            "method": "ascendc_l2_rescan_harmonic_estimate:(1/bw_dram-1/bw_ws)/(1/bw_dram-1/bw_l2)",
+            "source": "estimated",
+            "perturb_group": null
+          }
+        },
+        {
+          "working_set_bytes": 1073741824,
+          "working_set_ratio_to_l2": 5.3333,
+          "pass2_bw_gbps": {
+            "value": 1510.6954,
+            "ci95_low": 1497.8821,
+            "ci95_high": 1527.1104,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_rescan_warm_read",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          },
+          "estimated_hit_rate": {
+            "value": 0.0085,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0244,
+            "rel_uncertainty": 1.0,
+            "unit": "ratio",
+            "method": "ascendc_l2_rescan_harmonic_estimate:(1/bw_dram-1/bw_ws)/(1/bw_dram-1/bw_l2)",
+            "source": "estimated",
+            "perturb_group": null
+          }
+        }
+      ],
+      "smem_bw_per_sm_gbps": {
+        "value": 1811.9473,
+        "ci95_low": 1797.9301,
+        "ci95_high": 1814.0288,
+        "rel_uncertainty": 0.1,
+        "unit": "GB/s",
+        "method": "ascendc_ub_datacopy_bw",
+        "source": "measured",
+        "perturb_group": null
+      },
+      "dram_latency_ns": {
+        "value": 231.4899,
+        "ci95_low": 225.7812,
+        "ci95_high": 239.1223,
+        "rel_uncertainty": 0.1,
+        "unit": "ns",
+        "method": "ascendc_ptr_chase_cold_l2",
+        "source": "measured",
+        "perturb_group": null
+      },
+      "dram_latency_loaded_ns": {
+        "value": 395.4712,
+        "ci95_low": 393.9209,
+        "ci95_high": 404.0845,
+        "rel_uncertainty": 0.1,
+        "unit": "ns",
+        "method": "ascendc_ptr_chase_cold_l2_loaded",
+        "source": "measured",
+        "perturb_group": null
+      },
+      "l2_latency_ns": {
+        "value": 121.2164,
+        "ci95_low": 118.4912,
+        "ci95_high": 126.1414,
+        "rel_uncertainty": 0.1,
+        "unit": "ns",
+        "method": "ascendc_ptr_chase_warm_l2",
+        "source": "measured",
+        "perturb_group": null
+      },
+      "l2_latency_loaded_ns": {
+        "value": 140.033,
+        "ci95_low": 139.8987,
+        "ci95_high": 140.1782,
+        "rel_uncertainty": 0.1,
+        "unit": "ns",
+        "method": "ascendc_ptr_chase_warm_l2_loaded",
+        "source": "measured",
+        "perturb_group": null
+      },
+      "smem_latency_ns": {
+        "value": 11.6676,
+        "ci95_low": 11.6674,
+        "ci95_high": 11.668,
+        "rel_uncertainty": 0.1,
+        "unit": "ns",
+        "method": "ascendc_ub_ptr_chase_latency",
+        "source": "measured",
+        "perturb_group": null
+      },
+      "dram_bw_by_bytes_in_flight": [
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 4096,
+          "active_ctas": 1,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 13.7042,
+            "ci95_low": 13.5118,
+            "ci95_high": 14.0041,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_cp_async",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 8192,
+          "active_ctas": 2,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 27.7631,
+            "ci95_low": 27.4721,
+            "ci95_high": 28.2902,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_cp_async",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 16384,
+          "active_ctas": 4,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 54.1567,
+            "ci95_low": 53.0622,
+            "ci95_high": 54.3181,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_cp_async",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 32768,
+          "active_ctas": 8,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 106.3262,
+            "ci95_low": 105.1138,
+            "ci95_high": 107.1821,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_cp_async",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 49152,
+          "active_ctas": 12,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 157.3463,
+            "ci95_low": 154.7764,
+            "ci95_high": 158.4163,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_cp_async",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 65536,
+          "active_ctas": 16,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 203.5329,
+            "ci95_low": 202.8194,
+            "ci95_high": 205.1255,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_cp_async",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 81920,
+          "active_ctas": 20,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 250.8693,
+            "ci95_low": 248.7486,
+            "ci95_high": 252.0379,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_cp_async",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 98304,
+          "active_ctas": 12,
+          "bytes_per_cta": 8192,
+          "bw_gbps": {
+            "value": 276.0802,
+            "ci95_low": 274.6777,
+            "ci95_high": 278.7896,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_cp_async",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 131072,
+          "active_ctas": 16,
+          "bytes_per_cta": 8192,
+          "bw_gbps": {
+            "value": 357.038,
+            "ci95_low": 352.5366,
+            "ci95_high": 361.7339,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_cp_async",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 163840,
+          "active_ctas": 20,
+          "bytes_per_cta": 8192,
+          "bw_gbps": {
+            "value": 422.3,
+            "ci95_low": 409.7002,
+            "ci95_high": 428.7853,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_cp_async",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 196608,
+          "active_ctas": 12,
+          "bytes_per_cta": 16384,
+          "bw_gbps": {
+            "value": 499.1314,
+            "ci95_low": 494.8577,
+            "ci95_high": 504.0852,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_cp_async",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 262144,
+          "active_ctas": 16,
+          "bytes_per_cta": 16384,
+          "bw_gbps": {
+            "value": 610.5246,
+            "ci95_low": 604.1489,
+            "ci95_high": 617.4905,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_cp_async",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 327680,
+          "active_ctas": 20,
+          "bytes_per_cta": 16384,
+          "bw_gbps": {
+            "value": 738.9542,
+            "ci95_low": 723.6549,
+            "ci95_high": 747.1151,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_cp_async",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 393216,
+          "active_ctas": 12,
+          "bytes_per_cta": 32768,
+          "bw_gbps": {
+            "value": 833.0296,
+            "ci95_low": 816.542,
+            "ci95_high": 841.1037,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_cp_async",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 524288,
+          "active_ctas": 16,
+          "bytes_per_cta": 32768,
+          "bw_gbps": {
+            "value": 1037.2313,
+            "ci95_low": 1027.3862,
+            "ci95_high": 1047.9211,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_cp_async",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 655360,
+          "active_ctas": 20,
+          "bytes_per_cta": 32768,
+          "bw_gbps": {
+            "value": 1216.0928,
+            "ci95_low": 1195.299,
+            "ci95_high": 1249.7926,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_cp_async",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 786432,
+          "active_ctas": 12,
+          "bytes_per_cta": 65536,
+          "bw_gbps": {
+            "value": 1230.9036,
+            "ci95_low": 1221.6419,
+            "ci95_high": 1240.6125,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_cp_async",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 1048576,
+          "active_ctas": 16,
+          "bytes_per_cta": 65536,
+          "bw_gbps": {
+            "value": 1383.4027,
+            "ci95_low": 1365.3889,
+            "ci95_high": 1437.3285,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_cp_async",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 1310720,
+          "active_ctas": 20,
+          "bytes_per_cta": 65536,
+          "bw_gbps": {
+            "value": 1255.0281,
+            "ci95_low": 1232.5312,
+            "ci95_high": 1438.8693,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_cp_async",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 2097152,
+          "active_ctas": 16,
+          "bytes_per_cta": 131072,
+          "bw_gbps": {
+            "value": 1414.0089,
+            "ci95_low": 1214.5302,
+            "ci95_high": 1500.6454,
+            "rel_uncertainty": 0.1012,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_cp_async",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 2621440,
+          "active_ctas": 20,
+          "bytes_per_cta": 131072,
+          "bw_gbps": {
+            "value": 1327.7316,
+            "ci95_low": 1296.2386,
+            "ci95_high": 1395.1947,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_cp_async",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 4194304,
+          "active_ctas": 16,
+          "bytes_per_cta": 262144,
+          "bw_gbps": {
+            "value": 1391.2898,
+            "ci95_low": 1378.5716,
+            "ci95_high": 1446.7794,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_cp_async",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 5242880,
+          "active_ctas": 20,
+          "bytes_per_cta": 262144,
+          "bw_gbps": {
+            "value": 1404.0479,
+            "ci95_low": 1358.1211,
+            "ci95_high": 1417.5204,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_cp_async",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 4096,
+          "active_ctas": 1,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 12.8422,
+            "ci95_low": 12.5937,
+            "ci95_high": 13.0359,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 8192,
+          "active_ctas": 2,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 25.5653,
+            "ci95_low": 25.3651,
+            "ci95_high": 25.9396,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 16384,
+          "active_ctas": 4,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 50.7125,
+            "ci95_low": 50.4244,
+            "ci95_high": 51.0365,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 32768,
+          "active_ctas": 8,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 100.5105,
+            "ci95_low": 99.9655,
+            "ci95_high": 101.4281,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 49152,
+          "active_ctas": 12,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 148.0377,
+            "ci95_low": 147.2186,
+            "ci95_high": 148.8132,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 65536,
+          "active_ctas": 16,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 190.8454,
+            "ci95_low": 190.1963,
+            "ci95_high": 192.8194,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 81920,
+          "active_ctas": 20,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 235.5214,
+            "ci95_low": 232.7079,
+            "ci95_high": 237.6598,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 98304,
+          "active_ctas": 12,
+          "bytes_per_cta": 8192,
+          "bw_gbps": {
+            "value": 273.2002,
+            "ci95_low": 269.2071,
+            "ci95_high": 277.3136,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 131072,
+          "active_ctas": 16,
+          "bytes_per_cta": 8192,
+          "bw_gbps": {
+            "value": 352.3145,
+            "ci95_low": 350.0358,
+            "ci95_high": 354.698,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 163840,
+          "active_ctas": 20,
+          "bytes_per_cta": 8192,
+          "bw_gbps": {
+            "value": 418.2102,
+            "ci95_low": 414.8878,
+            "ci95_high": 421.3737,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 196608,
+          "active_ctas": 12,
+          "bytes_per_cta": 16384,
+          "bw_gbps": {
+            "value": 456.6033,
+            "ci95_low": 448.6357,
+            "ci95_high": 463.8268,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 262144,
+          "active_ctas": 16,
+          "bytes_per_cta": 16384,
+          "bw_gbps": {
+            "value": 561.2986,
+            "ci95_low": 554.9856,
+            "ci95_high": 572.6012,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 327680,
+          "active_ctas": 20,
+          "bytes_per_cta": 16384,
+          "bw_gbps": {
+            "value": 693.9616,
+            "ci95_low": 674.1087,
+            "ci95_high": 700.9198,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 393216,
+          "active_ctas": 12,
+          "bytes_per_cta": 32768,
+          "bw_gbps": {
+            "value": 771.0118,
+            "ci95_low": 770.5396,
+            "ci95_high": 778.4047,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 524288,
+          "active_ctas": 16,
+          "bytes_per_cta": 32768,
+          "bw_gbps": {
+            "value": 1008.8525,
+            "ci95_low": 999.8341,
+            "ci95_high": 1027.7008,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 655360,
+          "active_ctas": 20,
+          "bytes_per_cta": 32768,
+          "bw_gbps": {
+            "value": 1195.299,
+            "ci95_low": 1174.875,
+            "ci95_high": 1216.4454,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 786432,
+          "active_ctas": 12,
+          "bytes_per_cta": 65536,
+          "bw_gbps": {
+            "value": 948.0439,
+            "ci95_low": 947.5085,
+            "ci95_high": 959.0634,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 1048576,
+          "active_ctas": 16,
+          "bytes_per_cta": 65536,
+          "bw_gbps": {
+            "value": 1207.8629,
+            "ci95_low": 1195.5971,
+            "ci95_high": 1215.52,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 1310720,
+          "active_ctas": 20,
+          "bytes_per_cta": 65536,
+          "bw_gbps": {
+            "value": 1387.6937,
+            "ci95_low": 1347.3511,
+            "ci95_high": 1409.1396,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 2097152,
+          "active_ctas": 16,
+          "bytes_per_cta": 131072,
+          "bw_gbps": {
+            "value": 1383.1176,
+            "ci95_low": 1369.8482,
+            "ci95_high": 1387.4067,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 2621440,
+          "active_ctas": 20,
+          "bytes_per_cta": 131072,
+          "bw_gbps": {
+            "value": 1302.5788,
+            "ci95_low": 1243.7701,
+            "ci95_high": 1364.2231,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 4194304,
+          "active_ctas": 16,
+          "bytes_per_cta": 262144,
+          "bw_gbps": {
+            "value": 1418.7171,
+            "ci95_low": 1405.127,
+            "ci95_high": 1430.1303,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 5242880,
+          "active_ctas": 20,
+          "bytes_per_cta": 262144,
+          "bw_gbps": {
+            "value": 1413.3993,
+            "ci95_low": 1377.5727,
+            "ci95_high": 1445.6471,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_dram_cold_l2_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          }
+        }
+      ],
+      "l2_bw_by_bytes_in_flight": [
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 4096,
+          "active_ctas": 1,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 29.8366,
+            "ci95_low": 29.1155,
+            "ci95_high": 30.5688,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_cp_async",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 8192,
+          "active_ctas": 2,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 58.6462,
+            "ci95_low": 57.9104,
+            "ci95_high": 61.5249,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_cp_async",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 16384,
+          "active_ctas": 4,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 118.0206,
+            "ci95_low": 116.369,
+            "ci95_high": 119.6386,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_cp_async",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 32768,
+          "active_ctas": 8,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 233.7555,
+            "ci95_low": 230.0139,
+            "ci95_high": 235.3954,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_cp_async",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 49152,
+          "active_ctas": 12,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 346.5439,
+            "ci95_low": 343.1065,
+            "ci95_high": 351.0031,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_cp_async",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 65536,
+          "active_ctas": 16,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 434.4178,
+            "ci95_low": 429.7168,
+            "ci95_high": 436.5088,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_cp_async",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 81920,
+          "active_ctas": 20,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 570.2718,
+            "ci95_low": 562.7619,
+            "ci95_high": 571.5349,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_cp_async",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 98304,
+          "active_ctas": 12,
+          "bytes_per_cta": 8192,
+          "bw_gbps": {
+            "value": 635.7669,
+            "ci95_low": 627.854,
+            "ci95_high": 640.1343,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_cp_async",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 131072,
+          "active_ctas": 16,
+          "bytes_per_cta": 8192,
+          "bw_gbps": {
+            "value": 839.2804,
+            "ci95_low": 821.1044,
+            "ci95_high": 850.5559,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_cp_async",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 163840,
+          "active_ctas": 20,
+          "bytes_per_cta": 8192,
+          "bw_gbps": {
+            "value": 1018.4044,
+            "ci95_low": 1014.8613,
+            "ci95_high": 1042.1324,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_cp_async",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 196608,
+          "active_ctas": 12,
+          "bytes_per_cta": 16384,
+          "bw_gbps": {
+            "value": 1080.2203,
+            "ci95_low": 1020.8838,
+            "ci95_high": 1092.0,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_cp_async",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 262144,
+          "active_ctas": 16,
+          "bytes_per_cta": 16384,
+          "bw_gbps": {
+            "value": 1417.8928,
+            "ci95_low": 1378.8548,
+            "ci95_high": 1441.6513,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_cp_async",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 327680,
+          "active_ctas": 20,
+          "bytes_per_cta": 16384,
+          "bw_gbps": {
+            "value": 1752.2193,
+            "ci95_low": 1688.2859,
+            "ci95_high": 1761.4197,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_cp_async",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 393216,
+          "active_ctas": 12,
+          "bytes_per_cta": 32768,
+          "bw_gbps": {
+            "value": 1421.6143,
+            "ci95_low": 1316.3818,
+            "ci95_high": 1446.7701,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_cp_async",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 524288,
+          "active_ctas": 16,
+          "bytes_per_cta": 32768,
+          "bw_gbps": {
+            "value": 1811.3053,
+            "ci95_low": 1782.9134,
+            "ci95_high": 1878.2217,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_cp_async",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 655360,
+          "active_ctas": 20,
+          "bytes_per_cta": 32768,
+          "bw_gbps": {
+            "value": 2337.9621,
+            "ci95_low": 2248.3538,
+            "ci95_high": 2351.0673,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_cp_async",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 786432,
+          "active_ctas": 12,
+          "bytes_per_cta": 65536,
+          "bw_gbps": {
+            "value": 2568.5964,
+            "ci95_low": 2472.6922,
+            "ci95_high": 2591.0759,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_cp_async",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 1048576,
+          "active_ctas": 16,
+          "bytes_per_cta": 65536,
+          "bw_gbps": {
+            "value": 3396.1976,
+            "ci95_low": 3258.5029,
+            "ci95_high": 3411.7368,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_cp_async",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 1310720,
+          "active_ctas": 20,
+          "bytes_per_cta": 65536,
+          "bw_gbps": {
+            "value": 4207.9798,
+            "ci95_low": 4013.6881,
+            "ci95_high": 4257.0963,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_cp_async",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 2097152,
+          "active_ctas": 16,
+          "bytes_per_cta": 131072,
+          "bw_gbps": {
+            "value": 3535.7673,
+            "ci95_low": 3464.1302,
+            "ci95_high": 3548.8558,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_cp_async",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 2621440,
+          "active_ctas": 20,
+          "bytes_per_cta": 131072,
+          "bw_gbps": {
+            "value": 4408.676,
+            "ci95_low": 4148.1558,
+            "ci95_high": 4423.7879,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_cp_async",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 4194304,
+          "active_ctas": 16,
+          "bytes_per_cta": 262144,
+          "bw_gbps": {
+            "value": 4227.3299,
+            "ci95_low": 3881.3687,
+            "ci95_high": 4468.7107,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_cp_async",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "bytes_in_flight": 5242880,
+          "active_ctas": 20,
+          "bytes_per_cta": 262144,
+          "bw_gbps": {
+            "value": 4821.7317,
+            "ci95_low": 4764.9011,
+            "ci95_high": 4834.5845,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_cp_async",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 4096,
+          "active_ctas": 1,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 28.3101,
+            "ci95_low": 27.1415,
+            "ci95_high": 29.2999,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 8192,
+          "active_ctas": 2,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 55.7383,
+            "ci95_low": 53.9452,
+            "ci95_high": 58.3555,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 16384,
+          "active_ctas": 4,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 107.9441,
+            "ci95_low": 107.4361,
+            "ci95_high": 113.1264,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 32768,
+          "active_ctas": 8,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 214.7965,
+            "ci95_low": 212.9494,
+            "ci95_high": 216.4453,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 49152,
+          "active_ctas": 12,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 319.4272,
+            "ci95_low": 316.9823,
+            "ci95_high": 322.5135,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 65536,
+          "active_ctas": 16,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 419.8765,
+            "ci95_low": 415.2519,
+            "ci95_high": 425.9528,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 81920,
+          "active_ctas": 20,
+          "bytes_per_cta": 4096,
+          "bw_gbps": {
+            "value": 527.0009,
+            "ci95_low": 520.4195,
+            "ci95_high": 527.7885,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 98304,
+          "active_ctas": 12,
+          "bytes_per_cta": 8192,
+          "bw_gbps": {
+            "value": 587.1399,
+            "ci95_low": 583.5651,
+            "ci95_high": 591.019,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 131072,
+          "active_ctas": 16,
+          "bytes_per_cta": 8192,
+          "bw_gbps": {
+            "value": 762.3408,
+            "ci95_low": 759.7517,
+            "ci95_high": 767.5725,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 163840,
+          "active_ctas": 20,
+          "bytes_per_cta": 8192,
+          "bw_gbps": {
+            "value": 935.7389,
+            "ci95_low": 934.0454,
+            "ci95_high": 936.5226,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 196608,
+          "active_ctas": 12,
+          "bytes_per_cta": 16384,
+          "bw_gbps": {
+            "value": 900.1521,
+            "ci95_low": 895.9418,
+            "ci95_high": 904.8904,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 262144,
+          "active_ctas": 16,
+          "bytes_per_cta": 16384,
+          "bw_gbps": {
+            "value": 1164.8822,
+            "ci95_low": 1161.2539,
+            "ci95_high": 1168.1264,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 327680,
+          "active_ctas": 20,
+          "bytes_per_cta": 16384,
+          "bw_gbps": {
+            "value": 1540.8269,
+            "ci95_low": 1402.7749,
+            "ci95_high": 1548.3031,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 393216,
+          "active_ctas": 12,
+          "bytes_per_cta": 32768,
+          "bw_gbps": {
+            "value": 1350.3188,
+            "ci95_low": 1253.8494,
+            "ci95_high": 1385.1927,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 524288,
+          "active_ctas": 16,
+          "bytes_per_cta": 32768,
+          "bw_gbps": {
+            "value": 1778.1893,
+            "ci95_low": 1720.299,
+            "ci95_high": 1805.9435,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 655360,
+          "active_ctas": 20,
+          "bytes_per_cta": 32768,
+          "bw_gbps": {
+            "value": 2232.7943,
+            "ci95_low": 2117.8006,
+            "ci95_high": 2245.946,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 786432,
+          "active_ctas": 12,
+          "bytes_per_cta": 65536,
+          "bw_gbps": {
+            "value": 1790.2062,
+            "ci95_low": 1750.3616,
+            "ci95_high": 1817.355,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 1048576,
+          "active_ctas": 16,
+          "bytes_per_cta": 65536,
+          "bw_gbps": {
+            "value": 2394.6071,
+            "ci95_low": 2321.3028,
+            "ci95_high": 2416.1607,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 1310720,
+          "active_ctas": 20,
+          "bytes_per_cta": 65536,
+          "bw_gbps": {
+            "value": 2994.3272,
+            "ci95_low": 2921.8418,
+            "ci95_high": 3006.6696,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 2097152,
+          "active_ctas": 16,
+          "bytes_per_cta": 131072,
+          "bw_gbps": {
+            "value": 2793.5838,
+            "ci95_low": 2773.0936,
+            "ci95_high": 2893.5588,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 2621440,
+          "active_ctas": 20,
+          "bytes_per_cta": 131072,
+          "bw_gbps": {
+            "value": 3496.7103,
+            "ci95_low": 3479.6672,
+            "ci95_high": 3508.4097,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 4194304,
+          "active_ctas": 16,
+          "bytes_per_cta": 262144,
+          "bw_gbps": {
+            "value": 3878.2844,
+            "ci95_low": 3739.176,
+            "ci95_high": 4190.7024,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "issue_mode": "ld_global_v4",
+          "bytes_in_flight": 5242880,
+          "active_ctas": 20,
+          "bytes_per_cta": 262144,
+          "bw_gbps": {
+            "value": 4643.8906,
+            "ci95_low": 4613.2445,
+            "ci95_high": 4665.5217,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_mlp_l2_warm_ld_global_v4",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        }
+      ],
+      "dram_latency_by_bw": [
+        {
+          "achieved_bw_gbps": 0.0,
+          "latency_ns": {
+            "value": 236.6211,
+            "ci95_low": 234.7412,
+            "ci95_high": 239.5703,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_ptr_chase_dram_vs_bg_bw",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "achieved_bw_gbps": 140.128,
+          "latency_ns": {
+            "value": 236.7505,
+            "ci95_low": 232.7881,
+            "ci95_high": 247.2632,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_ptr_chase_dram_vs_bg_bw",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "achieved_bw_gbps": 277.701,
+          "latency_ns": {
+            "value": 238.186,
+            "ci95_low": 232.1167,
+            "ci95_high": 243.9185,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_ptr_chase_dram_vs_bg_bw",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "achieved_bw_gbps": 545.231,
+          "latency_ns": {
+            "value": 241.3037,
+            "ci95_low": 235.4614,
+            "ci95_high": 248.2642,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_ptr_chase_dram_vs_bg_bw",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "achieved_bw_gbps": 1034.166,
+          "latency_ns": {
+            "value": 257.666,
+            "ci95_low": 251.5967,
+            "ci95_high": 265.3735,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_ptr_chase_dram_vs_bg_bw",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "achieved_bw_gbps": 1399.413,
+          "latency_ns": {
+            "value": 287.8589,
+            "ci95_low": 282.5024,
+            "ci95_high": 293.6938,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_ptr_chase_dram_vs_bg_bw",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "achieved_bw_gbps": 1538.438,
+          "latency_ns": {
+            "value": 395.4712,
+            "ci95_low": 393.9209,
+            "ci95_high": 404.0845,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_ptr_chase_dram_vs_bg_bw",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "achieved_bw_gbps": 1551.325,
+          "latency_ns": {
+            "value": 354.3042,
+            "ci95_low": 347.1704,
+            "ci95_high": 359.4653,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_ptr_chase_dram_vs_bg_bw",
+            "source": "measured",
+            "perturb_group": null
+          }
+        }
+      ],
+      "l2_latency_by_bw": [
+        {
+          "achieved_bw_gbps": 0.0,
+          "latency_ns": {
+            "value": 121.3611,
+            "ci95_low": 118.3398,
+            "ci95_high": 151.51,
+            "rel_uncertainty": 0.1367,
+            "unit": "ns",
+            "method": "ascendc_ptr_chase_l2_vs_bg_bw",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "achieved_bw_gbps": 302.252,
+          "latency_ns": {
+            "value": 121.5332,
+            "ci95_low": 118.4534,
+            "ci95_high": 123.2935,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_ptr_chase_l2_vs_bg_bw",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "achieved_bw_gbps": 599.952,
+          "latency_ns": {
+            "value": 121.9177,
+            "ci95_low": 121.0693,
+            "ci95_high": 123.4656,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_ptr_chase_l2_vs_bg_bw",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "achieved_bw_gbps": 1212.607,
+          "latency_ns": {
+            "value": 122.5122,
+            "ci95_low": 121.8921,
+            "ci95_high": 125.8496,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_ptr_chase_l2_vs_bg_bw",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "achieved_bw_gbps": 2374.378,
+          "latency_ns": {
+            "value": 122.71,
+            "ci95_low": 119.3555,
+            "ci95_high": 126.5613,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_ptr_chase_l2_vs_bg_bw",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "achieved_bw_gbps": 3507.108,
+          "latency_ns": {
+            "value": 123.092,
+            "ci95_low": 122.207,
+            "ci95_high": 126.9629,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_ptr_chase_l2_vs_bg_bw",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "achieved_bw_gbps": 4603.735,
+          "latency_ns": {
+            "value": 128.0554,
+            "ci95_low": 122.7734,
+            "ci95_high": 131.178,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_ptr_chase_l2_vs_bg_bw",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "achieved_bw_gbps": 5034.231,
+          "latency_ns": {
+            "value": 140.033,
+            "ci95_low": 139.8987,
+            "ci95_high": 140.1782,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_ptr_chase_l2_vs_bg_bw",
+            "source": "measured",
+            "perturb_group": null
+          }
+        }
+      ],
+      "l2_merge_by_sharing": [
+        {
+          "active_ctas": 4,
+          "sharing": 1,
+          "bytes_per_cta": 4096,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 317.0703,
+            "ci95_low": 310.4688,
+            "ci95_high": 318.5547,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 46.4588,
+            "ci95_low": 46.3972,
+            "ci95_high": 47.0847,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 46.4588,
+            "ci95_low": 46.3972,
+            "ci95_high": 47.0847,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 4,
+          "sharing": 1,
+          "bytes_per_cta": 16384,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 380.7812,
+            "ci95_low": 375.0391,
+            "ci95_high": 384.4141,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 156.2706,
+            "ci95_low": 156.2124,
+            "ci95_high": 159.783,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 156.2706,
+            "ci95_low": 156.2124,
+            "ci95_high": 159.783,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 4,
+          "sharing": 1,
+          "bytes_per_cta": 65536,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 733.6719,
+            "ci95_low": 727.4219,
+            "ci95_high": 737.6953,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 339.551,
+            "ci95_low": 335.0752,
+            "ci95_high": 343.6546,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 339.551,
+            "ci95_low": 335.0752,
+            "ci95_high": 343.6546,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 4,
+          "sharing": 2,
+          "bytes_per_cta": 4096,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 315.5469,
+            "ci95_low": 312.9688,
+            "ci95_high": 324.1016,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 23.2294,
+            "ci95_low": 22.5986,
+            "ci95_high": 23.5423,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 46.4588,
+            "ci95_low": 45.1972,
+            "ci95_high": 47.0847,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 4,
+          "sharing": 2,
+          "bytes_per_cta": 4096,
+          "stagger_stages": 16,
+          "turnaround_ns": {
+            "value": 298.3984,
+            "ci95_low": 294.8828,
+            "ci95_high": 305.5469,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 23.2089,
+            "ci95_low": 22.9047,
+            "ci95_high": 23.5423,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 46.4177,
+            "ci95_low": 45.8094,
+            "ci95_high": 47.0847,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 4,
+          "sharing": 2,
+          "bytes_per_cta": 16384,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 378.7891,
+            "ci95_low": 376.9922,
+            "ci95_high": 381.7188,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 79.3774,
+            "ci95_low": 78.1062,
+            "ci95_high": 79.9219,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 158.7549,
+            "ci95_low": 156.2124,
+            "ci95_high": 159.8439,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 4,
+          "sharing": 2,
+          "bytes_per_cta": 16384,
+          "stagger_stages": 16,
+          "turnaround_ns": {
+            "value": 360.9766,
+            "ci95_low": 357.4609,
+            "ci95_high": 363.8672,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 79.0185,
+            "ci95_low": 78.9888,
+            "ci95_high": 79.8915,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 158.0371,
+            "ci95_low": 157.9775,
+            "ci95_high": 159.783,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 4,
+          "sharing": 2,
+          "bytes_per_cta": 65536,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 721.6797,
+            "ci95_low": 717.8906,
+            "ci95_high": 733.3594,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 172.8897,
+            "ci95_low": 170.7778,
+            "ci95_high": 172.961,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 345.7794,
+            "ci95_low": 341.5557,
+            "ci95_high": 345.922,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 4,
+          "sharing": 2,
+          "bytes_per_cta": 65536,
+          "stagger_stages": 16,
+          "turnaround_ns": {
+            "value": 708.8672,
+            "ci95_low": 703.1641,
+            "ci95_high": 716.3672,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 171.7218,
+            "ci95_low": 169.6725,
+            "ci95_high": 172.8541,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 343.4435,
+            "ci95_low": 339.345,
+            "ci95_high": 345.7081,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 4,
+          "sharing": 4,
+          "bytes_per_cta": 4096,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 311.4062,
+            "ci95_low": 304.375,
+            "ci95_high": 322.5,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 11.9265,
+            "ci95_low": 11.4473,
+            "ci95_high": 12.1027,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 47.7059,
+            "ci95_low": 45.7893,
+            "ci95_high": 48.4107,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 4,
+          "sharing": 4,
+          "bytes_per_cta": 4096,
+          "stagger_stages": 16,
+          "turnaround_ns": {
+            "value": 286.5234,
+            "ci95_low": 275.9766,
+            "ci95_high": 294.8828,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 11.7712,
+            "ci95_low": 11.4523,
+            "ci95_high": 12.0971,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 47.0847,
+            "ci95_low": 45.8094,
+            "ci95_high": 48.3884,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 4,
+          "sharing": 4,
+          "bytes_per_cta": 16384,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 370.9375,
+            "ci95_low": 365.4297,
+            "ci95_high": 376.3281,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 40.4387,
+            "ci95_low": 39.9458,
+            "ci95_high": 40.8961,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 161.7549,
+            "ci95_low": 159.783,
+            "ci95_high": 163.5844,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 4,
+          "sharing": 4,
+          "bytes_per_cta": 16384,
+          "stagger_stages": 16,
+          "turnaround_ns": {
+            "value": 342.4219,
+            "ci95_low": 339.8047,
+            "ci95_high": 349.6484,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 40.4387,
+            "ci95_low": 39.9458,
+            "ci95_high": 40.928,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 161.7549,
+            "ci95_low": 159.783,
+            "ci95_high": 163.7121,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 4,
+          "sharing": 4,
+          "bytes_per_cta": 65536,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 725.2734,
+            "ci95_low": 718.125,
+            "ci95_high": 728.0469,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 86.4449,
+            "ci95_low": 85.9136,
+            "ci95_high": 87.5455,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 345.7794,
+            "ci95_low": 343.6546,
+            "ci95_high": 350.1819,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 4,
+          "sharing": 4,
+          "bytes_per_cta": 65536,
+          "stagger_stages": 16,
+          "turnaround_ns": {
+            "value": 696.25,
+            "ci95_low": 684.7266,
+            "ci95_high": 702.7344,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 86.4805,
+            "ci95_low": 85.8961,
+            "ci95_high": 88.0971,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 345.922,
+            "ci95_low": 343.5842,
+            "ci95_high": 352.3885,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 8,
+          "sharing": 1,
+          "bytes_per_cta": 4096,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 314.7266,
+            "ci95_low": 310.7617,
+            "ci95_high": 317.5391,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 90.3945,
+            "ci95_low": 89.2405,
+            "ci95_high": 90.5115,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 90.3945,
+            "ci95_low": 89.2405,
+            "ci95_high": 90.5115,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 8,
+          "sharing": 1,
+          "bytes_per_cta": 16384,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 385.1367,
+            "ci95_low": 383.6523,
+            "ci95_high": 388.418,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 302.1833,
+            "ci95_low": 301.8571,
+            "ci95_high": 305.5959,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 302.1833,
+            "ci95_low": 301.8571,
+            "ci95_high": 305.5959,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 8,
+          "sharing": 1,
+          "bytes_per_cta": 65536,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 745.1758,
+            "ci95_low": 742.4805,
+            "ci95_high": 753.2422,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 662.2149,
+            "ci95_low": 658.4465,
+            "ci95_high": 666.6885,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 662.2149,
+            "ci95_low": 658.4465,
+            "ci95_high": 666.6885,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 8,
+          "sharing": 2,
+          "bytes_per_cta": 4096,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 311.7188,
+            "ci95_low": 306.2695,
+            "ci95_high": 319.5703,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 45.8294,
+            "ci95_low": 44.6203,
+            "ci95_high": 46.4588,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 91.6587,
+            "ci95_low": 89.2405,
+            "ci95_high": 92.9177,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 8,
+          "sharing": 2,
+          "bytes_per_cta": 4096,
+          "stagger_stages": 16,
+          "turnaround_ns": {
+            "value": 294.0625,
+            "ci95_low": 288.418,
+            "ci95_high": 301.3477,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 45.7494,
+            "ci95_low": 44.6203,
+            "ci95_high": 46.4383,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 91.4988,
+            "ci95_low": 89.2405,
+            "ci95_high": 92.8765,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 8,
+          "sharing": 2,
+          "bytes_per_cta": 16384,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 374.043,
+            "ci95_low": 372.0312,
+            "ci95_high": 381.0938,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 156.2706,
+            "ci95_low": 152.6867,
+            "ci95_high": 158.0371,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 312.5413,
+            "ci95_low": 305.3734,
+            "ci95_high": 316.0742,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 8,
+          "sharing": 2,
+          "bytes_per_cta": 16384,
+          "stagger_stages": 16,
+          "turnaround_ns": {
+            "value": 357.7539,
+            "ci95_low": 355.6445,
+            "ci95_high": 360.1758,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 154.3726,
+            "ci95_low": 152.6867,
+            "ci95_high": 156.1543,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 308.7452,
+            "ci95_low": 305.3734,
+            "ci95_high": 312.3086,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 8,
+          "sharing": 2,
+          "bytes_per_cta": 65536,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 726.9336,
+            "ci95_low": 725.332,
+            "ci95_high": 730.5664,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 339.345,
+            "ci95_low": 335.2091,
+            "ci95_high": 341.4167,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 678.69,
+            "ci95_low": 670.4182,
+            "ci95_high": 682.8334,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 8,
+          "sharing": 2,
+          "bytes_per_cta": 65536,
+          "stagger_stages": 16,
+          "turnaround_ns": {
+            "value": 710.3906,
+            "ci95_low": 706.875,
+            "ci95_high": 715.625,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 337.2305,
+            "ci95_low": 333.1457,
+            "ci95_high": 341.4167,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 674.4609,
+            "ci95_low": 666.2913,
+            "ci95_high": 682.8334,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 8,
+          "sharing": 4,
+          "bytes_per_cta": 4096,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 315.9766,
+            "ci95_low": 310.5273,
+            "ci95_high": 322.1484,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 22.8947,
+            "ci95_low": 22.3101,
+            "ci95_high": 22.9147,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 91.5787,
+            "ci95_low": 89.2405,
+            "ci95_high": 91.6587,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 8,
+          "sharing": 4,
+          "bytes_per_cta": 4096,
+          "stagger_stages": 16,
+          "turnaround_ns": {
+            "value": 288.3594,
+            "ci95_low": 284.4531,
+            "ci95_high": 293.6914,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 22.6181,
+            "ci95_low": 22.3101,
+            "ci95_high": 22.9247,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 90.4725,
+            "ci95_low": 89.2405,
+            "ci95_high": 91.6988,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 8,
+          "sharing": 4,
+          "bytes_per_cta": 16384,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 378.1641,
+            "ci95_low": 373.0469,
+            "ci95_high": 381.9336,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 77.2147,
+            "ci95_low": 76.3156,
+            "ci95_high": 78.9888,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 308.8589,
+            "ci95_low": 305.2623,
+            "ci95_high": 315.9551,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 8,
+          "sharing": 4,
+          "bytes_per_cta": 16384,
+          "stagger_stages": 16,
+          "turnaround_ns": {
+            "value": 351.7969,
+            "ci95_low": 347.9492,
+            "ci95_high": 354.9414,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 77.2147,
+            "ci95_low": 76.3712,
+            "ci95_high": 78.0771,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 308.8589,
+            "ci95_low": 305.4846,
+            "ci95_high": 312.3086,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 8,
+          "sharing": 4,
+          "bytes_per_cta": 65536,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 728.3203,
+            "ci95_low": 713.8477,
+            "ci95_high": 730.4883,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 169.6382,
+            "ci95_low": 168.5475,
+            "ci95_high": 172.8897,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 678.5527,
+            "ci95_low": 674.1899,
+            "ci95_high": 691.5588,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 8,
+          "sharing": 4,
+          "bytes_per_cta": 65536,
+          "stagger_stages": 16,
+          "turnaround_ns": {
+            "value": 697.7539,
+            "ci95_low": 692.7734,
+            "ci95_high": 704.8633,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 170.7083,
+            "ci95_low": 168.5475,
+            "ci95_high": 171.8273,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 682.8334,
+            "ci95_low": 674.1899,
+            "ci95_high": 687.3091,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 16,
+          "sharing": 1,
+          "bytes_per_cta": 4096,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 326.0156,
+            "ci95_low": 324.1895,
+            "ci95_high": 331.5723,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 163.6482,
+            "ci95_low": 161.6302,
+            "ci95_high": 167.7051,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 163.6482,
+            "ci95_low": 161.6302,
+            "ci95_high": 167.7051,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 16,
+          "sharing": 1,
+          "bytes_per_cta": 16384,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 400.4785,
+            "ci95_low": 395.918,
+            "ci95_high": 407.2168,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 544.3613,
+            "ci95_low": 538.7674,
+            "ci95_high": 555.3531,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 544.3613,
+            "ci95_low": 538.7674,
+            "ci95_high": 555.3531,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 16,
+          "sharing": 1,
+          "bytes_per_cta": 65536,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 797.0215,
+            "ci95_low": 795.0879,
+            "ci95_high": 798.3691,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 1188.609,
+            "ci95_low": 1175.4925,
+            "ci95_high": 1195.5971,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 1188.609,
+            "ci95_low": 1175.4925,
+            "ci95_high": 1195.5971,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 16,
+          "sharing": 2,
+          "bytes_per_cta": 4096,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 315.8301,
+            "ci95_low": 311.6406,
+            "ci95_high": 318.9355,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 83.7521,
+            "ci95_low": 81.856,
+            "ci95_high": 85.8433,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 167.5041,
+            "ci95_low": 163.7121,
+            "ci95_high": 171.6866,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 16,
+          "sharing": 2,
+          "bytes_per_cta": 4096,
+          "stagger_stages": 16,
+          "turnaround_ns": {
+            "value": 296.6797,
+            "ci95_low": 296.2012,
+            "ci95_high": 299.3457,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 84.7677,
+            "ci95_low": 82.7279,
+            "ci95_high": 84.9049,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 169.5353,
+            "ci95_low": 165.4558,
+            "ci95_high": 169.8099,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 16,
+          "sharing": 2,
+          "bytes_per_cta": 16384,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 390.2539,
+            "ci95_low": 388.584,
+            "ci95_high": 392.1289,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 283.4947,
+            "ci95_low": 283.3989,
+            "ci95_high": 286.3984,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 566.9894,
+            "ci95_low": 566.7978,
+            "ci95_high": 572.7967,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 16,
+          "sharing": 2,
+          "bytes_per_cta": 16384,
+          "stagger_stages": 16,
+          "turnaround_ns": {
+            "value": 372.4219,
+            "ci95_low": 369.4434,
+            "ci95_high": 373.8086,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 283.4947,
+            "ci95_low": 280.5555,
+            "ci95_high": 286.3006,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 566.9894,
+            "ci95_low": 561.1109,
+            "ci95_high": 572.6012,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 16,
+          "sharing": 2,
+          "bytes_per_cta": 65536,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 746.9629,
+            "ci95_low": 744.5801,
+            "ci95_high": 754.1211,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 639.0103,
+            "ci95_low": 631.6723,
+            "ci95_high": 639.2538,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 1278.0206,
+            "ci95_low": 1263.3446,
+            "ci95_high": 1278.5076,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 16,
+          "sharing": 2,
+          "bytes_per_cta": 65536,
+          "stagger_stages": 16,
+          "turnaround_ns": {
+            "value": 729.0234,
+            "ci95_low": 727.5,
+            "ci95_high": 730.3223,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 635.7414,
+            "ci95_low": 621.839,
+            "ci95_high": 643.1748,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 1271.4829,
+            "ci95_low": 1243.678,
+            "ci95_high": 1286.3497,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 16,
+          "sharing": 4,
+          "bytes_per_cta": 4096,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 310.8594,
+            "ci95_low": 309.7168,
+            "ci95_high": 316.0742,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 42.9568,
+            "ci95_low": 42.4181,
+            "ci95_high": 43.5274,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 171.8273,
+            "ci95_low": 169.6725,
+            "ci95_high": 174.1098,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 16,
+          "sharing": 4,
+          "bytes_per_cta": 4096,
+          "stagger_stages": 16,
+          "turnaround_ns": {
+            "value": 285.625,
+            "ci95_low": 283.0762,
+            "ci95_high": 292.3145,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 42.4525,
+            "ci95_low": 41.9263,
+            "ci95_high": 43.4913,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 169.8099,
+            "ci95_low": 167.7051,
+            "ci95_high": 173.9653,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 16,
+          "sharing": 4,
+          "bytes_per_cta": 16384,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 382.0508,
+            "ci95_low": 376.25,
+            "ci95_high": 389.3652,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 144.731,
+            "ci95_low": 141.7953,
+            "ci95_high": 147.8429,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 578.9239,
+            "ci95_low": 567.1811,
+            "ci95_high": 591.3717,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 16,
+          "sharing": 4,
+          "bytes_per_cta": 16384,
+          "stagger_stages": 16,
+          "turnaround_ns": {
+            "value": 354.8145,
+            "ci95_low": 349.541,
+            "ci95_high": 357.6562,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 144.6811,
+            "ci95_low": 143.1503,
+            "ci95_high": 147.7388,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 578.7242,
+            "ci95_low": 572.6012,
+            "ci95_high": 590.9551,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 16,
+          "sharing": 4,
+          "bytes_per_cta": 65536,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 729.9609,
+            "ci95_low": 727.3535,
+            "ci95_high": 733.4473,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 327.1688,
+            "ci95_low": 325.2029,
+            "ci95_high": 327.3603,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 1308.6752,
+            "ci95_low": 1300.8115,
+            "ci95_high": 1309.4413,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 16,
+          "sharing": 4,
+          "bytes_per_cta": 65536,
+          "stagger_stages": 16,
+          "turnaround_ns": {
+            "value": 704.6289,
+            "ci95_low": 701.5918,
+            "ci95_high": 706.4941,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 327.2326,
+            "ci95_low": 325.3921,
+            "ci95_high": 329.0941,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 1308.9304,
+            "ci95_low": 1301.5684,
+            "ci95_high": 1316.3763,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 20,
+          "sharing": 1,
+          "bytes_per_cta": 4096,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 324.7422,
+            "ci95_low": 323.9062,
+            "ci95_high": 327.4141,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 199.7288,
+            "ci95_low": 197.3233,
+            "ci95_high": 202.1157,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 199.7288,
+            "ci95_low": 197.3233,
+            "ci95_high": 202.1157,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 20,
+          "sharing": 1,
+          "bytes_per_cta": 16384,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 404.4688,
+            "ci95_low": 401.5156,
+            "ci95_high": 405.8672,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 673.243,
+            "ci95_low": 654.5418,
+            "ci95_high": 680.4516,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 673.243,
+            "ci95_low": 654.5418,
+            "ci95_high": 680.4516,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 20,
+          "sharing": 1,
+          "bytes_per_cta": 65536,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 850.6094,
+            "ci95_low": 844.0,
+            "ci95_high": 854.4297,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 1353.4378,
+            "ci95_low": 1327.5215,
+            "ci95_high": 1388.1529,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 1353.4378,
+            "ci95_low": 1327.5215,
+            "ci95_high": 1388.1529,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 20,
+          "sharing": 2,
+          "bytes_per_cta": 4096,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 321.7578,
+            "ci95_low": 320.4531,
+            "ci95_high": 328.5156,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 101.0189,
+            "ci95_low": 99.8644,
+            "ci95_high": 101.0578,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 202.0378,
+            "ci95_low": 199.7288,
+            "ci95_high": 202.1157,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 20,
+          "sharing": 2,
+          "bytes_per_cta": 4096,
+          "stagger_stages": 16,
+          "turnaround_ns": {
+            "value": 305.2344,
+            "ci95_low": 301.7422,
+            "ci95_high": 308.1484,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 99.9405,
+            "ci95_low": 99.8644,
+            "ci95_high": 101.1358,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 199.8811,
+            "ci95_low": 199.7288,
+            "ci95_high": 202.2716,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 20,
+          "sharing": 2,
+          "bytes_per_cta": 16384,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 389.3672,
+            "ci95_low": 387.8984,
+            "ci95_high": 391.4297,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 347.0957,
+            "ci95_low": 340.3363,
+            "ci95_high": 354.3684,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 694.1913,
+            "ci95_low": 680.6725,
+            "ci95_high": 708.7367,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 20,
+          "sharing": 2,
+          "bytes_per_cta": 16384,
+          "stagger_stages": 16,
+          "turnaround_ns": {
+            "value": 371.3281,
+            "ci95_low": 369.0078,
+            "ci95_high": 374.1328,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 346.9808,
+            "ci95_low": 343.5701,
+            "ci95_high": 350.4599,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 693.9616,
+            "ci95_low": 687.1402,
+            "ci95_high": 700.9198,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 20,
+          "sharing": 2,
+          "bytes_per_cta": 65536,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 762.3281,
+            "ci95_low": 759.5703,
+            "ci95_high": 764.7891,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 767.9062,
+            "ci95_low": 763.1557,
+            "ci95_high": 776.8668,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 1535.8125,
+            "ci95_low": 1526.3115,
+            "ci95_high": 1553.7337,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 20,
+          "sharing": 2,
+          "bytes_per_cta": 65536,
+          "stagger_stages": 16,
+          "turnaround_ns": {
+            "value": 743.1094,
+            "ci95_low": 741.6953,
+            "ci95_high": 748.0469,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 772.0052,
+            "ci95_low": 763.4336,
+            "ci95_high": 776.5792,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 1544.0103,
+            "ci95_low": 1526.8671,
+            "ci95_high": 1553.1583,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 20,
+          "sharing": 4,
+          "bytes_per_cta": 4096,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 317.5234,
+            "ci95_low": 313.4922,
+            "ci95_high": 332.2031,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 51.1201,
+            "ci95_low": 49.9703,
+            "ci95_high": 53.0227,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 204.4805,
+            "ci95_low": 199.8811,
+            "ci95_high": 212.0906,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 20,
+          "sharing": 4,
+          "bytes_per_cta": 4096,
+          "stagger_stages": 16,
+          "turnaround_ns": {
+            "value": 291.375,
+            "ci95_low": 286.0547,
+            "ci95_high": 293.8203,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 51.7458,
+            "ci95_low": 51.1201,
+            "ci95_high": 52.3869,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 206.983,
+            "ci95_low": 204.4805,
+            "ci95_high": 209.5476,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 20,
+          "sharing": 4,
+          "bytes_per_cta": 16384,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 383.6484,
+            "ci95_low": 381.4531,
+            "ci95_high": 387.5938,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 177.1243,
+            "ci95_low": 173.433,
+            "ci95_high": 179.0601,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 708.4973,
+            "ci95_low": 693.732,
+            "ci95_high": 716.2405,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 20,
+          "sharing": 4,
+          "bytes_per_cta": 16384,
+          "stagger_stages": 16,
+          "turnaround_ns": {
+            "value": 357.125,
+            "ci95_low": 355.8359,
+            "ci95_high": 358.6328,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 177.1243,
+            "ci95_low": 175.2885,
+            "ci95_high": 177.1842,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 708.4973,
+            "ci95_low": 701.1541,
+            "ci95_high": 708.7367,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 20,
+          "sharing": 4,
+          "bytes_per_cta": 65536,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 738.8516,
+            "ci95_low": 734.5469,
+            "ci95_high": 743.7344,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 399.6859,
+            "ci95_low": 397.1879,
+            "ci95_high": 401.9072,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 1598.7437,
+            "ci95_low": 1588.7515,
+            "ci95_high": 1607.629,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 20,
+          "sharing": 4,
+          "bytes_per_cta": 65536,
+          "stagger_stages": 16,
+          "turnaround_ns": {
+            "value": 712.1406,
+            "ci95_low": 710.0938,
+            "ci95_high": 717.4844,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 399.6859,
+            "ci95_low": 394.7209,
+            "ci95_high": 401.9072,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 1598.7437,
+            "ci95_low": 1578.8835,
+            "ci95_high": 1607.629,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 20,
+          "sharing": 5,
+          "bytes_per_cta": 4096,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 317.2266,
+            "ci95_low": 312.9453,
+            "ci95_high": 318.9844,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 41.413,
+            "ci95_low": 41.3639,
+            "ci95_high": 41.8928,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 207.0648,
+            "ci95_low": 206.8197,
+            "ci95_high": 209.4638,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 20,
+          "sharing": 5,
+          "bytes_per_cta": 4096,
+          "stagger_stages": 16,
+          "turnaround_ns": {
+            "value": 283.75,
+            "ci95_low": 281.6484,
+            "ci95_high": 291.7344,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 41.413,
+            "ci95_low": 40.8961,
+            "ci95_high": 41.9095,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 207.0648,
+            "ci95_low": 204.4805,
+            "ci95_high": 209.5476,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 20,
+          "sharing": 5,
+          "bytes_per_cta": 16384,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 385.2031,
+            "ci95_low": 383.6875,
+            "ci95_high": 389.2656,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 141.6516,
+            "ci95_low": 138.8383,
+            "ci95_high": 143.1503,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 708.258,
+            "ci95_low": 694.1913,
+            "ci95_high": 715.7515,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 20,
+          "sharing": 5,
+          "bytes_per_cta": 16384,
+          "stagger_stages": 16,
+          "turnaround_ns": {
+            "value": 356.7734,
+            "ci95_low": 354.2891,
+            "ci95_high": 359.8281,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 140.2308,
+            "ci95_low": 138.7923,
+            "ci95_high": 141.7953,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 701.1541,
+            "ci95_low": 693.9616,
+            "ci95_high": 708.9763,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 20,
+          "sharing": 5,
+          "bytes_per_cta": 65536,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 734.0547,
+            "ci95_low": 730.2812,
+            "ci95_high": 735.7422,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 323.1981,
+            "ci95_low": 319.6269,
+            "ci95_high": 323.5098,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 1615.9907,
+            "ci95_low": 1598.1345,
+            "ci95_high": 1617.5488,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 20,
+          "sharing": 5,
+          "bytes_per_cta": 65536,
+          "stagger_stages": 16,
+          "turnaround_ns": {
+            "value": 705.9453,
+            "ci95_low": 703.25,
+            "ci95_high": 713.2969,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 321.6491,
+            "ci95_low": 321.341,
+            "ci95_high": 323.5098,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 1608.2454,
+            "ci95_low": 1606.7052,
+            "ci95_high": 1617.5488,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 20,
+          "sharing": 10,
+          "bytes_per_cta": 4096,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 324.3828,
+            "ci95_low": 322.6875,
+            "ci95_high": 329.3203,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 20.2194,
+            "ci95_low": 19.9729,
+            "ci95_high": 20.464,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 202.1936,
+            "ci95_low": 199.7288,
+            "ci95_high": 204.6401,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 20,
+          "sharing": 10,
+          "bytes_per_cta": 4096,
+          "stagger_stages": 16,
+          "turnaround_ns": {
+            "value": 290.8594,
+            "ci95_low": 287.3828,
+            "ci95_high": 297.0469,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 20.2116,
+            "ci95_low": 20.2038,
+            "ci95_high": 20.6983,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 202.1157,
+            "ci95_low": 202.0378,
+            "ci95_high": 206.983,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 20,
+          "sharing": 10,
+          "bytes_per_cta": 16384,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 386.5625,
+            "ci95_low": 381.4922,
+            "ci95_high": 393.4219,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 70.8258,
+            "ci95_low": 70.1154,
+            "ci95_high": 71.5752,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 708.258,
+            "ci95_low": 701.1541,
+            "ci95_high": 715.7515,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 20,
+          "sharing": 10,
+          "bytes_per_cta": 16384,
+          "stagger_stages": 16,
+          "turnaround_ns": {
+            "value": 353.1797,
+            "ci95_low": 349.4141,
+            "ci95_high": 355.4766,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 70.092,
+            "ci95_low": 69.3962,
+            "ci95_high": 70.8737,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 700.9198,
+            "ci95_low": 693.9616,
+            "ci95_high": 708.7367,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 20,
+          "sharing": 10,
+          "bytes_per_cta": 65536,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 745.0312,
+            "ci95_low": 739.1953,
+            "ci95_high": 754.8438,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 158.9052,
+            "ci95_low": 157.0606,
+            "ci95_high": 160.6705,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 1589.0524,
+            "ci95_low": 1570.6062,
+            "ci95_high": 1606.7052,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 20,
+          "sharing": 10,
+          "bytes_per_cta": 65536,
+          "stagger_stages": 16,
+          "turnaround_ns": {
+            "value": 711.7734,
+            "ci95_low": 707.8438,
+            "ci95_high": 714.9688,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 159.783,
+            "ci95_low": 158.8752,
+            "ci95_high": 160.7629,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 1597.8301,
+            "ci95_low": 1588.7515,
+            "ci95_high": 1607.629,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 20,
+          "sharing": 20,
+          "bytes_per_cta": 4096,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 305.1172,
+            "ci95_low": 300.7422,
+            "ci95_high": 314.8438,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 10.7436,
+            "ci95_low": 10.469,
+            "ci95_high": 11.0098,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 214.8721,
+            "ci95_low": 209.3802,
+            "ci95_high": 220.1966,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 20,
+          "sharing": 20,
+          "bytes_per_cta": 4096,
+          "stagger_stages": 16,
+          "turnaround_ns": {
+            "value": 279.125,
+            "ci95_low": 270.0234,
+            "ci95_high": 283.2969,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 10.4816,
+            "ci95_low": 10.3451,
+            "ci95_high": 10.8728,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 209.6313,
+            "ci95_low": 206.9013,
+            "ci95_high": 217.4567,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 20,
+          "sharing": 20,
+          "bytes_per_cta": 16384,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 384.7734,
+            "ci95_low": 381.9453,
+            "ci95_high": 391.9219,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 35.4249,
+            "ci95_low": 35.0577,
+            "ci95_high": 35.7754,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 708.4973,
+            "ci95_low": 701.1541,
+            "ci95_high": 715.5074,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 20,
+          "sharing": 20,
+          "bytes_per_cta": 16384,
+          "stagger_stages": 16,
+          "turnaround_ns": {
+            "value": 351.6484,
+            "ci95_low": 344.8594,
+            "ci95_high": 352.1016,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 35.4368,
+            "ci95_low": 35.4129,
+            "ci95_high": 36.1703,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 708.7367,
+            "ci95_low": 708.258,
+            "ci95_high": 723.4053,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 20,
+          "sharing": 20,
+          "bytes_per_cta": 65536,
+          "stagger_stages": 0,
+          "turnaround_ns": {
+            "value": 797.4922,
+            "ci95_low": 782.875,
+            "ci95_high": 806.3047,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 75.1129,
+            "ci95_low": 74.3012,
+            "ci95_high": 76.3295,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 1502.2579,
+            "ci95_low": 1486.0245,
+            "ci95_high": 1526.5893,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        },
+        {
+          "active_ctas": 20,
+          "sharing": 20,
+          "bytes_per_cta": 65536,
+          "stagger_stages": 16,
+          "turnaround_ns": {
+            "value": 753.6484,
+            "ci95_low": 740.6094,
+            "ci95_high": 762.6406,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": null
+          },
+          "dram_unique_bw_gbps": {
+            "value": 75.97,
+            "ci95_low": 75.0994,
+            "ci95_high": 76.8188,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "dram_bw"
+          },
+          "l2_to_sm_bw_gbps": {
+            "value": 1519.4001,
+            "ci95_low": 1501.9889,
+            "ci95_high": 1536.3751,
+            "rel_uncertainty": 0.1,
+            "unit": "GB/s",
+            "method": "ascendc_l2_merge_mte2",
+            "source": "measured",
+            "perturb_group": "l2_bw"
+          }
+        }
+      ]
+    },
+    "compute": {
+      "mma_tflops_per_sm_by_warps": {
+        "cube.mmad:f16:f16:f32:16x16x16": [
+          {
+            "mma_warps_per_sm": 1,
+            "tflops_per_sm": {
+              "value": 14.5491,
+              "ci95_low": 14.5309,
+              "ci95_high": 14.5602,
+              "rel_uncertainty": 0.1,
+              "unit": "TFLOPS",
+              "method": "ascendc_cube_mmad_l0_resident_f16",
+              "source": "measured",
+              "perturb_group": "mma_dense"
+            }
+          }
+        ],
+        "cube.mmad:bf16:bf16:f32:16x16x16": [
+          {
+            "mma_warps_per_sm": 1,
+            "tflops_per_sm": {
+              "value": 14.6013,
+              "ci95_low": 14.5402,
+              "ci95_high": 14.6909,
+              "rel_uncertainty": 0.1,
+              "unit": "TFLOPS",
+              "method": "ascendc_cube_mmad_l0_resident_bf16",
+              "source": "measured",
+              "perturb_group": "mma_dense"
+            }
+          }
+        ]
+      },
+      "non_mma_issue_rate_per_sm_gips": {
+        "value": 1.1808,
+        "ci95_low": 1.1801,
+        "ci95_high": 1.1842,
+        "rel_uncertainty": 0.1,
+        "unit": "GIPS",
+        "method": "ascendc_vec_fma_issue_rate",
+        "source": "measured",
+        "perturb_group": null
+      },
+      "fp32_fma_tflops": {
+        "value": 1.5115,
+        "ci95_low": 1.5106,
+        "ci95_high": 1.5158,
+        "rel_uncertainty": 0.1,
+        "unit": "TFLOPS",
+        "method": "ascendc_vec_fp32_fma",
+        "source": "measured",
+        "perturb_group": null
+      },
+      "sfu_tflops": {
+        "value": 2.1838,
+        "ci95_low": 2.1816,
+        "ci95_high": 2.1892,
+        "rel_uncertainty": 0.1,
+        "unit": "TFLOPS",
+        "method": "ascendc_vec_fp32_exp",
+        "source": "measured",
+        "perturb_group": null
+      },
+      "sfu_issue_rate_per_sm_gips": [
+        {
+          "warps_per_sm": 1,
+          "rate": {
+            "value": 3.4121,
+            "ci95_low": 3.4087,
+            "ci95_high": 3.4207,
+            "rel_uncertainty": 0.1,
+            "unit": "GIPS",
+            "method": "ascendc_vec_fp32_exp_issue_rate",
+            "source": "measured",
+            "perturb_group": null
+          }
+        }
+      ]
+    },
+    "occupancy": {
+      "smem_carveout_observed": [
+        {
+          "requested_smem_per_cta_bytes": 524288,
+          "chosen_carveout_bytes": 524288,
+          "max_active_ctas_per_sm": 1
+        }
+      ]
+    },
+    "async_pipeline": {
+      "cp_async_bw_per_sm_gbps": {
+        "value": 302.2343,
+        "ci95_low": 287.7399,
+        "ci95_high": 309.7142,
+        "rel_uncertainty": 0.1,
+        "unit": "GB/s",
+        "method": "ascendc_mte2_single_core_l2_bw",
+        "source": "measured",
+        "perturb_group": "async_cp"
+      },
+      "tma_bw_per_sm_gbps": null,
+      "tma_setup_ns": null
+    },
+    "spill": {
+      "local_mem_l1_hit_bw_per_sm_gbps": {
+        "value": 1811.9473,
+        "ci95_low": 1811.9473,
+        "ci95_high": 1811.9473,
+        "rel_uncertainty": 0.25,
+        "unit": "GB/s",
+        "method": "ascend_no_reg_spill_ub_proxy",
+        "source": "estimated",
+        "perturb_group": "spill_l1"
+      },
+      "local_mem_l1_miss_bw_per_sm_gbps": {
+        "value": 302.2343,
+        "ci95_low": 302.2343,
+        "ci95_high": 302.2343,
+        "rel_uncertainty": 0.25,
+        "unit": "GB/s",
+        "method": "ascend_no_reg_spill_l2_proxy",
+        "source": "estimated",
+        "perturb_group": "spill_l2"
+      },
+      "local_mem_l1_hit_latency_ns": {
+        "value": 11.6676,
+        "ci95_low": 11.6676,
+        "ci95_high": 11.6676,
+        "rel_uncertainty": 0.25,
+        "unit": "ns",
+        "method": "ascend_no_reg_spill_ub_lat_proxy",
+        "source": "estimated",
+        "perturb_group": "spill_l1"
+      },
+      "local_mem_l1_miss_latency_ns": {
+        "value": 121.2164,
+        "ci95_low": 121.2164,
+        "ci95_high": 121.2164,
+        "rel_uncertainty": 0.25,
+        "unit": "ns",
+        "method": "ascend_no_reg_spill_l2_lat_proxy",
+        "source": "estimated",
+        "perturb_group": "spill_l2"
+      },
+      "l1_to_l2_spill_threshold_bytes_per_sm": {
+        "value": 196608.0,
+        "ci95_low": 196608.0,
+        "ci95_high": 196608.0,
+        "rel_uncertainty": 0.25,
+        "unit": "bytes",
+        "method": "ascend_ub_capacity_spec",
+        "source": "estimated",
+        "perturb_group": null
+      }
+    },
+    "overhead": {
+      "launch_overhead_us": {
+        "value": 3.0378,
+        "ci95_low": 3.0328,
+        "ci95_high": 3.0388,
+        "rel_uncertainty": 0.1,
+        "unit": "us",
+        "method": "ascendc_queued_device_empty_kernel",
+        "source": "measured",
+        "perturb_group": null
+      },
+      "host_launch_overhead_us": {
+        "value": 3.0513,
+        "ci95_low": 3.0377,
+        "ci95_high": 3.1828,
+        "rel_uncertainty": 0.1,
+        "unit": "us",
+        "method": "ascendc_stream_empty_kernel_host_batch",
+        "source": "measured",
+        "perturb_group": null
+      },
+      "per_cta_launch_latency_ns": {
+        "value": 31.9737,
+        "ci95_low": 31.7421,
+        "ci95_high": 32.7316,
+        "rel_uncertainty": 0.1,
+        "unit": "ns",
+        "method": "ascendc_queued_empty_kernel_1_vs_20_core_delta",
+        "source": "measured",
+        "perturb_group": null
+      }
+    },
+    "cta_dispatch": {
+      "observed_policy": "round_robin",
+      "candidate_policies": [
+        "round_robin"
+      ],
+      "policy_params": {
+        "auto_blockify_stride": 20
+      },
+      "confidence": "high",
+      "probes": [
+        {
+          "grid_dims": [
+            20,
+            1,
+            1
+          ],
+          "ctas_per_sm": 1,
+          "waves_approx": 1.0,
+          "order_consistency": 1.0,
+          "first_wave_trace": [
+            {
+              "cta_id": 0,
+              "sm_id": 0,
+              "start_ns": 0.0
+            },
+            {
+              "cta_id": 1,
+              "sm_id": 1,
+              "start_ns": 220.0
+            },
+            {
+              "cta_id": 2,
+              "sm_id": 2,
+              "start_ns": 480.0
+            },
+            {
+              "cta_id": 3,
+              "sm_id": 3,
+              "start_ns": 740.0
+            },
+            {
+              "cta_id": 4,
+              "sm_id": 4,
+              "start_ns": 860.0
+            },
+            {
+              "cta_id": 5,
+              "sm_id": 5,
+              "start_ns": 1120.0
+            },
+            {
+              "cta_id": 6,
+              "sm_id": 6,
+              "start_ns": 1360.0
+            },
+            {
+              "cta_id": 7,
+              "sm_id": 7,
+              "start_ns": 1400.0
+            },
+            {
+              "cta_id": 8,
+              "sm_id": 8,
+              "start_ns": 1860.0
+            },
+            {
+              "cta_id": 9,
+              "sm_id": 9,
+              "start_ns": 2220.0
+            },
+            {
+              "cta_id": 10,
+              "sm_id": 10,
+              "start_ns": 2360.0
+            },
+            {
+              "cta_id": 11,
+              "sm_id": 11,
+              "start_ns": 2600.0
+            },
+            {
+              "cta_id": 12,
+              "sm_id": 12,
+              "start_ns": 2960.0
+            },
+            {
+              "cta_id": 13,
+              "sm_id": 13,
+              "start_ns": 3220.0
+            },
+            {
+              "cta_id": 14,
+              "sm_id": 14,
+              "start_ns": 3100.0
+            },
+            {
+              "cta_id": 15,
+              "sm_id": 15,
+              "start_ns": 3460.0
+            },
+            {
+              "cta_id": 16,
+              "sm_id": 16,
+              "start_ns": 3840.0
+            },
+            {
+              "cta_id": 17,
+              "sm_id": 17,
+              "start_ns": 4080.0
+            },
+            {
+              "cta_id": 18,
+              "sm_id": 18,
+              "start_ns": 4340.0
+            },
+            {
+              "cta_id": 19,
+              "sm_id": 19,
+              "start_ns": 4580.0
+            }
+          ]
+        }
+      ]
+    },
+    "pipeline": {
+      "fixed_sync_ns": [
+        {
+          "num_warps": 1,
+          "tokens": 1,
+          "overhead_ns": {
+            "value": 4.4451,
+            "ci95_low": 4.4276,
+            "ci95_high": 4.4673,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_aic_empty_event_ring",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "num_warps": 1,
+          "tokens": 2,
+          "overhead_ns": {
+            "value": 4.4447,
+            "ci95_low": 4.44,
+            "ci95_high": 4.4597,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_aic_empty_event_ring",
+            "source": "measured",
+            "perturb_group": null
+          }
+        }
+      ],
+      "stage_sync_overhead_ns": [
+        {
+          "issue_mode": "ld_global_v4",
+          "num_warps": 1,
+          "tokens": 0,
+          "overhead_ns": {
+            "value": 122.1387,
+            "ci95_low": 104.0564,
+            "ci95_high": 141.1865,
+            "rel_uncertainty": 0.152,
+            "unit": "ns",
+            "method": "ascendc_stage_sync_hot_l2_ld_global_v4",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "num_warps": 1,
+          "tokens": 1,
+          "overhead_ns": {
+            "value": 112.5989,
+            "ci95_low": 94.5898,
+            "ci95_high": 138.9111,
+            "rel_uncertainty": 0.1968,
+            "unit": "ns",
+            "method": "ascendc_stage_sync_hot_l2_cp_async",
+            "source": "measured",
+            "perturb_group": null
+          }
+        },
+        {
+          "issue_mode": "cp_async",
+          "num_warps": 1,
+          "tokens": 2,
+          "overhead_ns": {
+            "value": 56.7407,
+            "ci95_low": 47.9016,
+            "ci95_high": 69.5581,
+            "rel_uncertainty": 0.1908,
+            "unit": "ns",
+            "method": "ascendc_stage_sync_hot_l2_cp_async",
+            "source": "measured",
+            "perturb_group": null
+          }
+        }
+      ],
+      "min_async_roundtrip_ns": {
+        "value": 112.5989,
+        "ci95_low": 94.5898,
+        "ci95_high": 138.9111,
+        "rel_uncertainty": 0.1968,
+        "unit": "ns",
+        "method": "ascendc_32b_hot_l2_mte2_roundtrip",
+        "source": "measured",
+        "perturb_group": null
+      }
+    }
+  }
+}
