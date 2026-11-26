@@ -3,7 +3,11 @@
 Wraps `vgpu_bench --mode <mode>` with the quiet-host checks, warmup gate and
 telemetry of repeat_mlp.py, and writes the raw output with its receipt.
 
-Usage (inside `flock /tmp/virtualgpu-gpu.lock`):
+It does not take the GPU lock itself: it must run inside an external
+`flock /tmp/virtualgpu-gpu.lock`, and `wait_for_quiet_desktop` and
+`dispersion_check` are meant to be called by other drivers while they hold it.
+
+Usage:
     python microbench/capture_posthoc.py --binary vgpu_bench_sm121 --mode wave-rescan \
         --revision <commit> --output wave-rescan.json
 """
@@ -19,18 +23,32 @@ import time
 from pathlib import Path
 from shutil import which
 
-from repeat_mlp import (
-    WARMUP,
-    WINDOWS_SMI,
-    command,
-    digest,
-    host_snapshot,
-    require_quiet,
-    telemetry,
-    utc,
-    warm_device,
-    write_json,
-)
+try:
+    from repeat_mlp import (
+        WARMUP,
+        WINDOWS_SMI,
+        command,
+        digest,
+        host_snapshot,
+        require_quiet,
+        telemetry,
+        utc,
+        warm_device,
+        write_json,
+    )
+except ImportError:  # imported as microbench.capture_posthoc
+    from microbench.repeat_mlp import (
+        WARMUP,
+        WINDOWS_SMI,
+        command,
+        digest,
+        host_snapshot,
+        require_quiet,
+        telemetry,
+        utc,
+        warm_device,
+        write_json,
+    )
 
 MODES = ("wave-rescan", "b-stream", "staged-mma", "dram-probe-sweep")
 POWERSHELL = Path("/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe")
@@ -39,34 +57,53 @@ QUIET_SECONDS = 60
 QUIET_TIMEOUT_SECONDS = 20 * 60
 DISPERSION_RATIO = 1.3
 DISPERSION_MAX_SHARE = 0.10
+# Timing and bandwidth samples only; other *_samples fields (offsets, spreads) vary by design.
+DISPERSION_SUFFIXES = ("_ns_samples", "gbps_samples")
 
 
 def windows_engines():
-    """Per-process GPU engine utilization above 0.5% from the Windows performance counters."""
+    """Per-process GPU engine utilization above 0.5% from the Windows performance counters.
+
+    Provenance only: a failure is recorded as an error string, never raised.
+    """
     if not POWERSHELL.is_file():
         return None
     script = (
         "(Get-Counter '\\GPU Engine(*)\\Utilization Percentage').CounterSamples | "
         "Where-Object CookedValue -gt 0.5 | ForEach-Object { $_.InstanceName + ' ' + $_.CookedValue }"
     )
-    return command(str(POWERSHELL), "-NoProfile", "-Command", script).splitlines()
+    try:
+        return command(str(POWERSHELL), "-NoProfile", "-Command", script).splitlines()
+    except (OSError, subprocess.SubprocessError) as error:
+        return {"error": str(error)}
+
+
+def percent(text):
+    """nvidia-smi utilization field, or None when it reads N/A or anything non-numeric."""
+    try:
+        return int(text.strip().strip("[]"))
+    except ValueError:
+        return None
 
 
 def wait_for_quiet_desktop():
-    """On WSL, wait until the Windows GPU, decoder and encoder stay below 5% for 60 s."""
+    """On WSL, wait until the Windows GPU, decoder and encoder stay below 5% for 60 s.
+
+    A field that reads N/A does not count; the GPU field itself must be numeric.
+    Call it while holding the GPU lock, or a colleague's run counts as desktop use.
+    """
     if not WINDOWS_SMI.is_file():
         return {"status": "not_applicable"}
     query = "--query-gpu=utilization.gpu,utilization.decoder,utilization.encoder"
     start = time.monotonic()
     quiet_since, trace = None, []
     while True:
-        values = [
-            int(v)
-            for v in command(str(WINDOWS_SMI), query, "--format=csv,noheader,nounits").split(",")
-        ]
+        raw = command(str(WINDOWS_SMI), query, "--format=csv,noheader,nounits").split(",")
+        values = [percent(v) for v in raw]
         now = time.monotonic()
         trace.append({"utc": utc(), "gpu_decoder_encoder_percent": values})
-        if max(values) < QUIET_PERCENT:
+        known = [v for v in values if v is not None]
+        if values[0] is not None and max(known) < QUIET_PERCENT:
             quiet_since = quiet_since if quiet_since is not None else now
             if now - quiet_since >= QUIET_SECONDS:
                 return {"status": "passed", "trace": trace, "engines": windows_engines()}
@@ -79,28 +116,40 @@ def wait_for_quiet_desktop():
         time.sleep(1)
 
 
-def sample_lists(node):
+def sample_lists(node, suffixes=DISPERSION_SUFFIXES):
     if isinstance(node, dict):
         for key, value in node.items():
-            if key.endswith("_samples") and isinstance(value, list) and value:
+            if key.endswith(suffixes) and isinstance(value, list):
                 yield key, value
             else:
-                yield from sample_lists(value)
+                yield from sample_lists(value, suffixes)
     elif isinstance(node, list):
         for item in node:
-            yield from sample_lists(item)
+            yield from sample_lists(item, suffixes)
 
 
-def dispersion_check(raw):
-    """Share of sample lists whose max over min exceeds 1.3; above 10% the capture is void."""
-    lists = [
-        v for _, v in sample_lists(raw) if all(isinstance(x, (int, float)) and x > 0 for x in v)
-    ]
+def valid_samples(values):
+    return len(values) >= 2 and all(
+        isinstance(x, (int, float)) and not isinstance(x, bool) and x > 0 for x in values
+    )
+
+
+def dispersion_check(raw, suffixes=DISPERSION_SUFFIXES):
+    """Share of timing or bandwidth sample lists whose max over min exceeds 1.3.
+
+    Above 10% the capture is void. So is a capture with no checkable list, or with
+    a list that is not at least two positive numbers.
+    """
+    found = [v for _, v in sample_lists(raw, suffixes)]
+    lists = [v for v in found if valid_samples(v)]
     spread = [v for v in lists if max(v) / min(v) > DISPERSION_RATIO]
-    share = len(spread) / len(lists) if lists else 0.0
+    share = len(spread) / len(lists) if lists else 1.0
+    failed = not lists or len(lists) != len(found) or share > DISPERSION_MAX_SHARE
     return {
-        "status": "failed" if share > DISPERSION_MAX_SHARE else "passed",
+        "status": "failed" if failed else "passed",
         "sample_lists": len(lists),
+        "invalid_lists": len(found) - len(lists),
+        "suffixes": list(suffixes),
         "over_ratio": len(spread),
         "share": share,
         "ratio": DISPERSION_RATIO,
