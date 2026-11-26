@@ -9,6 +9,7 @@ To add your GPU, see [contributing a profile](../docs/guides/contributing-a-prof
 | File | SKU | Arch | Memory | Revision | Source | Clocks | Driver / Toolkit |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | [`a100-80gb.json`](a100-80gb.json) | NVIDIA A100-SXM4-80GB | `sm_80` | Discrete (HBM2e) | `0.21.0-posthoc` | `partial` | Unlocked (Linux, 1410 MHz SM / 1593 MHz Mem) | `580.82.07` / `13.0` |
+| [`ascend910b3.json`](ascend910b3.json) | Huawei Ascend 910B3 | `ascend910b3` | Discrete (HBM2e) | `0.3.0-ascend` | `partial` | Unlocked (Linux, 1800 MHz Cube) | `26.1.1` / `CANN 9.2.1` |
 | [`gb10.json`](gb10.json) | NVIDIA GB10 (DGX Spark) | `sm_121` | Unified (LPDDR5X) | `0.21.0-posthoc` | `partial` | Unlocked (2411 to 2561 MHz SM / 8533 MHz Mem) | `580.173.02` / `13.0` |
 | [`l4.json`](l4.json) | NVIDIA L4 | `sm_89` | Discrete (GDDR6) | `0.21.0-posthoc` | `partial` | Unlocked (Linux, 1845 to 2040 MHz SM / 6251 MHz Mem) | `580.82.07` / `13.0` |
 | [`l40s.json`](l40s.json) | NVIDIA L40S | `sm_89` | Discrete (GDDR6) | `0.21.0-posthoc` | `partial` | Locked with `nvidia-smi` on native Linux (2100 MHz SM / 9001 MHz Mem). The collector still records `locked: false` | `595.91.07` / `13.5` |

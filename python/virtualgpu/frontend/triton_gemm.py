@@ -638,6 +638,28 @@ def extract_gemm_kernel_ir(
     """Compile a Triton GEMM kernel offline using Triton's runtime JIT binder
     and emit a KernelIR v0.1 dictionary (with two-level KernelIR caching).
     """
+    from virtualgpu.frontend.ascend_compiler import is_ascend_arch
+
+    if is_ascend_arch(target_arch):
+        from virtualgpu.frontend.triton_ascend_gemm import extract_ascend_gemm_kernel_ir
+
+        return extract_ascend_gemm_kernel_ir(
+            fn,
+            M=M,
+            N=N,
+            K=K,
+            config=config,
+            target_arch=target_arch,
+            dtype=dtype,
+            acc_dtype=acc_dtype,
+            call_args=call_args,
+            strides_a=strides_a,
+            strides_b=strides_b,
+            strides_c=strides_c,
+            cache_dir=cache_dir,
+            use_cache=use_cache,
+        )
+
     import triton
 
     num_warps = int(config.get("num_warps", 4))
@@ -757,6 +779,28 @@ def extract_gemm_kernel_ir_batch(
     max_workers: int | None = None,
 ) -> list[tuple[dict[str, Any], str] | Exception]:
     """Batch-extract (ir_dict, ir_json) with KernelIR caching and parallel AOT compilation."""
+    from virtualgpu.frontend.ascend_compiler import is_ascend_arch
+
+    if is_ascend_arch(target_arch):
+        from virtualgpu.frontend.triton_ascend_gemm import extract_ascend_gemm_kernel_ir_batch
+
+        return extract_ascend_gemm_kernel_ir_batch(
+            fn,
+            M=M,
+            N=N,
+            K=K,
+            configs=configs,
+            target_arch=target_arch,
+            dtype=dtype,
+            acc_dtype=acc_dtype,
+            call_args=call_args,
+            strides_a=strides_a,
+            strides_b=strides_b,
+            strides_c=strides_c,
+            cache_dir=cache_dir,
+            use_cache=use_cache,
+        )
+
     import triton
 
     elem_bytes = dtype_bits(dtype) // 8

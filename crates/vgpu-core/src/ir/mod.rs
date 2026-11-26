@@ -71,6 +71,12 @@ pub struct ResourceUsage {
     pub spill_loads_bytes: u64,
     pub spill_scope: SpillScope,
     pub barriers: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ub_bytes: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub l0c_bytes: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workspace_bytes: Option<u64>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

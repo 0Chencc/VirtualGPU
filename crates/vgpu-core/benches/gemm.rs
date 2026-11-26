@@ -27,6 +27,8 @@ fn main() {
         num_warps: 4,
         registers_per_thread: 128,
         smem_per_cta_bytes: 3 * 16384,
+        ub_bytes: 0,
+        l0c_bytes: 0,
         tiles_per_program: TripCounts::Uniform(1),
         mma_key: "mma.sync:f16:f16:f32:16x8x16".to_string(),
         spill: Spill::default(),

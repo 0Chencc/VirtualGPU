@@ -129,6 +129,8 @@ pub fn kernel_from_ir(ir: &KernelIR) -> Result<Kernel, ModelError> {
         num_warps: ir.launch.num_warps,
         registers_per_thread: ir.resources.registers_per_thread,
         smem_per_cta_bytes: ir.total_smem_bytes(),
+        ub_bytes: ir.resources.ub_bytes.unwrap_or(0),
+        l0c_bytes: ir.resources.l0c_bytes.unwrap_or(0),
         tiles_per_program,
         mma_key: mma_key.ok_or_else(|| unsupported("kernel without MMA"))?,
         tile,

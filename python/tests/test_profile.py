@@ -17,6 +17,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 EXAMPLE_PROFILE = REPO_ROOT / "schemas" / "examples" / "profile_example.json"
 RTX4070_PROFILE = REPO_ROOT / "profiles" / "rtx4070.json"
 GB10_PROFILE = REPO_ROOT / "profiles" / "gb10.json"
+ASCEND910B3_PROFILE = REPO_ROOT / "profiles" / "ascend910b3.json"
 
 
 def test_example_profile_is_valid() -> None:
@@ -137,6 +138,40 @@ def test_gb10_profile_is_valid() -> None:
     assert len(profile["measured"]["pipeline"]["sync_stage_loop"]) >= 564
     assert len(profile["measured"]["pipeline"]["sync_stage_loop_ablation"]) >= 64
     assert len(profile["measured"]["compute"]["mma_chain_latency"]) >= 128
+
+
+def test_ascend910b3_profile_is_valid() -> None:
+    if not ASCEND910B3_PROFILE.is_file():
+        pytest.skip("profiles/ascend910b3.json not present")
+    profile = load_profile(ASCEND910B3_PROFILE)
+    assert profile["identity"]["vendor"] == "ascend"
+    assert profile["identity"]["arch"] == "ascend910b3"
+    assert profile["specs"]["sm_count"] == 20
+    assert profile["specs"]["capabilities"]["cube_vector_split"] is True
+    assert profile["specs"]["ascend"]["l1_bytes"] == 524288
+    assert profile["specs"]["ascend"]["ub_bytes"] == 196608
+    mem = profile["measured"]["memory"]
+    assert mem["dram_bw_read_gbps"]["source"] == "measured"
+    assert mem["l2_bw_read_gbps"]["source"] == "measured"
+    assert len(mem["dram_bw_by_active_sms"]) >= 6
+    assert len(mem["l2_bw_by_active_sms"]) >= 6
+    assert len(mem["l2_rescan_hit_rate_by_working_set"]) >= 10
+    assert len(mem["dram_bw_by_bytes_in_flight"]) >= 40
+    assert len(mem["l2_bw_by_bytes_in_flight"]) >= 40
+    assert mem["dram_latency_loaded_ns"]["source"] == "measured"
+    assert mem["l2_latency_loaded_ns"]["source"] == "measured"
+    assert mem["smem_latency_ns"]["source"] == "measured"
+    assert len(mem["dram_latency_by_bw"]) >= 6
+    assert len(mem["l2_latency_by_bw"]) >= 6
+    assert len(mem["l2_merge_by_sharing"]) >= 40
+    assert len(profile["measured"]["pipeline"]["fixed_sync_ns"]) >= 2
+    assert len(profile["measured"]["pipeline"]["stage_sync_overhead_ns"]) >= 2
+    assert profile["measured"]["pipeline"]["min_async_roundtrip_ns"]["source"] == "measured"
+    mma_f16 = profile["measured"]["compute"]["mma_tflops_per_sm_by_warps"][
+        "cube.mmad:f16:f16:f32:16x16x16"
+    ]
+    assert mma_f16[0]["tflops_per_sm"]["source"] == "measured"
+    assert mma_f16[0]["tflops_per_sm"]["value"] > 10.0
 
 
 def test_rejects_missing_required_field() -> None:

@@ -164,6 +164,21 @@
         "barriers": {
           "type": "integer",
           "minimum": 0
+        },
+        "ub_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional Ascend Unified Buffer (UB) footprint per AIV core in bytes."
+        },
+        "l0c_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional Ascend L0C accumulator buffer footprint per AIC core in bytes."
+        },
+        "workspace_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional Ascend global-memory CV workspace size per AI Core in bytes."
         }
       }
     },
