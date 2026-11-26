@@ -22,7 +22,7 @@
 ### Fixed
 
 - Cross-wave L2 reuse: chunks that end together share one stream clock, and re-reads hit per K slice under LRU with the effective L2 capacity (GB10 microbenchmark evidence is provisional: both captures fail the later dispersion check and a longer-launch recapture is pending)
-- Replace the GB10 MLP curves with medians from five independent sweeps
+- Mark the GB10 MLP medians from five independent sweeps as provisional after the dispersion audit and propose long-launch recapture on both GPUs
 - The L2 miss merging model no longer fails on GPUs with more than 128 SMs
 
 ## 0.2.0

@@ -1,0 +1,27 @@
+{
+  "profile": "profiles/gb10.json",
+  "profile_revision": "0.22.0-posthoc",
+  "status": "unqualified_pending_long_launch_recapture",
+  "capture_manifest": {
+    "path": "docs/results/analysis/v0.3-gb10-mlp-calibration.json",
+    "sha256": "90fedde5948ed587e8d051025bbe09f35bc1a0ca5ff255e779afba81509696b9"
+  },
+  "affected_measurements": [
+    "measured.memory.dram_bw_by_bytes_in_flight",
+    "measured.memory.l2_bw_by_bytes_in_flight",
+    "measured.memory.dram_bw_by_bytes_in_flight_strided",
+    "measured.memory.dram_bw_read_gbps",
+    "measured.memory.l2_bw_read_gbps"
+  ],
+  "dispersion_audit": {
+    "source": "Independent retrospective audit reported in the 2026-11-27 collection rule update",
+    "iqr_over_median": {"point_threshold": 0.1, "max_share": 0.05},
+    "max_over_min": {"point_threshold": 1.5, "max_share": 0.15},
+    "cross_process_median_relative_range": {"point_threshold": 0.1, "max_share": 0.05},
+    "reported_iqr_failed_sweeps": 9,
+    "total_sweeps": 10,
+    "cross_process_status": "failed",
+    "contiguous_cross_process_check": {"flagged_points": 11, "total_points": 96}
+  },
+  "retention_reason": "The prior revision used short launches as well and lacks raw samples for the same dispersion audit. The installed numbers are provisional and are retained pending a qualified long-launch recapture."
+}

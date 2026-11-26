@@ -9,7 +9,7 @@
   "provenance": {
     "profile_revision": "0.22.0-posthoc",
     "calibration_run_id": "cal-mlp-20261126T184207Z-sm_121",
-    "calibration_manifest_digest": "90fedde5948ed587e8d051025bbe09f35bc1a0ca5ff255e779afba81509696b9",
+    "calibration_manifest_digest": "c9ded76f5afdbb0e23a33dbb07e35c4b9ac53a01184a7a48ce80455de2345078",
     "source": "partial",
     "driver_version": "580.173.02",
     "toolkit_version": "13.0",
