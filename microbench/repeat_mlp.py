@@ -7,6 +7,7 @@ import csv
 import hashlib
 import json
 import math
+import os
 import platform
 import statistics
 import subprocess
@@ -15,6 +16,11 @@ import time
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
+
+try:
+    import host_quiet
+except ImportError:  # imported as microbench.repeat_mlp
+    from microbench import host_quiet
 
 CONTIGUOUS = ("dram_bw_by_bytes_in_flight", "l2_bw_by_bytes_in_flight")
 STRIDED = "dram_bw_by_bytes_in_flight_strided"
@@ -282,6 +288,9 @@ def capture(args):
         timeout_report=args.output.with_suffix(".thermal-timeout.json"),
         long_read=schedule is not None,
     )
+    # GPUs that share memory with the CPU (GB10): CPU work slows DRAM-bound sweeps.
+    gate_host = bool(query.get("integrated"))
+    host_gate = host_quiet.wait_for_quiet_host([os.getpid()]) if gate_host else None
     run_args = [
         str(args.binary),
         "--mode",
@@ -298,9 +307,12 @@ def capture(args):
     with tempfile.TemporaryFile(mode="w+t") as out, tempfile.TemporaryFile(mode="w+t") as err:
         started = utc()
         process = subprocess.Popen(run_args, stdout=out, stderr=err, text=True)
-        snaps = []
+        snaps, host_samples, next_host = [], [], 0.0
         try:
             while process.poll() is None:
+                if gate_host and time.monotonic() >= next_host:
+                    host_samples.append(host_quiet.sample())
+                    next_host = time.monotonic() + 1.0
                 snaps.append(telemetry(smi))
                 apps = command(
                     smi, "--query-compute-apps=pid,process_name", "--format=csv,noheader"
@@ -328,6 +340,9 @@ def capture(args):
             "ps", "-eo", "pid,comm,pcpu,rss", "--sort=-pcpu"
         ).splitlines()[:12]
     require_quiet(after)
+    host_roots = [os.getpid(), process.pid]
+    if gate_host:
+        host_samples.append(host_quiet.sample())
     dispersion = {"status": "not_applicable"}
     if schedule is None:
         points = point_maps(profile, args.mode, raw)
@@ -356,6 +371,10 @@ def capture(args):
         "after": after,
         "desktop_quiet_gate": desktop_gate,
         "dispersion_check": dispersion,
+        "host_quiet_gate": host_gate,
+        "host_quiet_roots": host_roots if gate_host else None,
+        "host_samples": host_samples if gate_host else None,
+        "host_quiet_check": host_quiet.check(host_samples, host_roots) if gate_host else None,
         "thermal_warmup": warm,
         "thermal_stability": stable,
         "telemetry": snaps,
@@ -416,6 +435,18 @@ def reduce_runs(base, paths, revision):
         for _, item in records
     ):
         raise ValueError("Every repeat requires recorded and reproducible capture rules 1 and 2")
+    if any(
+        item.get("device_query", {}).get("integrated")
+        and (
+            (item.get("host_quiet_check") or {}).get("status") != "passed"
+            or host_quiet.check(item["host_samples"], item["host_quiet_roots"])
+            != item["host_quiet_check"]
+        )
+        for _, item in records
+    ):
+        raise ValueError(
+            "Repeats on an integrated GPU require a recorded, passing host quiet check"
+        )
     reproducibility = {}
     for mode in modes:
         runs = [

@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from microbench import host_quiet
 from microbench import repeat_mlp as mlp
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -161,6 +162,22 @@ class RepeatMlpTests(unittest.TestCase):
                     mlp.write_json(path, record(mode, number, self.raw(mode, value)))
                     paths.append(path)
             updated, audit = mlp.reduce_runs(self.base, paths, "fixture")
+            # An integrated GPU (GB10) needs a recorded host quiet check that recomputes.
+            quiet = [{"total": 100 * i, "busy": 3 * i, "ncpu": 1, "procs": {}} for i in range(3)]
+            first = json.loads(paths[0].read_bytes())
+            gated = {
+                **first,
+                "device_query": {"integrated": True},
+                "host_samples": quiet,
+                "host_quiet_roots": [1],
+                "host_quiet_check": host_quiet.check(quiet, [1]),
+            }
+            paths[0].write_text(json.dumps(gated))
+            mlp.reduce_runs(self.base, paths, "fixture")
+            paths[0].write_text(json.dumps({**gated, "host_quiet_check": {"status": "passed"}}))
+            with self.assertRaisesRegex(ValueError, "host quiet"):
+                mlp.reduce_runs(self.base, paths, "fixture")
+            paths[0].write_text(json.dumps(first))
             with self.assertRaisesRegex(ValueError, "Expected repeats"):
                 mlp.reduce_runs(self.base, paths[:-1], "fixture")
             session = {
