@@ -461,6 +461,7 @@ int main(int argc, char** argv) {
   int warmup = 3;
   int repeats = 5;
   size_t buffer_mb = 256;
+  double l2_gbps = 0.0;
 
   for (int i = 1; i < argc; ++i) {
     std::string arg = argv[i];
@@ -476,6 +477,8 @@ int main(int argc, char** argv) {
       repeats = std::atoi(argv[++i]);
     } else if (arg == "--buffer-mb" && i + 1 < argc) {
       buffer_mb = static_cast<size_t>(std::atoll(argv[++i]));
+    } else if (arg == "--l2-gbps" && i + 1 < argc) {
+      l2_gbps = std::atof(argv[++i]);
     } else {
       std::fprintf(stderr, "Unknown argument: %s\n", arg.c_str());
       return 2;
@@ -572,6 +575,9 @@ int main(int argc, char** argv) {
   }
   if (mode == "wave-rescan") {
     return run_wave_rescan(device, samples, warmup);
+  }
+  if (mode == "wave-rescan-long") {
+    return run_wave_rescan_long(device, samples, warmup, l2_gbps);
   }
   if (mode == "b-stream") {
     return run_b_stream(device, samples, warmup);

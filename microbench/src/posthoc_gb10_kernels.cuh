@@ -31,14 +31,21 @@ __global__ void __launch_bounds__(128) b_stream_kernel(const uint8_t* __restrict
                                                        uint32_t k_steps,
                                                        uint32_t mma_iters,
                                                        uint32_t wave_slots,
-                                                       uint32_t reverse_mode) {
+                                                       uint32_t reverse_mode,
+                                                       uint32_t groups,
+                                                       uint64_t group_bytes) {
   constexpr uint32_t kStage = 128u * 16u * VPT;
   extern __shared__ uint4 smem[];
   const uint32_t tid = threadIdx.x;
+  // With groups > 1, wave w reads matrix w % groups, each a copy of the same shape
+  // group_bytes apart, so panels are re-read only every `groups` waves (the no-reuse
+  // reference of wave-rescan-long) with the row stride of a single matrix.
+  const uint32_t group = groups > 1 ? (blockIdx.x / wave_slots) % groups : 0u;
   const uint32_t panel = blockIdx.x % panels;
   const bool reverse = reverse_mode == 2u || (reverse_mode == 1u && ((blockIdx.x / wave_slots) & 1u));
   const uint32_t rows_per_stage = kStage / row_bytes;
-  const uint8_t* panel_base = src + static_cast<uint64_t>(panel) * row_bytes;
+  const uint8_t* panel_base =
+      src + static_cast<uint64_t>(group) * group_bytes + static_cast<uint64_t>(panel) * row_bytes;
 
   auto issue = [&](uint32_t slot, uint32_t step) {
     const uint32_t k = reverse ? k_steps - 1u - step : step;
@@ -104,6 +111,8 @@ struct BStreamPoint {
   uint32_t mma_iters;
   uint32_t reverse_mode;
   uint32_t wave_slots;
+  uint32_t groups = 1;
+  uint64_t group_bytes = 0;
 };
 
 template <int TOKENS, int VPT>
@@ -118,7 +127,7 @@ static int b_stream_launch(const BStreamPoint& p, const uint8_t* src, uint4* sin
     return blocks;
   }
   kernel<<<p.grid, 128, smem>>>(src, sink, p.panels, p.row_bytes, p.row_stride, p.k_steps,
-                                p.mma_iters, p.wave_slots, p.reverse_mode);
+                                p.mma_iters, p.wave_slots, p.reverse_mode, p.groups, p.group_bytes);
   return 0;
 }
 
@@ -311,6 +320,104 @@ static int run_wave_rescan(int device, int samples, int warmup) {
           print_samples(rev ? "one_wave_down_ns_samples" : "one_wave_up_ns_samples", t1);
           std::printf(", ");
           print_samples("four_wave_ns_samples", t4);
+          std::printf("}");
+        }
+      }
+    }
+    std::printf("\n    ], ");
+    print_ceiling("ceiling_after", b, sms, e0, e1, samples);
+    std::printf("}");
+  }
+  std::printf("\n  ]\n}\n");
+  posthoc_free(b);
+  return 0;
+}
+
+// ---------------------------------------------------------------------------
+// wave-rescan-long (H3, v2)
+// ---------------------------------------------------------------------------
+//
+// The geometry of wave-rescan, timed in launches of n and 2n waves, so a
+// re-reading wave takes (T(2n) - T(n)) / n and every timed launch lasts about
+// 1 ms or more: n = max(4, ceil(1 ms * l2_gbps / footprint)). Forward walks K up
+// in every wave; reversed alternates the direction every wave. Each point also
+// has no-reuse references in both walks: wave w reads panel group w % M, with M
+// groups making the reuse distance at least 4 times L2, so every wave misses.
+
+static uint32_t long_waves(double l2_gbps, uint64_t footprint) {
+  const double n = std::ceil(1e-3 * l2_gbps * 1e9 / static_cast<double>(footprint));
+  return static_cast<uint32_t>(std::max(4.0, n));
+}
+
+static int run_wave_rescan_long(int device, int samples, int warmup, double l2_gbps) {
+  if (l2_gbps <= 0.0) {
+    std::fprintf(stderr, "wave-rescan-long needs --l2-gbps (the profile's l2_bw_read_gbps)\n");
+    return 2;
+  }
+  cudaDeviceProp prop{};
+  CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
+  const int sms = prop.multiProcessorCount;
+  const size_t l2 = prop.l2CacheSize;
+  const std::vector<double> ratios = {0.5, 0.75, 0.9, 1.0, 1.1, 1.25, 1.5, 2.0, 3.0};
+  const uint32_t row_bytes = 256;
+  const int vpt = 4;
+  const uint32_t stage = 128u * 16u * vpt;
+  const uint32_t rows_per_stage = stage / row_bytes;
+  // No-reuse groups span at least 4 times L2 plus one wave footprint (at most 3 times L2).
+  PosthocBuffers b = posthoc_alloc(9 * l2 + (64ULL << 20), l2);
+  cudaEvent_t e0, e1;
+  CUDA_CHECK(cudaEventCreate(&e0));
+  CUDA_CHECK(cudaEventCreate(&e1));
+  std::printf("{\n  \"mode\": \"wave-rescan-long\", \"sm_count\": %d, \"l2_bytes\": %zu, "
+              "\"samples\": %d, \"l2_gbps\": %.3f,\n",
+              sms, l2, samples, l2_gbps);
+  std::printf("  \"row_bytes\": %u, \"stage_bytes\": %u, \"tokens\": 3, \"num_warps\": 4,\n",
+              row_bytes, stage);
+  std::printf("  \"blocks\": [");
+  for (int cps : {1, 2, 4}) {
+    std::printf("%s\n    {\"ctas_per_sm\": %d, ", cps == 1 ? "" : ",", cps);
+    print_ceiling("ceiling_before", b, sms, e0, e1, samples);
+    std::printf(", \"points\": [");
+    bool first = true;
+    for (int rows_per_wave : {1, 2}) {
+      for (double ratio : ratios) {
+        const uint32_t slots = static_cast<uint32_t>(sms * cps);
+        const uint32_t panels = slots / rows_per_wave;
+        uint32_t k_steps = static_cast<uint32_t>(
+            ratio * l2 / (static_cast<double>(panels) * row_bytes * rows_per_stage) + 0.5);
+        k_steps = std::max<uint32_t>(k_steps, 4);
+        const uint64_t footprint = static_cast<uint64_t>(panels) * row_bytes * rows_per_stage * k_steps;
+        const uint32_t n = long_waves(l2_gbps, footprint);
+        const uint32_t groups =
+            static_cast<uint32_t>((4 * l2 + footprint - 1) / footprint) + 1;
+        // 0: forward, 1: reversed, 2: no-reuse forward, 3: no-reuse reversed
+        for (uint32_t variant : {0u, 1u, 2u, 3u}) {
+          const uint32_t g = variant >= 2 ? groups : 1u;
+          const uint64_t row_stride = static_cast<uint64_t>(panels) * row_bytes;
+          BStreamPoint p{3, vpt, cps, slots, panels, row_bytes, row_stride, k_steps, 1,
+                         variant % 2 == 1 ? 1u : 0u, slots, g, footprint};
+          const int occ = b_stream_run(p, b.data, b.sink, true);
+          std::vector<double> tn, t2n;
+          for (int w = 0; w < warmup; ++w) {
+            p.grid = n * slots;
+            b_stream_time_ns(p, b, sms, e0, e1);
+          }
+          for (int s = 0; s < samples; ++s) {
+            p.grid = n * slots;
+            tn.push_back(b_stream_time_ns(p, b, sms, e0, e1));
+            p.grid = 2 * n * slots;
+            t2n.push_back(b_stream_time_ns(p, b, sms, e0, e1));
+          }
+          std::printf("%s\n      {\"rows_per_wave\": %d, \"occupancy\": %d, \"panels\": %u, "
+                      "\"k_steps\": %u, \"footprint_bytes\": %llu, \"footprint_ratio\": %.4f, "
+                      "\"walk\": \"%s\", \"groups\": %u, \"waves_n\": %u, ",
+                      first ? "" : ",", rows_per_wave, occ, panels, k_steps,
+                      static_cast<unsigned long long>(footprint), static_cast<double>(footprint) / l2,
+                      variant % 2 ? "reversed" : "forward", g, n);
+          first = false;
+          print_samples("n_waves_ns_samples", tn);
+          std::printf(", ");
+          print_samples("two_n_waves_ns_samples", t2n);
           std::printf("}");
         }
       }

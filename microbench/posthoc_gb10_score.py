@@ -86,6 +86,79 @@ def wave_rescan(raw, pred):
     return {"points": rows, "summary": summary}
 
 
+def wave_rescan_long(raw, pred_old, pred_new):
+    """Hit fraction of a re-reading wave from the n and 2n wave launches of wave-rescan-long.
+
+    Time per byte of a re-reading wave, (T(2n) - T(n)) / n / footprint, is placed between
+    the no-reuse reference of the same point and walk (all misses) and the 0.5 times L2
+    point of the same CTAs per SM, rows per wave and walk (all hits). Form a is the
+    v0.2-final core, form c the current core and its analytic value, form b analytic.
+    """
+
+    def key(cps, p):
+        return (cps, p["rows_per_wave"], p["k_steps"])
+
+    old = {key(p["ctas_per_sm"], p): p for p in pred_old["wave_rescan_long"]}
+    new = {key(p["ctas_per_sm"], p): p for p in pred_new["wave_rescan_long"]}
+    rows = []
+    for block in raw["blocks"]:
+        cps = block["ctas_per_sm"]
+        per_byte = {}
+        for p in block["points"]:
+            tw = (med(p["two_n_waves_ns_samples"]) - med(p["n_waves_ns_samples"])) / p["waves_n"]
+            per_byte[(p["rows_per_wave"], p["k_steps"], p["walk"], p["groups"] > 1)] = (
+                tw / p["footprint_bytes"],
+                p,
+            )
+        for (rows_pw, k_steps, walk, no_reuse), (b, p) in per_byte.items():
+            if no_reuse:
+                continue
+            miss = per_byte[(rows_pw, k_steps, walk, True)][0]
+            ref = min(
+                (v for k, v in per_byte.items() if k[0] == rows_pw and k[2] == walk and not k[3]),
+                key=lambda v: v[1]["footprint_ratio"],
+            )
+            hit = ref[0]
+            measured = (miss - b) / (miss - hit)
+            k = (cps, rows_pw, k_steps)
+            f = new[k]["rewave_hit_fraction"]
+            reversed_walk = walk == "reversed"
+            forms = {
+                "b": f["form_b"],
+                "c": f["form_c_reversed" if reversed_walk else "form_c_forward"],
+            }
+            if not reversed_walk:
+                forms["a"] = old[k]["rewave_hit_fraction"]["core"]
+                forms["core_now"] = f["core"]
+            rows.append(
+                {
+                    "ctas_per_sm": cps,
+                    "rows_per_wave": rows_pw,
+                    "footprint_ratio": p["footprint_ratio"],
+                    "reversed": reversed_walk,
+                    "reference": p is ref[1],
+                    "measured_hit": measured,
+                    "predicted_hit": forms,
+                }
+            )
+    scored = [r for r in rows if not r["reference"]]
+    summary = {}
+    for form in ("a", "b", "c", "core_now"):
+        for rev in (False, True):
+            errs = [
+                abs(r["predicted_hit"][form] - r["measured_hit"])
+                for r in scored
+                if r["reversed"] == rev and form in r["predicted_hit"]
+            ]
+            if errs:
+                summary[f"{form}:{'reversed' if rev else 'forward'}"] = {
+                    "points": len(errs),
+                    "mean_abs_error": st.mean(errs),
+                    "max_abs_error": max(errs),
+                }
+    return {"points": rows, "summary": summary}
+
+
 def staged_mma(raw, pred):
     keyed = {
         (p["ctas_per_sm"], p["tokens"], p["stage_bytes"], p["mma_iters_per_stage"]): p

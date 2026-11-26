@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
 
 from virtualgpu import _core
@@ -316,13 +317,62 @@ def run(ir, profile_text, cache):
     }
 
 
+def long_waves(profile, footprint):
+    """Wave count n of wave-rescan-long: about 1 ms even if every wave hits at the L2 peak."""
+    l2_gbps = profile["measured"]["memory"]["l2_bw_read_gbps"]["value"]
+    return max(4, math.ceil(1e-3 * l2_gbps * 1e9 / footprint))
+
+
+def wave_rescan_long(profile, text):
+    """Hit fraction of a re-reading wave from launches of n and 2n waves (forward walk)."""
+    rows = []
+    for p in wave_rescan_points(profile):
+        footprint = (
+            p["panels"] * p["row_bytes"] * (p["stage_bytes"] // p["row_bytes"]) * p["k_steps"]
+        )
+        n = long_waves(profile, footprint)
+        common = dict(
+            tokens=3,
+            stage=p["stage_bytes"],
+            ctas_per_sm=p["ctas_per_sm"],
+            panels=p["panels"],
+            row_bytes=p["row_bytes"],
+            k_steps=p["k_steps"],
+            mma_iters=1,
+        )
+        tn = run(b_stream_ir(profile, grid=n * p["slots"], **common), text, "cold")
+        t2n = run(b_stream_ir(profile, grid=2 * n * p["slots"], **common), text, "cold")
+        core_hit = 1 - (t2n["dram_bytes"] - tn["dram_bytes"]) / (n * footprint)
+        rows.append(
+            {
+                **p,
+                "footprint_bytes": footprint,
+                "waves_n": n,
+                "n_waves": tn,
+                "two_n_waves": t2n,
+                "rewave_hit_fraction": {"core": core_hit, **candidate_hits(profile, footprint)},
+            }
+        )
+    return rows
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--profile", type=Path, required=True)
     ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument("--long-only", action="store_true", help="only the wave-rescan-long points")
     args = ap.parse_args()
     text = args.profile.read_text()
     profile = json.loads(text)
+    if args.long_only:
+        out = {
+            "post_hoc": True,
+            "build": _core.build_info(),
+            "profile_revision": profile["provenance"]["profile_revision"],
+            "wave_rescan_long": wave_rescan_long(profile, text),
+        }
+        args.out.write_text(json.dumps(out, indent=1, sort_keys=True) + "\n")
+        return
     out = {
         "post_hoc": True,
         "build": _core.build_info(),
