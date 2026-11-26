@@ -173,10 +173,14 @@
       "complete_blocks": 10
     },
     "v02-rtx4070-prefill-1536-session-2.json": {
-      "sha256": "8a8836cc0a243704b9d93086f12ad3194c2538db3e7705eca6a87b9675135cd1",
-      "timestamp_utc": "2026-11-26T01:45:40.670163+00:00",
-      "status": "protocol_failed",
-      "complete_blocks": 0
+      "sha256": "d2670a0c060f85ea6808acbece7c50c2c411bcb15aa19ebdb8b01dec763efc22",
+      "timestamp_utc": "2026-11-26T01:48:34.277968+00:00",
+      "status": "complete",
+      "complete_blocks": 10,
+      "report_path": "results/v02-rtx4070/retry-prefill-1536-session-2/gemm/sealed/v02-rtx4070-prefill-1536-session-2.json",
+      "repeat_of": "8a8836cc0a243704b9d93086f12ad3194c2538db3e7705eca6a87b9675135cd1",
+      "order_seed": 102,
+      "retry_receipt_sha256": "c892cc40341263493818806439a9ac4a149a93afc95b231862b6d6f5c80ac0cb"
     },
     "v02-rtx4070-prefill-1536-session-3.json": {
       "sha256": "6336c49555a4e1d1097897c9390f10a4ba17c8799890a7202d3ea6cc4bae54fe",
@@ -187,5 +191,19 @@
   },
   "protocol_failures_without_report": {},
   "pending": [],
-  "wave_boundary_sha256": "e837e75a813103beeab3c4741f6c1ac6598d0da8010758766ceae4be56bda95e"
+  "wave_boundary_sha256": "e837e75a813103beeab3c4741f6c1ac6598d0da8010758766ceae4be56bda95e",
+  "failed_reports": {
+    "v02-rtx4070-prefill-1536-session-2.json": [
+      {
+        "report_path": "results/v02-rtx4070/gemm/sealed/v02-rtx4070-prefill-1536-session-2.json",
+        "receipt": {
+          "sha256": "8a8836cc0a243704b9d93086f12ad3194c2538db3e7705eca6a87b9675135cd1",
+          "timestamp_utc": "2026-11-26T01:45:40.670163+00:00",
+          "status": "protocol_failed",
+          "complete_blocks": 0
+        },
+        "failure_reason": null
+      }
+    ]
+  }
 }
