@@ -193,8 +193,18 @@ struct ActiveChunk {
 
 #[derive(Debug, Clone, Copy)]
 struct LastSeen {
-    stream_clock_bytes: u64,
+    /// Index into `end_events` of the event in which the chunk's last tile ended.
+    event: usize,
     covered_steps: u64,
+}
+
+/// Chunks whose last tiles end in one event streamed side by side along K, so they share the
+/// stream clock from before the event; `end_clock_bytes` is the clock after all of them.
+#[derive(Debug, Clone, Copy)]
+struct EndEvent {
+    t_ns: f64,
+    base_clock_bytes: u64,
+    end_clock_bytes: u64,
 }
 
 /// Stateful, instance-local L2 reuse model driven by the event scheduler in `sim.rs`.
@@ -211,8 +221,11 @@ pub struct L2Model<'a> {
     active_working_set_bytes: u64,
     /// Monotonic counter of unique full-K-stream bytes that have flowed through L2.
     stream_clock_bytes: u64,
-    /// O(1) map from ChunkKey to its last stream clock and prefix step coverage.
+    /// O(1) map from ChunkKey to its last end event and prefix step coverage.
     last_seen_stream_byte: HashMap<ChunkKey, LastSeen>,
+    end_events: Vec<EndEvent>,
+    /// True while consecutive `end_tile` calls belong to the last entry of `end_events`.
+    end_event_open: bool,
     spill_l2_pressure_bytes: u64,
 }
 
@@ -278,6 +291,8 @@ impl<'a> L2Model<'a> {
             active_working_set_bytes: 0,
             stream_clock_bytes: 0,
             last_seen_stream_byte: HashMap::new(),
+            end_events: Vec::new(),
+            end_event_open: false,
             spill_l2_pressure_bytes: 0,
         };
         model.total_read_footprint_bytes = model.compute_total_read_footprint();
@@ -285,6 +300,7 @@ impl<'a> L2Model<'a> {
     }
 
     pub fn begin_tile(&mut self, _sm_id: u32, cta_id: u32, outer_idx: u32, _t_ns: f64) {
+        self.end_event_open = false;
         let tile_key = (cta_id, outer_idx);
         if self.resident_tiles.contains_key(&tile_key) {
             return;
@@ -327,10 +343,21 @@ impl<'a> L2Model<'a> {
             .insert(tile_key, ResidentTile { chunks });
     }
 
-    pub fn end_tile(&mut self, _sm_id: u32, cta_id: u32, outer_idx: u32, _t_ns: f64) {
+    pub fn end_tile(&mut self, _sm_id: u32, cta_id: u32, outer_idx: u32, t_ns: f64) {
         let Some(tile) = self.resident_tiles.remove(&(cta_id, outer_idx)) else {
             return;
         };
+        let same_event =
+            self.end_event_open && self.end_events.last().is_some_and(|e| e.t_ns == t_ns);
+        if !same_event {
+            self.end_events.push(EndEvent {
+                t_ns,
+                base_clock_bytes: self.stream_clock_bytes,
+                end_clock_bytes: self.stream_clock_bytes,
+            });
+            self.end_event_open = true;
+        }
+        let event = self.end_events.len() - 1;
         for rc in tile.chunks {
             if let Some(slot) = self.active_chunks.get_mut(&rc.key) {
                 if let Some(pos) = slot.trips.iter().position(|&t| t == rc.effective_steps) {
@@ -348,11 +375,12 @@ impl<'a> L2Model<'a> {
                     // Advance L2 stream clock by the full K-stream volume in O(1).
                     self.stream_clock_bytes =
                         self.stream_clock_bytes.saturating_add(streamed_bytes);
+                    self.end_events[event].end_clock_bytes = self.stream_clock_bytes;
                     if self.options.cross_wave_reuse {
                         self.last_seen_stream_byte.insert(
                             rc.key,
                             LastSeen {
-                                stream_clock_bytes: self.stream_clock_bytes,
+                                event,
                                 covered_steps: streamed_steps,
                             },
                         );
@@ -375,6 +403,7 @@ impl<'a> L2Model<'a> {
         cache_policy: CachePolicy,
         _t_ns: f64,
     ) -> L2SplitResult {
+        self.end_event_open = false;
         let steps = k_end.saturating_sub(k_begin);
         if steps == 0 {
             return L2SplitResult::zero();
@@ -423,22 +452,14 @@ impl<'a> L2Model<'a> {
             .unwrap_or(1.0);
 
         // 1. Resident L2 hits (data already in L2 at request time -> L2 latency):
-        //    from cross-wave reuse (scaled by prefix overlap with covered_steps) or warm L2.
+        //    from cross-wave reuse over the covered prefix, or warm L2.
         let mut resident_raw = 0.0f64;
         if self.options.cross_wave_reuse {
             if let Some(&last) = self.last_seen_stream_byte.get(&ckey) {
-                let overlap = k_end.min(last.covered_steps).saturating_sub(k_begin);
-                if overlap > 0 {
-                    let inner_trips = self.ir.inner_trip_count(cta_id, outer_idx).unwrap_or(1);
-                    let eff_steps = effective_chunk_steps(entry, inner_trips);
-                    let full_stream = step_aligned.saturating_mul(eff_steps);
-                    let reuse_dist = self
-                        .stream_clock_bytes
-                        .saturating_sub(last.stream_clock_bytes)
-                        .max(full_stream);
-                    let prefix_frac = overlap as f64 / steps as f64;
-                    resident_raw =
-                        resident_raw.max(self.eval_rescan_hit(reuse_dist as f64) * prefix_frac);
+                let covered_end = k_end.min(last.covered_steps);
+                if covered_end > k_begin {
+                    let hits = self.cross_wave_hit_steps(last, k_begin, covered_end);
+                    resident_raw = resident_raw.max(hits / steps as f64);
                 }
             }
         }
@@ -568,6 +589,36 @@ impl<'a> L2Model<'a> {
 
     pub fn total_read_footprint_bytes(&self) -> u64 {
         self.total_read_footprint_bytes
+    }
+
+    /// Steps of `[k_begin, k_end)` that still hit from the chunk's previous stream, with LRU at
+    /// K-slice grain and capacity `l2_effective_capacity_bytes`.
+    ///
+    /// The chunks that ended in the chunk's end event streamed side by side, `a_prev` bytes per
+    /// step, so its slice k was touched at clock `base + k * a_prev`. The resident chunks now
+    /// stream `a_now` bytes per step and reach slice k at `clock + k * a_now`. Slice k hits if
+    /// the bytes between the two touches, `clock - base + k * (a_now - a_prev)`, fit.
+    fn cross_wave_hit_steps(&self, last: LastSeen, k_begin: u64, k_end: u64) -> f64 {
+        let ev = self.end_events[last.event];
+        let a_prev = ev.end_clock_bytes.saturating_sub(ev.base_clock_bytes) as f64
+            / last.covered_steps.max(1) as f64;
+        let a_now = self.active_working_set_bytes as f64;
+        let d0 = self.stream_clock_bytes.saturating_sub(ev.base_clock_bytes) as f64;
+        let slope = a_now - a_prev;
+        let cap = self.profile.l2_effective_capacity_bytes as f64;
+        let (lo, hi) = (k_begin as f64, k_end as f64);
+        // Slice k spans [k, k + 1); its distance is taken at its middle.
+        let fits = |k: f64| d0 + (k + 0.5) * slope <= cap;
+        if slope == 0.0 {
+            return if fits(lo) { hi - lo } else { 0.0 };
+        }
+        let crossing = (cap - d0) / slope - 0.5;
+        let hit = if slope > 0.0 {
+            crossing.clamp(lo, hi) - lo
+        } else {
+            hi - crossing.clamp(lo, hi)
+        };
+        hit.max(0.0)
     }
 
     /// Evaluates L2 survival probability for a sequential scan of `reuse_distance_bytes`.
@@ -1169,5 +1220,109 @@ mod tests {
         );
         assert!((prefix.hit_ratio - 1.0).abs() < 1e-6);
         assert!(tail.hit_ratio.abs() < 1e-6);
+    }
+
+    /// 64 CTAs in two waves of 32: CTA i streams B panel i % 32 (8 KiB per step) for `trips`
+    /// steps, so each wave reads the same 32 panels and every CTA shares one A chunk.
+    fn panel_stream_ir(trips: u64) -> KernelIR {
+        let json = include_str!("../../../../schemas/examples/gemm_sm89.json");
+        let mut v: serde_json::Value = serde_json::from_str(json).unwrap();
+        v["launch"]["grid"] = serde_json::json!([64, 1, 1]);
+        v["body"]["pipeline_loop"]["trip_counts"] = serde_json::json!(trips);
+        let a0 = v["access_map"]["acc_A"]["entries"][0].clone();
+        v["access_map"]["acc_A"]["entries"] = serde_json::json!(vec![a0; 64]);
+        let b: Vec<serde_json::Value> = (0..64u64)
+            .map(|i| {
+                let p = i % 32;
+                serde_json::json!([i / 32, p, 33554432 + p * 256, 32, 256, 8192, 262144, false])
+            })
+            .collect();
+        v["access_map"]["acc_B"]["entries"] = serde_json::json!(b);
+        KernelIR::from_json_str(&v.to_string()).unwrap()
+    }
+
+    fn first_wave(l2: &mut L2Model) {
+        for cta in 0..32u32 {
+            l2.begin_tile(cta, cta, 0, 0.0);
+        }
+        for cta in 0..32u32 {
+            l2.end_tile(cta, cta, 0, 1000.0);
+        }
+    }
+
+    fn b_hit(l2: &mut L2Model, cta: u32, k_begin: u64, k_end: u64) -> f64 {
+        l2.split(
+            0,
+            cta,
+            0,
+            "load_B",
+            k_begin,
+            k_end,
+            false,
+            CachePolicy::Default,
+            1000.0,
+        )
+        .hit_ratio
+    }
+
+    #[test]
+    fn panels_ending_together_share_one_reuse_distance() {
+        // 32 panels x 216 steps x 8 KiB = 54 MiB per wave, 1.5 times the 36 MiB capacity. The
+        // panels stream side by side along K, so the next wave starts on slices that LRU evicted
+        // first: no panel may hit, whatever order its tile ended in.
+        let ir = panel_stream_ir(216);
+        let mut l2 = L2Model::new(
+            &ir,
+            synthetic_l2_profile(),
+            L2InitState::Cold,
+            L2Options::default(),
+        );
+        first_wave(&mut l2);
+        for cta in 32..64u32 {
+            l2.begin_tile(cta - 32, cta, 0, 1000.0);
+        }
+        for cta in 32..64u32 {
+            let hit = b_hit(&mut l2, cta, 0, 216);
+            assert!(hit < 0.05, "panel {} hit {hit}", cta - 32);
+        }
+    }
+
+    #[test]
+    fn rewave_that_fits_hits_every_panel() {
+        // 18 MiB per wave fits the 36 MiB capacity.
+        let ir = panel_stream_ir(72);
+        let mut l2 = L2Model::new(
+            &ir,
+            synthetic_l2_profile(),
+            L2InitState::Cold,
+            L2Options::default(),
+        );
+        first_wave(&mut l2);
+        for cta in 32..64u32 {
+            l2.begin_tile(cta - 32, cta, 0, 1000.0);
+        }
+        for cta in 32..64u32 {
+            assert!(b_hit(&mut l2, cta, 0, 72) > 0.99);
+        }
+    }
+
+    #[test]
+    fn solo_reread_after_a_large_wave_hits_only_the_recent_k_slices() {
+        // After a 54 MiB wave, LRU holds the last 36 MiB, the high-K two thirds of every panel. A
+        // lone CTA re-reading one panel adds little traffic, so it misses the low-K third and hits
+        // the rest.
+        let ir = panel_stream_ir(216);
+        let mut l2 = L2Model::new(
+            &ir,
+            synthetic_l2_profile(),
+            L2InitState::Cold,
+            L2Options::default(),
+        );
+        first_wave(&mut l2);
+        l2.begin_tile(0, 32, 0, 1000.0);
+        assert!(b_hit(&mut l2, 32, 0, 60) < 0.01);
+        assert!(b_hit(&mut l2, 32, 90, 216) > 0.99);
+        let all = b_hit(&mut l2, 32, 0, 216);
+        assert!((0.55..0.75).contains(&all), "got {all}");
     }
 }

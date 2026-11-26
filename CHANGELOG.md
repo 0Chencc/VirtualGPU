@@ -18,6 +18,7 @@
 
 ### Fixed
 
+- Cross-wave L2 reuse: chunks that end together share one stream clock, and re-reads hit per K slice under LRU with the effective L2 capacity
 - Replace the GB10 MLP curves with medians from five independent sweeps
 - The L2 miss merging model no longer fails on GPUs with more than 128 SMs
 
