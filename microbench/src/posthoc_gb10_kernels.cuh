@@ -67,7 +67,8 @@ __global__ void __launch_bounds__(128) b_stream_kernel(const uint8_t* __restrict
   for (uint32_t step = 0; step < k_steps; ++step) {
     if constexpr (TOKENS == 1) asm volatile("cp.async.wait_group 0;\n" ::: "memory");
     else if constexpr (TOKENS == 2) asm volatile("cp.async.wait_group 1;\n" ::: "memory");
-    else asm volatile("cp.async.wait_group 2;\n" ::: "memory");
+    else if constexpr (TOKENS == 3) asm volatile("cp.async.wait_group 2;\n" ::: "memory");
+    else asm volatile("cp.async.wait_group 3;\n" ::: "memory");
     __syncthreads();
     acc ^= smem[static_cast<size_t>(step % TOKENS) * (kStage / 16u) + tid].x;
     const uint32_t a = 0x3c003c00u + (acc & 7u);
@@ -148,7 +149,8 @@ static int b_stream_run(const BStreamPoint& p, const uint8_t* src, uint4* sink, 
   switch (p.tokens) {
     case 1: return b_stream_dispatch_vpt<1>(p, src, sink, smem, query_only);
     case 2: return b_stream_dispatch_vpt<2>(p, src, sink, smem, query_only);
-    default: return b_stream_dispatch_vpt<3>(p, src, sink, smem, query_only);
+    case 3: return b_stream_dispatch_vpt<3>(p, src, sink, smem, query_only);
+    default: return b_stream_dispatch_vpt<4>(p, src, sink, smem, query_only);
   }
 }
 

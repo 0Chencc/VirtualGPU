@@ -452,6 +452,7 @@ static int run_cta_dispatch(int device, int repeats) {
 #include "posthoc_gb10_kernels.cuh"
 #include "narrow_kernels.cuh"
 #include "narrow_validate.cuh"
+#include "posthoc_gb10_probe.cuh"
 
 int main(int argc, char** argv) {
   std::string mode = "query";
@@ -577,6 +578,15 @@ int main(int argc, char** argv) {
   }
   if (mode == "staged-mma") {
     return run_staged_mma(device, samples, warmup);
+  }
+  if (mode == "dram-probe") {
+    return run_dram_probe(device, samples, warmup);
+  }
+  if (mode == "dram-probe-sweep") {
+    return run_dram_probe_sweep(device, samples, warmup);
+  }
+  if (mode == "mlp-plateau") {
+    return run_mlp_plateau(device, samples, warmup);
   }
   if (mode == "sync-loop-reconcile") {
     return run_sync_loop_reconcile(device, samples, warmup);

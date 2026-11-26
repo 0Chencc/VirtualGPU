@@ -31,7 +31,7 @@ from repeat_mlp import (
     write_json,
 )
 
-MODES = ("wave-rescan", "b-stream", "staged-mma")
+MODES = ("wave-rescan", "b-stream", "staged-mma", "dram-probe-sweep")
 
 
 def capture(args):
