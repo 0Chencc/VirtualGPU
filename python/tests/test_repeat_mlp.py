@@ -33,6 +33,22 @@ class RepeatMlpTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "geometry differs"):
             mlp.point_maps(self.profile, "mlp", raw)
 
+    def test_gb10_gate_requires_temperature_clock_and_event_stability(self):
+        row = {key: "Not Active" for key in mlp.THERMAL_EVENT_FIELDS}
+        row.update({"temperature.gpu": "48", "clocks.current.sm": "2500"})
+        trace = [{**row, "elapsed_seconds": second} for second in range(60)]
+        windows = mlp.thermal_windows(trace, 60)
+        self.assertEqual(mlp.thermal_stability(windows)["samples_per_window"], [30, 30])
+        for patch in (
+            {"temperature.gpu": "49"},
+            {"clocks.current.sm": "2530"},
+            {mlp.THERMAL_EVENT_FIELDS[-1]: "Active"},
+            {mlp.THERMAL_EVENT_FIELDS[-1]: "[N/A]"},
+        ):
+            with self.subTest(patch=patch):
+                recent = [{**sample, **patch} for sample in windows[1]]
+                self.assertIsNone(mlp.thermal_stability((windows[0], recent)))
+
     def test_reduce_uses_independent_medians_and_existing_ceiling(self):
         snapshot = {key: "Not Active" for key in mlp.TELEMETRY}
         snapshot.update({"clocks.current.sm": "2000", "clocks.current.memory": "[N/A]"})
@@ -65,7 +81,10 @@ class RepeatMlpTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Expected repeats"):
                 mlp.reduce_runs(self.base, paths[:-1], "fixture")
         self.assertEqual(audit["previous_provenance"], self.profile["provenance"])
-        self.assertEqual(updated["provenance"]["clock_policy"]["sm_clock_mhz"], 2000)
+        self.assertEqual(
+            updated["provenance"]["clock_policy"], self.profile["provenance"]["clock_policy"]
+        )
+        self.assertEqual(audit["measurement_telemetry"]["active_sm_clock_range_mhz"], [2000, 2000])
         memory = updated["measured"]["memory"]
         for field in (*mlp.CONTIGUOUS, mlp.STRIDED):
             self.assertEqual(memory[field][0]["bw_gbps"]["value"], 22.0)

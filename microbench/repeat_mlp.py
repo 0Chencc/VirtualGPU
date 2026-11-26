@@ -33,11 +33,15 @@ TELEMETRY = (
     "utilization.gpu",
     "clocks.current.sm",
     "clocks.current.memory",
+    "clocks_event_reasons.hw_slowdown",
     "clocks_event_reasons.hw_thermal_slowdown",
     "clocks_event_reasons.sw_thermal_slowdown",
     "clocks_event_reasons.hw_power_brake_slowdown",
     "clocks_event_reasons.sw_power_cap",
 )
+WINDOW_SECONDS = 30
+THERMAL_TIMEOUT_SECONDS = 20 * 60
+THERMAL_EVENT_FIELDS = TELEMETRY[-5:]
 WINDOWS_SMI = Path("/mnt/c/Windows/System32/nvidia-smi.exe")
 
 
@@ -122,16 +126,87 @@ def point_maps(profile, mode, raw):
     return maps
 
 
-def warm_device(smi, binary, seconds):
-    if not seconds:
-        return []
-    temps = []
-    deadline = time.monotonic() + seconds
-    while time.monotonic() < deadline:
+def thermal_windows(rows, end_seconds):
+    start, midpoint = end_seconds - 2 * WINDOW_SECONDS, end_seconds - WINDOW_SECONDS
+    return (
+        [row for row in rows if start <= row["elapsed_seconds"] < midpoint],
+        [row for row in rows if midpoint <= row["elapsed_seconds"] < end_seconds],
+    )
+
+
+def thermal_stability(windows):
+    if not all(windows):
+        return None
+    if any(
+        not row["temperature.gpu"].isdecimal()
+        or not row["clocks.current.sm"].isdecimal()
+        or int(row["clocks.current.sm"]) <= 0
+        or any(row.get(key, "").lower() != "not active" for key in THERMAL_EVENT_FIELDS)
+        for window in windows
+        for row in window
+    ):
+        return None
+    means = [statistics.mean(int(row["temperature.gpu"]) for row in window) for window in windows]
+    clocks = [
+        statistics.median(int(row["clocks.current.sm"]) for row in window) for window in windows
+    ]
+    if abs(means[1] - means[0]) > 0.5 or 100 * abs(clocks[1] - clocks[0]) > clocks[0]:
+        return None
+    return {
+        "temperature_mean_c": means,
+        "sm_clock_median_mhz": clocks,
+        "samples_per_window": list(map(len, windows)),
+    }
+
+
+def warm_device(smi, binary, seconds, *, stabilize, timeout_report):
+    start = time.monotonic()
+    minimum = max(seconds, 2 * WINDOW_SECONDS) if stabilize else seconds
+    if stabilize and minimum > THERMAL_TIMEOUT_SECONDS:
+        raise ValueError("GB10 warmup exceeds the thermal gate timeout")
+    trace = []
+    while True:
+        elapsed = time.monotonic() - start
+        if elapsed >= minimum:
+            if not stabilize:
+                return trace, None
+            gate_end = min(elapsed, THERMAL_TIMEOUT_SECONDS)
+            result = thermal_stability(thermal_windows(trace, gate_end))
+            if result is not None:
+                return trace, {"elapsed_seconds": gate_end, **result}
+            if elapsed >= THERMAL_TIMEOUT_SECONDS:
+                write_json(timeout_report, {"utc": utc(), "warmup_telemetry": trace})
+                raise RuntimeError("GB10 thermal/clock gate did not pass within twenty minutes")
         require_quiet(host_snapshot(smi))
         command(binary, "--mode", "mlp", "--samples", "1", "--warmup", str(WARMUP))
-        temps.append(telemetry(smi))
-    return temps
+        snap = telemetry(smi)
+        trace.append({**snap, "elapsed_seconds": time.monotonic() - start})
+
+
+def warmup_evidence(record):
+    passing = record.get("thermal_stability")
+    if passing is not None:
+        return {"status": "passed", **passing}
+    rows = record.get("thermal_warmup", [])
+    if not rows:
+        return {"status": "not_applied"}
+    start = datetime.fromisoformat(rows[0]["utc"])
+    trace = [
+        {**row, "elapsed_seconds": (datetime.fromisoformat(row["utc"]) - start).total_seconds()}
+        for row in rows
+    ]
+    windows = thermal_windows(trace, 2 * WINDOW_SECONDS)
+    means = [
+        statistics.mean(int(row["temperature.gpu"]) for row in window)
+        for window in windows
+        if window
+    ]
+    return {
+        "status": "fixed_warmup_only",
+        "sample_span_seconds": trace[-1]["elapsed_seconds"],
+        "adjacent_30s_temperature_mean_c": means,
+        "temperature_mean_delta_c": abs(means[1] - means[0]) if len(means) == 2 else None,
+    }
 
 
 def capture(args):
@@ -152,7 +227,13 @@ def capture(args):
     target = f"sm_{query['major']}{query['minor']}"
     if target != profile["identity"]["arch"] or query["sm_count"] != profile["specs"]["sm_count"]:
         raise ValueError("Capture device architecture or SM count differs from profile")
-    warm = warm_device(smi, args.binary, args.warmup_seconds)
+    warm, stable = warm_device(
+        smi,
+        args.binary,
+        args.warmup_seconds,
+        stabilize=target == "sm_121",
+        timeout_report=args.output.with_suffix(".thermal-timeout.json"),
+    )
     run_args = [
         str(args.binary),
         "--mode",
@@ -212,6 +293,7 @@ def capture(args):
         "before": before,
         "after": after,
         "thermal_warmup": warm,
+        "thermal_stability": stable,
         "telemetry": snaps,
         "raw": raw,
     }
@@ -303,6 +385,7 @@ def reduce_runs(base, paths, revision):
                     "command": item["command"],
                     "started_utc": item["started_utc"],
                     "finished_utc": item["finished_utc"],
+                    "warmup": warmup_evidence(item),
                 }
             )
         for field in fields:
@@ -390,20 +473,6 @@ def reduce_runs(base, paths, revision):
         timestamp_utc=ended,
         driver_version=origin["initial_gpu"]["driver_version"],
     )
-    clock_policy = provenance["clock_policy"].copy()
-    provenance["clock_policy"] = clock_policy
-    clock_policy.update(
-        locked=False,
-        sm_clock_locked=False,
-        mem_clock_locked=False,
-        observed_sm_clock_range_mhz=clock_range(sm_clocks),
-        observed_mem_clock_range_mhz=clock_range(mem_clocks),
-        throttle_events=slowdown_samples(snapshots),
-    )
-    if sm_clocks:
-        clock_policy["sm_clock_mhz"] = statistics.median(sm_clocks)
-    if mem_clocks:
-        clock_policy["mem_clock_mhz"] = statistics.median(mem_clocks)
     return profile, evidence
 
 
