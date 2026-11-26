@@ -37,6 +37,7 @@ def test_example_and_clean_profiles_pass_sanity_errors() -> None:
         "gb10.json",
         "l4.json",
         "l40s.json",
+        "rtx3070.json",
         "rtx4070.json",
         "rtxpro5000-72gb.json",
         "rtxpro6000.json",
@@ -101,7 +102,7 @@ def test_sanity_rejects_missing_reserved_l1_capacity() -> None:
 
 
 def test_issue8_allowlist_skips_sanity_until_recollected() -> None:
-    for rel in ("profiles/a100-80gb.json", "profiles/rtx3070.json"):
+    for rel in ("profiles/a100-80gb.json",):
         path = REPO_ROOT / rel
         if not path.is_file():
             continue

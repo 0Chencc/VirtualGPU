@@ -16,7 +16,6 @@ LEAF_KEYS = {"value", "rel_uncertainty", "unit", "method"}
 # Profiles awaiting hardware re-collection for https://github.com/VirtualGPU/VirtualGPU/issues/8
 SANITY_CHECK_ALLOWLIST = {
     "profiles/a100-80gb.json",
-    "profiles/rtx3070.json",
 }
 
 # Datasheet theoretical peak DRAM bandwidth (10^9 B/s) for known SKUs.
