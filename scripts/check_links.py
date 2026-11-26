@@ -35,6 +35,7 @@ def main() -> int:
     for rel in files:
         path = Path(rel)
         text = re.sub(r"```.*?```", "", path.read_text(encoding="utf-8"), flags=re.S)
+        text = re.sub(r"`[^`\n]*`", "", text)
         for target in LINK.findall(text):
             if re.match(r"^[a-z]+:", target):
                 continue
