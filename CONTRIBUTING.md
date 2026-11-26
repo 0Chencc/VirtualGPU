@@ -76,7 +76,7 @@ cargo fmt                                    # format Rust
 
 ## Contributing a GPU profile
 
-If you have a GPU we don't have a profile for, measuring it is the most useful thing you can do. It takes a few minutes. See [contributing a profile](docs/guides/contributing-a-profile.md).
+If you have a GPU we don't have a profile for, measuring it is the most useful thing you can do. See [contributing a profile](docs/guides/contributing-a-profile.md).
 
 ## Support
 
