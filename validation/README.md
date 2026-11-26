@@ -254,3 +254,30 @@ contains `predictions.json`, the IR archive and AOT index, and
 `prediction-evidence.json` with the digests for the freeze amendment.
 The four AOT arguments identify directories of per-case compiler metadata.
 Raw timing labels are outside the command's inputs.
+
+### v0.2 formal scoring and release
+
+Publish the archive's `prediction-evidence.json` verbatim as
+`validation/v02-freeze-amendment.json` after review. The command requires
+the published `v0.2-final` tag, a clean checkout at that tag, and the
+published amendment commit. Run it only after the release is approved.
+
+```sh
+python -m validation.v02_score results/v02-formal "$amendment_commit" \
+  results/v02-scores --measurement-root "$capture_checkout"
+```
+
+The measurement root contains the original per-cohort capture directories
+under `results/`, including their sealed reports and AOT archives. For
+archives collected on Spark, preserve the `results/v02-gb10/` hierarchy
+when staging them for release. The RTX 4070 GEMM retry's effective report
+and failed predecessor are both referenced by the published receipt.
+The scorer verifies all report digests together before interpreting any
+timings and scores only effective captures. The original RTX 4070 attention
+reports use the older receipt format. Their complete sample census verifies
+ten blocks per session.
+
+The command creates `scores.json` and `report.md`. The JSON records every
+candidate's capture status by session, prediction coverage, and confusion
+matrices. The Markdown reports both device decisions and the per-cohort
+criteria together with coverage and missing candidates.

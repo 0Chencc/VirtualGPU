@@ -13,6 +13,7 @@ from unittest.mock import patch
 
 from virtualgpu.frontend.compiler import ARTIFACT_HASH_VERSION
 
+from validation import v02_score
 from validation.baseline import gemm_work, latency_ns, predict
 from validation.experiment import core_records, development_gates, load_case, validate_core_builds
 from validation.holdout import read_verified_report, require_release, seal_report, sha256
@@ -425,6 +426,165 @@ class PostHocAccessTest(unittest.TestCase):
                     self.assertIn(value, line)
                 self.assertNotIn("prediction_sha256", line)
             self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0)
+
+
+_V02_REVISION = "a" * 40
+_V02_BUILD = {"commit": _V02_REVISION, "dirty": False, "result_class": "formal"}
+_V02_UTC = "2026-11-26T01:48:34.277968+00:00"
+_V02_DIGEST = "b" * 64
+
+
+class V02ScoreTest(unittest.TestCase):
+    def test_unpublished_tag_or_amendment_prevents_release(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.object(v02_score, "git", side_effect=[_V02_REVISION.encode(), _V02_REVISION.encode(), b""]):
+                with self.assertRaisesRegex(ValueError, "published tag"):
+                    v02_score.require_release(Path(tmp), "amendment")
+            published = f"{_V02_REVISION}\trefs/tags/{v02_score.TAG}\n".encode()
+            calls = [_V02_REVISION.encode(), _V02_REVISION.encode(), published, _V02_REVISION.encode(),
+                     _V02_REVISION.encode(), b"", b"unpublished evidence", b"different published evidence"]
+            with patch.object(v02_score, "git", side_effect=calls), patch.object(v02_score.subprocess, "run"):
+                with self.assertRaisesRegex(ValueError, "published on origin/main"):
+                    v02_score.require_release(Path(tmp), "amendment")
+
+    def test_matching_published_archive_and_evidence_are_accepted(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            index = json.dumps({name: {} for name in v02_score.COHORTS}).encode()
+            metadata = {
+                "build": _V02_BUILD, "result_class": "formal", "tag": v02_score.TAG, "tag_object": _V02_REVISION,
+                "draws": v02_score.DRAWS, "seed": v02_score.SEED, "pair_margin": v02_score.PRACTICAL_MARGIN,
+                "binary_sha256": _V02_DIGEST, "fit_sha256": _V02_DIGEST, "recorded_utc": _V02_UTC,
+                "aot_index_sha256": sha256(index),
+                "cohort_inputs": {name: {} for name in v02_score.COHORTS},
+            }
+            data = {**metadata, "cohorts": {name: {} for name in v02_score.COHORTS}}
+            archive = json.dumps(data).encode()
+            evidence = json.dumps({**metadata, "prediction_archive_sha256": sha256(archive)}).encode()
+            (root / "predictions.json").write_bytes(archive)
+            (root / "aot-index.json").write_bytes(index)
+            (root / "prediction-evidence.json").write_bytes(evidence)
+            calls = [_V02_REVISION.encode(), _V02_REVISION.encode(), f"{_V02_REVISION} refs/tags/{v02_score.TAG}".encode(),
+                     _V02_REVISION.encode(), _V02_REVISION.encode(), b"", evidence, evidence]
+            with patch.object(v02_score, "git", side_effect=calls), patch.object(v02_score.subprocess, "run"):
+                revision, _, records, returned_index, _ = v02_score.require_release(root, "amendment")
+            self.assertEqual(revision, _V02_REVISION)
+            self.assertEqual(records, data)
+            self.assertEqual(returned_index, json.loads(index))
+
+    def test_retry_is_bound_to_the_failed_receipt_and_standalone_digest(self):
+        slot = "example-session-2.json"
+        failure = {"sha256": "c" * 64, "timestamp_utc": "2026-11-26T01:40:00Z",
+                   "status": "protocol_failed", "complete_blocks": 0}
+        replacement = {"sha256": _V02_DIGEST, "timestamp_utc": _V02_UTC, "status": "complete", "complete_blocks": 10}
+        seal = {"source": _V02_BUILD, "manifest_sha256": _V02_DIGEST, "profile_sha256": _V02_DIGEST,
+                "wave_boundary_sha256": _V02_DIGEST, "aot_sha256_by_case": {"example": _V02_DIGEST},
+                "failed_reports": {slot: [{"receipt": failure, "report_path": "original.json"}]}}
+        retry = {"case_id": "example", "session": 2, "order_seed": 102, "retry_attempt": 1,
+                 "original_report": slot, "retry_of_sha256": failure["sha256"], "original_receipt": failure,
+                 "retry_report": "retry.json", "retry_receipt": replacement, "capture_revision": _V02_REVISION,
+                 "manifest_sha256": _V02_DIGEST, "profile_sha256": _V02_DIGEST, "wave_boundary_sha256": _V02_DIGEST,
+                 "aot_sha256": _V02_DIGEST, "original_seal": v02_score.COHORTS["rtx4070-gemm"]}
+        raw = json.dumps(retry).encode()
+        seal["reports"] = {slot: {**replacement, "report_path": "retry.json", "order_seed": 102,
+                                  "repeat_of": failure["sha256"],
+                                  "retry_receipt_sha256": sha256(raw)}}
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            args = ("rtx4070-gemm", {"case_id": "example"}, 2, slot, seal, root)
+            self.assertEqual(v02_score.retry_receipts(*args, raw),
+                             (root / "retry.json", (root / "original.json", failure)))
+            with self.assertRaisesRegex(ValueError, "receipt digest mismatch"):
+                v02_score.retry_receipts(*args, raw + b" ")
+            failure["status"] = "complete"
+            with self.assertRaisesRegex(ValueError, "protocol failure"):
+                v02_score.retry_receipts(*args, raw)
+
+    def test_all_digests_precede_scoring_and_failed_report_is_omitted(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            first, failed = root / "valid.json", root / "failed.json"
+            valid_receipt = seal_report(first, {"timestamp_utc": _V02_UTC})
+            failed_receipt = seal_report(failed, {"timestamp_utc": _V02_UTC})
+            data = {"cohort": {"case": {"reports": {2: (first, valid_receipt)},
+                                        "failed": [(failed, failed_receipt)]}}}
+            snapshots = v02_score.verify_reports(data)
+            self.assertEqual(set(snapshots["cohort"]["case"]), {2})
+            self.assertEqual(first.stat().st_mode & 0o777, 0)
+            self.assertEqual(failed.stat().st_mode & 0o777, 0)
+            failed_receipt["sha256"] = _V02_DIGEST
+            with self.assertRaisesRegex(ValueError, "failed.json: report digest mismatch"):
+                v02_score.verify_reports(data)
+
+    def test_devices_are_gated_independently_and_missing_predictions_keep_oracle(self):
+        def forecast(order):
+            return {key: {"status": "ok", "nominal_latency_ns": value,
+                          "draws": {str(i): value for i in range(33)}}
+                    for key, value in zip(order, (1., 2., 3.), strict=True)}
+
+        measured = {key: {("session", block): ns for block in range(10)}
+                    for key, ns in (("a", 1.), ("b", 2.), ("c", 3.))}
+        case = {"case_id": "example", "config_ids": ["a", "b", "c"]}
+        good, reversed_ = forecast("abc"), forecast("cba")
+        forecasts = {cache: {"core": good, "neusight_style": reversed_, "roofline_wave": reversed_}
+                     for cache in v02_score.CACHES}
+        weak = dict(good, a={"status": "unsupported"})
+        failing = dict(forecasts, warm={**forecasts["warm"], "core": weak})
+        collection = {name: {"example": {"case": case, "forecasts": forecasts, "failed": []}}
+                      for name in v02_score.COHORTS}
+        collection["gb10-attention"]["example"]["forecasts"] = failing
+        snapshots = {name: {"example": {}} for name in v02_score.COHORTS}
+        status_by_config = {key: {"1": "ok", "2": "ok", "3": "ok"} for key in measured}
+        with patch.object(v02_score, "report_timings", return_value=({cache: measured for cache in v02_score.CACHES},
+                                                             status_by_config)):
+            cohorts, devices = v02_score.evaluate(collection, snapshots)
+        self.assertEqual(devices, {"rtx4070": True, "gb10": False})
+        core = cohorts["gb10-attention"]["cases"]["example"]["cache"]["warm"]["core"]
+        self.assertEqual(core["top_k_regret"], 1.0)
+        self.assertEqual(core["missing_or_invalid_predictions"], {"a": "unsupported"})
+        self.assertEqual((core["measured_configs"], core["scored_configs"]), (3, 2))
+
+    def test_legacy_report_validates_all_blocks_and_lists_invalid_candidates(self):
+        case = {"case_id": "example", "config_ids": ["ok", "bad", "absent"],
+                "batch": 1, "query_heads": 4, "kv_heads": 2, "seq_len": 65, "head_dim": 64, "causal": True}
+        capture = {"kernel_key": "kernel", "source": _V02_BUILD,
+                   "configs": {"ok": {"status": "ok"}, "bad": {"status": "ok"}}}
+        entry = {"case": case, "capture": capture, "capture_sha256": _V02_DIGEST,
+                 "receipt_manifest": _V02_DIGEST, "reports": {}}
+        reports = {}
+        for order in (1, 2, 3):
+            protocol = {"order_seed": 100 + order, "blocks": 10, "cache_states": list(v02_score.CACHES),
+                        "timer": "cuda_graph_single_launch", "cold_flush": "read_cg",
+                        "l2_bytes": 32 * 1024**2, "eviction_bytes": 128 * 1024**2}
+            reports[order] = {
+                "timestamp_utc": _V02_UTC, "session_id": str(order), "case_id": case["case_id"],
+                "split": "holdout", "shape": [1, 4, 2, 65, 64, True], "manifest_sha256": _V02_DIGEST,
+                "aot_sha256": _V02_DIGEST, "kernel_key": "kernel", "source": _V02_BUILD,
+                "gpu": {"arch": "sm_89", "uuid": "fixture"}, "protocol": protocol,
+                "configs": {"ok": {"status": "ok"}, "bad": {"status": "launch_failed"}},
+                "samples": [{"block": block, "cache": cache, "config_id": "ok", "latency_ns": 10.}
+                            for block in range(10) for cache in v02_score.CACHES],
+            }
+            entry["reports"][order] = (None, {"timestamp_utc": _V02_UTC})
+
+        def snapshots():
+            return {order: json.dumps(record).encode() for order, record in reports.items()}
+
+        with patch.object(v02_score, "check_artifact", return_value={"status": "matched", "ttgir_match": True}):
+            timings, statuses = v02_score.report_timings("rtx4070-attention", "example", entry, snapshots(), set(), {})
+            self.assertEqual(len(timings["warm"]["ok"]), 30)
+            self.assertEqual(set(statuses["bad"].values()), {"launch_failed"})
+            self.assertEqual(set(statuses["absent"].values()), {"missing"})
+            reports[2]["samples"].pop()
+            with self.assertRaisesRegex(ValueError, "incomplete randomized blocks"):
+                v02_score.report_timings("rtx4070-attention", "example", entry, snapshots(), set(), {})
+
+    def test_legacy_receipt_needs_digest_and_utc(self):
+        v02_score.check_receipt({"sha256": _V02_DIGEST, "timestamp_utc": _V02_UTC}, "legacy", legacy=True)
+        with self.assertRaisesRegex(ValueError, "complete 10-block receipt"):
+            v02_score.check_receipt({"sha256": _V02_DIGEST, "timestamp_utc": _V02_UTC}, "new")
+        with self.assertRaisesRegex(ValueError, "UTC timestamp"):
+            v02_score.check_receipt({"sha256": _V02_DIGEST, "timestamp_utc": "2026-11-26T01:48:34"}, "legacy", legacy=True)
 
 
 if __name__ == "__main__":

@@ -59,6 +59,7 @@ All notable changes to VirtualGPU are documented in this file.
 - Preregister the v0.2 holdout evaluation (`29a6ac2`) and record the v0.2 development-set baseline before the freeze (`d518203`).
 - Seal fresh v0.2 holdouts: GB10 GEMM and attention (`11b23a9`, `8a34ec4`, `1770165`) and RTX 4070 GEMM, including a recorded protocol retry (`58d07f6`, `120789a`, `4a5ebe8`, `72a8fb4`).
 - Prepare the frozen v0.2 CPU prediction archive (`b38adfd`) and harden capture and prediction against stale caches, installed wheels, and dirty profiles (`139789c`); skip those tests where the CUDA modules are absent (`58a0f3f`).
+- Add the formal v0.2 holdout scorer with a published freeze gate, per-report digest and retry verification, and independent RTX 4070 and GB10 decisions.
 
 ### Known Limits
 
