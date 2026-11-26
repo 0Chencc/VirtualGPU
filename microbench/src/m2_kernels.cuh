@@ -1772,7 +1772,7 @@ __global__ void closed_loop_ld_v4_kernel(const uint4* __restrict__ src,
   }
 }
 
-static int run_closed_loop(int device, int samples, int warmup) {
+static int run_closed_loop(int device, int samples, int warmup, LongReadSchedule* schedule = nullptr) {
   cudaDeviceProp prop{};
   CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
   const int sm_count = prop.multiProcessorCount;
@@ -1856,7 +1856,6 @@ static int run_closed_loop(int device, int samples, int warmup) {
             double est_bw_step_ns = (static_cast<double>(ctas) * stage_bytes) / bw_ref;
             double est_step_ns = std::max({static_cast<double>(tc_ns), est_bw_step_ns, is_dram ? 250.0 : 120.0});
             int steps = std::max(256, std::min(1024, static_cast<int>(500000.0 / est_step_ns)));
-            double total_bytes = static_cast<double>(ctas) * static_cast<double>(stage_bytes) * steps;
 
             auto launch_once = [&]() {
               if (tokens == 0) {
@@ -1882,35 +1881,46 @@ static int run_closed_loop(int device, int samples, int warmup) {
               }
             };
 
-            for (int w = 0; w < warmup; ++w) {
+            auto prepare = [&]() {
               if (is_dram) l2_read_cg_kernel<<<sm_count * 4, 512>>>(d_flush, d_sink, flush_vec4, 1);
-              launch_once();
-            }
-            CUDA_CHECK(cudaDeviceSynchronize());
-
-            std::vector<double> bw_samples;
-            std::vector<double> turn_samples;
-            bw_samples.reserve(samples);
-            turn_samples.reserve(samples);
-
-            for (int s = 0; s < samples; ++s) {
-              if (is_dram) l2_read_cg_kernel<<<sm_count * 4, 512>>>(d_flush, d_sink, flush_vec4, 1);
-              CUDA_CHECK(cudaEventRecord(ev_start));
-              launch_once();
-              CUDA_CHECK(cudaEventRecord(ev_stop));
-              CUDA_CHECK(cudaEventSynchronize(ev_stop));
-              float ms = 0.0f;
-              CUDA_CHECK(cudaEventElapsedTime(&ms, ev_start, ev_stop));
-              bw_samples.push_back((total_bytes / 1e9) / (static_cast<double>(ms) / 1e3));
-              turn_samples.push_back((static_cast<double>(ms) * 1e6) / static_cast<double>(steps));
-            }
-
+            };
+            std::vector<double> launch_ns;
             if (!first) std::printf(",");
             first = false;
             std::printf(
                 "\n    {\"issue_mode\": \"%s\", \"tokens\": %d, \"active_ctas\": %d, "
-                "\"stage_bytes\": %d, \"compute_ns\": %llu, \"bw_gbps_samples\": [",
+                "\"stage_bytes\": %d, \"compute_ns\": %llu",
                 mode_name, tokens, ctas, stage_bytes, static_cast<unsigned long long>(tc_ns));
+            if (schedule) {
+              auto timed = schedule->time_point(steps, 1, 1 << 22, warmup, samples, ev_start, ev_stop,
+                                                prepare, [&](int length) { steps = length; launch_once(); });
+              steps = timed.length;
+              launch_ns = timed.launch_ns;
+            } else {
+              for (int w = 0; w < warmup; ++w) {
+                prepare();
+                launch_once();
+              }
+              CUDA_CHECK(cudaDeviceSynchronize());
+              for (int s = 0; s < samples; ++s) {
+                prepare();
+                CUDA_CHECK(cudaEventRecord(ev_start));
+                launch_once();
+                CUDA_CHECK(cudaEventRecord(ev_stop));
+                CUDA_CHECK(cudaEventSynchronize(ev_stop));
+                float ms = 0.0f;
+                CUDA_CHECK(cudaEventElapsedTime(&ms, ev_start, ev_stop));
+                launch_ns.push_back(static_cast<double>(ms) * 1e6);
+              }
+            }
+            const double total_bytes = static_cast<double>(ctas) * static_cast<double>(stage_bytes) * steps;
+            std::vector<double> bw_samples;
+            std::vector<double> turn_samples;
+            for (double ns : launch_ns) {
+              bw_samples.push_back(total_bytes / ns);
+              turn_samples.push_back(ns / static_cast<double>(steps));
+            }
+            std::printf(", \"bw_gbps_samples\": [");
             for (size_t k = 0; k < bw_samples.size(); ++k) {
               if (k > 0) std::printf(", ");
               std::printf("%.3f", bw_samples[k]);

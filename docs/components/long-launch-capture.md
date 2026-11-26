@@ -47,7 +47,7 @@ The design generalizes it rather than writing one protocol per mode:
 
 - Rename `LongReadSchedule` to `LaunchSchedule` (keep the old name as an alias) and drop the read-sweep restriction in `vgpu_bench.cu`; the flag becomes `--launch-schedule pilot|FILE` (`--long-read-schedule` stays accepted).
 - Each `run_*` routes its timed loop through `schedule->measure(initial, minimum, maximum, ...)` with a `launch(length)` callback. `length` is the mode's existing work knob (table below). Without a schedule a mode behaves exactly as now, so old commands reproduce old captures.
-- Modes whose length is bounded by a buffer (cold DRAM reads must not wrap) size their buffers from free device memory, 1 GiB at least and up to 4 GiB (1 GiB lasts only 0.5 to 0.7 ms at 1.5 to 2 TB/s); `LaunchSchedule` refuses a length that would wrap.
+- Modes whose length is bounded by a buffer (cold DRAM reads must not wrap) size their buffers from free device memory, 1 GiB at least and up to 4 GiB (1 GiB lasts only 0.5 to 0.7 ms at 1.5 to 2 TB/s); `LaunchSchedule` refuses a length that would wrap. Steady-state streams (`closed-loop`, `sync-loop`) may wrap as long as the buffer is at least eight times the L2, so a re-read still comes from DRAM.
 - The two changes of #12 stay: `run_dram_bw` sizes its buffer as max(buffer, 16 x L2), and `run_l2` keeps `read_curve_cp_async`.
 - `long_mlp.py` becomes `microbench/long_launch.py` with the same pilot, freeze, capture and audit steps for any mode; `collect_profile.py` calls it.
 
