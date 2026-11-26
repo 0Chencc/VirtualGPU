@@ -607,12 +607,12 @@ impl<'a> L2Model<'a> {
         let slope = a_now - a_prev;
         let cap = self.profile.l2_effective_capacity_bytes as f64;
         let (lo, hi) = (k_begin as f64, k_end as f64);
-        // Slice k spans [k, k + 1); its distance is taken at its middle.
-        let fits = |k: f64| d0 + (k + 0.5) * slope <= cap;
+        // Position x in [lo, hi) is in slice floor(x) and is at distance d0 + x * slope, so the
+        // measure of positions that fit equals the number of slices that do.
         if slope == 0.0 {
-            return if fits(lo) { hi - lo } else { 0.0 };
+            return if d0 <= cap { hi - lo } else { 0.0 };
         }
-        let crossing = (cap - d0) / slope - 0.5;
+        let crossing = (cap - d0) / slope;
         let hit = if slope > 0.0 {
             crossing.clamp(lo, hi) - lo
         } else {
@@ -1324,5 +1324,35 @@ mod tests {
         assert!(b_hit(&mut l2, 32, 90, 216) > 0.99);
         let all = b_hit(&mut l2, 32, 0, 216);
         assert!((0.55..0.75).contains(&all), "got {all}");
+    }
+
+    #[test]
+    fn cross_wave_hit_steps_count_whole_slices_for_both_slopes() {
+        let ir = panel_stream_ir(10);
+        let mut l2 = L2Model::new(
+            &ir,
+            synthetic_l2_profile(),
+            L2InitState::Cold,
+            L2Options::default(),
+        );
+        let mib = 1024 * 1024;
+        l2.profile.l2_effective_capacity_bytes = 5 * mib;
+        l2.end_events.push(EndEvent {
+            t_ns: 0.0,
+            base_clock_bytes: 0,
+            end_clock_bytes: 10 * mib,
+        });
+        let last = LastSeen {
+            event: 0,
+            covered_steps: 10,
+        };
+        // Distance 10, 9, ... MiB at slices 0, 1, ...: slices 5 to 9 fit.
+        l2.stream_clock_bytes = 10 * mib;
+        assert!((l2.cross_wave_hit_steps(last, 0, 10) - 5.0).abs() < 1e-9);
+        // Distance 0, 1, ... MiB: slices 0 to 4 fit.
+        l2.end_events[0].end_clock_bytes = 0;
+        l2.stream_clock_bytes = 0;
+        l2.active_working_set_bytes = mib;
+        assert!((l2.cross_wave_hit_steps(last, 0, 10) - 5.0).abs() < 1e-9);
     }
 }
