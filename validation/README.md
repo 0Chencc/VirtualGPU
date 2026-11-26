@@ -244,8 +244,12 @@ keyed by `rtx4070` and `gb10`, and a `fits` mapping keyed by `gemm` and
 [the preregistration](v02-preregistration.md).
 
 The command is CPU-only. It verifies the capture AOT digests and regenerates
-KernelIR using the frozen frontend. Candidates with failed or mismatched
-artifacts remain in the archive with their reasons. The output directory
+KernelIR using the frozen frontend, with the KernelIR and AOT caches off,
+from the `virtualgpu` package of this checkout (not an installed wheel).
+Candidates with failed or mismatched artifacts remain in the archive with
+their reasons. Such a candidate has no baseline predictions either: both
+baselines read the MMA instruction shape, which only the KernelIR gives, so
+they share the frozen frontend's failures. The output directory
 contains `predictions.json`, the IR archive and AOT index, and
 `prediction-evidence.json` with the digests for the freeze amendment.
 The four AOT arguments identify directories of per-case compiler metadata.

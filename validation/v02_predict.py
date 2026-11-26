@@ -40,7 +40,18 @@ def git(*args):
     return subprocess.check_output(["git", *args], cwd=REPO_ROOT)
 
 
+def require_imports_from_checkout(*modules):
+    source = (REPO_ROOT / "python").resolve()
+    for module in modules:
+        if not Path(module.__file__).resolve().is_relative_to(source):
+            raise ValueError(f"{module.__name__} is imported from {module.__file__}, not this checkout")
+
+
 def require_frozen_checkout(core):
+    import virtualgpu
+    import virtualgpu.frontend
+
+    require_imports_from_checkout(virtualgpu, virtualgpu.frontend, core)
     revision = git("rev-parse", "--verify", f"refs/tags/{TAG}^{{commit}}").decode().strip()
     tag = git("rev-parse", "--verify", f"refs/tags/{TAG}").decode().strip()
     subprocess.run(["git", "merge-base", "--is-ancestor", revision, "origin/main"],
@@ -124,13 +135,15 @@ def read_capture_artifact(directory, case, seal, manifest_digest, kernel):
 
 
 def frozen_ir(family, case, config, target):
+    # No KernelIR or AOT cache: their keys do not identify the frontend
+    # source, so an entry written by another checkout would be returned.
     if family == "gemm":
         m, n, k = case["shape"]
         bm, bn, bk = config["tile"]
         knobs = dict(BM=bm, BN=bn, BK=bk, GROUP_M=config["group_m"],
                      num_warps=config["num_warps"], num_stages=config["num_stages"])
-        return extract_gemm_kernel_ir(dense_gemm, M=m, N=n, K=k, config=knobs,
-                                      target_arch=target, call_args=(*GEMM_POINTERS, m, n, k))
+        return extract_gemm_kernel_ir(dense_gemm, M=m, N=n, K=k, config=knobs, target_arch=target,
+                                      call_args=(*GEMM_POINTERS, m, n, k), use_cache=False)
     _, constants, options = attention.launch_spec(case, config)
     hq, hk, seq, dim, causal, scale, bm, bn = constants
     # The frontend supplies CAUSAL by keyword. Keep the identical JIT
@@ -139,7 +152,7 @@ def frozen_ir(family, case, config, target):
                  BM=bm, BN=bn, SCALE_LOG2=scale)
     return extract_attention_kernel_ir(
         attention.fused_attention, case["batch"], hq, seq, dim, knobs, target,
-        H_kv=hk, causal=causal, call_args=(*_AOT_POINTERS, hq, hk, seq, dim),
+        H_kv=hk, causal=causal, call_args=(*_AOT_POINTERS, hq, hk, seq, dim), use_cache=False,
     )
 
 

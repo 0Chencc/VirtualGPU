@@ -43,7 +43,9 @@ def inputs(family, device):
         raise ValueError("Manifest differs from the approved GB10 matrix")
     manifest = json.loads(raw)
     source = source_info()
-    if (source["python_dirty"] or source["validation_dirty"] or triton.__version__ != "3.9.0"
+    profiles_dirty = subprocess.check_output(
+        ["git", "status", "--porcelain", "--untracked-files=all", "--", "profiles/"], cwd=REPO_ROOT)
+    if (source["python_dirty"] or source["validation_dirty"] or profiles_dirty or triton.__version__ != "3.9.0"
             or manifest["devices"][device]["target"] != f"sm_{DEVICE_ARCH[device]}"):
         raise ValueError("Use a clean capture checkout and Triton 3.9.0")
     return manifest, sha256(raw), source
@@ -191,6 +193,11 @@ def boundary(directory, device):
     print({name: (row["ctas"], row["full_wave_capacity"]) for name, row in records.items()})
 
 
+def config_status_counts(report):
+    # Counts only: a receipt is public before the holdout opens.
+    return dict(sorted(Counter(row["status"] for row in report["configs"].values()).items()))
+
+
 def capture(directory, family, case_id, session, device):
     manifest, digest, source = inputs(family, device)
     case, configs = case_configs(manifest, case_id, device)
@@ -239,7 +246,8 @@ def capture(directory, family, case_id, session, device):
     report.update(aot_sha256=aot_sha, kernel_key=kernel.cache_key,
                   profile_sha256=profile_sha, collection_status="complete" if valid else "protocol_failed")
     receipt_data = seal_report(sealed, report)
-    receipt_data.update(status=report["collection_status"], complete_blocks=report["complete_blocks"])
+    receipt_data.update(status=report["collection_status"], complete_blocks=report["complete_blocks"],
+                        config_status_counts=config_status_counts(report))
     attention_runner.write_json(receipt, receipt_data)
     if not valid:
         raise RuntimeError(f"Case-session failed the capture protocol. See {receipt.name}")

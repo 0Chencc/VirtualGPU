@@ -428,3 +428,58 @@ class PostHocAccessTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class V02ArchiveTest(unittest.TestCase):
+    def test_frozen_frontend_runs_without_caches(self):
+        from validation import v02_predict
+
+        with patch.object(v02_predict, "extract_gemm_kernel_ir") as gemm:
+            v02_predict.frozen_ir("gemm", {"shape": [256, 256, 256]},
+                                  {"tile": [64, 64, 32], "group_m": 1, "num_warps": 4, "num_stages": 2}, "sm_89")
+        self.assertIs(gemm.call_args.kwargs["use_cache"], False)
+        spec = (None, (8, 8, 512, 64, True, 0.18, 64, 32), {"num_warps": 4, "num_stages": 2})
+        with patch.object(v02_predict.attention, "launch_spec", return_value=spec), \
+                patch.object(v02_predict, "extract_attention_kernel_ir") as attn:
+            v02_predict.frozen_ir("attention", {"batch": 1}, {}, "sm_89")
+        self.assertIs(attn.call_args.kwargs["use_cache"], False)
+
+    def test_frozen_archive_imports_the_checkout(self):
+        import virtualgpu
+
+        from validation import v02_predict
+
+        v02_predict.require_imports_from_checkout(virtualgpu)
+        installed = SimpleNamespace(__name__="virtualgpu", __file__="/usr/lib/python3/site-packages/virtualgpu/__init__.py")
+        with self.assertRaisesRegex(ValueError, "not this checkout"):
+            v02_predict.require_imports_from_checkout(installed)
+
+    def test_capture_refuses_uncommitted_profiles(self):
+        import subprocess
+
+        from validation import v02_capture
+
+        real = subprocess.check_output
+
+        def git(args, **kwargs):
+            if "profiles/" in args:
+                return b" M profiles/gb10.json\n"
+            if args[1] == "show":  # the approved manifest: the checkout's own
+                return (v02_capture.REPO_ROOT / args[2].split(":", 1)[1]).read_bytes()
+            return real(args, **kwargs)
+
+        clean = {"commit": "0" * 40, "python_dirty": False, "validation_dirty": False}
+        with patch.object(v02_capture.subprocess, "run"), \
+                patch.object(v02_capture.subprocess, "check_output", side_effect=git), \
+                patch.object(v02_capture, "source_info", return_value=clean):
+            for device in ("gb10", "rtx4070"):
+                with self.subTest(device=device), self.assertRaisesRegex(ValueError, "clean capture checkout"):
+                    v02_capture.inputs("gemm", device)
+
+    def test_capture_receipt_counts_config_statuses(self):
+        from validation.v02_capture import config_status_counts
+
+        report = {"configs": {"a": {"status": "ok"}, "b": {"status": "artifact_mismatch"},
+                              "c": {"status": "ok"}, "d": {"status": "aot_compile_failed"}}}
+        self.assertEqual(config_status_counts(report),
+                         {"aot_compile_failed": 1, "artifact_mismatch": 1, "ok": 2})
