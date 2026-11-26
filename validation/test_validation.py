@@ -1,5 +1,6 @@
 """CPU-only checks for the manifest, baseline, and scoring."""
 
+import importlib.util
 import json
 import math
 import os
@@ -430,6 +431,10 @@ if __name__ == "__main__":
     unittest.main()
 
 
+@unittest.skipUnless(
+    all(importlib.util.find_spec(name) for name in ("cuda", "pynvml", "torch")),
+    "the v0.2 capture modules import the CUDA driver bindings, pynvml and torch",
+)
 class V02ArchiveTest(unittest.TestCase):
     def test_frozen_frontend_runs_without_caches(self):
         from validation import v02_predict
