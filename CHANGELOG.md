@@ -3,7 +3,7 @@
 All notable changes to VirtualGPU are documented in this file.
 
 - **v0.1** corresponds to the `phase1-final` freeze (`129a6f5`, Phase 1/2 frozen baseline).
-- **v0.2** covers the post-Phase-2 model, frontend, measurement, and validation cycle up to `34529b2`.
+- **v0.2** covers the post-Phase-2 model, frontend, measurement, and validation cycle up to `58a0f3f`.
 - L1 carveout spill transition curves and spill reload latency modeling are **not** included in v0.2 (measured and stored in the profiles, not yet implemented in the core; planned for v0.3, see Known Limits).
 
 ---
@@ -18,7 +18,7 @@ All notable changes to VirtualGPU are documented in this file.
 - Add `sfu` and `shfl` execution pipes to the simulator core (`e7cb092`) driven by measured per-SM warp throughput curves (`f2915df`, `ac0e501`).
 - Extend KernelIR v0.1 (`7ca1e50`) and the Rust IR/L2 model (`0d63893`, `e7cb092`) with `per_cta` per-tile trip counts, `shfl` ops, and prefix-overlap KV sharing for causal GQA attention.
 - Charge register-spill bytes served by L2 or DRAM on the SM's local port as well as L2/DRAM (`ca411f4`).
-- Update design documentation to reflect active core mechanisms (`e46b16e`) and the synchronous-load GEMM and spill charge notes (`3f65039`, `34529b2`).
+- Update design documentation to reflect active core mechanisms (`e46b16e`) and the synchronous-load GEMM and spill charge notes (`3f65039`, `34529b2`), then align design sections 6 and 9 with the v0.2 core (`edb9ee6`).
 
 ### Frontend
 
@@ -45,19 +45,27 @@ All notable changes to VirtualGPU are documented in this file.
 - Add controlled-in-flight global memory load issue benchmarks (`056f2fb`, `9ff93be`, `2f139b6`) and S=1 synchronous vs. `cp.async` and multi-CTA `sync_stage_loop` benchmarks (`483ea3a`, `11fa0e7`).
 - Measure L1 usable capacity vs. shared-memory carveout (`b1a6310`) and full per-tier L1 miss-rate transition curves (`b92286c`) on RTX 4070 and GB10 (stored in profiles for v0.3; not yet wired into the v0.2 core).
 
+### Packaging
+
+- Build cp310-abi3 Linux wheels (x86_64, aarch64) and an sdist with the GPU profiles bundled under `virtualgpu/profiles/`, add `list_profiles()` / `profile_path()`, let `--profile` take a bundled name, and add a README quickstart (`933d08e`).
+- Release workflow attaches wheels and SHA256 sums to a GitHub Release, with no PyPI upload, and only runs on semantic version tags like `v0.2.0` (`933d08e`, `e4e770a`).
+
 ### Validation & Workflow
 
 - Freeze `phase1-final` predictions and publish the Phase 1 RTX 4070 GEMM holdout report and pairwise verdict analysis (`92439e0`, `45db984`, `49cf6a7`, `5feb1b5`, `6ad60bf`).
 - Execute and publish the Phase 2 sealed DGX Spark GB10 transfer validation with thermal/clock stability gating and acquisition retry handling (`d42128e`, `de3dba1`, `eae13bd`, `42689c8`, `5aaf5c3`, `1cb44d6`, `fd5c947`, `076b1da`, `c15b1a3`, `ad7fc77`, `d3ab4eb`, `fc89ad3`), plus post-hoc residual analyses (`4cd03e6`, `9491a19`).
 - Define the Phase 4 RTX 4070 fused-attention workload suite, validation runner, development-set diagnosis, and sealed holdout (`aa54f13`, `d103ff2`, `fde371d`, `c1ac132`, `a5bab55`).
 - Add an audited published-holdout scoring channel (`754613a`), track published holdout access summaries (`faa9071`), and refresh build identity on reflog/packed-ref changes (`0d3b4c4`).
+- Preregister the v0.2 holdout evaluation (`29a6ac2`) and record the v0.2 development-set baseline before the freeze (`d518203`).
+- Seal fresh v0.2 holdouts: GB10 GEMM and attention (`11b23a9`, `8a34ec4`, `1770165`) and RTX 4070 GEMM, including a recorded protocol retry (`58d07f6`, `120789a`, `4a5ebe8`, `72a8fb4`).
+- Prepare the frozen v0.2 CPU prediction archive (`b38adfd`) and harden capture and prediction against stale caches, installed wheels, and dirty profiles (`139789c`); skip those tests where the CUDA modules are absent (`58a0f3f`).
 
 ### Known Limits
 
 - **Deferred to v0.3:** carveout-aware L1-to-L2 spill transition curves and spill reload latency modeling are not implemented in the v0.2 core. The measured curves are stored in the profiles but the core does not read them yet.
 - **Spill dynamic counts and causal dual-loop attribution:** static `ptxas` spill counts sum both causal `_attention_tiles` loops (main + 1-step diagonal) and do not report dynamic per-iteration reload counts; resolving this requires hardware performance counter (`ncu`) profiling.
 - **Synchronous-load GEMM residual:** `num_stages = 1` register-staged GEMM configs remain predicted slow (+9.1% warm / +2.2% cold median error on the development set; see `docs/design.md` section 9.2).
-- **Holdout validity for v0.2:** the RTX 4070 GEMM workload holdout and GB10 transfer datasets have been unsealed and **cannot** be reused to validate v0.2; v0.2 requires fresh held-out validation, for which the RTX 4070 attention holdout (`c1ac132`) remains sealed.
+- **Holdout validity for v0.2:** the RTX 4070 GEMM workload holdout and GB10 transfer datasets have been unsealed and **cannot** be reused to validate v0.2; v0.2 is instead evaluated on fresh sealed holdouts (RTX 4070 and GB10, GEMM and attention; see `validation/v02-preregistration.md`), whose results are pending.
 - **Unmodeled scope:** data-dependent kernels (MoE routing, sparse/paged attention), non-Triton PTX kernels, Hopper `wgmma` / data-center Blackwell `tcgen05`, and fine-grained bank-conflict or thermal-throttling effects remain out of scope (see `docs/design.md` section 9).
 
 ---
