@@ -6,6 +6,7 @@ import math
 from pathlib import Path
 from typing import Any
 
+from .ascend_compiler import is_ascend_arch
 from .compiler import (
     ARTIFACT_HASH_VERSION,
     CompiledArtifacts,
@@ -694,6 +695,30 @@ def extract_attention_kernel_ir(
     use_cache: bool = True,
 ) -> dict[str, Any]:
     """Compile a Triton forward fused-attention kernel AOT and extract VirtualGPU KernelIR."""
+    if is_ascend_arch(target_arch):
+        from .triton_ascend_attention import extract_ascend_attention_kernel_ir
+
+        return extract_ascend_attention_kernel_ir(
+            fn,
+            Z=Z,
+            H=H,
+            N_CTX=N_CTX,
+            D=D,
+            config=config,
+            target_arch=target_arch,
+            dtype=dtype,
+            H_kv=H_kv,
+            causal=causal,
+            sm_scale=sm_scale,
+            call_args=call_args,
+            strides_q=strides_q,
+            strides_k=strides_k,
+            strides_v=strides_v,
+            strides_o=strides_o,
+            cache_dir=cache_dir,
+            use_cache=use_cache,
+        )
+
     if hasattr(fn, "fn") and not hasattr(fn, "params"):
         fn = fn.fn
 

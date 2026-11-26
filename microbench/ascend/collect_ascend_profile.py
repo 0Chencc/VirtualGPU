@@ -11,8 +11,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-SUITE_VERSION = "0.3.0-ascend"
-PROFILE_REVISION = "0.3.0-ascend"
+SUITE_VERSION = "0.3.1-ascend"
+PROFILE_REVISION = "0.3.1-ascend"
 DEFAULT_REL_UNCERTAINTY_FLOOR = 0.10
 
 
@@ -480,6 +480,21 @@ def build_ascend_profile(
     pipeline_section: dict[str, Any] = {}
     if fixed_sync_ns:
         pipeline_section["fixed_sync_ns"] = fixed_sync_ns
+    if raw.get("cv_sync_hop_ns_by_active_cores"):
+        pipeline_section["cv_sync_hop_ns_by_active_sms"] = [
+            {
+                "active_sms": int(pt["active_cores"]),
+                "latency_ns": _mv(
+                    pt["hop_ns"],
+                    unit="ns",
+                    method="ascendc_cross_core_sync_pingpong",
+                    perturb_group="cv_sync",
+                ),
+            }
+            for pt in sorted(
+                raw["cv_sync_hop_ns_by_active_cores"], key=lambda x: int(x["active_cores"])
+            )
+        ]
     if stage_sync_overhead_ns:
         pipeline_section["stage_sync_overhead_ns"] = stage_sync_overhead_ns
     if min_async_rt is not None:

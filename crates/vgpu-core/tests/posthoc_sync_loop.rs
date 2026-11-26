@@ -99,6 +99,7 @@ fn per_step_split_ns(p: &Profile, q: &Point, l2: &mut impl L2) -> f64 {
             .max(u64::from(q.stage_bytes)),
         ub_bytes: 0,
         l0c_bytes: 0,
+        cv_workspace: vgpu_core::kernel::CvWorkspace::default(),
         tiles_per_program: TripCounts::Uniform(1),
         mma_key: MMA_KEY.to_string(),
         spill: Spill::default(),

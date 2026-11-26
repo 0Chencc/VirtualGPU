@@ -13,6 +13,7 @@ from virtualgpu.frontend.ascend_compiler import (
     is_ascend_arch,
 )
 from virtualgpu.frontend.hivm import parse_hivm_summary
+from virtualgpu.frontend.triton_ascend_attention import assemble_ascend_attention_kernel_ir
 from virtualgpu.frontend.triton_ascend_gemm import (
     _reorder_for_autoblockify,
     assemble_ascend_gemm_kernel_ir,
@@ -163,6 +164,8 @@ def test_parse_hivm_mix_cv_workspace_and_vector_ops() -> None:
     assert s.loop_vec_ops == 1
     assert s.loop_sfu_ops == 1
     assert s.loop_sync_blocks == 2
+    assert s.loop_cv_sync_hops == 1
+    assert s.aiv_loop_max_rows == 32
     assert "ascend_mix_cv_workspace" in s.diagnostics
 
 
@@ -241,3 +244,67 @@ def test_assemble_and_predict_ascend_gemm_end_to_end() -> None:
     assert pred_bad["status"] == "unsupported"
     assert "TooMuchOnChipBuffer" in pred_bad["reason"]
     assert "l0c" in pred_bad["reason"]
+
+
+def test_assemble_and_predict_ascend_attention_causal_gqa() -> None:
+    from virtualgpu import _core
+
+    artifacts = AscendCompiledArtifacts(
+        kernel_name="fused_attention",
+        target_arch="ascend910b3",
+        triton_version="3.5.0",
+        ttir="",
+        ttadapter="",
+        hivm_ir=SAMPLE_HIVM_MIX_CV,
+        ttir_sha256="0" * 64,
+        hivm_sha256=hash_hivm(SAMPLE_HIVM_MIX_CV),
+        mix_mode="mix",
+        workspace_size=163840,
+        bs_task_type=32,
+        requested_num_stages=2,
+        requested_multibuffer=True,
+    )
+    ir_causal = assemble_ascend_attention_kernel_ir(
+        artifacts,
+        Z=2,
+        H=16,
+        H_kv=4,
+        N_CTX=1024,
+        D=64,
+        config={"BM": 64, "BN": 64, "multibuffer": True},
+        causal=True,
+    )
+    assert ir_causal["metadata"]["target_vendor"] == "ascend"
+    assert ir_causal["launch"]["grid"] == [20, 1, 1]
+    assert sum(ir_causal["body"]["outer_loop"]["trip_counts"]) == 2 * 16 * (1024 // 64)
+    assert ir_causal["body"]["pipeline_loop"]["trip_count_mode"] == "per_outer_iter"
+    trips = ir_causal["body"]["pipeline_loop"]["trip_counts"]
+    assert len(trips) == 512
+    assert min(trips) == 1 and max(trips) == 16
+    asc_ext = ir_causal["resources"]["vendor_extensions"]["ascend"]
+    assert asc_ext["workspace_multibuffer"] == 4
+    assert asc_ext["workspace_loop_bytes"] == 2 * (163840 // 4)
+    assert asc_ext["cv_sync_hops_per_iter"] == 1
+    assert "unvalidated_target_ascend" in ir_causal["diagnostics"]
+
+    ir_full = assemble_ascend_attention_kernel_ir(
+        artifacts,
+        Z=2,
+        H=16,
+        H_kv=4,
+        N_CTX=1024,
+        D=64,
+        config={"BM": 64, "BN": 64, "multibuffer": True},
+        causal=False,
+    )
+    assert ir_full["body"]["pipeline_loop"]["trip_count_mode"] == "uniform"
+    assert ir_full["body"]["pipeline_loop"]["trip_counts"] == 16
+
+    profile_text = (REPO_ROOT / "profiles" / "ascend910b3.json").read_text(encoding="utf-8")
+    p_causal = _core.predict(json.dumps(ir_causal), profile_text, l2_state="cold", draws=8, seed=17)
+    p_full = _core.predict(json.dumps(ir_full), profile_text, l2_state="cold", draws=8, seed=17)
+    assert p_causal["status"] == "ok", p_causal
+    assert p_full["status"] == "ok", p_full
+    assert p_causal["time_ns"] < p_full["time_ns"]
+    assert "unvalidated_feature" in p_causal["flags"]
+    assert "unvalidated_target_ascend" in p_causal["diagnostics"]

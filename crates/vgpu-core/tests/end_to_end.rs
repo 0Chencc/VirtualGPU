@@ -89,6 +89,9 @@ fn ascend910b3_profile_simulates_cube_gemm_and_enforces_sram_limits() {
             ub_bytes: Some(0),
             l0c_bytes: Some(65_536),
             workspace_bytes: Some(0),
+            workspace_loop_bytes: Some(0),
+            workspace_multibuffer: Some(0),
+            cv_sync_hops_per_iter: Some(0),
         }),
     });
     ir.body.outer_loop.trip_count_mode = vgpu_core::ir::OuterTripCountMode::Uniform;
@@ -133,4 +136,81 @@ fn ascend910b3_profile_simulates_cube_gemm_and_enforces_sram_limits() {
         occupancy(&bad_l0c, &p.specs),
         Err(OccupancyError::TooMuchOnChipBuffer { buffer: "l0c", .. })
     ));
+}
+
+#[test]
+fn ascend910b3_cube_vector_split_overlaps_and_keeps_workspace_in_l2() {
+    use vgpu_core::kernel::{CvWorkspace, Kernel, Spill, Tile, TripCounts, Work};
+    use vgpu_core::sim::ConstantHitRatio;
+
+    let p = Profile::from_json(include_str!("../../../profiles/ascend910b3.json")).unwrap();
+    let mma_key = "cube.mmad:f16:f16:f32:16x16x16";
+    let m = Machine::nominal(&p, mma_key).unwrap();
+    assert!(m.cube_vector_split);
+
+    // Balanced Cube MMA (~287 ns/iter) + Vector issue (~271 ns/iter) with L2-resident workspace.
+    let base = Kernel {
+        grid: 20,
+        num_warps: 1,
+        registers_per_thread: 1,
+        smem_per_cta_bytes: 65_536,
+        ub_bytes: 65_536,
+        l0c_bytes: 65_536,
+        cv_workspace: CvWorkspace {
+            bytes_per_core: 163_840,     // 20 * 160 KiB = 3.2 MiB << 192 MiB L2
+            loop_bytes_per_iter: 32_768, // 32 KiB/iter AIC<->AIV bounce
+            overlap: false,
+            sync_hops_per_iter: 0,
+        },
+        tiles_per_program: TripCounts::Uniform(1),
+        mma_key: mma_key.to_string(),
+        spill: Spill::default(),
+        async_loads: true,
+        tile_iterations: None,
+        tile: Tile {
+            prologue: Work::default(),
+            iterations: 64,
+            per_iteration: Work {
+                mma_flops: 2.0 * 128.0 * 64.0 * 128.0 * 2.0,
+                sfu_insts_per_warp: 256.0,
+                alu_insts_per_warp: 64.0,
+                ..Work::default()
+            },
+            prefetch_distance: 1,
+            epilogue: Work::default(),
+        },
+    };
+    let mut overlapped = base.clone();
+    overlapped.cv_workspace.overlap = true;
+
+    let r_serial = simulate(&base, &p, &m, &mut ConstantHitRatio(1.0)).unwrap();
+    let r_overlap = simulate(&overlapped, &p, &m, &mut ConstantHitRatio(1.0)).unwrap();
+
+    // Multi-buffered workspace ring overlaps Cube and Vector work (faster than serial sum).
+    assert!(
+        r_overlap.makespan_ns < r_serial.makespan_ns * 0.75,
+        "expected Cube/Vector overlap speedup: overlap={} vs serial={}",
+        r_overlap.makespan_ns,
+        r_serial.makespan_ns
+    );
+    // Workspace fits in L2 (3.2 MiB << 192 MiB) -> L2 hit traffic, zero DRAM write-through.
+    assert!(r_overlap.l2_hit_bytes > 0.0);
+    assert_eq!(r_overlap.dram_bytes, 0.0);
+
+    // Oversized workspace (> 192 MiB total across 20 cores) spills overflow into DRAM.
+    let mut spilled_ws = overlapped.clone();
+    spilled_ws.cv_workspace.bytes_per_core = 16 * 1024 * 1024; // 320 MiB > 192 MiB L2
+    let r_spill = simulate(&spilled_ws, &p, &m, &mut ConstantHitRatio(1.0)).unwrap();
+    assert!(r_spill.dram_bytes > 0.0);
+
+    // Cross-core sync hops add measured FFTS+ handoff latency to the sync path.
+    let mut synced = overlapped;
+    synced.cv_workspace.sync_hops_per_iter = 6;
+    let r_synced = simulate(&synced, &p, &m, &mut ConstantHitRatio(1.0)).unwrap();
+    assert!(
+        r_synced.makespan_ns > r_overlap.makespan_ns * 3.0,
+        "expected cross-core sync_block latency: synced={} vs overlap={}",
+        r_synced.makespan_ns,
+        r_overlap.makespan_ns
+    );
 }

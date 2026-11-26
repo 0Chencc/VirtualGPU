@@ -189,6 +189,21 @@
                   "type": "integer",
                   "minimum": 0,
                   "description": "Global-memory Cube/Vector workspace size per AI Core in bytes."
+                },
+                "workspace_loop_bytes": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Total Cube/Vector GM workspace bytes transferred (store + load) per pipeline loop iteration."
+                },
+                "workspace_multibuffer": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Ring-buffer slot count of the Cube/Vector GM workspace (>= 2 enables AIC/AIV overlap)."
+                },
+                "cv_sync_hops_per_iter": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Cross-core AIC <-> AIV synchronization handoffs per steady-state pipeline iteration."
                 }
               }
             }

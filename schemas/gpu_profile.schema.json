@@ -469,6 +469,11 @@
               "minItems": 1,
               "items": { "$ref": "#/$defs/FixedSyncOverheadPoint" }
             },
+            "cv_sync_hop_ns_by_active_sms": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/ActiveSmLatencyPoint" }
+            },
             "min_async_roundtrip_ns": {
               "oneOf": [{ "$ref": "#/$defs/MeasuredValue" }, { "type": "null" }]
             },
@@ -623,6 +628,15 @@
       "properties": {
         "active_sms": { "type": "integer", "minimum": 1 },
         "bw_gbps": { "$ref": "#/$defs/MeasuredValue" }
+      }
+    },
+    "ActiveSmLatencyPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["active_sms", "latency_ns"],
+      "properties": {
+        "active_sms": { "type": "integer", "minimum": 1 },
+        "latency_ns": { "$ref": "#/$defs/MeasuredValue" }
       }
     },
     "BytesInFlightBwPoint": {

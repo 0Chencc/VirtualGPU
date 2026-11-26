@@ -2,7 +2,7 @@
 //! L2 model.
 
 use crate::ir::{self, CachePolicy, KernelIR, Op, WarpGroupRole};
-use crate::kernel::{Access, Kernel, Spill, SpillScope, Tile, TripCounts, Work};
+use crate::kernel::{Access, CvWorkspace, Kernel, Spill, SpillScope, Tile, TripCounts, Work};
 use crate::l2::SpillTraffic;
 use crate::l2::{L2InitState, L2Model, L2Options, L2Profile};
 use crate::profile::Profile;
@@ -129,6 +129,14 @@ pub fn kernel_from_ir(ir: &KernelIR) -> Result<Kernel, ModelError> {
         .vendor_extensions
         .as_ref()
         .and_then(|ext| ext.ascend.as_ref());
+    let cv_workspace = ascend_res
+        .map(|a| CvWorkspace {
+            bytes_per_core: a.workspace_bytes.unwrap_or(0),
+            loop_bytes_per_iter: a.workspace_loop_bytes.unwrap_or(0),
+            overlap: a.workspace_multibuffer.unwrap_or(0) >= 2,
+            sync_hops_per_iter: a.cv_sync_hops_per_iter.unwrap_or(0),
+        })
+        .unwrap_or_default();
     Ok(Kernel {
         grid,
         num_warps: ir.launch.num_warps,
@@ -136,6 +144,7 @@ pub fn kernel_from_ir(ir: &KernelIR) -> Result<Kernel, ModelError> {
         smem_per_cta_bytes: ir.total_smem_bytes(),
         ub_bytes: ascend_res.and_then(|a| a.ub_bytes).unwrap_or(0),
         l0c_bytes: ascend_res.and_then(|a| a.l0c_bytes).unwrap_or(0),
+        cv_workspace,
         tiles_per_program,
         mma_key: mma_key.ok_or_else(|| unsupported("kernel without MMA"))?,
         tile,
