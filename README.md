@@ -123,6 +123,7 @@ Bundled profiles:
 | --- | --- | --- | --- |
 | `gb10` | NVIDIA DGX Spark GB10 | `sm_121` | Yes |
 | `rtx4070` | NVIDIA GeForce RTX 4070 | `sm_89` | Yes |
+| `a100-80gb` | NVIDIA A100-SXM4-80GB | `sm_80` | No |
 | `l4` | NVIDIA L4 | `sm_89` | No |
 | `l40s` | NVIDIA L40S | `sm_89` | No |
 | `rtx3070` | NVIDIA GeForce RTX 3070 | `sm_86` | No |
