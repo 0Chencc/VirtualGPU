@@ -1,6 +1,6 @@
 # Long-launch profile capture (design, v0.3)
 
-Status: proposed. It changes how `microbench/collect_profile.py` captures every timed field of a GPU profile and which captures it accepts. The model does not change; the profiles it reads are captured again under it.
+Status: accepted (2026-11-27), being implemented. It changes how `microbench/collect_profile.py` captures every timed field of a GPU profile and which captures it accepts. The model does not change; the profiles it reads are captured again under it.
 
 ## 1. Why
 
@@ -32,7 +32,7 @@ Consequence: the microbenchmark errors in [design.md section 6.4](../design.md#6
 
 ## 2. Rules
 
-1. Every timed launch takes at least 1.25 ms in the pilot and at least 1.0 ms in the capture.
+1. Every timed window (one launch, or the group or batch section 4 names) takes at least 1.25 ms in the pilot and at least 1.0 ms in the capture.
 2. A pilot chooses each point's length (steps, iterations, batches or bytes); the lengths are frozen, with their digest, before the capture, and the capture fails if a point's length differs.
 3. What a field measures does not change. Where more work per launch would change it, the fix is a repeat of the whole measured unit (section 4).
 4. Each point records its length and its launch durations.
@@ -47,7 +47,8 @@ The design generalizes it rather than writing one protocol per mode:
 
 - Rename `LongReadSchedule` to `LaunchSchedule` (keep the old name as an alias) and drop the read-sweep restriction in `vgpu_bench.cu`; the flag becomes `--launch-schedule pilot|FILE` (`--long-read-schedule` stays accepted).
 - Each `run_*` routes its timed loop through `schedule->measure(initial, minimum, maximum, ...)` with a `launch(length)` callback. `length` is the mode's existing work knob (table below). Without a schedule a mode behaves exactly as now, so old commands reproduce old captures.
-- Modes whose length is bounded by a buffer (cold DRAM reads must not wrap) get the larger buffers `long_mlp` uses (1 to 2 GiB).
+- Modes whose length is bounded by a buffer (cold DRAM reads must not wrap) size their buffers from free device memory, 1 GiB at least and up to 4 GiB (1 GiB lasts only 0.5 to 0.7 ms at 1.5 to 2 TB/s); `LaunchSchedule` refuses a length that would wrap.
+- The two changes of #12 stay: `run_dram_bw` sizes its buffer as max(buffer, 16 x L2), and `run_l2` keeps `read_curve_cp_async`.
 - `long_mlp.py` becomes `microbench/long_launch.py` with the same pilot, freeze, capture and audit steps for any mode; `collect_profile.py` calls it.
 
 | Mode | Length knob (now) | Now | Plan |
@@ -73,24 +74,28 @@ The design generalizes it rather than writing one protocol per mode:
 - **In-kernel timed probes** (`latency` for the smem, L2 and DRAM latencies, `l1-carveout`, `stage-overhead` for `stage_sync_overhead_ns`, `fixed_sync_ns`, `min_async_roundtrip_ns`). They time inside the kernel with `%globaltimer` or `clock64`, so launch cost never enters the result. Their knob is the chase or loop length; the schedule raises it so the timed window is at least 1 ms, for timer resolution and to average over refresh and clock changes, and the per-step value stays the window over the steps.
 - **`latency-curve`** (`dram_latency_by_bw`, `l2_latency_by_bw`). Same as above, and longer windows also stabilize the background bandwidth, which is measured over the chase (the RTX 4070 points under about 140 GB/s are under 1 ms now).
 - **`l2-rescan`**. `pass2` means re-reading a working set right after one cold pass; more passes per launch would measure resident bandwidth instead. One sample becomes a group of K repeats of flush, pass 1, pass 2, each pass still one launch, with the per-pass values the medians over the group; K is chosen by the pilot so that the summed pass-2 time of a group is at least 1 ms.
+- **GB10's L2 bistable band.** On GB10, working sets of 0.75 to 1.25 times the L2 size switch between two states from one process to the next, independent of the CPU ([v0.3-gb10-l2-bistability-observation.md](../results/analysis/v0.3-gb10-l2-bistability-observation.md)), and `l2-rescan` and the capacity sweep cross that band. Fixed before any capture, for these two modes and this band only: their points with working sets of 0.75 to 1.25 times `l2_size_bytes` do not count towards rule 3's decision for the capture (the points outside the band do, at 5% as usual); each in-band point stores the minimum and maximum of its per-process medians, takes the measured spread across processes as its `rel_uncertainty` (with the usual floor), and carries `"bistable_band": true`. No other field may use this exception. Whether the RTX 4070 has such a band is unknown; the same rule applies and the capture reports what it finds.
 - **`l2_effective_capacity_bytes`** (capacity sweep). The sweep's bandwidths are not stored in the profile, so its launch length cannot be audited; the capture records them and the schedule applies to the passes per launch.
 - **`cta-dispatch`** is a dispatch trace, not a timed measurement; unchanged.
 
 ## 5. Profile format
 
-- `MeasuredValue` gains an optional `launch` object: `{"length": integer, "min_ns": number, "median_ns": number}`, the frozen length and the shortest and median launch of the point. The JSON schema allows it; the Rust reader already ignores unknown fields; `scripts/check_profiles.py` reports any timed value with `launch.min_ns` under 1e6 in a profile that claims the long-launch protocol.
+- `MeasuredValue` gains an optional `launch` object: `{"length": integer, "min_ns": number, "median_ns": number}`, the frozen length and the shortest and median timed window of the point. A sample's timed window is one launch for most modes, a whole group of K flush, pass 1, pass 2 repeats for `l2-rescan`, and a whole batch for the launch overheads, so `min_ns` is the shortest such window. The JSON schema allows it, and an optional `bistable_band` flag on `l2-rescan` and capacity-sweep points; the Rust reader already ignores unknown fields.
+- `scripts/check_profiles.py` checks, in a profile that claims the long-launch protocol, that every timed value has `launch.min_ns` of at least 1e6; it skips values whose `source` is `estimated` and derived values that are not timed themselves (`l2_effective_capacity_bytes`, the `l2_rescan` hit rates, `serial_stage_overhead_ns`).
 - `provenance` gains an optional `capture_protocol` object: the minimum launch, the schedule digest per mode, the number of independent processes per mode, and each gate's result.
 - `PROFILE_REVISION` moves to `0.23.0` for profiles captured this way. Profiles without `capture_protocol` keep reading as before.
 
 ## 6. Capture gates in `collect_profile.py`
 
-`collect_profile.py` runs each mode as at least 5 independent processes (repeat_mlp already does this for MLP), takes the median of per-process medians as the value, and writes no profile unless every mode passes:
+`collect_profile.py` runs the suite as 5 independent rounds. Each round passes the thermal gate and, where they apply, the host and desktop gates once, then runs every mode in turn, each as its own process. A field's value is the median over the 5 rounds of each round's median.
+
+Per mode and round, at the end of its process: every launch at least 1.0 ms (checked at once by `long_launch.py`, not only by `check_profiles.py`), rules 1 and 2, and the host check. A mode that fails in a round is void for that round only and runs again in an extra round; at most 2 extra rounds per capture, after which the capture fails. After all rounds, rule 3 per mode across its 5 accepted rounds (with the L2 band exception of section 4). The gates:
 
 - the three dispersion rules (`microbench/capture_posthoc.py`): at most 5% of sample lists with an interquartile range above 10% of the median, at most 15% with largest over smallest above 1.5, at most 5% of points whose per-process medians spread more than 10%;
-- on GPUs that share memory with the CPU (`integrated` in the device query, GB10): `microbench/host_quiet.py`, 10 quiet seconds before each process and no second during it with more than 10% of all CPUs busy or any foreign process above 5% of one CPU for two seconds;
-- under WSL: the quiet Windows desktop gate (GPU utilization under 5% for 60 s, no game or streaming process).
+- on GPUs that share memory with the CPU (`integrated` in the device query, GB10): `microbench/host_quiet.py`, 10 quiet seconds before each round and no second during a mode's process with more than 10% of all CPUs busy or any foreign process above 5% of one CPU for two seconds;
+- under WSL: the quiet Windows desktop gate (GPU utilization under 5% for 60 s, no game or streaming process) before each round.
 
-A failed gate prints the report and exits with an error; the raw captures are kept. Community profiles pass the same gates, so `docs/guides/contributing-a-profile.md` gains a section on them. The gates do not replace the thermal gate, which stays.
+A profile at revision `0.23.0` comes only from frozen schedules; without one, `collect_profile.py` produces the old revision as now. A failed gate prints the report and exits with an error; the raw captures are kept. On machines with several GPUs, the compute-process and telemetry checks look at the target device only (by UUID). Where `nvidia-smi` or the `/proc` reads are not permitted, the capture stops with the permission it needs instead of skipping a gate. On a plain Linux machine with a discrete GPU only the dispersion rules and the thermal gate apply. Community profiles pass the same gates, so `docs/guides/contributing-a-profile.md` gains a section on them.
 
 ## 7. Order and cost
 
@@ -98,7 +103,9 @@ A failed gate prints the report and exits with an error; the raw captures are ke
 2. Then diagnostics: `sync-loop-ablation`, the spill diagnostics, `l1-carveout`, `stage-overhead`, the launch overheads, `l2-rescan`, the capacity sweep.
 3. GB10 first, under the host gate; the RTX 4070 in a quiet desktop window.
 
-About 2100 timed points per GPU at 15 samples, 3 warmups and about 1.5 ms per launch is about 1 minute of kernel time per process, a few minutes with the DRAM flushes; with 5 processes, the pilot and the thermal gate, about an hour per GPU.
+About 2100 timed points per GPU at 15 samples, 3 warmups and about 1.5 ms per launch is about 1 minute of kernel time per round, plus about 15 s of DRAM flushes and the group and batch overheads; with 5 rounds, each with one thermal and quiet gate, and the pilot, about 30 to 45 minutes per GPU. Gating every mode's process separately would add about two hours of waiting, which the round structure avoids.
+
+Implementation goes in small commits, one per mode, each with a test, in the order of section 7.1.
 
 ## 8. Not in this design
 
