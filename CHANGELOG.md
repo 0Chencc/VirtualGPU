@@ -4,6 +4,7 @@
 
 ### Added
 
+- Post-hoc single-buffer loop microbenchmarks and a fused attention ablation for the `num_stages = 2` round trip, with RTX 4070 and GB10 data
 - Candidate v0.3 GEMM and attention holdouts for RTX 4070 and GB10, with a historical shape audit and CPU AOT resource checks
 - NVIDIA RTX PRO 5000 72GB Blackwell (`sm_120`) profile
 - Draft the v0.3 workload holdout protocol and audit the two reference profiles for MLP repeat coverage
