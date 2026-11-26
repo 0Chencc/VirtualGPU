@@ -1,0 +1,162 @@
+{
+ "note": "Rules 1 to 3 restricted after the fact to points at 1.5 times L2 or more; not a registered decision.",
+ "post_hoc": true,
+ "sets": {
+  "v1 wave-rescan all walks": {
+   "reproducibility": {
+    "limit": 0.05,
+    "points": 72,
+    "range": 0.1,
+    "runs": 2,
+    "share": 0.027777777777777776,
+    "status": "passed"
+   },
+   "runs": [
+    {
+     "iqr": 0.041666666666666664,
+     "lists": 72,
+     "spike": 0.0,
+     "status": "passed"
+    },
+    {
+     "iqr": 0.041666666666666664,
+     "lists": 72,
+     "spike": 0.041666666666666664,
+     "status": "passed"
+    }
+   ]
+  },
+  "v1 wave-rescan forward only": {
+   "reproducibility": {
+    "limit": 0.05,
+    "points": 36,
+    "range": 0.1,
+    "runs": 2,
+    "share": 0.0,
+    "status": "passed"
+   },
+   "runs": [
+    {
+     "iqr": 0.0,
+     "lists": 36,
+     "spike": 0.0,
+     "status": "passed"
+    },
+    {
+     "iqr": 0.0,
+     "lists": 36,
+     "spike": 0.0,
+     "status": "passed"
+    }
+   ]
+  },
+  "v2 wave-rescan-long all walks": {
+   "reproducibility": {
+    "limit": 0.05,
+    "points": 144,
+    "range": 0.1,
+    "runs": 2,
+    "share": 0.05555555555555555,
+    "status": "failed"
+   },
+   "runs": [
+    {
+     "iqr": 0.0,
+     "lists": 144,
+     "spike": 0.0,
+     "status": "passed"
+    },
+    {
+     "iqr": 0.0,
+     "lists": 144,
+     "spike": 0.0,
+     "status": "passed"
+    }
+   ]
+  },
+  "v2 wave-rescan-long forward only": {
+   "reproducibility": {
+    "limit": 0.05,
+    "points": 72,
+    "range": 0.1,
+    "runs": 2,
+    "share": 0.013888888888888888,
+    "status": "passed"
+   },
+   "runs": [
+    {
+     "iqr": 0.0,
+     "lists": 72,
+     "spike": 0.0,
+     "status": "passed"
+    },
+    {
+     "iqr": 0.0,
+     "lists": 72,
+     "spike": 0.0,
+     "status": "passed"
+    }
+   ]
+  },
+  "v3 wave-rescan-v3 all walks": {
+   "reproducibility": {
+    "limit": 0.05,
+    "points": 72,
+    "range": 0.1,
+    "runs": 3,
+    "share": 0.0,
+    "status": "passed"
+   },
+   "runs": [
+    {
+     "iqr": 0.0,
+     "lists": 72,
+     "spike": 0.0,
+     "status": "passed"
+    },
+    {
+     "iqr": 0.0,
+     "lists": 72,
+     "spike": 0.0,
+     "status": "passed"
+    },
+    {
+     "iqr": 0.0,
+     "lists": 72,
+     "spike": 0.013888888888888888,
+     "status": "passed"
+    }
+   ]
+  },
+  "v3 wave-rescan-v3 forward only": {
+   "reproducibility": {
+    "limit": 0.05,
+    "points": 72,
+    "range": 0.1,
+    "runs": 3,
+    "share": 0.0,
+    "status": "passed"
+   },
+   "runs": [
+    {
+     "iqr": 0.0,
+     "lists": 72,
+     "spike": 0.0,
+     "status": "passed"
+    },
+    {
+     "iqr": 0.0,
+     "lists": 72,
+     "spike": 0.0,
+     "status": "passed"
+    },
+    {
+     "iqr": 0.0,
+     "lists": 72,
+     "spike": 0.013888888888888888,
+     "status": "passed"
+    }
+   ]
+  }
+ }
+}

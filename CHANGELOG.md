@@ -22,7 +22,7 @@
 
 ### Fixed
 
-- Cross-wave L2 reuse: chunks that end together share one stream clock, and re-reads hit per K slice under LRU with the effective L2 capacity. Forward re-reads above capacity no longer get the 50% to 90% hits of the old clock (four GB10 captures agree, none yet passes every capture rule); the reversed-walk detail is provisional, and the GB10 steady state near capacity is bistable across runs
+- Cross-wave L2 reuse: chunks that end together share one stream clock, and re-reads hit per K slice under LRU with the effective L2 capacity. Kept on GB10 microbenchmarks that agree in direction but fail the cross-run capture rule: forward re-reads at 1.5 times L2 or more do not hit in any run (the old clock charged 50% to 90%); from about 0.75 to 1.25 times L2 the hardware steady state is bistable across runs, a known limit; the reversed-walk detail is provisional; the sealed v0.3 holdout decides
 - Mark the GB10 MLP medians from five independent sweeps as provisional after the dispersion audit and propose long-launch recapture on both GPUs
 - The L2 miss merging model no longer fails on GPUs with more than 128 SMs
 
