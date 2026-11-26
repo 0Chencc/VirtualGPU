@@ -250,3 +250,50 @@ Fields sharing a `perturb_group` receive the same multiplicative draw per pertur
   - If `throttle_events > 0`, add `+0.05` to the affected domain's `rel_uncertainty` and flag it in provenance.
 
 ---
+
+## Post-hoc spill counter capture
+
+After counter permission takes effect on the Bifrost RTX 4070, run this from
+a clean commit with Nsight Compute 2026.4 on PATH and CUDA nvcc, PyTorch and
+Triton in the project environment:
+
+```sh
+flock /tmp/virtualgpu-gpu.lock .venv/bin/python -m microbench.spill_counters
+```
+
+Use `--nvcc /path/to/nvcc` or `--ncu /path/to/ncu` to select an installed
+toolchain. The collector profiles one launch before the sweep to check
+hardware counter permission. An `ERR_NVGPUCTRPERM` error exits with no result.
+The JSON appears in `results/post-hoc/` only after every capture succeeds.
+The record binds the checkout, driver, NCU, compiler, kernel artifacts and
+metric names. This capture leaves the frozen evaluations unchanged.
+
+The 60 points from `spill_reload_latency_by_count` each use the existing
+kernel with zero and 128 steps. Subtracting the zero-step launch removes
+frame initialization from the average per-iteration counts. Launch totals
+include warp-level local load and store instructions and hardware L1TEX
+sectors. Source counters also count predicated-on thread instructions.
+These measurements have different units.
+
+The attention diagnostic profiles three configurations from the published
+causal GQA development manifest. It gives the prefix and diagonal helper
+calls separate source locations and checks normalized PTX, register count,
+shared memory and total local thread counts against the original kernel.
+Per-loop averages use the CTA trip counts and attributed predicated-on
+thread instructions. Local instructions whose source is outside either
+helper or has no location are reported separately and stay in the launch
+totals. Launch-level L1TEX sectors have no loop attribution. See the
+[Nsight Compute Profiling Guide](https://docs.nvidia.com/nsight-compute/ProfilingGuide/)
+for metric definitions.
+
+## Independent MLP repeat reduction
+
+The MLP refresh captures five separate processes for each of `mlp`
+and `strided-mlp`, with three warmups and 15 samples per point.
+`microbench.repeat_mlp` verifies geometry against the existing profile
+and stores the raw samples and active-load telemetry. Run each capture
+under the shared GPU lock. The reducer uses the median of the five
+sweep medians, stores the pooled statistics as descriptive data, and
+binds the new profile to a calibration manifest digest. See the
+[measurement plan and archive](../results/analysis/v0.3-mlp-repeat-plan.md)
+for the protocol and evidence.

@@ -536,6 +536,9 @@ int main(int argc, char** argv) {
   if (mode == "gmem-issue") {
     return run_gmem_issue(device, samples, warmup);
   }
+  if (mode == "spill-counter-probe" || mode == "spill-counters") {
+    return run_spill_counters(device, mode == "spill-counter-probe");
+  }
   if (mode == "spill-latency") {
     return run_spill_latency(device, samples, warmup);
   }

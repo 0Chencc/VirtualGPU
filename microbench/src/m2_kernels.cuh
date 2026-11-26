@@ -3636,6 +3636,37 @@ static void dispatch_spill_frame(int frame_bytes, int sm_count, uint32_t* d_sink
   }
 }
 
+constexpr int spill_frame_bytes[] = {128, 256, 512, 1024, 2048, 4096};
+constexpr int spill_reload_counts[] = {0, 8, 32, 68, 128};
+
+static int run_spill_counters(int device, bool probe_only) {
+  cudaDeviceProp prop{};
+  CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
+  const int ctas = prop.multiProcessorCount;
+  uint32_t* sink = nullptr;
+  CUDA_CHECK(cudaMalloc(&sink, static_cast<size_t>(ctas) * 128 * sizeof(uint32_t)));
+  for (int frame : spill_frame_bytes) {
+    for (bool serial : {true, false}) {
+      for (int reloads : spill_reload_counts) {
+        for (int steps : {0, 128}) {
+          if (serial) dispatch_spill_frame<true>(frame, ctas, sink, reloads, 1, steps);
+          else dispatch_spill_frame<false>(frame, ctas, sink, reloads, 1, steps);
+          CUDA_CHECK(cudaGetLastError());
+          CUDA_CHECK(cudaDeviceSynchronize());
+          std::printf("SPILL_COUNTER_LAUNCH %d %d %d %d %d\n",
+                      frame, serial, reloads, steps, ctas);
+          if (probe_only) {
+            CUDA_CHECK(cudaFree(sink));
+            return 0;
+          }
+        }
+      }
+    }
+  }
+  CUDA_CHECK(cudaFree(sink));
+  return 0;
+}
+
 static int run_spill_latency(int device, int samples, int warmup) {
   cudaDeviceProp prop{};
   CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
@@ -3651,20 +3682,18 @@ static int run_spill_latency(int device, int samples, int warmup) {
 
   // Sweep frame_bytes_per_thread from 128 B to 4096 B (16 KB to 512 KB/SM at 128 resident threads/SM),
   // crossing the 128 KB L1 boundary cleanly. stride_u32=1 visits every 128 B warp-coalesced line.
-  const std::vector<int> frame_bytes_list = {128, 256, 512, 1024, 2048, 4096};
-  const std::vector<int> reload_counts = {0, 8, 32, 68, 128};
 
   std::printf("{\n  \"samples\": %d,\n  \"resident_threads_per_sm\": %d,\n  \"reload_latency_by_count\": [",
               samples, resident_threads_per_sm);
   bool first = true;
 
-  for (int fb : frame_bytes_list) {
+  for (int fb : spill_frame_bytes) {
     const int total_sm_bytes = fb * resident_threads_per_sm;
     const char* regime = (total_sm_bytes <= 65536) ? "l1_hit" : ((total_sm_bytes >= 262144) ? "l2_spill" : "l1_boundary");
     const int stride_u32 = 1;
     for (bool serial : {true, false}) {
       const char* dep_mode = serial ? "serial_chain" : "batch_before_dep";
-      for (int rc : reload_counts) {
+      for (int rc : spill_reload_counts) {
         bool likely_l2 = (total_sm_bytes >= 131072);
         int est_ns = 30 + rc * (likely_l2 ? (serial ? 120 : 20) : (serial ? 20 : 3));
         int steps = std::max(128, std::min(4096, 400000 / est_ns));

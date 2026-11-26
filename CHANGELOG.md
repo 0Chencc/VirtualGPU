@@ -5,6 +5,8 @@
 ### Added
 
 - NVIDIA RTX PRO 5000 72GB Blackwell (`sm_120`) profile
+- Draft the v0.3 workload holdout protocol and audit the two reference profiles for MLP repeat coverage
+- Post-hoc Nsight Compute capture for dynamic local loads and stores in the spill microbenchmark and causal attention
 - NVIDIA A100-SXM4-80GB (`sm_80`) profile
 - NVIDIA RTX PRO 6000 Blackwell Server Edition (`sm_120`) profile
 - NVIDIA L4 (`sm_89`) profile
@@ -13,6 +15,7 @@
 
 ### Fixed
 
+- Replace the GB10 MLP curves with medians from five independent sweeps
 - The L2 miss merging model no longer fails on GPUs with more than 128 SMs
 
 ## 0.2.0
