@@ -2,9 +2,12 @@
 
 Runs `vgpu_bench --mode dram-dispersion` as one process per condition, cycling
 quiet, 4-thread load, quiet, 16-thread load, quiet, three times. The load is
-`cpu_stream` (microbench/src/cpu_stream.c), started 5 s before and stopped 5 s
-after its process. Records PSI, vmstat faults, load average, the top CPU
-processes and GPU telemetry once per second. Run under the GPU lock.
+`cpu_stream` (microbench/src/cpu_stream.c): it touches its buffers first, and
+the GPU process starts 5 s after it reports ready; it stops 5 s after the GPU
+process ends. Records /proc/stat (busy CPUs), PSI, vmstat faults, load average,
+the top CPU processes and GPU telemetry once per second. PSI memory counts
+reclaim and fault stalls, not bandwidth, so busy CPUs and the load's own
+bandwidth are the CPU-side measures. Run under the GPU lock.
 """
 
 from __future__ import annotations
@@ -46,7 +49,9 @@ def host_state():
             return ""
 
     vmstat = dict(line.split() for line in read("/proc/vmstat").splitlines() if line)
+    cpu = [int(x) for x in read("/proc/stat").splitlines()[0].split()[1:]]
     return {
+        "cpu_jiffies": {"busy": sum(cpu) - cpu[3] - cpu[4], "total": sum(cpu)},
         "utc": utc(),
         "psi": {k: read(f"/proc/pressure/{k}").strip() for k in ("cpu", "memory", "io")},
         "loadavg": read("/proc/loadavg").strip(),
@@ -69,6 +74,8 @@ def run_condition(smi, binary, load_binary, threads):
     load = None
     if threads:
         load = subprocess.Popen([str(load_binary), str(threads)], stdout=subprocess.PIPE, text=True)
+        if load.stdout.readline().strip() != "ready":
+            raise RuntimeError("cpu_stream did not report ready")
         time.sleep(LOAD_LEAD_SECONDS)
     started = utc()
     out = command(
@@ -87,7 +94,7 @@ def run_condition(smi, binary, load_binary, threads):
     if load:
         time.sleep(LOAD_LEAD_SECONDS)
         load.send_signal(signal.SIGTERM)
-        load_report = json.loads(load.communicate(timeout=60)[0])
+        load_report = json.loads(load.communicate(timeout=60)[0].strip().splitlines()[-1])
     done.set()
     sampler.join()
     return {
