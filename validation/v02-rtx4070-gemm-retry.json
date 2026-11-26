@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "device": "RTX 4070",
+  "family": "gemm",
+  "case_id": "v02-rtx4070-prefill-1536",
+  "session": 2,
+  "order_seed": 102,
+  "retry_attempt": 1,
+  "capture_revision": "58d07f6d9d9c4a8112905027328a7fe3b4619356",
+  "original_seal": "validation/v02-rtx4070-gemm-seal.json",
+  "original_seal_sha256": "23a601bbfcbe0895210f996fcac5516e79d5612bdedd02f814b3997e6b4bcba4",
+  "manifest_sha256": "cb00b72be7bf31815b68649dfe1065e9721ae20bd2930cfb219896133a354365",
+  "profile_sha256": "3bb13b7307eabb803465a05cbcd939b78a6252bb2c54f3dc761c069ac2a8ed91",
+  "aot_sha256": "070fbb31cca4b44c4b632f070c5c5a3fb7d3889a8111ffea36a2eb29bc2b8399",
+  "wave_boundary_sha256": "e837e75a813103beeab3c4741f6c1ac6598d0da8010758766ceae4be56bda95e",
+  "original_report": "v02-rtx4070-prefill-1536-session-2.json",
+  "retry_of_sha256": "8a8836cc0a243704b9d93086f12ad3194c2538db3e7705eca6a87b9675135cd1",
+  "original_receipt": {
+    "sha256": "8a8836cc0a243704b9d93086f12ad3194c2538db3e7705eca6a87b9675135cd1",
+    "timestamp_utc": "2026-11-26T01:45:40.670163+00:00",
+    "status": "protocol_failed",
+    "complete_blocks": 0
+  },
+  "original_failure_detail": "The receipt records protocol_failed and zero complete blocks. It contains no more specific failure type.",
+  "retry_report": "results/v02-rtx4070/retry-prefill-1536-session-2/gemm/sealed/v02-rtx4070-prefill-1536-session-2.json",
+  "retry_receipt": {
+    "sha256": "d2670a0c060f85ea6808acbece7c50c2c411bcb15aa19ebdb8b01dec763efc22",
+    "timestamp_utc": "2026-11-26T01:48:34.277968+00:00",
+    "status": "complete",
+    "complete_blocks": 10
+  }
+}
