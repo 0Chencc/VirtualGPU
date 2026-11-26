@@ -343,10 +343,8 @@ def capture(args):
     host_roots = [os.getpid(), process.pid]
     if gate_host:
         host_samples.append(host_quiet.sample())
-    dispersion = {"status": "not_applicable"}
-    if schedule is None:
-        points = point_maps(profile, args.mode, raw)
-        dispersion = dispersion_for_points(points)
+    # Rules 1 and 2 apply to every sweep, long-launch ones included; a pilot has 3 samples.
+    dispersion = dispersion_for_points(point_maps(profile, args.mode, raw, sample_count))
     if not snaps:
         raise ValueError("No telemetry was recorded during the sweep")
     return {
@@ -373,7 +371,7 @@ def capture(args):
         "dispersion_check": dispersion,
         "host_quiet_gate": host_gate,
         "host_quiet_roots": host_roots if gate_host else None,
-        "host_samples": host_samples if gate_host else None,
+        "host_samples": host_quiet.slim(host_samples, host_roots) if gate_host else None,
         "host_quiet_check": host_quiet.check(host_samples, host_roots) if gate_host else None,
         "thermal_warmup": warm,
         "thermal_stability": stable,
@@ -636,6 +634,9 @@ def main():
         write_json(args.output, record)
         if record["dispersion_check"]["status"] == "failed":
             raise SystemExit(f"Dispersion check failed, capture void: {record['dispersion_check']}")
+        host = record["host_quiet_check"]
+        if host is not None and host["status"] != "passed":
+            raise SystemExit(f"Host CPU was not quiet, capture void: {host}")
     else:
         profile, manifest = reduce_runs(args.profile, args.runs, args.revision)
         manifest["capture_harness_sha256"] = digest(args.capture_harness)

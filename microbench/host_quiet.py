@@ -103,6 +103,29 @@ def check(samples, roots):
     }
 
 
+def slim(samples, roots, floor=0.01):
+    """Drop the processes that cannot change `check`: keep the capture's own process tree and
+    every process that used at least `floor` of one CPU between some two adjacent samples.
+
+    `floor` is far under PROCESS_LIMIT, so `check` on the result equals `check` on the input."""
+    keep = set()
+    for a, b in zip(samples, samples[1:]):
+        keep |= own_pids(b, roots) | own_pids(a, roots)
+        dt = b["total"] - a["total"]
+        if dt <= 0:
+            continue
+        ncpu = b.get("ncpu") or os.cpu_count()
+        before = {int(pid): v for pid, v in a["procs"].items()}
+        for pid, (_comm, jiffies, _) in b["procs"].items():
+            pid = int(pid)
+            if pid in before and (jiffies - before[pid][1]) / dt * ncpu >= floor:
+                keep.add(pid)
+    return [
+        {**s, "procs": {pid: v for pid, v in s["procs"].items() if int(pid) in keep}}
+        for s in samples
+    ]
+
+
 def wait_for_quiet_host(roots, seconds=QUIET_SECONDS, timeout=QUIET_TIMEOUT_SECONDS, clock=time):
     """Block until the last `seconds` one-second samples pass `check`; return that window."""
     start = clock.monotonic()

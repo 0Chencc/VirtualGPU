@@ -2,6 +2,7 @@
 
 import json
 import os
+import time
 import unittest
 from unittest.mock import patch
 
@@ -61,6 +62,31 @@ class JsonRoundTripTests(unittest.TestCase):
         samples[2]["procs"][50] = ("other", 0, 1)
         samples[3]["procs"][50] = ("other", 60, 1)
         self.assertEqual(host_quiet.check(samples, [10])["status"], "passed")
+
+
+class SlimTests(unittest.TestCase):
+    def test_slim_keeps_the_verdict_bit_for_bit(self):
+        for samples in (series(0), series(60), series(60, parent=11), series(0, busy_share=0.2)):
+            for s in samples:
+                s["procs"].update({100 + i: (f"idle{i}", 7, 1) for i in range(50)})
+            slimmed = host_quiet.slim(samples, [10])
+            self.assertEqual(host_quiet.check(slimmed, [10]), host_quiet.check(samples, [10]))
+            self.assertEqual(
+                json.loads(json.dumps(host_quiet.check(slimmed, [10]))),
+                host_quiet.check(json.loads(json.dumps(slimmed)), [10]),
+            )
+            self.assertLess(len(slimmed[0]["procs"]), len(samples[0]["procs"]))
+
+    def test_slim_on_real_snapshots(self):
+        samples = []
+        for _ in range(3):
+            samples.append(host_quiet.sample())
+            time.sleep(0.2)
+        slimmed = host_quiet.slim(samples, [os.getpid()])
+        self.assertEqual(
+            host_quiet.check(slimmed, [os.getpid()]), host_quiet.check(samples, [os.getpid()])
+        )
+        self.assertIn(os.getpid(), slimmed[-1]["procs"])
 
 
 class FakeClock:

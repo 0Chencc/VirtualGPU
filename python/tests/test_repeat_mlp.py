@@ -117,6 +117,34 @@ class RepeatMlpTests(unittest.TestCase):
                     mlp.main()
             self.assertEqual(json.loads(output.read_bytes()), record)
 
+    def test_host_not_quiet_archives_raw_and_exits(self):
+        record = {
+            "dispersion_check": {"status": "passed"},
+            "host_quiet_check": {"status": "failed", "offenders": {"7": {"comm": "cc1"}}},
+            "raw": {"read_curve": [1, 2]},
+        }
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp) / "void.json"
+            argv = [
+                "repeat_mlp",
+                "capture",
+                "profile",
+                "binary",
+                "mlp",
+                "1",
+                str(output),
+                "--revision",
+                "fixture",
+                "--source-sha256",
+                "fixture",
+                "--nvcc",
+                "nvcc",
+            ]
+            with patch("sys.argv", argv), patch.object(mlp, "capture", return_value=record):
+                with self.assertRaisesRegex(SystemExit, "Host CPU was not quiet"):
+                    mlp.main()
+            self.assertEqual(json.loads(output.read_bytes()), record)
+
     def test_reduce_uses_independent_medians_and_existing_ceiling(self):
         snapshot = {key: "Not Active" for key in mlp.TELEMETRY}
         snapshot.update({"clocks.current.sm": "2000", "clocks.current.memory": "[N/A]"})
