@@ -449,6 +449,7 @@ static int run_cta_dispatch(int device, int repeats) {
 }
 
 #include "m2_kernels.cuh"
+#include "posthoc_gb10_kernels.cuh"
 
 int main(int argc, char** argv) {
   std::string mode = "query";
@@ -565,6 +566,15 @@ int main(int argc, char** argv) {
   }
   if (mode == "fill-vs-loop-ablation") {
     return run_fill_vs_loop_ablation(device, samples, warmup);
+  }
+  if (mode == "wave-rescan") {
+    return run_wave_rescan(device, samples, warmup);
+  }
+  if (mode == "b-stream") {
+    return run_b_stream(device, samples, warmup);
+  }
+  if (mode == "staged-mma") {
+    return run_staged_mma(device, samples, warmup);
   }
   if (mode == "sync-loop-reconcile") {
     return run_sync_loop_reconcile(device, samples, warmup);
