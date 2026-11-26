@@ -323,7 +323,7 @@ __global__ void l2_read_cp_async_kernel(const uint4* __restrict__ src,
   }
 }
 
-static int run_l2(int device, int samples, int warmup) {
+static int run_l2(int device, int samples, int warmup, LongReadSchedule* schedule = nullptr) {
   cudaDeviceProp prop{};
   CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
   const int sm_count = prop.multiProcessorCount;
@@ -392,6 +392,16 @@ static int run_l2(int device, int samples, int warmup) {
   for (size_t ti = 0; ti < targets.size(); ++ti) {
     int target_sms = targets[ti];
     int iters = (target_sms <= 4) ? 4096 : 2048;
+    if (schedule) {
+      auto launch = [&](int count) {
+        l2_read_cg_ilp8_kernel<<<target_sms, threads>>>(d_buf, d_sink, ilp8_mask, count);
+      };
+      std::printf("%s\n    {\"target_sms\": %d", ti ? "," : "", target_sms);
+      schedule->measure(iters, 1, std::numeric_limits<int>::max(), target_sms * threads * 8ULL * 16,
+                        ilp8_ws_bytes, warmup, samples, ev_start, ev_stop, [] {}, launch);
+      std::printf("}");
+      continue;
+    }
     double total_bytes = static_cast<double>(target_sms) * static_cast<double>(threads) * 8.0 * 16.0 * static_cast<double>(iters);
 
     for (int w = 0; w < warmup; ++w) {
@@ -420,6 +430,14 @@ static int run_l2(int device, int samples, int warmup) {
       std::printf("%.3f", gbps[k]);
     }
     std::printf("]}");
+  }
+  if (schedule) {
+    std::printf("\n  ]\n}\n");
+    CUDA_CHECK(cudaEventDestroy(ev_start));
+    CUDA_CHECK(cudaEventDestroy(ev_stop));
+    CUDA_CHECK(cudaFree(d_buf));
+    CUDA_CHECK(cudaFree(d_sink));
+    return 0;
   }
   std::printf("\n  ],\n");
 
@@ -1435,14 +1453,15 @@ __global__ void mlp_ld_v4_kernel(const uint4* __restrict__ src,
   }
 }
 
-static int run_mlp(int device, int samples, int warmup) {
+static int run_mlp(int device, int samples, int warmup, LongReadSchedule* schedule = nullptr) {
   cudaDeviceProp prop{};
   CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
   const int sm_count = prop.multiProcessorCount;
 
   // Power-of-two buffers for cheap bitmask wrap:
   // DRAM = 256 MiB (> 7x L2 on RTX 4070), L2 = 8 MiB (< 0.25x L2).
-  const size_t dram_bytes = 256ULL * 1024ULL * 1024ULL;
+  const size_t dram_bytes = (schedule ? 1024ULL : 256ULL) * LongReadSchedule::MiB;
+  const size_t flush_bytes = 256ULL * LongReadSchedule::MiB;
   const size_t l2_bytes = 8ULL * 1024ULL * 1024ULL;
   const size_t dram_mask = (dram_bytes / sizeof(uint4)) - 1ULL;
   const size_t l2_mask = (l2_bytes / sizeof(uint4)) - 1ULL;
@@ -1452,11 +1471,11 @@ static int run_mlp(int device, int samples, int warmup) {
   uint4* d_l2 = nullptr;
   uint4* d_sink = nullptr;
   CUDA_CHECK(cudaMalloc(&d_dram, dram_bytes));
-  CUDA_CHECK(cudaMalloc(&d_flush, dram_bytes));
+  CUDA_CHECK(cudaMalloc(&d_flush, flush_bytes));
   CUDA_CHECK(cudaMalloc(&d_l2, l2_bytes));
   CUDA_CHECK(cudaMalloc(&d_sink, 1024 * sizeof(uint4)));
   CUDA_CHECK(cudaMemset(d_dram, 13, dram_bytes));
-  CUDA_CHECK(cudaMemset(d_flush, 14, dram_bytes));
+  CUDA_CHECK(cudaMemset(d_flush, 14, flush_bytes));
   CUDA_CHECK(cudaMemset(d_l2, 15, l2_bytes));
 
   cudaEvent_t ev_start, ev_stop;
@@ -1509,7 +1528,7 @@ static int run_mlp(int device, int samples, int warmup) {
   auto run_suite = [&](const char* key, bool is_dram, bool comma) {
     const uint4* buf = is_dram ? d_dram : d_l2;
     const size_t mask = is_dram ? dram_mask : l2_mask;
-    const size_t flush_vec4 = dram_bytes / sizeof(uint4);
+    const size_t flush_vec4 = flush_bytes / sizeof(uint4);
 
     std::printf("  \"%s\": [", key);
     bool first_out = true;
@@ -1547,6 +1566,31 @@ static int run_mlp(int device, int samples, int warmup) {
             else mlp_ld_v4_kernel<8><<<ctas, 256>>>(buf, d_sink, mask, ld_iters);
           }
         };
+
+        if (schedule) {
+          auto prepare = [&]() {
+            if (is_dram) l2_read_cg_kernel<<<sm_count * 4, 512>>>(d_flush, d_sink, flush_vec4, 1);
+          };
+          auto launch = [&](int count) {
+            cp_steps = ld_iters = count;
+            launch_once();
+          };
+          const size_t bytes_per_step = static_cast<size_t>(ctas) * 4096ULL * (is_cp ? cp_sub : mult);
+          // A step consumes a contiguous grid stripe. For ld.global.v4, the
+          // initialized uniform uint4 values keep the load-dependent offset zero.
+          const int max_steps = is_dram ? static_cast<int>(dram_bytes / bytes_per_step)
+                                       : std::numeric_limits<int>::max();
+          std::printf("%s\n    {\"issue_mode\": \"%s\", \"bytes_in_flight\": %zu, \"active_ctas\": %d, \"bytes_per_cta\": %zu",
+                      first_out ? "" : ",", mode_name, bif, ctas, bytes_per_cta);
+          first_out = false;
+          const int minimum = is_cp ? cp_stages * 4 : 4;
+          const size_t pilot_bytes = is_dram ? 16ULL * LongReadSchedule::MiB : 64ULL * LongReadSchedule::MiB;
+          const int initial = std::max(minimum, static_cast<int>(pilot_bytes / bytes_per_step));
+          schedule->measure(initial, minimum, max_steps, bytes_per_step, is_dram ? dram_bytes : l2_bytes,
+                            warmup, samples, ev_start, ev_stop, prepare, launch);
+          std::printf("}");
+          continue;
+        }
 
         for (int w = 0; w < warmup; ++w) {
           if (is_dram) {
@@ -3910,23 +3954,24 @@ static void dispatch_strided_mlp(int mult, int ctas, size_t dyn_smem,
   else strided_mlp_cp_async_kernel<4, 2, SEG_U4, STRIDE_U4><<<ctas, 256, dyn_smem>>>(d_dram, d_sink, dram_mask, steps);
 }
 
-static int run_strided_mlp(int device, int samples, int warmup) {
+static int run_strided_mlp(int device, int samples, int warmup, LongReadSchedule* schedule = nullptr) {
   cudaDeviceProp prop{};
   CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
   const int sm_count = prop.multiProcessorCount;
 
-  const size_t dram_bytes = 256ULL * 1024ULL * 1024ULL;
+  const size_t dram_bytes = (schedule ? 2048ULL : 256ULL) * LongReadSchedule::MiB;
+  const size_t flush_bytes = 256ULL * LongReadSchedule::MiB;
   const size_t dram_mask = (dram_bytes / sizeof(uint4)) - 1ULL;
-  const size_t flush_vec4 = dram_bytes / sizeof(uint4);
+  const size_t flush_vec4 = flush_bytes / sizeof(uint4);
 
   uint4* d_dram = nullptr;
   uint4* d_flush = nullptr;
   uint4* d_sink = nullptr;
   CUDA_CHECK(cudaMalloc(&d_dram, dram_bytes));
-  CUDA_CHECK(cudaMalloc(&d_flush, dram_bytes));
+  CUDA_CHECK(cudaMalloc(&d_flush, flush_bytes));
   CUDA_CHECK(cudaMalloc(&d_sink, 1024 * sizeof(uint4)));
   CUDA_CHECK(cudaMemset(d_dram, 31, dram_bytes));
-  CUDA_CHECK(cudaMemset(d_flush, 32, dram_bytes));
+  CUDA_CHECK(cudaMemset(d_flush, 32, flush_bytes));
 
   cudaEvent_t ev_start, ev_stop;
   CUDA_CHECK(cudaEventCreate(&ev_start));
@@ -3966,7 +4011,7 @@ static int run_strided_mlp(int device, int samples, int warmup) {
       const int cp_stages = (mult <= 4) ? mult : 4;
       const size_t dyn_smem = static_cast<size_t>(cp_stages) * static_cast<size_t>(cp_sub) * 4096ULL;
       const size_t target_bytes = std::min<size_t>(dram_bytes / 2ULL, std::max<size_t>(16ULL * 1024ULL * 1024ULL, bif * 64ULL));
-      const int steps = std::max(cp_stages * 4, static_cast<int>(target_bytes / (static_cast<size_t>(ctas) * 4096ULL * cp_sub)));
+      int steps = std::max(cp_stages * 4, static_cast<int>(target_bytes / (static_cast<size_t>(ctas) * 4096ULL * cp_sub)));
       const double actual_bytes = static_cast<double>(ctas) * 4096.0 * cp_sub * steps;
 
       auto launch_once = [&]() {
@@ -3979,6 +4024,30 @@ static int run_strided_mlp(int device, int samples, int warmup) {
         else
           dispatch_strided_mlp<256, 1024>(mult, ctas, dyn_smem, d_dram, d_sink, dram_mask, steps);
       };
+
+      if (schedule) {
+        auto prepare = [&]() {
+          l2_read_cg_kernel<<<sm_count * 4, 512>>>(d_flush, d_sink, flush_vec4, 1);
+        };
+        auto launch = [&](int count) {
+          steps = count;
+          launch_once();
+        };
+        const size_t bytes_per_step = static_cast<size_t>(ctas) * 4096ULL * cp_sub;
+        // Each CTA's stripe divides exactly into segments. Segment ordinals
+        // map injectively to (stride row, segment phase) up to the source size.
+        // Keep the existing half-buffer transfer cap, including the prologue.
+        const int max_steps = static_cast<int>((dram_bytes / 2ULL) / bytes_per_step);
+        const int minimum = cp_stages * 4;
+        const int initial = std::max(minimum, static_cast<int>(16ULL * LongReadSchedule::MiB / bytes_per_step));
+        std::printf("%s\n    {\"segment_bytes\": %d, \"stride_bytes\": %d, \"bytes_in_flight\": %zu, \"active_ctas\": %d, \"bytes_per_cta\": %zu",
+                    first ? "" : ",", cfg.seg_bytes, cfg.stride_bytes, bif, ctas, bytes_per_cta);
+        first = false;
+        schedule->measure(initial, minimum, max_steps, bytes_per_step, dram_bytes,
+                          warmup, samples, ev_start, ev_stop, prepare, launch);
+        std::printf("}");
+        continue;
+      }
 
       for (int w = 0; w < warmup; ++w) {
         l2_read_cg_kernel<<<sm_count * 4, 512>>>(d_flush, d_sink, flush_vec4, 1);

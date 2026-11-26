@@ -112,7 +112,7 @@ def point_key(field, row):
     return tuple(row[key] for key in (*layout, "bytes_in_flight", "active_ctas", "bytes_per_cta"))
 
 
-def point_maps(profile, mode, raw):
+def point_maps(profile, mode, raw, sample_count=SAMPLES):
     maps = {}
     for field in MODES[mode]:
         expected = [point_key(field, row) for row in profile["measured"]["memory"][field]]
@@ -123,10 +123,10 @@ def point_maps(profile, mode, raw):
         for key, samples in observed.items():
             if (
                 not isinstance(samples, list)
-                or len(samples) != SAMPLES
+                or len(samples) != sample_count
                 or not all(type(x) in (int, float) and math.isfinite(x) and x > 0 for x in samples)
             ):
-                raise ValueError(f"{field} {key}: expected {SAMPLES} finite positive samples")
+                raise ValueError(f"{field} {key}: expected {sample_count} finite positive samples")
         maps[field] = observed
     return maps
 
@@ -164,7 +164,7 @@ def thermal_stability(windows):
     }
 
 
-def warm_device(smi, binary, seconds, *, timeout_report):
+def warm_device(smi, binary, seconds, *, timeout_report, long_read=False):
     start = time.monotonic()
     minimum = max(seconds, 2 * WINDOW_SECONDS)
     if minimum > THERMAL_TIMEOUT_SECONDS:
@@ -181,7 +181,10 @@ def warm_device(smi, binary, seconds, *, timeout_report):
                 write_json(timeout_report, {"utc": utc(), "warmup_telemetry": trace})
                 raise RuntimeError("Thermal/clock gate did not pass within twenty minutes")
         require_quiet(host_snapshot(smi))
-        command(binary, "--mode", "mlp", "--samples", "1", "--warmup", str(WARMUP))
+        if long_read:
+            command(binary, "--mode", "read-soak")
+        else:
+            command(binary, "--mode", "mlp", "--samples", "1", "--warmup", str(WARMUP))
         snap = telemetry(smi)
         trace.append({**snap, "elapsed_seconds": time.monotonic() - start})
 
@@ -240,20 +243,27 @@ def reproducibility_for_runs(point_runs):
 def capture(args):
     from shutil import which
 
+    schedule = getattr(args, "long_read_schedule", None)
+    sample_count = 3 if schedule == "pilot" else SAMPLES
     smi = which("nvidia-smi") or "/usr/lib/wsl/lib/nvidia-smi"
     before = host_snapshot(smi)
     require_quiet(before)
     profile = json.loads(args.profile.read_bytes())
     use_desktop_gate = profile["provenance"]["is_wsl"]
     desktop_gate = {"status": "not_applicable"}
-    if use_desktop_gate:
+    if use_desktop_gate or schedule is not None:
         from microbench.capture_posthoc import wait_for_quiet_desktop
 
         desktop_gate = wait_for_quiet_desktop()
-        if desktop_gate["status"] != "passed":
+        if use_desktop_gate and desktop_gate["status"] != "passed":
             raise RuntimeError("Windows desktop quiet gate is unavailable")
         before = host_snapshot(smi)
         require_quiet(before)
+    if schedule is not None:
+        before["memory"] = command("free", "-b")
+        before["cpu_processes"] = command(
+            "ps", "-eo", "pid,comm,pcpu,rss", "--sort=-pcpu"
+        ).splitlines()[:12]
     initial = telemetry(smi)
     if initial["name"] != profile["identity"]["sku"]:
         # NVIDIA tools may omit the vendor prefix used by the profile.
@@ -270,6 +280,7 @@ def capture(args):
         args.binary,
         args.warmup_seconds,
         timeout_report=args.output.with_suffix(".thermal-timeout.json"),
+        long_read=schedule is not None,
     )
     run_args = [
         str(args.binary),
@@ -278,10 +289,12 @@ def capture(args):
         "--device",
         "0",
         "--samples",
-        str(SAMPLES),
+        str(sample_count),
         "--warmup",
         str(WARMUP),
     ]
+    if schedule is not None:
+        run_args.extend(("--long-read-schedule", str(schedule)))
     with tempfile.TemporaryFile(mode="w+t") as out, tempfile.TemporaryFile(mode="w+t") as err:
         started = utc()
         process = subprocess.Popen(run_args, stdout=out, stderr=err, text=True)
@@ -309,9 +322,16 @@ def capture(args):
         out.seek(0)
         raw = json.load(out)
     after = host_snapshot(smi)
+    if schedule is not None:
+        after["memory"] = command("free", "-b")
+        after["cpu_processes"] = command(
+            "ps", "-eo", "pid,comm,pcpu,rss", "--sort=-pcpu"
+        ).splitlines()[:12]
     require_quiet(after)
-    points = point_maps(profile, args.mode, raw)
-    dispersion = dispersion_for_points(points)
+    dispersion = {"status": "not_applicable"}
+    if schedule is None:
+        points = point_maps(profile, args.mode, raw)
+        dispersion = dispersion_for_points(points)
     if not snaps:
         raise ValueError("No telemetry was recorded during the sweep")
     return {

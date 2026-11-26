@@ -32,3 +32,16 @@ Pass `--nvcc <path>` to use a system CUDA toolkit instead.
 Lock clocks first when you can. On WSL2 clocks can't be locked from Linux, so the collector records the observed clocks, sets `clock_policy.locked = false` and widens `rel_uncertainty` for clock sensitive fields.
 
 The full steps, including the checks to run before you open a pull request, are in [contributing a profile](../docs/guides/contributing-a-profile.md).
+
+## Long-launch MLP calibration
+
+Use `python -m microbench.long_mlp reference` to archive the current
+profile's per-point expectations. Run `pilot` for `mlp`, `strided-mlp`,
+`dram-bw` and `l2` under `flock /tmp/virtualgpu-gpu.lock`. Name the
+receipts `<mode>.json` in one pilot directory. `freeze` binds all four
+pilot receipts and emits `<mode>.steps` alongside the freeze JSON.
+Run `capture` under the same lock, naming the receipts
+`<mode>-<repeat>.json` for repeats 1 through 5. Run `audit` offline on
+the freeze and capture directory to verify the step counts, durations
+and all three shared dispersion checks.
+See the [long-launch capture plan](../docs/results/analysis/v0.3-mlp-long-launch-plan.md).

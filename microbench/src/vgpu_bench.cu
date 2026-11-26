@@ -1,10 +1,14 @@
 #include <cuda_runtime.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <fstream>
+#include <limits>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -17,6 +21,8 @@
       std::exit(1);                                                          \
     }                                                                        \
   } while (0)
+
+#include "long_read.cuh"
 
 static __device__ __forceinline__ uint32_t read_smid() {
   uint32_t smid;
@@ -210,7 +216,8 @@ static int run_query(int device) {
   return 0;
 }
 
-static int run_dram_bw(int device, int samples, int warmup, size_t buffer_mb) {
+static int run_dram_bw(int device, int samples, int warmup, size_t buffer_mb,
+                       LongReadSchedule* schedule) {
   cudaDeviceProp prop{};
   CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
 
@@ -220,11 +227,13 @@ static int run_dram_bw(int device, int samples, int warmup, size_t buffer_mb) {
                                   : (32ULL * 1024ULL * 1024ULL);
   // Scale streaming buffer to >= 16x physical L2 so large-L2 GPUs (e.g. 96-128 MiB L2)
   // amortize trailing L2 write-allocate residency below 7%.
-  const size_t bytes = std::max<size_t>(buffer_mb * 1024ULL * 1024ULL, raw_l2_bytes * 16ULL);
+  const size_t bytes = std::max<size_t>((schedule ? 1024 : buffer_mb) * LongReadSchedule::MiB,
+                                        raw_l2_bytes * 16ULL);
   const size_t n_vec4 = bytes / sizeof(float4);
 
   const size_t l2_bytes = std::max<size_t>(raw_l2_bytes, 32ULL * 1024ULL * 1024ULL);
-  const size_t flush_bytes = std::max<size_t>(l2_bytes * 2ULL, 96ULL * 1024ULL * 1024ULL);
+  const size_t flush_bytes = schedule ? l2_bytes * 3ULL
+                                     : std::max<size_t>(l2_bytes * 2ULL, 96ULL * 1024ULL * 1024ULL);
   const size_t flush_vec4 = flush_bytes / sizeof(uint4);
 
   float4* d_buf = nullptr;
@@ -268,6 +277,26 @@ static int run_dram_bw(int device, int samples, int warmup, size_t buffer_mb) {
       // Launch 1 CTA per target SM (512 threads = 16 warps/SM) for partial-SM points;
       // at full GPU, launch 4 CTAs/SM to saturate memory controllers.
       int grid = (target_sms == sm_count) ? (sm_count * 4) : target_sms;
+
+      if (schedule) {
+        auto prepare = [&]() {
+          l2_flush_clean_kernel<<<flush_blocks, 256>>>(d_flush, reinterpret_cast<uint4*>(d_sink), flush_vec4);
+          CUDA_CHECK(cudaMemset(d_sm_seen, 0, static_cast<size_t>(sm_count) * sizeof(uint32_t)));
+        };
+        auto launch = [&](int mib) {
+          const size_t vectors = static_cast<size_t>(mib) * LongReadSchedule::MiB / sizeof(float4);
+          dram_read_kernel<<<grid, threads>>>(d_buf, d_sink, vectors, d_sm_seen);
+        };
+        std::printf("%s\n    {\"target_sms\": %d, \"grid\": %d", ti ? "," : "", target_sms, grid);
+        const int max_mib = static_cast<int>(bytes / LongReadSchedule::MiB);
+        schedule->measure(16, 1, max_mib, LongReadSchedule::MiB, bytes, warmup, samples,
+                          ev_start, ev_stop, prepare, launch);
+        CUDA_CHECK(cudaMemcpy(h_sm_seen.data(), d_sm_seen,
+                              static_cast<size_t>(sm_count) * sizeof(uint32_t), cudaMemcpyDeviceToHost));
+        auto observed = std::count_if(h_sm_seen.begin(), h_sm_seen.end(), [](uint32_t count) { return count > 0; });
+        std::printf(", \"observed_sms\": %td}", observed);
+        continue;
+      }
 
       for (int w = 0; w < warmup; ++w) {
         l2_flush_clean_kernel<<<flush_blocks, 256>>>(d_flush, reinterpret_cast<uint4*>(d_sink), flush_vec4);
@@ -330,8 +359,10 @@ static int run_dram_bw(int device, int samples, int warmup, size_t buffer_mb) {
   std::printf("  \"samples\": %d,\n", samples);
   std::printf("  \"read_curve\": ");
   measure_curve(false, targets);
-  std::printf(",\n  \"write_full\": ");
-  measure_curve(true, std::vector<int>{sm_count});
+  if (!schedule) {
+    std::printf(",\n  \"write_full\": ");
+    measure_curve(true, std::vector<int>{sm_count});
+  }
   std::printf("\n}\n");
 
   CUDA_CHECK(cudaEventDestroy(ev_start));
@@ -461,6 +492,24 @@ static int run_cta_dispatch(int device, int repeats) {
 #include "narrow_validate.cuh"
 #include "posthoc_gb10_probe.cuh"
 
+static int run_read_soak(int device) {
+  cudaDeviceProp prop{};
+  CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
+  const size_t buffer_bytes = 256 * LongReadSchedule::MiB;
+  uint4* source = nullptr;
+  uint4* sink = nullptr;
+  CUDA_CHECK(cudaMalloc(&source, buffer_bytes));
+  CUDA_CHECK(cudaMalloc(&sink, 1024 * sizeof(uint4)));
+  CUDA_CHECK(cudaMemset(source, 13, buffer_bytes));
+  for (int iteration = 0; iteration < 20; ++iteration) {
+    l2_read_cg_kernel<<<prop.multiProcessorCount * 4, 512>>>(source, sink, buffer_bytes / sizeof(uint4), 4);
+  }
+  CUDA_CHECK(cudaDeviceSynchronize());
+  CUDA_CHECK(cudaFree(source));
+  CUDA_CHECK(cudaFree(sink));
+  return 0;
+}
+
 int main(int argc, char** argv) {
   std::string mode = "query";
   int device = 0;
@@ -469,6 +518,7 @@ int main(int argc, char** argv) {
   int repeats = 5;
   size_t buffer_mb = 256;
   double l2_gbps = 0.0;
+  std::unique_ptr<LongReadSchedule> long_read;
 
   for (int i = 1; i < argc; ++i) {
     std::string arg = argv[i];
@@ -486,18 +536,37 @@ int main(int argc, char** argv) {
       buffer_mb = static_cast<size_t>(std::atoll(argv[++i]));
     } else if (arg == "--l2-gbps" && i + 1 < argc) {
       l2_gbps = std::atof(argv[++i]);
+    } else if (arg == "--long-read-schedule" && i + 1 < argc) {
+      long_read = std::make_unique<LongReadSchedule>(argv[++i]);
     } else {
       std::fprintf(stderr, "Unknown argument: %s\n", arg.c_str());
       return 2;
     }
   }
 
+  if (long_read && mode != "mlp" && mode != "strided-mlp" && mode != "dram-bw" && mode != "l2") {
+    std::fprintf(stderr, "Long-read schedules apply only to mlp, strided-mlp, dram-bw and l2\n");
+    return 2;
+  }
+
   CUDA_CHECK(cudaSetDevice(device));
+  if (long_read) {
+    int result;
+    if (mode == "mlp") result = run_mlp(device, samples, warmup, long_read.get());
+    else if (mode == "strided-mlp") result = run_strided_mlp(device, samples, warmup, long_read.get());
+    else if (mode == "dram-bw") result = run_dram_bw(device, samples, warmup, buffer_mb, long_read.get());
+    else result = run_l2(device, samples, warmup, long_read.get());
+    long_read->finish();
+    return result;
+  }
   if (mode == "query") {
     return run_query(device);
   }
+  if (mode == "read-soak") {
+    return run_read_soak(device);
+  }
   if (mode == "dram-bw") {
-    return run_dram_bw(device, samples, warmup, buffer_mb);
+    return run_dram_bw(device, samples, warmup, buffer_mb, nullptr);
   }
   if (mode == "cta-dispatch") {
     return run_cta_dispatch(device, repeats);
