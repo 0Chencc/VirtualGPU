@@ -212,6 +212,19 @@ def warmup_evidence(record):
     }
 
 
+def dispersion_for_points(points):
+    from microbench.capture_posthoc import dispersion_check
+
+    return dispersion_check(
+        {
+            "points": [
+                {"gbps_samples": samples} for field in points.values() for samples in field.values()
+            ]
+        },
+        suffixes=("gbps_samples",),
+    )
+
+
 def capture(args):
     from shutil import which
 
@@ -219,6 +232,16 @@ def capture(args):
     before = host_snapshot(smi)
     require_quiet(before)
     profile = json.loads(args.profile.read_bytes())
+    use_desktop_gate = profile["provenance"]["is_wsl"]
+    desktop_gate = {"status": "not_applicable"}
+    if use_desktop_gate:
+        from microbench.capture_posthoc import wait_for_quiet_desktop
+
+        desktop_gate = wait_for_quiet_desktop()
+        if desktop_gate["status"] != "passed":
+            raise RuntimeError("Windows desktop quiet gate is unavailable")
+        before = host_snapshot(smi)
+        require_quiet(before)
     initial = telemetry(smi)
     if initial["name"] != profile["identity"]["sku"]:
         # NVIDIA tools may omit the vendor prefix used by the profile.
@@ -275,7 +298,8 @@ def capture(args):
         raw = json.load(out)
     after = host_snapshot(smi)
     require_quiet(after)
-    point_maps(profile, args.mode, raw)
+    points = point_maps(profile, args.mode, raw)
+    dispersion = dispersion_for_points(points) if use_desktop_gate else {"status": "not_applicable"}
     if not snaps:
         raise ValueError("No telemetry was recorded during the sweep")
     return {
@@ -298,6 +322,8 @@ def capture(args):
         "clock_policy": "record_only",
         "before": before,
         "after": after,
+        "desktop_quiet_gate": desktop_gate,
+        "dispersion_check": dispersion,
         "thermal_warmup": warm,
         "thermal_stability": stable,
         "telemetry": snaps,
@@ -347,6 +373,16 @@ def reduce_runs(base, paths, revision):
         if len({item[attr] for _, item in records}) != 1:
             raise ValueError(f"Conflicting capture provenance for {attr}")
     origin = records[0][1]
+    if profile["provenance"]["is_wsl"] and any(
+        item.get("desktop_quiet_gate", {}).get("status") != "passed"
+        or item.get("dispersion_check", {}).get("status") != "passed"
+        or dispersion_for_points(point_maps(profile, item["mode"], item["raw"]))
+        != item["dispersion_check"]
+        for _, item in records
+    ):
+        raise ValueError(
+            "Windows repeats require recorded and reproducible quiet/dispersion checks"
+        )
     if include_active and (
         not origin.get("session_id")
         or any(item.get("session_id") != origin["session_id"] for _, item in records)
@@ -402,6 +438,14 @@ def reduce_runs(base, paths, revision):
                     "started_utc": item["started_utc"],
                     "finished_utc": item["finished_utc"],
                     "warmup": warmup_evidence(item),
+                    **(
+                        {
+                            "desktop_quiet_gate_status": item["desktop_quiet_gate"]["status"],
+                            "dispersion_check": item["dispersion_check"],
+                        }
+                        if profile["provenance"]["is_wsl"]
+                        else {}
+                    ),
                 }
             )
         for field in fields:
@@ -517,7 +561,10 @@ def main():
     if args.action == "capture":
         if args.output.exists():
             raise FileExistsError(args.output)
-        write_json(args.output, capture(args))
+        record = capture(args)
+        write_json(args.output, record)
+        if record["dispersion_check"]["status"] == "failed":
+            raise SystemExit(f"Dispersion check failed, capture void: {record['dispersion_check']}")
     else:
         profile, manifest = reduce_runs(args.profile, args.runs, args.revision)
         manifest["capture_harness_sha256"] = digest(args.capture_harness)

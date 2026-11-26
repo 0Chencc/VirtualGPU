@@ -65,6 +65,44 @@ class RepeatMlpTests(unittest.TestCase):
         self.assertEqual(gate["elapsed_seconds"], 60)
         self.assertEqual(gate["samples_per_window"], [1, 1])
 
+    def test_dispersion_only_counts_selected_geometry_and_keeps_thresholds_strict(self):
+        points = {"read": {(number,): [1.0, 1.0] for number in range(10)}}
+        points["read"][(0,)] = [1.0, 1.4]
+        points["read"][(1,)] = [1.0, 1.3]
+        receipt = mlp.dispersion_for_points(points)
+        self.assertEqual(
+            (receipt["status"], receipt["over_ratio"], receipt["sample_lists"]), ("passed", 1, 10)
+        )
+        points["read"][(1,)] = [1.0, 1.31]
+        self.assertEqual(mlp.dispersion_for_points(points)["status"], "failed")
+        self.assertEqual(mlp.dispersion_for_points({})["status"], "failed")
+        short = mlp.dispersion_for_points({"read": {(0,): [1.0]}})
+        self.assertEqual((short["status"], short["invalid_lists"]), ("failed", 1))
+
+    def test_failed_dispersion_archives_raw_and_exits(self):
+        record = {"dispersion_check": {"status": "failed"}, "raw": {"read_curve": [1, 2]}}
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp) / "void.json"
+            argv = [
+                "repeat_mlp",
+                "capture",
+                "profile",
+                "binary",
+                "mlp",
+                "1",
+                str(output),
+                "--revision",
+                "fixture",
+                "--source-sha256",
+                "fixture",
+                "--nvcc",
+                "nvcc",
+            ]
+            with patch("sys.argv", argv), patch.object(mlp, "capture", return_value=record):
+                with self.assertRaisesRegex(SystemExit, "capture void"):
+                    mlp.main()
+            self.assertEqual(json.loads(output.read_bytes()), record)
+
     def test_reduce_uses_independent_medians_and_existing_ceiling(self):
         snapshot = {key: "Not Active" for key in mlp.TELEMETRY}
         snapshot.update({"clocks.current.sm": "2000", "clocks.current.memory": "[N/A]"})
