@@ -4,6 +4,7 @@
 
 ### Added
 
+- Draft the v0.3 workload holdout protocol and audit the two reference profiles for MLP repeat coverage
 - Post-hoc Nsight Compute capture for dynamic local loads and stores in the spill microbenchmark and causal attention
 - NVIDIA A100-SXM4-80GB (`sm_80`) profile
 - NVIDIA RTX PRO 6000 Blackwell Server Edition (`sm_120`) profile
