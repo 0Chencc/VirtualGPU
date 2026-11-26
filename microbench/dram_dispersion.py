@@ -77,6 +77,23 @@ def start_build(build_cmd):
     return proc
 
 
+def stop_group(proc):
+    """Stop a process group and wait until none of its processes is left (nvcc's
+    children can outlive the shell loop's SIGTERM)."""
+    os.killpg(proc.pid, signal.SIGTERM)
+    deadline = time.monotonic() + 30
+    while time.monotonic() < deadline:
+        proc.poll()  # reap the shell so that a zombie does not keep the group alive
+        try:
+            os.killpg(proc.pid, 0)
+        except ProcessLookupError:
+            break
+        time.sleep(0.2)
+    else:
+        os.killpg(proc.pid, signal.SIGKILL)
+    proc.wait(timeout=10)
+
+
 def run_condition(smi, binary, load_binary, threads, build_cmd=None):
     trace, done = [], threading.Event()
 
@@ -110,8 +127,7 @@ def run_condition(smi, binary, load_binary, threads, build_cmd=None):
     load_report = None
     if build:
         time.sleep(LOAD_LEAD_SECONDS)
-        os.killpg(build.pid, signal.SIGTERM)
-        build.wait(timeout=60)
+        stop_group(build)
     if load:
         time.sleep(LOAD_LEAD_SECONDS)
         load.send_signal(signal.SIGTERM)

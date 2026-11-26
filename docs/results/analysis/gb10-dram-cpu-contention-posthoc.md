@@ -25,8 +25,18 @@ No list in any run had an interquartile range above 10% of its median or a large
 3. **A steady load leaves the samples tight.** The slowdown is uniform, so the dispersion rules do not see it; a load that starts and stops during a capture, like a build, would split one point's samples into two levels as in the H5 captures. That intermittent case was not run here.
 4. **PSI memory and the load average do not show it.** PSI memory stayed at 0 under 126 GB/s of copying (it counts reclaim and fault stalls, not bandwidth); the 1-minute load average lags by tens of seconds (6.15 in a quiet run after the 16-thread load). The busy share from `/proc/stat` per second and the list of busy processes show it at once.
 
+## A build next to the capture
+
+Other sessions build `vgpu_bench` on the Spark while a capture holds the GPU lock, so a second session of the same eight points cycled quiet, build, quiet, build, quiet three times (`--conditions build`): during the build runs a loop of `microbench/build.py --arch sm_121a` ran in its own process group from 5 s before the GPU process to 5 s after it. Captured 2026-11-26 23:26 to 23:28 UTC (thermal gate 50.7 / 50.7 C, 2515 / 2522 MHz). Summary: [gb10-dram-build-posthoc.json](gb10-dram-build-posthoc.json); raw capture `dram-dispersion-build-1.json` (SHA-256 `af3f0a14...`) in `gb10-dram-build-captures.tar.gz` (`ba7335b31339dea76761e37d8cbe1388233af0192d450bd8a243b6ef2f3f962b`), in the same two places.
+
+- During every build run the compiler front end (`cicc`) used one full CPU and about 600 MB; measured separately under the GPU lock, a build loop raises the busy share of the 20 CPUs from 0.3% to 5.2%, all of it `cicc`.
+- Point medians during the build stayed within -0.7% to +2.3% of the quiet runs, no list had an interquartile range above 5.2% of its median, and every run passes the rules. A build does not disturb GPU DRAM timing the way a copying load does.
+- The stop of the build loop was not clean in this capture: `cicc` outlived the loop's SIGTERM and ran on into the quiet run after each build run; only the first quiet run of each cycle was free of it. Those quiet runs were as tight as the clean ones. `stop_group` in `microbench/dram_dispersion.py` now waits for the whole process group and kills what remains after 30 s.
+
 ## Precondition for GB10 DRAM captures
 
-- Before and throughout a capture, sample `/proc/stat` and the process list once per second; the capture is void if the busy share of all CPUs rises above the quiet level (5% to 6% here, of which the capture's own host thread is most; a limit of 10%, two CPUs of twenty, leaves margin) or any process outside the capture uses more than 5% of a CPU for more than one sample.
-- Other sessions' CPU-heavy work on the Spark (builds, large copies, data processing) conflicts with GPU DRAM captures as much as GPU work does, so it should wait for the GPU lock or the capture should stop.
-- Longer launches alone are not enough on GB10, and neither PSI memory nor the load average can stand in for the busy-CPU check.
+The CPU-side load that matters is memory traffic, which neither the CPU share nor any counter readable without privileges separates from harmless work such as a compiler front end. The check is therefore conservative: it voids a capture during any sustained foreign CPU work, and so also during a build that would not have mattered.
+
+- `microbench/host_quiet.py` implements it for the capture scripts: `sample()` once per second during the capture (from `/proc/stat` and each process's `/proc/<pid>/stat`), then `check(samples, roots)` with the capture's own process IDs. A capture is void if the busy share of all CPUs exceeds 10% in any second (the capture's own host thread spinning on events takes about 5%) or if a process outside the capture and its descendants uses more than 5% of one CPU in two consecutive seconds. Per-process CPU comes from deltas of `/proc/<pid>/stat`, since `ps` %CPU is a lifetime average.
+- Other sessions' CPU-heavy work on the Spark should wait for the GPU lock; otherwise the check voids the capture.
+- Longer launches alone are not enough on GB10, and neither PSI memory nor the load average can stand in for this check.
