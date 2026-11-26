@@ -173,6 +173,19 @@ virtualgpu autotune --kernel my_module:matmul --shape 2048 8192 4096 \
 - Cold passed every criterion. Warm missed the 1% absolute regret ceiling by 0.095 percentage points and passed everything else; the preregistration requires both.
 - On a GPU the model was not built on, when VirtualGPU says one config is faster, GB10 agrees 95% to 98% of the time and disagrees less than 1% of the time. The learned baseline, trained on RTX 4070 timings, is reversed 15% to 41% of the time.
 
+**v0.2 (frozen as `v0.2-final`) was evaluated on fresh sealed holdouts, GEMM and fused attention on both GPUs, and both device decisions formally failed.** The learned baselines were refit on all earlier published timings; VirtualGPU still used only the GPU profiles. Preregistration: [validation/v02-preregistration.md](validation/v02-preregistration.md). Full results: [validation/v02-holdout-report.md](validation/v02-holdout-report.md).
+
+| Cohort | Decision | VirtualGPU tau-b, warm / cold | VirtualGPU top-5 regret, warm / cold | Ordered verdicts that agree with hardware: VirtualGPU / baselines |
+|---|---|---:|---:|---:|
+| RTX 4070 GEMM | **Pass** | 0.748 / 0.693 | 0.82% / 0.73% | 93% to 94% / 54% to 73% |
+| RTX 4070 attention | Fail | 0.710 / 0.711 | 1.30% / 1.43% | 89% to 90% / 60% to 72% |
+| GB10 GEMM | Fail | 0.683 / 0.689 | 2.12% / 2.00% | 94% / 59% to 64% |
+| GB10 attention | Fail (warm) | 0.670 / 0.703 | 0.82% / 0.33% | 87% to 91% / 63% to 76% |
+
+- VirtualGPU ranked better than both baselines by the required margin in 7 of 8 cohort and cache combinations; the exception is GB10 attention warm, 0.048 above the learned baseline against a required 0.05.
+- The shortlist ceiling of 1% mean top-5 regret failed for RTX 4070 attention and GB10 GEMM. On GB10 GEMM cold the learned baseline's regret was also lower by more than the 0.5-point margin.
+- A device passes only if both kernel families pass in both cache regimes, so both devices fail.
+
 ## License
 
 [Apache-2.0](LICENSE)

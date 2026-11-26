@@ -3,7 +3,7 @@
 All notable changes to VirtualGPU are documented in this file.
 
 - **v0.1** corresponds to the `phase1-final` freeze (`129a6f5`, Phase 1/2 frozen baseline).
-- **v0.2** covers the post-Phase-2 model, frontend, measurement, and validation cycle up to `58a0f3f`.
+- **v0.2** covers the post-Phase-2 model, frontend, measurement, and validation cycle, frozen as `v0.2-final` (`e70824b`).
 - L1 carveout spill transition curves and spill reload latency modeling are **not** included in v0.2 (measured and stored in the profiles, not yet implemented in the core; planned for v0.3, see Known Limits).
 
 ---
@@ -66,7 +66,7 @@ All notable changes to VirtualGPU are documented in this file.
 - **Deferred to v0.3:** carveout-aware L1-to-L2 spill transition curves and spill reload latency modeling are not implemented in the v0.2 core. The measured curves are stored in the profiles but the core does not read them yet.
 - **Spill dynamic counts and causal dual-loop attribution:** static `ptxas` spill counts sum both causal `_attention_tiles` loops (main + 1-step diagonal) and do not report dynamic per-iteration reload counts; resolving this requires hardware performance counter (`ncu`) profiling.
 - **Synchronous-load GEMM residual:** `num_stages = 1` register-staged GEMM configs remain predicted slow (+9.1% warm / +2.2% cold median error on the development set; see `docs/design.md` section 9.2).
-- **Holdout validity for v0.2:** the RTX 4070 GEMM workload holdout and GB10 transfer datasets have been unsealed and **cannot** be reused to validate v0.2; v0.2 is instead evaluated on fresh sealed holdouts (RTX 4070 and GB10, GEMM and attention; see `validation/v02-preregistration.md`), whose results are pending.
+- **Holdout validity for v0.2:** the RTX 4070 GEMM workload holdout and GB10 transfer datasets have been unsealed and **cannot** be reused to validate v0.2; v0.2 is instead evaluated on fresh sealed holdouts (RTX 4070 and GB10, GEMM and attention; see `validation/v02-preregistration.md`), scored in `validation/v02-holdout-report.md`: RTX 4070 GEMM passed; RTX 4070 attention, GB10 GEMM and GB10 attention (warm) failed, so both device decisions are Fail.
 - **Unmodeled scope:** data-dependent kernels (MoE routing, sparse/paged attention), non-Triton PTX kernels, Hopper `wgmma` / data-center Blackwell `tcgen05`, and fine-grained bank-conflict or thermal-throttling effects remain out of scope (see `docs/design.md` section 9).
 
 ---
