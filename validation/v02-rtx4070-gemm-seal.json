@@ -1,0 +1,191 @@
+{
+  "timestamp_utc": "2026-11-26T01:47:40.164840+00:00",
+  "source": {
+    "commit": "58d07f6d9d9c4a8112905027328a7fe3b4619356",
+    "python_dirty": false,
+    "validation_dirty": false
+  },
+  "device": "RTX 4070",
+  "family": "gemm",
+  "preregistration_commit": "29a6ac2",
+  "manifest_sha256": "cb00b72be7bf31815b68649dfe1065e9721ae20bd2930cfb219896133a354365",
+  "profile_sha256": "3bb13b7307eabb803465a05cbcd939b78a6252bb2c54f3dc761c069ac2a8ed91",
+  "aot_sha256_by_case": {
+    "v02-rtx4070-decode-2": "2f94ea2e33dde0d0b6cc54314daadeeb90c8815e8fa2c95abd6c60e3dbbbd79c",
+    "v02-rtx4070-decode-24": "36a61c69cfb7f7bbbf34661097cc889e2d1fb5cc56763162e2e0d066cd66d80c",
+    "v02-rtx4070-mask-mnk-385": "a9ef8647ba83d11727f240cb543ae19c9c8a9802a7b2d63d020f7d4873cc1843",
+    "v02-rtx4070-mask-mnk-769": "f60038e477ae1f1e8972f80863499067f0c4c6487bac42bbaf36e05eccc4e8d6",
+    "v02-rtx4070-resident-wave-below": "ced92c18db07816a9f3903ef51652d9fd93c351e3e9d618462f62d605ca0f152",
+    "v02-rtx4070-resident-wave-exact": "29ec3ab9e01f1224913b3cd5ef5d492b2fd9ac1d5b42f1d4ba2604f0cbef7c3c",
+    "v02-rtx4070-resident-wave-above": "30bb87da52236ccbc5828086a8de8970008b623e1e8b59657aa2d286656f5e97",
+    "v02-rtx4070-prefill-768": "78c57e097421b44e7da4343cceea8424dd6268ad2f8130aed4dec9e53265e52e",
+    "v02-rtx4070-prefill-1536": "070fbb31cca4b44c4b632f070c5c5a3fb7d3889a8111ffea36a2eb29bc2b8399"
+  },
+  "reports": {
+    "v02-rtx4070-decode-2-session-1.json": {
+      "sha256": "d8209cf659c51bfe77384b8500ed2e39e4e7cc757dccf64ebd27b72994995034",
+      "timestamp_utc": "2026-11-26T01:42:51.820390+00:00",
+      "status": "complete",
+      "complete_blocks": 10
+    },
+    "v02-rtx4070-decode-2-session-2.json": {
+      "sha256": "58dd5ab1b7ba9238f7afc8e114a2cfaf8b7762ee12d0d0afc5411f727c254a29",
+      "timestamp_utc": "2026-11-26T01:44:22.640704+00:00",
+      "status": "complete",
+      "complete_blocks": 10
+    },
+    "v02-rtx4070-decode-2-session-3.json": {
+      "sha256": "610d045c2f1025fae168200aa289284d70117e034956acc389dbf0ce406970ea",
+      "timestamp_utc": "2026-11-26T01:46:26.932688+00:00",
+      "status": "complete",
+      "complete_blocks": 10
+    },
+    "v02-rtx4070-decode-24-session-1.json": {
+      "sha256": "7a6b1104b8c8148c1acf4bb88f53cf9fa72733b510273d99c406f8cb322a96b5",
+      "timestamp_utc": "2026-11-26T01:43:00.992508+00:00",
+      "status": "complete",
+      "complete_blocks": 10
+    },
+    "v02-rtx4070-decode-24-session-2.json": {
+      "sha256": "c705fbb81b7941d2eaf7f6fd8030f1d728afb07fd7d0383c8dbfea6c4f71389a",
+      "timestamp_utc": "2026-11-26T01:44:31.937174+00:00",
+      "status": "complete",
+      "complete_blocks": 10
+    },
+    "v02-rtx4070-decode-24-session-3.json": {
+      "sha256": "72c3686d1536f10658e2d2395ae456cf642f0b7f3e02abca5cd62a6fc392daaf",
+      "timestamp_utc": "2026-11-26T01:46:15.962253+00:00",
+      "status": "complete",
+      "complete_blocks": 10
+    },
+    "v02-rtx4070-mask-mnk-385-session-1.json": {
+      "sha256": "941ca57145c70e923cc74b0407854f1d325de2c430fbf3952b7b2746642984cb",
+      "timestamp_utc": "2026-11-26T01:43:10.343941+00:00",
+      "status": "complete",
+      "complete_blocks": 10
+    },
+    "v02-rtx4070-mask-mnk-385-session-2.json": {
+      "sha256": "22c7aa51492056944c8143ba35b13f44f16df83bec82a8ef886a9cad18e9b2e3",
+      "timestamp_utc": "2026-11-26T01:44:41.589059+00:00",
+      "status": "complete",
+      "complete_blocks": 10
+    },
+    "v02-rtx4070-mask-mnk-385-session-3.json": {
+      "sha256": "f9634647af6ba6248230f2dfe7003654dab355974b872a3481104162ccd5e121",
+      "timestamp_utc": "2026-11-26T01:46:25.282202+00:00",
+      "status": "complete",
+      "complete_blocks": 10
+    },
+    "v02-rtx4070-mask-mnk-769-session-1.json": {
+      "sha256": "14ba1f81f26f7bbfac9da1a5f361dd606cf482eff61b9be75fe07d72ac94756e",
+      "timestamp_utc": "2026-11-26T01:43:23.305503+00:00",
+      "status": "complete",
+      "complete_blocks": 10
+    },
+    "v02-rtx4070-mask-mnk-769-session-2.json": {
+      "sha256": "9be95016a30aa40b355dba927e5dd016fbdbe420888bbbd263626d2cb05bf763",
+      "timestamp_utc": "2026-11-26T01:44:54.703201+00:00",
+      "status": "complete",
+      "complete_blocks": 10
+    },
+    "v02-rtx4070-mask-mnk-769-session-3.json": {
+      "sha256": "3ed3bea30feff6b27596896340f9ca49308a726fe7e433b9e6b9d85c752f8aa7",
+      "timestamp_utc": "2026-11-26T01:46:38.162756+00:00",
+      "status": "complete",
+      "complete_blocks": 10
+    },
+    "v02-rtx4070-resident-wave-below-session-1.json": {
+      "sha256": "7331e2f018296250871968f613e96d15a12619899849f4a38247340cd65b10a6",
+      "timestamp_utc": "2026-11-26T01:43:32.495856+00:00",
+      "status": "complete",
+      "complete_blocks": 10
+    },
+    "v02-rtx4070-resident-wave-below-session-2.json": {
+      "sha256": "45c1b5117aa313b15444dad982127582272bb30c98cb59b1785769552b90b66f",
+      "timestamp_utc": "2026-11-26T01:45:03.423513+00:00",
+      "status": "complete",
+      "complete_blocks": 10
+    },
+    "v02-rtx4070-resident-wave-below-session-3.json": {
+      "sha256": "1447f6fb703dfb15d3c8d0f753b369a8b3f6d96c0e20ff10d104639153f89a90",
+      "timestamp_utc": "2026-11-26T01:46:46.801711+00:00",
+      "status": "complete",
+      "complete_blocks": 10
+    },
+    "v02-rtx4070-resident-wave-exact-session-1.json": {
+      "sha256": "773a7008e51bf8897da5151544a35aa828fe4a07b44e21f7c9bae0d323f16932",
+      "timestamp_utc": "2026-11-26T01:44:01.545671+00:00",
+      "status": "complete",
+      "complete_blocks": 10
+    },
+    "v02-rtx4070-resident-wave-exact-session-2.json": {
+      "sha256": "c46dbdc272ac63a2d59e682a3dd393e1618238ef72843309456f48dfaa5896e5",
+      "timestamp_utc": "2026-11-26T01:45:31.796235+00:00",
+      "status": "complete",
+      "complete_blocks": 10
+    },
+    "v02-rtx4070-resident-wave-exact-session-3.json": {
+      "sha256": "ee8cd41351ba68f4ca776e7429a13cf6a0b91acfece8f97b164807ca9b12c471",
+      "timestamp_utc": "2026-11-26T01:46:55.773266+00:00",
+      "status": "complete",
+      "complete_blocks": 10
+    },
+    "v02-rtx4070-resident-wave-above-session-1.json": {
+      "sha256": "47e925bb5ed009b7946da74e5d554564b4df625536242c6eea3911721ccf5fd3",
+      "timestamp_utc": "2026-11-26T01:43:50.629182+00:00",
+      "status": "complete",
+      "complete_blocks": 10
+    },
+    "v02-rtx4070-resident-wave-above-session-2.json": {
+      "sha256": "67c23574dd85fa41dabe1df67d1a33790cb685ea427bab329eef599fc6034062",
+      "timestamp_utc": "2026-11-26T01:45:20.876323+00:00",
+      "status": "complete",
+      "complete_blocks": 10
+    },
+    "v02-rtx4070-resident-wave-above-session-3.json": {
+      "sha256": "b6aaf3fc35a015cfcd9f84ddd90f3b0d5fb5105fb7c3db43d4e143a652bdebe8",
+      "timestamp_utc": "2026-11-26T01:47:04.686586+00:00",
+      "status": "complete",
+      "complete_blocks": 10
+    },
+    "v02-rtx4070-prefill-768-session-1.json": {
+      "sha256": "376784efbdd5f0c2905b99d320b4506c0a08f7cc3da1bd04abb59b736984cc14",
+      "timestamp_utc": "2026-11-26T01:44:00.331895+00:00",
+      "status": "complete",
+      "complete_blocks": 10
+    },
+    "v02-rtx4070-prefill-768-session-2.json": {
+      "sha256": "dbda583c227ad4d2ac06a13063573077ce8b57a1463580b57fa38dd3370b01e9",
+      "timestamp_utc": "2026-11-26T01:45:30.533861+00:00",
+      "status": "complete",
+      "complete_blocks": 10
+    },
+    "v02-rtx4070-prefill-768-session-3.json": {
+      "sha256": "95d049948b61161850a1cfe2b4ec0aedb1d387301a356cfed55d74c9f5beadae",
+      "timestamp_utc": "2026-11-26T01:47:14.324087+00:00",
+      "status": "complete",
+      "complete_blocks": 10
+    },
+    "v02-rtx4070-prefill-1536-session-1.json": {
+      "sha256": "56d5c4cf4d94aefc0f86b0ead9834b53990ba6a2f712a6ce1c5dd428365ef3a3",
+      "timestamp_utc": "2026-11-26T01:44:13.838958+00:00",
+      "status": "complete",
+      "complete_blocks": 10
+    },
+    "v02-rtx4070-prefill-1536-session-2.json": {
+      "sha256": "8a8836cc0a243704b9d93086f12ad3194c2538db3e7705eca6a87b9675135cd1",
+      "timestamp_utc": "2026-11-26T01:45:40.670163+00:00",
+      "status": "protocol_failed",
+      "complete_blocks": 0
+    },
+    "v02-rtx4070-prefill-1536-session-3.json": {
+      "sha256": "6336c49555a4e1d1097897c9390f10a4ba17c8799890a7202d3ea6cc4bae54fe",
+      "timestamp_utc": "2026-11-26T01:47:27.994446+00:00",
+      "status": "complete",
+      "complete_blocks": 10
+    }
+  },
+  "protocol_failures_without_report": {},
+  "pending": [],
+  "wave_boundary_sha256": "e837e75a813103beeab3c4741f6c1ac6598d0da8010758766ceae4be56bda95e"
+}
