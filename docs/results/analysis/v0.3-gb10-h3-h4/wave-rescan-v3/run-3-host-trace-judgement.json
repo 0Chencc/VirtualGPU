@@ -1,0 +1,12 @@
+{
+ "status": "passed",
+ "samples": 31,
+ "max_busy_share": 0.07350764676862358,
+ "samples_over_total_limit": 0,
+ "sustained_other_processes": {},
+ "limits": {
+  "total_busy": 0.1,
+  "process": 0.05,
+  "consecutive": 2
+ }
+}
