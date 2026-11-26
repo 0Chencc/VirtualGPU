@@ -318,9 +318,11 @@ def run(ir, profile_text, cache):
 
 
 def long_waves(profile, footprint):
-    """Wave count n of wave-rescan-long: about 1 ms even if every wave hits at the L2 peak."""
+    """Wave count n of wave-rescan-long: about 1 ms even if every wave hits at the L2 peak,
+    rounded up to even so a reversed walk has as many up as down waves."""
     l2_gbps = profile["measured"]["memory"]["l2_bw_read_gbps"]["value"]
-    return max(4, math.ceil(1e-3 * l2_gbps * 1e9 / footprint))
+    n = max(4, math.ceil(1e-3 * l2_gbps * 1e9 / footprint))
+    return n + (n & 1)
 
 
 def wave_rescan_long(profile, text):

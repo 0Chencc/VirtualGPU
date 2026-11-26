@@ -339,14 +339,15 @@ static int run_wave_rescan(int device, int samples, int warmup) {
 //
 // The geometry of wave-rescan, timed in launches of n and 2n waves, so a
 // re-reading wave takes (T(2n) - T(n)) / n and every timed launch lasts about
-// 1 ms or more: n = max(4, ceil(1 ms * l2_gbps / footprint)). Forward walks K up
+// 1 ms or more: n = max(4, ceil(1 ms * l2_gbps / footprint)), rounded up to even. Forward walks K up
 // in every wave; reversed alternates the direction every wave. Each point also
 // has no-reuse references in both walks: wave w reads panel group w % M, with M
 // groups making the reuse distance at least 4 times L2, so every wave misses.
 
 static uint32_t long_waves(double l2_gbps, uint64_t footprint) {
   const double n = std::ceil(1e-3 * l2_gbps * 1e9 / static_cast<double>(footprint));
-  return static_cast<uint32_t>(std::max(4.0, n));
+  const uint32_t waves = static_cast<uint32_t>(std::max(4.0, n));
+  return waves + (waves & 1u);  // even, so a reversed walk has as many up as down waves
 }
 
 static int run_wave_rescan_long(int device, int samples, int warmup, double l2_gbps) {
