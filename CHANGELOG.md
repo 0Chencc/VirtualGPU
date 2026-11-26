@@ -14,6 +14,7 @@
 
 ### Fixed
 
+- Replace the GB10 MLP curves with medians from five independent sweeps
 - The L2 miss merging model no longer fails on GPUs with more than 128 SMs
 
 ## 0.2.0
