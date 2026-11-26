@@ -5,7 +5,10 @@
 // b-stream:     one wave of B-panel streams at DRAM, the M = 48 GEMM shape.
 // staged-mma:   closed loop with 16 or 32 KiB stages, MMA and ldmatrix, L2 resident.
 //
-// Every mode prints, per block of points, a same-session DRAM read ceiling.
+// Every mode prints, before and after each block of points, a same-session DRAM
+// read ceiling with its samples and host UTC time (ms since the epoch).
+
+#include <chrono>
 
 // ---------------------------------------------------------------------------
 // B-panel stream kernel
@@ -15,8 +18,9 @@
 // matrix: each stage is (STAGE / row_bytes) rows of row_bytes bytes, one
 // row_stride apart, like a Triton GEMM B tile. TOKENS stage buffers, so the
 // prefetch distance is TOKENS - 1. Each stage then runs mma_iters x 4
-// m16n8k16 MMAs per warp. With reverse_wave_slots set, CTAs of odd waves
-// (b / reverse_wave_slots odd) read their panel from its last stage to its first.
+// m16n8k16 MMAs per warp. A CTA reads its panel from its last stage to its
+// first when reverse_mode is 2, or when it is 1 and its wave
+// (b / wave_slots) is odd.
 
 template <int TOKENS, int VPT>
 __global__ void __launch_bounds__(128) b_stream_kernel(const uint8_t* __restrict__ src,
@@ -26,12 +30,13 @@ __global__ void __launch_bounds__(128) b_stream_kernel(const uint8_t* __restrict
                                                        uint64_t row_stride,
                                                        uint32_t k_steps,
                                                        uint32_t mma_iters,
-                                                       uint32_t reverse_wave_slots) {
+                                                       uint32_t wave_slots,
+                                                       uint32_t reverse_mode) {
   constexpr uint32_t kStage = 128u * 16u * VPT;
   extern __shared__ uint4 smem[];
   const uint32_t tid = threadIdx.x;
   const uint32_t panel = blockIdx.x % panels;
-  const bool reverse = reverse_wave_slots && ((blockIdx.x / reverse_wave_slots) & 1u);
+  const bool reverse = reverse_mode == 2u || (reverse_mode == 1u && ((blockIdx.x / wave_slots) & 1u));
   const uint32_t rows_per_stage = kStage / row_bytes;
   const uint8_t* panel_base = src + static_cast<uint64_t>(panel) * row_bytes;
 
@@ -96,7 +101,7 @@ struct BStreamPoint {
   uint64_t row_stride;
   uint32_t k_steps;
   uint32_t mma_iters;
-  uint32_t reverse_odd;
+  uint32_t reverse_mode;
   uint32_t wave_slots;
 };
 
@@ -112,7 +117,7 @@ static int b_stream_launch(const BStreamPoint& p, const uint8_t* src, uint4* sin
     return blocks;
   }
   kernel<<<p.grid, 128, smem>>>(src, sink, p.panels, p.row_bytes, p.row_stride, p.k_steps,
-                                p.mma_iters, p.reverse_odd ? p.wave_slots : 0u);
+                                p.mma_iters, p.wave_slots, p.reverse_mode);
   return 0;
 }
 
@@ -190,9 +195,12 @@ static float posthoc_time_ms(cudaEvent_t e0, cudaEvent_t e1) {
   return ms;
 }
 
-// Same-session DRAM read ceiling: ld.global.cg stream over 256 MiB after a clean flush.
-static double posthoc_ceiling_gbps(const PosthocBuffers& b, int sm_count, cudaEvent_t e0,
-                                   cudaEvent_t e1, int samples) {
+static void print_samples(const char* key, const std::vector<double>& v);
+
+// Same-session DRAM read ceiling: ld.global.cg stream over 256 MiB after a clean
+// flush. Prints "key": {"gbps_samples": [...], "unix_ms": ...}.
+static void print_ceiling(const char* key, const PosthocBuffers& b, int sm_count, cudaEvent_t e0,
+                          cudaEvent_t e1, int samples) {
   const size_t bytes = std::min<size_t>(b.data_bytes, 256ULL << 20);
   std::vector<double> v;
   for (int s = 0; s < samples; ++s) {
@@ -203,8 +211,12 @@ static double posthoc_ceiling_gbps(const PosthocBuffers& b, int sm_count, cudaEv
     CUDA_CHECK(cudaEventRecord(e1));
     v.push_back(static_cast<double>(bytes) / (posthoc_time_ms(e0, e1) * 1e6));
   }
-  std::sort(v.begin(), v.end());
-  return v[v.size() / 2];
+  const long long ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                           std::chrono::system_clock::now().time_since_epoch())
+                           .count();
+  std::printf("\"%s\": {", key);
+  print_samples("gbps_samples", v);
+  std::printf(", \"unix_ms\": %lld}", ms);
 }
 
 static void print_samples(const char* key, const std::vector<double>& v) {
@@ -254,10 +266,12 @@ static int run_wave_rescan(int device, int samples, int warmup) {
               sms, l2, samples);
   std::printf("  \"row_bytes\": %u, \"stage_bytes\": %u, \"tokens\": 3, \"num_warps\": 4,\n",
               row_bytes, stage);
-  std::printf("  \"ceiling_before_gbps\": %.3f,\n  \"points\": [",
-              posthoc_ceiling_gbps(b, sms, e0, e1, samples));
-  bool first = true;
+  std::printf("  \"blocks\": [");
   for (int cps : {1, 2, 4}) {
+    std::printf("%s\n    {\"ctas_per_sm\": %d, ", cps == 1 ? "" : ",", cps);
+    print_ceiling("ceiling_before", b, sms, e0, e1, samples);
+    std::printf(", \"points\": [");
+    bool first = true;
     for (int rows_per_wave : {1, 2}) {
       for (double ratio : ratios) {
         const uint32_t slots = static_cast<uint32_t>(sms * cps);
@@ -268,36 +282,42 @@ static int run_wave_rescan(int device, int samples, int warmup) {
         const uint64_t footprint = row_stride * rows_per_stage * k_steps;
         BStreamPoint p{3, vpt, cps, slots, panels, row_bytes, row_stride, k_steps, 1, 0, slots};
         const int occ = b_stream_run(p, b.data, b.sink, true);
+        // Forward: every wave walks K up. Reversed: odd waves walk K down; its
+        // one-wave baseline walks K down, so W=4 and W=1 share a direction mix.
         for (uint32_t rev : {0u, 1u}) {
-          p.reverse_odd = rev;
           std::vector<double> t1, t4;
           for (int w = 0; w < warmup; ++w) {
             p.grid = 4 * slots;
+            p.reverse_mode = rev;
             b_stream_time_ns(p, b, sms, e0, e1);
           }
           for (int s = 0; s < samples; ++s) {
             p.grid = slots;
+            p.reverse_mode = rev ? 2u : 0u;
             t1.push_back(b_stream_time_ns(p, b, sms, e0, e1));
             p.grid = 4 * slots;
+            p.reverse_mode = rev;
             t4.push_back(b_stream_time_ns(p, b, sms, e0, e1));
           }
-          std::printf("%s\n    {\"ctas_per_sm\": %d, \"occupancy\": %d, \"rows_per_wave\": %d, "
-                      "\"panels\": %u, \"k_steps\": %u, \"footprint_bytes\": %llu, "
-                      "\"footprint_ratio\": %.4f, \"reverse_odd\": %u, ",
-                      first ? "" : ",", cps, occ, rows_per_wave, panels, k_steps,
+          std::printf("%s\n      {\"rows_per_wave\": %d, \"occupancy\": %d, \"panels\": %u, "
+                      "\"k_steps\": %u, \"footprint_bytes\": %llu, \"footprint_ratio\": %.4f, "
+                      "\"reversed\": %u, ",
+                      first ? "" : ",", rows_per_wave, occ, panels, k_steps,
                       static_cast<unsigned long long>(footprint),
                       static_cast<double>(footprint) / l2, rev);
           first = false;
-          print_samples("one_wave_ns_samples", t1);
+          print_samples(rev ? "one_wave_down_ns_samples" : "one_wave_up_ns_samples", t1);
           std::printf(", ");
           print_samples("four_wave_ns_samples", t4);
           std::printf("}");
         }
       }
     }
+    std::printf("\n    ], ");
+    print_ceiling("ceiling_after", b, sms, e0, e1, samples);
+    std::printf("}");
   }
-  std::printf("\n  ],\n  \"ceiling_after_gbps\": %.3f\n}\n",
-              posthoc_ceiling_gbps(b, sms, e0, e1, samples));
+  std::printf("\n  ]\n}\n");
   posthoc_free(b);
   return 0;
 }
@@ -327,8 +347,9 @@ static int run_b_stream(int device, int samples, int warmup) {
               sms, l2, samples);
   bool first_block = true;
   for (int tokens : {1, 2, 3}) {
-    std::printf("%s\n    {\"tokens\": %d, \"ceiling_gbps\": %.3f, \"points\": [",
-                first_block ? "" : ",", tokens, posthoc_ceiling_gbps(b, sms, e0, e1, samples));
+    std::printf("%s\n    {\"tokens\": %d, ", first_block ? "" : ",", tokens);
+    print_ceiling("ceiling_before", b, sms, e0, e1, samples);
+    std::printf(", \"points\": [");
     first_block = false;
     bool first = true;
     for (int cps : {1, 2, 3, 4, 6, 9}) {
@@ -359,10 +380,11 @@ static int run_b_stream(int device, int samples, int warmup) {
         }
       }
     }
-    std::printf("\n    ]}");
+    std::printf("\n    ], ");
+    print_ceiling("ceiling_after", b, sms, e0, e1, samples);
+    std::printf("}");
   }
-  std::printf("\n  ],\n  \"ceiling_after_gbps\": %.3f\n}\n",
-              posthoc_ceiling_gbps(b, sms, e0, e1, samples));
+  std::printf("\n  ]\n}\n");
   posthoc_free(b);
   return 0;
 }
