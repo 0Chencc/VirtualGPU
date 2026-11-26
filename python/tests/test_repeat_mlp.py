@@ -65,19 +65,32 @@ class RepeatMlpTests(unittest.TestCase):
         self.assertEqual(gate["elapsed_seconds"], 60)
         self.assertEqual(gate["samples_per_window"], [1, 1])
 
-    def test_dispersion_only_counts_selected_geometry_and_keeps_thresholds_strict(self):
-        points = {"read": {(number,): [1.0, 1.0] for number in range(10)}}
-        points["read"][(0,)] = [1.0, 1.4]
-        points["read"][(1,)] = [1.0, 1.3]
+    def test_capture_rules_one_and_two_count_only_selected_geometry(self):
+        steady = [100.0] * mlp.SAMPLES
+        points = {"read": {(number,): list(steady) for number in range(20)}}
+        points["read"][(0,)] = [100.0] * 14 + [160.0]
         receipt = mlp.dispersion_for_points(points)
-        self.assertEqual(
-            (receipt["status"], receipt["over_ratio"], receipt["sample_lists"]), ("passed", 1, 10)
-        )
-        points["read"][(1,)] = [1.0, 1.31]
+        self.assertEqual(receipt["status"], "passed")
+        self.assertEqual(receipt["sample_lists"], 20)
+        self.assertEqual(receipt["rules"]["spike"]["share"], 0.05)
+        for number in range(1, 4):
+            points["read"][(number,)] = [100.0] * 14 + [160.0]
         self.assertEqual(mlp.dispersion_for_points(points)["status"], "failed")
+        wide = {"read": {(number,): list(steady) for number in range(20)}}
+        for number in range(2):
+            wide["read"][(number,)] = [80.0, 90.0, 100.0, 110.0, 120.0] * 3
+        self.assertEqual(mlp.dispersion_for_points(wide)["status"], "failed")
         self.assertEqual(mlp.dispersion_for_points({})["status"], "failed")
         short = mlp.dispersion_for_points({"read": {(0,): [1.0]}})
         self.assertEqual((short["status"], short["invalid_lists"]), ("failed", 1))
+
+    def test_capture_rule_three_compares_repeats_point_by_point(self):
+        base = {"read": {(number,): [100.0] * mlp.SAMPLES for number in range(20)}}
+        moved = {"read": {key: list(v) for key, v in base["read"].items()}}
+        moved["read"][(3,)] = [111.0] * mlp.SAMPLES
+        self.assertEqual(mlp.reproducibility_for_runs([base, moved])["status"], "passed")
+        moved["read"][(4,)] = [89.0] * mlp.SAMPLES
+        self.assertEqual(mlp.reproducibility_for_runs([base, moved])["status"], "failed")
 
     def test_failed_dispersion_archives_raw_and_exits(self):
         record = {"dispersion_check": {"status": "failed"}, "raw": {"read_curve": [1, 2]}}
@@ -122,14 +135,30 @@ class RepeatMlpTests(unittest.TestCase):
             "started_utc": "2026-11-26T10:00:00+00:00",
             "finished_utc": "2026-11-26T10:01:00+00:00",
         }
+
+        def record(mode, number, raw):
+            receipt = mlp.dispersion_for_points(mlp.point_maps(self.profile, mode, raw))
+            return {
+                **source,
+                "mode": mode,
+                "repeat": number,
+                "raw": raw,
+                "dispersion_check": receipt,
+            }
+
         with tempfile.TemporaryDirectory() as temp:
+            spread = []
             for mode in mlp.MLP_MODES:
                 for number, value in enumerate((20.0, 23.0, 22.0, 90.0, 1.0), start=1):
+                    path = Path(temp) / f"spread-{mode}-{number}.json"
+                    mlp.write_json(path, record(mode, number, self.raw(mode, value)))
+                    spread.append(path)
+            with self.assertRaisesRegex(ValueError, "rule 3"):
+                mlp.reduce_runs(self.base, spread, "fixture")
+            for mode in mlp.MLP_MODES:
+                for number, value in enumerate((20.0, 20.4, 20.2, 19.8, 20.6), start=1):
                     path = Path(temp) / f"{mode}-{number}.json"
-                    mlp.write_json(
-                        path,
-                        {**source, "mode": mode, "repeat": number, "raw": self.raw(mode, value)},
-                    )
+                    mlp.write_json(path, record(mode, number, self.raw(mode, value)))
                     paths.append(path)
             updated, audit = mlp.reduce_runs(self.base, paths, "fixture")
             with self.assertRaisesRegex(ValueError, "Expected repeats"):
@@ -150,9 +179,7 @@ class RepeatMlpTests(unittest.TestCase):
                 }
                 for number in range(1, mlp.REPEATS + 1):
                     path = Path(temp) / f"{mode}-{number}.json"
-                    mlp.write_json(
-                        path, {**source, **session, "mode": mode, "repeat": number, "raw": raw}
-                    )
+                    mlp.write_json(path, {**record(mode, number, raw), **session})
                     paths.append(path)
             combined, combined_audit = mlp.reduce_runs(self.base, paths, "fixture")
             self.assertEqual(combined_audit["session_id"], "fixture-session")
@@ -175,11 +202,10 @@ class RepeatMlpTests(unittest.TestCase):
         self.assertEqual(audit["measurement_telemetry"]["active_sm_clock_range_mhz"], [2000, 2000])
         memory = updated["measured"]["memory"]
         for field in (*mlp.CONTIGUOUS, mlp.STRIDED):
-            self.assertEqual(memory[field][0]["bw_gbps"]["value"], 22.0)
-            self.assertEqual(memory[field][0]["bw_gbps"]["rel_uncertainty"], 1.0)
+            self.assertEqual(memory[field][0]["bw_gbps"]["value"], 20.2)
             point = audit["fields"][field]["points"][0]
-            self.assertEqual(point["repeat_range_gbps"], [1.0, 90.0])
-            self.assertEqual(point["pooled_median_gbps"], 22.0)
+            self.assertEqual(point["repeat_range_gbps"], [19.8, 20.6])
+            self.assertEqual(point["pooled_median_gbps"], 20.2)
         self.assertEqual(
             memory["dram_bw_read_gbps"], memory["dram_bw_by_active_sms"][-1]["bw_gbps"]
         )

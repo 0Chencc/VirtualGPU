@@ -212,17 +212,29 @@ def warmup_evidence(record):
     }
 
 
+def points_raw(points):
+    """Sample lists of one run in a fixed order, so runs can be compared point by point."""
+    return {
+        "points": [
+            {"gbps_samples": points[field][key]}
+            for field in sorted(points)
+            for key in sorted(points[field], key=repr)
+        ]
+    }
+
+
 def dispersion_for_points(points):
+    """Capture rules 1 and 2 on one run (microbench/capture_posthoc.py)."""
     from microbench.capture_posthoc import dispersion_check
 
-    return dispersion_check(
-        {
-            "points": [
-                {"gbps_samples": samples} for field in points.values() for samples in field.values()
-            ]
-        },
-        suffixes=("gbps_samples",),
-    )
+    return dispersion_check(points_raw(points), suffixes=("gbps_samples",))
+
+
+def reproducibility_for_runs(point_runs):
+    """Capture rule 3 across the repeats of one benchmark."""
+    from microbench.capture_posthoc import reproducibility_check
+
+    return reproducibility_check([points_raw(p) for p in point_runs], suffixes=("gbps_samples",))
 
 
 def capture(args):
@@ -299,7 +311,7 @@ def capture(args):
     after = host_snapshot(smi)
     require_quiet(after)
     points = point_maps(profile, args.mode, raw)
-    dispersion = dispersion_for_points(points) if use_desktop_gate else {"status": "not_applicable"}
+    dispersion = dispersion_for_points(points)
     if not snaps:
         raise ValueError("No telemetry was recorded during the sweep")
     return {
@@ -374,15 +386,24 @@ def reduce_runs(base, paths, revision):
             raise ValueError(f"Conflicting capture provenance for {attr}")
     origin = records[0][1]
     if profile["provenance"]["is_wsl"] and any(
-        item.get("desktop_quiet_gate", {}).get("status") != "passed"
-        or item.get("dispersion_check", {}).get("status") != "passed"
+        item.get("desktop_quiet_gate", {}).get("status") != "passed" for _, item in records
+    ):
+        raise ValueError("Windows repeats require a passing desktop quiet gate")
+    if any(
+        item.get("dispersion_check", {}).get("status") != "passed"
         or dispersion_for_points(point_maps(profile, item["mode"], item["raw"]))
         != item["dispersion_check"]
         for _, item in records
     ):
-        raise ValueError(
-            "Windows repeats require recorded and reproducible quiet/dispersion checks"
-        )
+        raise ValueError("Every repeat requires recorded and reproducible capture rules 1 and 2")
+    reproducibility = {}
+    for mode in modes:
+        runs = [
+            point_maps(profile, mode, item["raw"]) for _, item in records if item["mode"] == mode
+        ]
+        reproducibility[mode] = reproducibility_for_runs(runs)
+        if reproducibility[mode]["status"] != "passed":
+            raise ValueError(f"{mode}: repeats fail capture rule 3: {reproducibility[mode]}")
     if include_active and (
         not origin.get("session_id")
         or any(item.get("session_id") != origin["session_id"] for _, item in records)
@@ -415,6 +436,7 @@ def reduce_runs(base, paths, revision):
         "samples_per_run": SAMPLES,
         "warmups_per_point": WARMUP,
         "runs": [],
+        "reproducibility": reproducibility,
         "fields": {},
         "ceilings": {},
     }
@@ -438,11 +460,9 @@ def reduce_runs(base, paths, revision):
                     "started_utc": item["started_utc"],
                     "finished_utc": item["finished_utc"],
                     "warmup": warmup_evidence(item),
+                    "dispersion_check": item["dispersion_check"],
                     **(
-                        {
-                            "desktop_quiet_gate_status": item["desktop_quiet_gate"]["status"],
-                            "dispersion_check": item["dispersion_check"],
-                        }
+                        {"desktop_quiet_gate_status": item["desktop_quiet_gate"]["status"]}
                         if profile["provenance"]["is_wsl"]
                         else {}
                     ),
