@@ -25,7 +25,7 @@ from virtualgpu.frontend.hivm import HivmSummary, parse_hivm_summary
 from virtualgpu.frontend.scalar_eval import evaluate_ttgir_cta_offsets
 from virtualgpu.frontend.ttgir import dtype_bits
 
-ASCEND_KERNEL_IR_CACHE_VERSION = "1"
+ASCEND_KERNEL_IR_CACHE_VERSION = "2"
 
 
 def _align_up(value: int, alignment: int = 256) -> int:
@@ -231,6 +231,8 @@ def assemble_ascend_gemm_kernel_ir(
     )
 
     diagnostics = list(summary.diagnostics)
+    if "unvalidated_target_ascend" not in diagnostics:
+        diagnostics.append("unvalidated_target_ascend")
     unsupported_features = list(summary.unsupported_features)
     if used_linear_fallback:
         diagnostics.append("linear_access_fallback")
@@ -545,9 +547,13 @@ def assemble_ascend_gemm_kernel_ir(
         "spill_loads_bytes": 0,
         "spill_scope": "none",
         "barriers": barrier_count,
-        "ub_bytes": summary.ub_bytes,
-        "l0c_bytes": l0c_used,
-        "workspace_bytes": summary.workspace_bytes,
+        "vendor_extensions": {
+            "ascend": {
+                "ub_bytes": summary.ub_bytes,
+                "l0c_bytes": l0c_used,
+                "workspace_bytes": summary.workspace_bytes,
+            }
+        },
     }
 
     return {

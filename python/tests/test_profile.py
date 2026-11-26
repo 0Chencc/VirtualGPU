@@ -156,6 +156,11 @@ def test_ascend910b3_profile_is_valid() -> None:
     assert len(mem["dram_bw_by_active_sms"]) >= 6
     assert len(mem["l2_bw_by_active_sms"]) >= 6
     assert len(mem["l2_rescan_hit_rate_by_working_set"]) >= 10
+    assert all(
+        pt["estimated_hit_rate"]["source"] == "estimated"
+        and "1/bw_dram" in pt["estimated_hit_rate"]["method"]
+        for pt in mem["l2_rescan_hit_rate_by_working_set"]
+    )
     assert len(mem["dram_bw_by_bytes_in_flight"]) >= 40
     assert len(mem["l2_bw_by_bytes_in_flight"]) >= 40
     assert mem["dram_latency_loaded_ns"]["source"] == "measured"

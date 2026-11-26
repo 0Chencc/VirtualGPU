@@ -17,7 +17,7 @@ To add your GPU, see [contributing a profile](../docs/guides/contributing-a-prof
 | [`rtx4070.json`](rtx4070.json) | NVIDIA GeForce RTX 4070 | `sm_89` | Discrete (GDDR6X) | `0.21.0-posthoc` | `partial` | Unlocked (WSL2, 2550 to 2865 MHz SM / 10251 MHz Mem) | `610.88` / `13.5` |
 | [`rtxpro6000.json`](rtxpro6000.json) | NVIDIA RTX PRO 6000 Blackwell Server Edition | `sm_120` | Discrete (GDDR7) | `0.21.0-posthoc` | `partial` | Unlocked (Linux, 1710 to 2332 MHz SM / 12481 MHz Mem) | `580.82.07` / `13.0` |
 
-Only the RTX 4070 and GB10 profiles have been through a sealed holdout. The others are measured but not validated yet.
+Only the RTX 4070 and GB10 profiles have been through a sealed holdout. The others are measured but not validated yet. In particular, [`ascend910b3.json`](ascend910b3.json) has only been checked against an informal 2-shape FP16 GEMM sanity run ([`docs/results/ascend910b3-gemm-sanity.md`](../docs/results/ascend910b3-gemm-sanity.md), not a holdout); every Ascend prediction automatically carries the `unvalidated_feature` flag and `unvalidated_target_ascend` diagnostic.
 
 ## Where each field comes from
 

@@ -210,10 +210,34 @@ def test_assemble_and_predict_ascend_gemm_end_to_end() -> None:
     assert ir["body"]["outer_loop"]["trip_count_mode"] == "per_cta"
     assert sum(ir["body"]["outer_loop"]["trip_counts"]) == 256
     assert ir["resources"]["static_smem_bytes"] == 65536
-    assert ir["resources"]["l0c_bytes"] == 65536
+    assert "ub_bytes" not in ir["resources"]
+    assert "l0c_bytes" not in ir["resources"]
+    assert ir["resources"]["vendor_extensions"]["ascend"]["l0c_bytes"] == 65536
+    assert "unvalidated_target_ascend" in ir["diagnostics"]
 
     profile_text = (REPO_ROOT / "profiles" / "ascend910b3.json").read_text(encoding="utf-8")
     pred = _core.predict(json.dumps(ir), profile_text, l2_state="cold", draws=8, seed=17)
     assert pred["status"] == "ok", pred
     assert pred["time_ns"] > 0.0
     assert pred["ctas_per_sm"] == 1
+    assert "unvalidated_feature" in pred["flags"]
+    assert "unvalidated_target_ascend" in pred["diagnostics"]
+
+    # Even if an Ascend IR omits diagnostics, the core still marks it unvalidated.
+    ir_no_diag = dict(ir, diagnostics=[])
+    pred_no_diag = _core.predict(
+        json.dumps(ir_no_diag), profile_text, l2_state="cold", draws=4, seed=17
+    )
+    assert pred_no_diag["status"] == "ok"
+    assert "unvalidated_feature" in pred_no_diag["flags"]
+    assert "unvalidated_target_ascend" in pred_no_diag["diagnostics"]
+
+    # On-chip UB/L0C overflow returns a dedicated TooMuchOnChipBuffer reason.
+    ir_bad_l0c = json.loads(json.dumps(ir))
+    ir_bad_l0c["resources"]["vendor_extensions"]["ascend"]["l0c_bytes"] = 256 * 1024
+    pred_bad = _core.predict(
+        json.dumps(ir_bad_l0c), profile_text, l2_state="cold", draws=4, seed=17
+    )
+    assert pred_bad["status"] == "unsupported"
+    assert "TooMuchOnChipBuffer" in pred_bad["reason"]
+    assert "l0c" in pred_bad["reason"]

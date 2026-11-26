@@ -84,9 +84,13 @@ fn ascend910b3_profile_simulates_cube_gemm_and_enforces_sram_limits() {
     ir.launch.warp_groups[0].num_warps = 1;
     ir.resources.registers_per_thread = 1;
     ir.resources.static_smem_bytes = 65_536;
-    ir.resources.ub_bytes = Some(0);
-    ir.resources.l0c_bytes = Some(65_536);
-    ir.resources.workspace_bytes = Some(0);
+    ir.resources.vendor_extensions = Some(vgpu_core::ir::ResourceVendorExtensions {
+        ascend: Some(vgpu_core::ir::AscendResourceUsage {
+            ub_bytes: Some(0),
+            l0c_bytes: Some(65_536),
+            workspace_bytes: Some(0),
+        }),
+    });
     ir.body.outer_loop.trip_count_mode = vgpu_core::ir::OuterTripCountMode::Uniform;
     ir.body.outer_loop.trip_counts = vgpu_core::ir::TripCounts::Uniform(12);
     ir.body.pipeline_loop.trip_counts = vgpu_core::ir::TripCounts::Uniform(32);
@@ -114,19 +118,19 @@ fn ascend910b3_profile_simulates_cube_gemm_and_enforces_sram_limits() {
     assert!(r.time_ns.is_finite() && r.time_ns > 0.0);
     assert_eq!(r.occupancy.ctas_per_sm, 1);
 
-    // UB overflow (> 192 KiB) must be rejected by occupancy().
+    // UB overflow (> 192 KiB) must be rejected with a dedicated on-chip buffer error.
     let mut bad_ub = k.clone();
     bad_ub.ub_bytes = asc.ub_bytes + 32;
     assert!(matches!(
         occupancy(&bad_ub, &p.specs),
-        Err(OccupancyError::TooMuchSharedMemory { .. })
+        Err(OccupancyError::TooMuchOnChipBuffer { buffer: "ub", .. })
     ));
 
-    // L0C overflow (> 128 KiB) must be rejected by occupancy().
+    // L0C overflow (> 128 KiB) must be rejected with a dedicated on-chip buffer error.
     let mut bad_l0c = k;
     bad_l0c.l0c_bytes = asc.l0c_bytes + 32;
     assert!(matches!(
         occupancy(&bad_l0c, &p.specs),
-        Err(OccupancyError::TooMuchSharedMemory { .. })
+        Err(OccupancyError::TooMuchOnChipBuffer { buffer: "l0c", .. })
     ));
 }

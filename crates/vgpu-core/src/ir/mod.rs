@@ -60,6 +60,24 @@ pub enum WarpGroupRole {
     Consumer,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AscendResourceUsage {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ub_bytes: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub l0c_bytes: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workspace_bytes: Option<u64>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ResourceVendorExtensions {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ascend: Option<AscendResourceUsage>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ResourceUsage {
@@ -72,11 +90,7 @@ pub struct ResourceUsage {
     pub spill_scope: SpillScope,
     pub barriers: u32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub ub_bytes: Option<u64>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub l0c_bytes: Option<u64>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub workspace_bytes: Option<u64>,
+    pub vendor_extensions: Option<ResourceVendorExtensions>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

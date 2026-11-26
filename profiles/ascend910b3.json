@@ -353,8 +353,8 @@
             "ci95_high": 0.9231,
             "rel_uncertainty": 0.1039,
             "unit": "ratio",
-            "method": "ascendc_l2_rescan_harmonic_estimate",
-            "source": "measured",
+            "method": "ascendc_l2_rescan_harmonic_estimate:(1/bw_dram-1/bw_ws)/(1/bw_dram-1/bw_l2)",
+            "source": "estimated",
             "perturb_group": null
           }
         },
@@ -377,8 +377,8 @@
             "ci95_high": 0.9858,
             "rel_uncertainty": 0.1,
             "unit": "ratio",
-            "method": "ascendc_l2_rescan_harmonic_estimate",
-            "source": "measured",
+            "method": "ascendc_l2_rescan_harmonic_estimate:(1/bw_dram-1/bw_ws)/(1/bw_dram-1/bw_l2)",
+            "source": "estimated",
             "perturb_group": null
           }
         },
@@ -401,8 +401,8 @@
             "ci95_high": 1.0,
             "rel_uncertainty": 0.1,
             "unit": "ratio",
-            "method": "ascendc_l2_rescan_harmonic_estimate",
-            "source": "measured",
+            "method": "ascendc_l2_rescan_harmonic_estimate:(1/bw_dram-1/bw_ws)/(1/bw_dram-1/bw_l2)",
+            "source": "estimated",
             "perturb_group": null
           }
         },
@@ -425,8 +425,8 @@
             "ci95_high": 0.9974,
             "rel_uncertainty": 0.1,
             "unit": "ratio",
-            "method": "ascendc_l2_rescan_harmonic_estimate",
-            "source": "measured",
+            "method": "ascendc_l2_rescan_harmonic_estimate:(1/bw_dram-1/bw_ws)/(1/bw_dram-1/bw_l2)",
+            "source": "estimated",
             "perturb_group": null
           }
         },
@@ -449,8 +449,8 @@
             "ci95_high": 1.0,
             "rel_uncertainty": 0.1,
             "unit": "ratio",
-            "method": "ascendc_l2_rescan_harmonic_estimate",
-            "source": "measured",
+            "method": "ascendc_l2_rescan_harmonic_estimate:(1/bw_dram-1/bw_ws)/(1/bw_dram-1/bw_l2)",
+            "source": "estimated",
             "perturb_group": null
           }
         },
@@ -473,8 +473,8 @@
             "ci95_high": 1.0,
             "rel_uncertainty": 0.1,
             "unit": "ratio",
-            "method": "ascendc_l2_rescan_harmonic_estimate",
-            "source": "measured",
+            "method": "ascendc_l2_rescan_harmonic_estimate:(1/bw_dram-1/bw_ws)/(1/bw_dram-1/bw_l2)",
+            "source": "estimated",
             "perturb_group": null
           }
         },
@@ -497,8 +497,8 @@
             "ci95_high": 1.0,
             "rel_uncertainty": 0.1,
             "unit": "ratio",
-            "method": "ascendc_l2_rescan_harmonic_estimate",
-            "source": "measured",
+            "method": "ascendc_l2_rescan_harmonic_estimate:(1/bw_dram-1/bw_ws)/(1/bw_dram-1/bw_l2)",
+            "source": "estimated",
             "perturb_group": null
           }
         },
@@ -521,8 +521,8 @@
             "ci95_high": 0.8382,
             "rel_uncertainty": 0.1,
             "unit": "ratio",
-            "method": "ascendc_l2_rescan_harmonic_estimate",
-            "source": "measured",
+            "method": "ascendc_l2_rescan_harmonic_estimate:(1/bw_dram-1/bw_ws)/(1/bw_dram-1/bw_l2)",
+            "source": "estimated",
             "perturb_group": null
           }
         },
@@ -545,8 +545,8 @@
             "ci95_high": 0.6749,
             "rel_uncertainty": 0.1,
             "unit": "ratio",
-            "method": "ascendc_l2_rescan_harmonic_estimate",
-            "source": "measured",
+            "method": "ascendc_l2_rescan_harmonic_estimate:(1/bw_dram-1/bw_ws)/(1/bw_dram-1/bw_l2)",
+            "source": "estimated",
             "perturb_group": null
           }
         },
@@ -569,8 +569,8 @@
             "ci95_high": 0.0332,
             "rel_uncertainty": 0.8633,
             "unit": "ratio",
-            "method": "ascendc_l2_rescan_harmonic_estimate",
-            "source": "measured",
+            "method": "ascendc_l2_rescan_harmonic_estimate:(1/bw_dram-1/bw_ws)/(1/bw_dram-1/bw_l2)",
+            "source": "estimated",
             "perturb_group": null
           }
         },
@@ -593,8 +593,8 @@
             "ci95_high": 0.0094,
             "rel_uncertainty": 1.0,
             "unit": "ratio",
-            "method": "ascendc_l2_rescan_harmonic_estimate",
-            "source": "measured",
+            "method": "ascendc_l2_rescan_harmonic_estimate:(1/bw_dram-1/bw_ws)/(1/bw_dram-1/bw_l2)",
+            "source": "estimated",
             "perturb_group": null
           }
         },
@@ -617,8 +617,8 @@
             "ci95_high": 0.0122,
             "rel_uncertainty": 0.1,
             "unit": "ratio",
-            "method": "ascendc_l2_rescan_harmonic_estimate",
-            "source": "measured",
+            "method": "ascendc_l2_rescan_harmonic_estimate:(1/bw_dram-1/bw_ws)/(1/bw_dram-1/bw_l2)",
+            "source": "estimated",
             "perturb_group": null
           }
         },
@@ -641,8 +641,8 @@
             "ci95_high": 0.0231,
             "rel_uncertainty": 0.1,
             "unit": "ratio",
-            "method": "ascendc_l2_rescan_harmonic_estimate",
-            "source": "measured",
+            "method": "ascendc_l2_rescan_harmonic_estimate:(1/bw_dram-1/bw_ws)/(1/bw_dram-1/bw_l2)",
+            "source": "estimated",
             "perturb_group": null
           }
         },
@@ -665,8 +665,8 @@
             "ci95_high": 0.0244,
             "rel_uncertainty": 1.0,
             "unit": "ratio",
-            "method": "ascendc_l2_rescan_harmonic_estimate",
-            "source": "measured",
+            "method": "ascendc_l2_rescan_harmonic_estimate:(1/bw_dram-1/bw_ws)/(1/bw_dram-1/bw_l2)",
+            "source": "estimated",
             "perturb_group": null
           }
         }

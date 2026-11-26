@@ -19,16 +19,16 @@ Out of scope: Frontend compilation and scalar evaluation (the frontend); CTA/SM 
 
 In memory, Python frontends pass `KernelIR` directly into the Rust core (the L2 model and the model core) as typed structs via **PyO3**. For disk caching, debugging, and dataset archival, `KernelIR` serializes to JSON with an optional compact binary sidecar for `access_map` (see Decision D5).
 
-Terminology note: `cta` refers to a thread block (NVIDIA) or workgroup (AMD); `warp` refers to a warp (NVIDIA, size 32) or wavefront (AMD, size 32/64); `sm` refers to an SM (NVIDIA) or CU (AMD).
+Terminology note: `cta` refers to a thread block (NVIDIA), workgroup (AMD), or block/program instance (Ascend); `warp` refers to a warp (NVIDIA, size 32), wavefront (AMD, size 32/64), or single-lane unit placeholder (Ascend, `num_warps = 1`); `sm` refers to an SM (NVIDIA), CU (AMD), or AI Core (Ascend).
 
 ```jsonc
 {
   "schema_version": "0.1",
   "metadata": {
     "kernel_name": "matmul_kernel",
-    "target_vendor": "nvidia",           // "nvidia" | "amd" | ...
-    "target_arch": "sm_89",              // e.g., "sm_89", "sm_121", "gfx942"
-    "frontend": "triton",                // e.g., "triton", "ptx", "hip"
+    "target_vendor": "nvidia",           // "nvidia" | "amd" | "ascend" | ...
+    "target_arch": "sm_89",              // e.g., "sm_89", "sm_121", "gfx942", "ascend910b3"
+    "frontend": "triton",                // e.g., "triton", "triton_ascend", "ptx", "hip"
     // Opaque frontend-defined dicts for provenance and caching ONLY.
     // The model core MUST NOT read or branch on toolchain or config fields.
     "toolchain": { "compiler": "triton", "compiler_version": "3.3.0", "assembler": "ptxas", "assembler_version": "12.9" },
@@ -54,7 +54,15 @@ Terminology note: `cta` refers to a thread block (NVIDIA) or workgroup (AMD); `w
     "spill_stores_bytes": 0,             // per-thread spill stores from assembler report
     "spill_loads_bytes": 0,              // per-thread spill loads from assembler report
     "spill_scope": "none",               // "none" | "prologue_epilogue" | "inner_loop_confirmed" | "inner_loop_assumed"
-    "barriers": 1
+    "barriers": 1,
+    // Optional target-specific resource footprints outside the vendor-neutral resource set.
+    "vendor_extensions": {
+      "ascend": {
+        "ub_bytes": 0,                   // Unified Buffer footprint per AIV core
+        "l0c_bytes": 65536,              // L0C accumulator buffer footprint per AIC core
+        "workspace_bytes": 0             // Global-memory Cube/Vector workspace per AI Core
+      }
+    }
   },
   "tensors": [
     {
@@ -200,5 +208,11 @@ Because the model core's event loop runs at **per-CTA-phase segment** granularit
 - **Decision**: Pass `KernelIR` structs directly from Python frontends to the Rust core via **PyO3** in memory (zero serialization overhead during autotuning). For on-disk caching and validation datasets, serialize `KernelIR` to **JSON** plus a compact **binary sidecar** (`.bin` fixed-layout records) for `access_map.entries`.
 - **Alternatives**: (A) Always serialize full `KernelIR` + `access_map` as JSON across the boundary; (B) Binary-only format (Protobuf/FlatBuffers) with no human-readable JSON.
 - **Trade-off**: PyO3 keeps the hot path fast and zero-copy for dense entry arrays; JSON + binary sidecar keeps cached IR human-inspectable without multi-megabyte JSON files for large grids.
+
+### D6. Vendor-Specific On-Chip Resources in `resources.vendor_extensions`
+
+- **Decision**: Keep the top-level `resources` fields strictly vendor-neutral (`static_smem_bytes`, `registers_per_thread`, spill counters, `barriers`), and isolate architecture-specific on-chip scratchpad and inter-core workspace footprints under an optional `resources.vendor_extensions.<vendor>` object (starting with `resources.vendor_extensions.ascend.{ub_bytes, l0c_bytes, workspace_bytes}` to pair with `specs.ascend` in the GPU profile).
+- **Alternatives**: (A) Put `ub_bytes`, `l0c_bytes`, and `workspace_bytes` directly on `resources`; (B) Invent premature generic names for every specialized SRAM bank across vendors before a second architecture needs them.
+- **Trade-off**: Keeping vendor-specific banks inside `vendor_extensions` avoids leaking Ascend-only terminology into the shared IR contract, stays 100% backward compatible with NVIDIA/AMD IR documents (which omit `vendor_extensions`), and gives the model core explicit typed bounds to enforce in occupancy checks without overloading `static_smem_bytes`.
 
 ---

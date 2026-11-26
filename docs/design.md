@@ -241,7 +241,7 @@ The measured data is a deliverable in its own right: kernel source, config, shap
 
 - **Data-dependent kernels.** MoE routing, sparse attention, and paged KV cache depend on runtime data. They need a workload description (expert distribution, sparsity pattern, page table) as an extra input.
 - **Non-Triton kernels.** Not covered until the PTX frontend exists. Closed-source libraries without PTX are treated as measured black boxes.
-- **Hardware coverage.** Neither test GPU has Hopper `wgmma` or data-center Blackwell `tcgen05`. Kernels using those paths carry an "unvalidated feature" flag until such hardware is available.
+- **Hardware coverage.** Sealed holdouts cover only the RTX 4070 (`sm_89`) and GB10 (`sm_121`). Neither test GPU has Hopper `wgmma` or data-center Blackwell `tcgen05`. Huawei Ascend 910B3 (`ascend910b3`) has a measured hardware profile and a CPU-only Triton-Ascend GEMM frontend, but has not been through a sealed holdout yet; every Ascend prediction carries the `unvalidated_feature` flag and `unvalidated_target_ascend` diagnostic until a scored holdout exists. Kernels using uncalibrated paths carry an "unvalidated feature" flag until such hardware is validated.
 - **Fine-grained effects.** Bank conflicts, instruction scheduling, power and clock throttling are not modeled.
 - **Model resolution.** Differences smaller than the model's error cannot be resolved; real hardware decides those.
 
@@ -295,6 +295,14 @@ These are residuals of the v0.2 core on the development set, not of `phase1-fina
 **Synchronous loads in GEMM.** GEMM configs with `num_stages = 1`, which stage their loads through registers (`ld.global`, then `st.shared`), are predicted slow: median error +9.1% warm and +2.2% cold on the development set (core `7b1be46`, profile `0.21.0`), against +3.6% and +0.2% before the round-trip port floor (`e51f8ef`). The floor first made them +11% and +5%, mostly because it let every CTA on an SM wait for all the SM's bytes after the latency, as if their round trips were in phase; `7b1be46` shares the port out of phase, as `sync_stage_loop` with 1 to 8 CTAs per SM shows. What remains is not explained. It is not a register-staging cost the model misses: on `sync_stage_loop` (profile `0.21.0`, 12 to 32 KiB stages, two or three CTAs per SM) register-staged loops are predicted with MAPE 4.2% (RTX 4070) and 8.3% (GB10), median error -0.2% and -7.1%, so no separate staging mechanism (next-version mechanism (c)) is needed there; with one CTA per SM the staging shows, and the model charges it by keeping the shared memory stores on a CTA's dependent chain, which taking them off makes worse.
 
 The serial-fill explanation ruled out in 9.1 was ruled out as an addition to the round trip. `e51f8ef` uses it as a floor under the round trip instead, which the MLP curves, indexed by bytes in flight over the whole GPU, do not provide.
+
+### 9.3 Ascend 910B3 mapping and known limits
+
+Ascend 910B3 (`profiles/ascend910b3.json`, `0.3.0-ascend`) brings a second vendor into the existing schema and core, with three deliberate approximations left for follow-up work:
+
+- **Occupancy placeholders and unmodeled Cube/Vector split.** The profile maps 20 physical AI Cores onto `sm_count = 20` and fills the NVIDIA occupancy slots with placeholders (`max_warps_per_sm = 1`, `max_blocks_per_sm = 1`, `registers_per_sm = 1024`, `num_warps = 1`, `registers_per_thread = 1`). Per-core on-chip SRAM limits (`specs.ascend.{ub_bytes, l0c_bytes}`) are checked against `resources.vendor_extensions.ascend` and reject overflows with `OccupancyError::TooMuchOnChipBuffer`, but the 20 AIC (Cube) / 40 AIV (Vector) hardware split and concurrent Cube/Vector execution are not modeled separately in the core.
+- **MLP issue-mode naming.** The AscendC M2 MLP curves (`dram_bw_by_bytes_in_flight`, `l2_bw_by_bytes_in_flight`) reuse the existing schema enum names `cp_async` and `ld_global_v4` to represent 2-buffer asynchronous and 1-buffer synchronous MTE2 DMA transfers.
+- **GEMM residuals and scope.** Only the Triton-Ascend GEMM frontend is wired end-to-end (Attention and a sealed multi-shape holdout are follow-ups). In an informal 2-shape FP16 GEMM sanity check ([`docs/results/ascend910b3-gemm-sanity.md`](results/ascend910b3-gemm-sanity.md), not a holdout), `multibuffer = True` configs are predicted 18% to 28% fast because Cube `MTE1` (`L1 -> L0A/L0B`) and `Fixpipe` (`L0C -> GM` NZ-to-ND) pipelines are not modeled separately, while `multibuffer = False` configs are overestimated (~+100% to +127%) as DRAM-bandwidth bound. All Ascend predictions therefore carry `unvalidated_feature` and `unvalidated_target_ascend`.
 
 ## 10. Related work
 

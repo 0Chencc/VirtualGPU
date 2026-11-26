@@ -124,13 +124,18 @@ pub fn kernel_from_ir(ir: &KernelIR) -> Result<Kernel, ModelError> {
             ir::SpillScope::InnerLoopAssumed => SpillScope::PerIteration { assumed: true },
         },
     };
+    let ascend_res = ir
+        .resources
+        .vendor_extensions
+        .as_ref()
+        .and_then(|ext| ext.ascend.as_ref());
     Ok(Kernel {
         grid,
         num_warps: ir.launch.num_warps,
         registers_per_thread: ir.resources.registers_per_thread,
         smem_per_cta_bytes: ir.total_smem_bytes(),
-        ub_bytes: ir.resources.ub_bytes.unwrap_or(0),
-        l0c_bytes: ir.resources.l0c_bytes.unwrap_or(0),
+        ub_bytes: ascend_res.and_then(|a| a.ub_bytes).unwrap_or(0),
+        l0c_bytes: ascend_res.and_then(|a| a.l0c_bytes).unwrap_or(0),
         tiles_per_program,
         mma_key: mma_key.ok_or_else(|| unsupported("kernel without MMA"))?,
         tile,

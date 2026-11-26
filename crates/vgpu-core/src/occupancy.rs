@@ -22,9 +22,23 @@ pub struct Occupancy {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum OccupancyError {
-    TooManyThreads { threads: u32, max: u32 },
-    TooManyRegisters { per_thread: u32, max: u32 },
-    TooMuchSharedMemory { bytes: u64, max: u64 },
+    TooManyThreads {
+        threads: u32,
+        max: u32,
+    },
+    TooManyRegisters {
+        per_thread: u32,
+        max: u32,
+    },
+    TooMuchSharedMemory {
+        bytes: u64,
+        max: u64,
+    },
+    TooMuchOnChipBuffer {
+        buffer: &'static str,
+        bytes: u64,
+        max: u64,
+    },
     DoesNotFit,
 }
 
@@ -54,13 +68,15 @@ pub fn occupancy(k: &Kernel, s: &Specs) -> Result<Occupancy, OccupancyError> {
     }
     if let Some(asc) = &s.ascend {
         if k.ub_bytes > asc.ub_bytes {
-            return Err(OccupancyError::TooMuchSharedMemory {
+            return Err(OccupancyError::TooMuchOnChipBuffer {
+                buffer: "ub",
                 bytes: k.ub_bytes,
                 max: asc.ub_bytes,
             });
         }
         if k.l0c_bytes > asc.l0c_bytes {
-            return Err(OccupancyError::TooMuchSharedMemory {
+            return Err(OccupancyError::TooMuchOnChipBuffer {
+                buffer: "l0c",
                 bytes: k.l0c_bytes,
                 max: asc.l0c_bytes,
             });

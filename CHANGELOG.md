@@ -4,6 +4,7 @@
 
 ### Added
 
+- Huawei Ascend 910B3 (`ascend910b3`) support: AscendC M1/M2 microbenchmark suite (`microbench/ascend/`), measured `profiles/ascend910b3.json` profile, optional `specs.ascend` and `resources.vendor_extensions.ascend` on-chip SRAM checks (`OccupancyError::TooMuchOnChipBuffer`), automatic `unvalidated_feature` / `unvalidated_target_ascend` flagging, and CPU-only Triton-Ascend HIVM GEMM frontend
 - Draft the v0.3 workload holdout protocol and audit the two reference profiles for MLP repeat coverage
 - Post-hoc Nsight Compute capture for dynamic local loads and stores in the spill microbenchmark and causal attention
 - NVIDIA A100-SXM4-80GB (`sm_80`) profile

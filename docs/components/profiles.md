@@ -11,9 +11,11 @@ This document defines two components:
 
 **Out of scope:** Reverse engineering vendor drivers, firmware, or ISA encodings; fitting parameters to target workloads (GEMM/attention/MoE); and benchmark validation datasets (owned by validation).
 
-**Current hardware reality:** Initial hardware bring-up is limited to two GPUs:
+**Current hardware reality:** Sealed holdout validation covers two NVIDIA GPUs:
 - **RTX 4070 (`sm_89`, Ada):** Discrete GDDR6X, warp-level `mma.sync.aligned`, `cp.async`, no TMA.
 - **DGX Spark GB10 (`sm_121`, consumer/workstation Blackwell):** Unified LPDDR5x memory shared with Grace CPU. Per NVIDIA PTX ISA and CUDA documentation, `sm_121` supports TMA and warp-level `mma.sync.aligned` (including block-scaled `m16n8k32`/`m16n8k64` for low-precision formats) and **does not** support `tcgen05` or Tensor Memory (TMEM).
+
+Additional measured profiles (A100, L4, L40S, RTX 3070, RTX PRO 6000, and Huawei Ascend 910B3) are included for offline use but have not been through a sealed holdout. The Ascend 910B3 profile (`profiles/ascend910b3.json`) is collected by the separate AscendC microbenchmark suite in `microbench/ascend/` (`bisheng -xcce --npu-arch=dav-2201`), populates optional `specs.ascend` on-chip SRAM limits (`l1_bytes`, `l0a_bytes`, `l0b_bytes`, `l0c_bytes`, `ub_bytes`) and `specs.capabilities.cube_vector_split`, reuses the `cp_async` and `ld_global_v4` MLP issue-mode names for 2-buffer and 1-buffer MTE2 DMA transfers, and tags harmonic-interpolated `estimated_hit_rate` values as `source: "estimated"` with the formula recorded in `method`.
 
 No Hopper (`sm_90`) GPU has been measured yet. Hopper `wgmma` and data center Blackwell `tcgen05`/TMEM are represented by capability flags in the schema, but are not calibrated on hardware.
 

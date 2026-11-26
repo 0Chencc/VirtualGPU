@@ -95,7 +95,8 @@ def _estimate_l2_rescan(
                 "estimated_hit_rate": _mv(
                     hit_samples,
                     unit="ratio",
-                    method="ascendc_l2_rescan_harmonic_estimate",
+                    method="ascendc_l2_rescan_harmonic_estimate:(1/bw_dram-1/bw_ws)/(1/bw_dram-1/bw_l2)",
+                    source="estimated",
                     perturb_group=None,
                 ),
             }
