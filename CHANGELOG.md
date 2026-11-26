@@ -4,6 +4,7 @@
 
 ### Added
 
+- NVIDIA RTX PRO 5000 72GB Blackwell (`sm_120`) profile
 - NVIDIA A100-SXM4-80GB (`sm_80`) profile
 - NVIDIA RTX PRO 6000 Blackwell Server Edition (`sm_120`) profile
 - NVIDIA L4 (`sm_89`) profile
