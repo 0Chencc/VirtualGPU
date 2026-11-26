@@ -15,8 +15,8 @@
 // matrix: each stage is (STAGE / row_bytes) rows of row_bytes bytes, one
 // row_stride apart, like a Triton GEMM B tile. TOKENS stage buffers, so the
 // prefetch distance is TOKENS - 1. Each stage then runs mma_iters x 4
-// m16n8k16 MMAs per warp. Pass (b / panels) odd and reverse_odd set reads the
-// panel from its last stage to its first.
+// m16n8k16 MMAs per warp. With reverse_wave_slots set, CTAs of odd waves
+// (b / reverse_wave_slots odd) read their panel from its last stage to its first.
 
 template <int TOKENS, int VPT>
 __global__ void __launch_bounds__(128) b_stream_kernel(const uint8_t* __restrict__ src,
@@ -26,12 +26,12 @@ __global__ void __launch_bounds__(128) b_stream_kernel(const uint8_t* __restrict
                                                        uint64_t row_stride,
                                                        uint32_t k_steps,
                                                        uint32_t mma_iters,
-                                                       uint32_t reverse_odd) {
+                                                       uint32_t reverse_wave_slots) {
   constexpr uint32_t kStage = 128u * 16u * VPT;
   extern __shared__ uint4 smem[];
   const uint32_t tid = threadIdx.x;
   const uint32_t panel = blockIdx.x % panels;
-  const bool reverse = reverse_odd && ((blockIdx.x / panels) & 1u);
+  const bool reverse = reverse_wave_slots && ((blockIdx.x / reverse_wave_slots) & 1u);
   const uint32_t rows_per_stage = kStage / row_bytes;
   const uint8_t* panel_base = src + static_cast<uint64_t>(panel) * row_bytes;
 
@@ -97,6 +97,7 @@ struct BStreamPoint {
   uint32_t k_steps;
   uint32_t mma_iters;
   uint32_t reverse_odd;
+  uint32_t wave_slots;
 };
 
 template <int TOKENS, int VPT>
@@ -111,7 +112,7 @@ static int b_stream_launch(const BStreamPoint& p, const uint8_t* src, uint4* sin
     return blocks;
   }
   kernel<<<p.grid, 128, smem>>>(src, sink, p.panels, p.row_bytes, p.row_stride, p.k_steps,
-                                p.mma_iters, p.reverse_odd);
+                                p.mma_iters, p.reverse_odd ? p.wave_slots : 0u);
   return 0;
 }
 
@@ -265,7 +266,7 @@ static int run_wave_rescan(int device, int samples, int warmup) {
         uint32_t k_steps = static_cast<uint32_t>(ratio * l2 / (row_stride * rows_per_stage) + 0.5);
         k_steps = std::max<uint32_t>(k_steps, 4);
         const uint64_t footprint = row_stride * rows_per_stage * k_steps;
-        BStreamPoint p{3, vpt, cps, slots, panels, row_bytes, row_stride, k_steps, 1, 0};
+        BStreamPoint p{3, vpt, cps, slots, panels, row_bytes, row_stride, k_steps, 1, 0, slots};
         const int occ = b_stream_run(p, b.data, b.sink, true);
         for (uint32_t rev : {0u, 1u}) {
           p.reverse_odd = rev;
@@ -339,7 +340,7 @@ static int run_b_stream(int device, int samples, int warmup) {
             const uint32_t grid = static_cast<uint32_t>(sms * cps);
             const uint64_t row_stride = static_cast<uint64_t>(grid) * rb;
             const uint32_t k_steps = static_cast<uint32_t>(target / (static_cast<uint64_t>(grid) * stage));
-            BStreamPoint p{tokens, vpt, cps, grid, grid, rb, row_stride, k_steps, mma_iters, 0};
+            BStreamPoint p{tokens, vpt, cps, grid, grid, rb, row_stride, k_steps, mma_iters, 0, grid};
             const int occ = b_stream_run(p, b.data, b.sink, true);
             if (occ < cps) continue;
             for (int w = 0; w < warmup; ++w) b_stream_time_ns(p, b, sms, e0, e1);
