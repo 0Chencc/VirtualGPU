@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "device": "ascend910b3",
+  "target": "ascend910b3",
+  "kernel": "fused_attention_forward",
+  "input_dtype": "float16",
+  "output_dtype": "float16",
+  "accumulator_dtype": "float32",
+  "input_seed": 23,
+  "layout": "BHSD",
+  "softmax_scale": "1/sqrt(head_dim)",
+  "excluded_dev_seq_lens": [2048],
+  "excluded_v1_seq_lens": [1024, 1280, 1536, 1537, 1793, 2560],
+  "configs": [
+    {"config_id": "m32n32-mb1", "block_m": 32, "block_n": 32, "multibuffer": true, "num_stages": 2, "num_warps": 1},
+    {"config_id": "m32n64-mb1", "block_m": 32, "block_n": 64, "multibuffer": true, "num_stages": 2, "num_warps": 1},
+    {"config_id": "m32n128-mb1", "block_m": 32, "block_n": 128, "multibuffer": true, "num_stages": 2, "num_warps": 1},
+    {"config_id": "m64n32-mb1", "block_m": 64, "block_n": 32, "multibuffer": true, "num_stages": 2, "num_warps": 1},
+    {"config_id": "m64n64-mb1", "block_m": 64, "block_n": 64, "multibuffer": true, "num_stages": 2, "num_warps": 1},
+    {"config_id": "m64n64-mb0", "block_m": 64, "block_n": 64, "multibuffer": false, "num_stages": 1, "num_warps": 1},
+    {"config_id": "m64n128-mb1", "block_m": 64, "block_n": 128, "multibuffer": true, "num_stages": 2, "num_warps": 1},
+    {"config_id": "m128n32-mb1", "block_m": 128, "block_n": 32, "multibuffer": true, "num_stages": 2, "num_warps": 1},
+    {"config_id": "m128n64-mb1", "block_m": 128, "block_n": 64, "multibuffer": true, "num_stages": 2, "num_warps": 1},
+    {"config_id": "m128n64-mb0", "block_m": 128, "block_n": 64, "multibuffer": false, "num_stages": 1, "num_warps": 1}
+  ],
+  "cases": [
+    {
+      "case_id": "b2-q16-kv4-s896-d64-full",
+      "split": "holdout",
+      "batch": 2,
+      "query_heads": 16,
+      "kv_heads": 4,
+      "seq_len": 896,
+      "head_dim": 64,
+      "causal": false,
+      "config_ids": ["m32n32-mb1", "m32n64-mb1", "m32n128-mb1", "m64n32-mb1", "m64n64-mb1", "m64n64-mb0", "m64n128-mb1", "m128n32-mb1", "m128n64-mb1", "m128n64-mb0"]
+    },
+    {
+      "case_id": "b2-q16-kv4-s896-d64-causal",
+      "split": "holdout",
+      "batch": 2,
+      "query_heads": 16,
+      "kv_heads": 4,
+      "seq_len": 896,
+      "head_dim": 64,
+      "causal": true,
+      "config_ids": ["m32n32-mb1", "m32n64-mb1", "m32n128-mb1", "m64n32-mb1", "m64n64-mb1", "m64n64-mb0", "m64n128-mb1", "m128n32-mb1", "m128n64-mb1", "m128n64-mb0"]
+    },
+    {
+      "case_id": "b2-q16-kv16-s1408-d64-full",
+      "split": "holdout",
+      "batch": 2,
+      "query_heads": 16,
+      "kv_heads": 16,
+      "seq_len": 1408,
+      "head_dim": 64,
+      "causal": false,
+      "config_ids": ["m32n32-mb1", "m32n64-mb1", "m32n128-mb1", "m64n32-mb1", "m64n64-mb1", "m64n64-mb0", "m64n128-mb1", "m128n32-mb1", "m128n64-mb1", "m128n64-mb0"]
+    },
+    {
+      "case_id": "b1-q32-kv8-s1665-d64-causal",
+      "split": "holdout",
+      "batch": 1,
+      "query_heads": 32,
+      "kv_heads": 8,
+      "seq_len": 1665,
+      "head_dim": 64,
+      "causal": true,
+      "config_ids": ["m32n32-mb1", "m32n64-mb1", "m32n128-mb1", "m64n32-mb1", "m64n64-mb1", "m64n64-mb0", "m64n128-mb1", "m128n32-mb1", "m128n64-mb1", "m128n64-mb0"]
+    },
+    {
+      "case_id": "b2-q16-kv4-s1152-d128-full",
+      "split": "holdout",
+      "batch": 2,
+      "query_heads": 16,
+      "kv_heads": 4,
+      "seq_len": 1152,
+      "head_dim": 128,
+      "causal": false,
+      "config_ids": ["m32n32-mb1", "m32n64-mb1", "m32n128-mb1", "m64n32-mb1", "m64n64-mb1", "m64n64-mb0", "m64n128-mb1", "m128n32-mb1", "m128n64-mb1", "m128n64-mb0"]
+    },
+    {
+      "case_id": "b2-q16-kv4-s1152-d128-causal",
+      "split": "holdout",
+      "batch": 2,
+      "query_heads": 16,
+      "kv_heads": 4,
+      "seq_len": 1152,
+      "head_dim": 128,
+      "causal": true,
+      "config_ids": ["m32n32-mb1", "m32n64-mb1", "m32n128-mb1", "m64n32-mb1", "m64n64-mb1", "m64n64-mb0", "m64n128-mb1", "m128n32-mb1", "m128n64-mb1", "m128n64-mb0"]
+    },
+    {
+      "case_id": "b1-q16-kv16-s1921-d128-full",
+      "split": "holdout",
+      "batch": 1,
+      "query_heads": 16,
+      "kv_heads": 16,
+      "seq_len": 1921,
+      "head_dim": 128,
+      "causal": false,
+      "config_ids": ["m32n32-mb1", "m32n64-mb1", "m32n128-mb1", "m64n32-mb1", "m64n64-mb1", "m64n64-mb0", "m64n128-mb1", "m128n32-mb1", "m128n64-mb1", "m128n64-mb0"]
+    },
+    {
+      "case_id": "b1-q32-kv8-s2304-d128-causal",
+      "split": "holdout",
+      "batch": 1,
+      "query_heads": 32,
+      "kv_heads": 8,
+      "seq_len": 2304,
+      "head_dim": 128,
+      "causal": true,
+      "config_ids": ["m32n32-mb1", "m32n64-mb1", "m32n128-mb1", "m64n32-mb1", "m64n64-mb1", "m64n64-mb0", "m64n128-mb1", "m128n32-mb1", "m128n64-mb1", "m128n64-mb0"]
+    }
+  ]
+}
