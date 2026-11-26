@@ -302,6 +302,8 @@ The serial-fill explanation ruled out in 9.1 was ruled out as an addition to the
 
 The cross-wave reuse of 6.4 is a step at `l2_effective_capacity_bytes`: a forward re-read of a wave hits fully if the wave fits and not at all otherwise. On GB10 the hardware falls off a slope instead, 0.89 to 0.99 of a re-read hitting at 1.0 times L2 and 0.13 to 0.60 at 1.09 to 1.12 times (`wave-rescan`), so between 1.0 and 1.12 times L2 the error of the hit fraction is 0.23 on average. No smoothing parameter is fitted to it. The form is checked on GB10 only; on the RTX 4070 it is unvalidated until `wave-rescan` is captured there.
 
+The GB10 evidence itself is provisional. A dispersion check added after the change was merged voids a capture when more than 10% of its sample lists have a max over min above 1.3, and both GB10 `wave-rescan` captures fail it (16% and 14% of lists), because launches of 50 to 300 microseconds pick up one to three slow samples out of 15. The two captures agree on the direction: the earlier clock form and the shared-clock form without per-slice LRU are rejected in both, and the per-slice form has the lowest error on reversed re-reads in both. A version of the microbenchmark with launches of at least 1 ms is to be captured against re-frozen predictions; if it contradicts the per-slice form, the change is reverted. See [the post-hoc notes](results/analysis/v0.3-gb10-h3-h4-posthoc.md).
+
 ### 9.4 Ascend 910B3 mapping and known limits
 
 Ascend 910B3 (`profiles/ascend910b3.json`, `0.3.0-ascend`) brings a second vendor into the existing schema and core, with three deliberate approximations left for follow-up work:
