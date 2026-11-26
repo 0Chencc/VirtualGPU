@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import platform
 import statistics
 import subprocess
@@ -27,6 +28,7 @@ from pathlib import Path
 from shutil import which
 
 try:
+    import host_quiet
     from repeat_mlp import (
         WARMUP,
         WINDOWS_SMI,
@@ -40,6 +42,7 @@ try:
         write_json,
     )
 except ImportError:  # imported as microbench.capture_posthoc
+    from microbench import host_quiet
     from microbench.repeat_mlp import (
         WARMUP,
         WINDOWS_SMI,
@@ -216,12 +219,15 @@ def capture(args):
     require_quiet(before)
     query = json.loads(command(str(args.binary), "--mode", "query", "--device", "0"))
     quiet = wait_for_quiet_desktop()
+    # GPUs that share memory with the CPU (GB10): CPU work slows DRAM-bound measurements.
+    gate_host = query.get("integrated", False) or args.host_quiet
     warm, stable = warm_device(
         smi,
         str(args.binary),
         args.warmup_seconds,
         timeout_report=args.output.with_suffix(".thermal-timeout.json"),
     )
+    host_gate = host_quiet.wait_for_quiet_host([os.getpid()]) if gate_host else None
     run_args = [str(args.binary), "--mode", args.mode, "--device", "0"]
     run_args += ["--samples", str(args.samples), "--warmup", str(WARMUP)]
     if args.l2_gbps:
@@ -229,9 +235,12 @@ def capture(args):
     with tempfile.TemporaryFile(mode="w+t") as out, tempfile.TemporaryFile(mode="w+t") as err:
         started = utc()
         process = subprocess.Popen(run_args, stdout=out, stderr=err, text=True)
-        snaps = []
+        snaps, host_samples, next_host = [], [], 0.0
         try:
             while process.poll() is None:
+                if gate_host and time.monotonic() >= next_host:
+                    host_samples.append(host_quiet.sample())
+                    next_host = time.monotonic() + 1.0
                 snaps.append(telemetry(smi))
                 apps = command(
                     smi, "--query-compute-apps=pid,process_name", "--format=csv,noheader"
@@ -265,6 +274,12 @@ def capture(args):
         "after": after,
         "desktop_quiet_gate": quiet,
         "dispersion_check": dispersion_check(raw),
+        "host_quiet_gate": host_gate,
+        "host_quiet_check": (
+            host_quiet.check(host_samples + [host_quiet.sample()], [os.getpid(), process.pid])
+            if gate_host
+            else None
+        ),
         "thermal_warmup": warm,
         "thermal_stability": stable,
         "telemetry": snaps,
@@ -304,11 +319,19 @@ def main():
     ap.add_argument("--samples", type=int, default=15)
     ap.add_argument("--warmup-seconds", type=float, default=60)
     ap.add_argument("--l2-gbps", type=float, help="profile l2_bw_read_gbps, for wave-rescan-long")
+    ap.add_argument(
+        "--host-quiet",
+        action="store_true",
+        help="Gate on a quiet host CPU even if the GPU is not integrated",
+    )
     args = ap.parse_args()
     record = capture(args)
     write_json(args.output, record)
     if record["dispersion_check"]["status"] != "passed":
         raise SystemExit(f"Dispersion check failed, capture void: {record['dispersion_check']}")
+    host = record["host_quiet_check"]
+    if host is not None and host["status"] != "passed":
+        raise SystemExit(f"Host CPU was not quiet, capture void: {host}")
 
 
 if __name__ == "__main__":

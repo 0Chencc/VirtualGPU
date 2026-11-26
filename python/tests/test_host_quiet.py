@@ -2,6 +2,7 @@
 
 import os
 import unittest
+from unittest.mock import patch
 
 from microbench import host_quiet
 
@@ -39,3 +40,29 @@ class HostQuietTests(unittest.TestCase):
 
     def test_descendants_of_the_capture_are_its_own(self):
         self.assertEqual(host_quiet.check(series(60, parent=11), [10])["status"], "passed")
+
+
+class FakeClock:
+    def __init__(self):
+        self.now = 0.0
+
+    def monotonic(self):
+        return self.now
+
+    def sleep(self, seconds):
+        self.now += seconds
+
+
+class WaitForQuietHostTests(unittest.TestCase):
+    def test_returns_once_the_window_is_quiet(self):
+        samples = iter(series(0, seconds=20))
+        with patch.object(host_quiet, "sample", lambda: next(samples)):
+            gate = host_quiet.wait_for_quiet_host([10], seconds=5, clock=FakeClock())
+        self.assertEqual(gate["check"]["status"], "passed")
+        self.assertEqual(gate["waited_seconds"], 5.0)
+
+    def test_times_out_while_a_foreign_process_runs(self):
+        samples = iter(series(60, seconds=100))
+        with patch.object(host_quiet, "sample", lambda: next(samples)):
+            with self.assertRaises(RuntimeError):
+                host_quiet.wait_for_quiet_host([10], seconds=5, timeout=30, clock=FakeClock())

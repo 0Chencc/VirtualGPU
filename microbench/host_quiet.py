@@ -16,10 +16,13 @@ under full copy bandwidth and the load average lags by tens of seconds.
 from __future__ import annotations
 
 import os
+import time
 from pathlib import Path
 
 BUSY_LIMIT = 0.10
 PROCESS_LIMIT = 0.05
+QUIET_SECONDS = 10
+QUIET_TIMEOUT_SECONDS = 20 * 60
 
 
 def sample():
@@ -90,3 +93,20 @@ def check(samples, roots):
             for pid, (comm, share) in offenders.items()
         },
     }
+
+
+def wait_for_quiet_host(roots, seconds=QUIET_SECONDS, timeout=QUIET_TIMEOUT_SECONDS, clock=time):
+    """Block until the last `seconds` one-second samples pass `check`; return that window."""
+    start = clock.monotonic()
+    window = [sample()]
+    while True:
+        clock.sleep(1.0)
+        window = (window + [sample()])[-(seconds + 1) :]
+        if len(window) > seconds and check(window, roots)["status"] == "passed":
+            return {
+                "seconds": seconds,
+                "waited_seconds": clock.monotonic() - start,
+                "check": check(window, roots),
+            }
+        if clock.monotonic() - start > timeout:
+            raise RuntimeError(f"The host did not stay quiet for {seconds} s within {timeout} s")
