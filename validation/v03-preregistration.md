@@ -171,6 +171,20 @@ to each kernel family and cache regime:
   latency error, read probe results, coverage, and config status counts.
   The first two bullets define the numerical pass criteria.
 
+## Known limits
+
+On GB10, repeated runs of the same microbenchmark geometry near the
+L2 capacity (roughly 0.75 to 1.25 times the 24 MiB physical L2 in the
+reported sweep) can settle in either a mostly hit or a mostly miss
+state. At 0.91 times physical capacity, one geometry took 1701 us and
+3528 us in separate runs. The model represents the transition as a single
+step. A single scan of `l2_effective_capacity_bytes` or
+`l2_rescan_hit_rate_by_working_set` therefore understates the uncertainty
+near capacity. Flag GB10 working-set and resident-wave cases that
+approach that range before label release, using predicted working-set
+geometry and the target profile. Keep the registered cases, configs,
+pass thresholds and scoring procedure. [GB10 L2 observation](../docs/results/analysis/v0.3-gb10-l2-bistability-observation.md)
+
 The next review fixes the mechanism scope, manifests, exact toolchain
 and training inventory. Record changes in an amendment before label
 release.
