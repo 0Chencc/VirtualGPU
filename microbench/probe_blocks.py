@@ -94,9 +94,9 @@ def main():
     ap.add_argument("--warmup-seconds", type=float, default=60)
     args = ap.parse_args()
     smi = which("nvidia-smi") or "/usr/lib/wsl/lib/nvidia-smi"
-    before = host_snapshot(smi)
-    require_quiet(before)
     with gpu_lock():
+        before = host_snapshot(smi)
+        require_quiet(before)
         warm, stable = warm_device(
             smi,
             str(args.binary),
