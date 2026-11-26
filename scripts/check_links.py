@@ -7,6 +7,7 @@ from pathlib import Path
 
 LINK = re.compile(r"\]\(([^)\s]+)\)")
 HEADING = re.compile(r"^#+\s+(.*)$")
+ANCHORS = {}
 
 
 def slug(text):
@@ -15,8 +16,8 @@ def slug(text):
     return text.replace(" ", "-")
 
 
-def anchors(path, cache={}):
-    if path not in cache:
+def anchors(path):
+    if path not in ANCHORS:
         found = set()
         in_code = False
         for line in path.read_text(encoding="utf-8").splitlines():
@@ -24,8 +25,8 @@ def anchors(path, cache={}):
                 in_code = not in_code
             elif not in_code and (m := HEADING.match(line)):
                 found.add(slug(m.group(1)))
-        cache[path] = found
-    return cache[path]
+        ANCHORS[path] = found
+    return ANCHORS[path]
 
 
 def main() -> int:
