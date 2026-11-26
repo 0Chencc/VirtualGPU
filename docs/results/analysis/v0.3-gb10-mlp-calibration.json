@@ -1,0 +1,3469 @@
+{
+  "base_profile_sha256": "6f4c9340e206cc60d05e7557a5acdffd2610e6778ac360ccc22faeb61bc542a1",
+  "previous_provenance": {
+    "profile_revision": "0.21.0-posthoc",
+    "calibration_run_id": "cal-20261125T102038Z-sm_121",
+    "calibration_manifest_digest": null,
+    "source": "partial",
+    "driver_version": "580.173.02",
+    "toolkit_version": "13.0",
+    "suite_version": "0.21.0",
+    "host_os": "linux",
+    "is_wsl": false,
+    "power_limit_w": null,
+    "timestamp_utc": "2026-11-25T10:20:38Z",
+    "clock_policy": {
+      "locked": false,
+      "sm_clock_locked": false,
+      "mem_clock_locked": false,
+      "sm_clock_mhz": 2509.0,
+      "mem_clock_mhz": 8533.0,
+      "observed_sm_clock_range_mhz": [
+        2411.0,
+        2561.0
+      ],
+      "observed_mem_clock_range_mhz": null,
+      "throttle_events": 0
+    }
+  },
+  "source_revision": "7bb3d7f3a3205b6d9bf5bbe7010886a427e93290",
+  "source_bundle_sha256": "39ab7679f8bef59e2b1fc15d833421e535956c25c813f9ef8439eea8b4baf627",
+  "binary_sha256": "e2a237908ad08d35d3505a042c8d01b11f78c655f7ac3f1a8e7fc5f1bda18ebf",
+  "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Wed_Aug_20_01:57:39_PM_PDT_2025\nCuda compilation tools, release 13.0, V13.0.88\nBuild cuda_13.0.r13.0/compiler.36424714_0",
+  "target": "sm_121",
+  "host": "spark-cff6",
+  "gpu": {
+    "utc": "2026-11-26T18:40:41.416246+00:00",
+    "uuid": "GPU-9c1aa8ab-199b-9fc8-c86d-67e6b1e505f0",
+    "name": "NVIDIA GB10",
+    "driver_version": "580.173.02",
+    "temperature.gpu": "41",
+    "pstate": "P8",
+    "power.draw": "3.89",
+    "power.limit": "[N/A]",
+    "utilization.gpu": "0",
+    "clocks.current.sm": "208",
+    "clocks.current.memory": "[N/A]",
+    "clocks_event_reasons.hw_thermal_slowdown": "Not Active",
+    "clocks_event_reasons.sw_thermal_slowdown": "Not Active",
+    "clocks_event_reasons.hw_power_brake_slowdown": "Not Active",
+    "clocks_event_reasons.sw_power_cap": "Not Active"
+  },
+  "new_revision": "0.22.0-posthoc",
+  "procedure": "Median of five per-process medians; existing bootstrap over those five medians.",
+  "samples_per_run": 15,
+  "warmups_per_point": 3,
+  "runs": [
+    {
+      "file": "mlp-1.json",
+      "sha256": "490ce10134087eb6ae237c417136a41b54e648d15432bee59252148c7b9378ab",
+      "mode": "mlp",
+      "repeat": 1,
+      "command": [
+        "/home/royal01/virtualgpu/v03-mlp-7bb3d7f/vgpu_bench",
+        "--mode",
+        "mlp",
+        "--device",
+        "0",
+        "--samples",
+        "15",
+        "--warmup",
+        "3"
+      ],
+      "started_utc": "2026-11-26T18:41:42.282781+00:00",
+      "finished_utc": "2026-11-26T18:41:44.627655+00:00"
+    },
+    {
+      "file": "mlp-2.json",
+      "sha256": "66179ffb80aa2a3612451c886cb6f33ced30d51b376f5430511600941da41160",
+      "mode": "mlp",
+      "repeat": 2,
+      "command": [
+        "/home/royal01/virtualgpu/v03-mlp-7bb3d7f/vgpu_bench",
+        "--mode",
+        "mlp",
+        "--device",
+        "0",
+        "--samples",
+        "15",
+        "--warmup",
+        "3"
+      ],
+      "started_utc": "2026-11-26T18:41:47.354014+00:00",
+      "finished_utc": "2026-11-26T18:41:49.698948+00:00"
+    },
+    {
+      "file": "mlp-3.json",
+      "sha256": "fc02d8b3a761345bc354338186057e46cb2b1f01c3e70e8453a83d5e327452a5",
+      "mode": "mlp",
+      "repeat": 3,
+      "command": [
+        "/home/royal01/virtualgpu/v03-mlp-7bb3d7f/vgpu_bench",
+        "--mode",
+        "mlp",
+        "--device",
+        "0",
+        "--samples",
+        "15",
+        "--warmup",
+        "3"
+      ],
+      "started_utc": "2026-11-26T18:41:52.408633+00:00",
+      "finished_utc": "2026-11-26T18:41:54.753290+00:00"
+    },
+    {
+      "file": "mlp-4.json",
+      "sha256": "8020e7d84a65a1abc5dc0f0f52f8e48fcbbac1ca2f367fed77909e6a5409265c",
+      "mode": "mlp",
+      "repeat": 4,
+      "command": [
+        "/home/royal01/virtualgpu/v03-mlp-7bb3d7f/vgpu_bench",
+        "--mode",
+        "mlp",
+        "--device",
+        "0",
+        "--samples",
+        "15",
+        "--warmup",
+        "3"
+      ],
+      "started_utc": "2026-11-26T18:41:57.457985+00:00",
+      "finished_utc": "2026-11-26T18:41:59.802085+00:00"
+    },
+    {
+      "file": "mlp-5.json",
+      "sha256": "75a021c9a31a8f82ccd781a25434bf8dcd5ef4aaf893604ee520c64254ddd3b7",
+      "mode": "mlp",
+      "repeat": 5,
+      "command": [
+        "/home/royal01/virtualgpu/v03-mlp-7bb3d7f/vgpu_bench",
+        "--mode",
+        "mlp",
+        "--device",
+        "0",
+        "--samples",
+        "15",
+        "--warmup",
+        "3"
+      ],
+      "started_utc": "2026-11-26T18:42:02.550374+00:00",
+      "finished_utc": "2026-11-26T18:42:04.897035+00:00"
+    },
+    {
+      "file": "strided-mlp-1.json",
+      "sha256": "6acb18c709a929239b98b5428ba3080289f3f08aa19bbb59da09f953e564c6c3",
+      "mode": "strided-mlp",
+      "repeat": 1,
+      "command": [
+        "/home/royal01/virtualgpu/v03-mlp-7bb3d7f/vgpu_bench",
+        "--mode",
+        "strided-mlp",
+        "--device",
+        "0",
+        "--samples",
+        "15",
+        "--warmup",
+        "3"
+      ],
+      "started_utc": "2026-11-26T18:41:45.210966+00:00",
+      "finished_utc": "2026-11-26T18:41:46.790313+00:00"
+    },
+    {
+      "file": "strided-mlp-2.json",
+      "sha256": "2ea07f2e1ad473e3a55c4894e084d91e95fd526adb3e9ac1fa35f80a91792560",
+      "mode": "strided-mlp",
+      "repeat": 2,
+      "command": [
+        "/home/royal01/virtualgpu/v03-mlp-7bb3d7f/vgpu_bench",
+        "--mode",
+        "strided-mlp",
+        "--device",
+        "0",
+        "--samples",
+        "15",
+        "--warmup",
+        "3"
+      ],
+      "started_utc": "2026-11-26T18:41:50.261988+00:00",
+      "finished_utc": "2026-11-26T18:41:51.844545+00:00"
+    },
+    {
+      "file": "strided-mlp-3.json",
+      "sha256": "417fc268abab6038f9bc09d81fc7eb24a7019072ff810f583e19c5c285ba12bb",
+      "mode": "strided-mlp",
+      "repeat": 3,
+      "command": [
+        "/home/royal01/virtualgpu/v03-mlp-7bb3d7f/vgpu_bench",
+        "--mode",
+        "strided-mlp",
+        "--device",
+        "0",
+        "--samples",
+        "15",
+        "--warmup",
+        "3"
+      ],
+      "started_utc": "2026-11-26T18:41:55.324191+00:00",
+      "finished_utc": "2026-11-26T18:41:56.909159+00:00"
+    },
+    {
+      "file": "strided-mlp-4.json",
+      "sha256": "cafefc966e48fa6f12dababd2b30d10eb4c76b014b57b220b5d9e33e417f09e7",
+      "mode": "strided-mlp",
+      "repeat": 4,
+      "command": [
+        "/home/royal01/virtualgpu/v03-mlp-7bb3d7f/vgpu_bench",
+        "--mode",
+        "strided-mlp",
+        "--device",
+        "0",
+        "--samples",
+        "15",
+        "--warmup",
+        "3"
+      ],
+      "started_utc": "2026-11-26T18:42:00.380759+00:00",
+      "finished_utc": "2026-11-26T18:42:01.972528+00:00"
+    },
+    {
+      "file": "strided-mlp-5.json",
+      "sha256": "1ed156280b75b8a1162bd52473c09f26157266c85b91cf67071276c57b1c2515",
+      "mode": "strided-mlp",
+      "repeat": 5,
+      "command": [
+        "/home/royal01/virtualgpu/v03-mlp-7bb3d7f/vgpu_bench",
+        "--mode",
+        "strided-mlp",
+        "--device",
+        "0",
+        "--samples",
+        "15",
+        "--warmup",
+        "3"
+      ],
+      "started_utc": "2026-11-26T18:42:05.481976+00:00",
+      "finished_utc": "2026-11-26T18:42:07.105302+00:00"
+    }
+  ],
+  "fields": {
+    "dram_bw_by_bytes_in_flight": {
+      "points": [
+        {
+          "geometry": [
+            "cp_async",
+            4096,
+            1,
+            4096
+          ],
+          "old_gbps": 9.549,
+          "new_gbps": 9.396,
+          "repeat_medians_gbps": [
+            9.537,
+            9.396,
+            9.395,
+            9.531,
+            9.385
+          ],
+          "repeat_range_gbps": [
+            9.385,
+            9.537
+          ],
+          "pooled_median_gbps": 9.401,
+          "pooled_iqr_gbps": 0.14100000000000001
+        },
+        {
+          "geometry": [
+            "cp_async",
+            8192,
+            2,
+            4096
+          ],
+          "old_gbps": 19.099,
+          "new_gbps": 18.878,
+          "repeat_medians_gbps": [
+            19.012,
+            18.877,
+            18.878,
+            18.966,
+            18.836
+          ],
+          "repeat_range_gbps": [
+            18.836,
+            19.012
+          ],
+          "pooled_median_gbps": 18.878,
+          "pooled_iqr_gbps": 5.793999999999999
+        },
+        {
+          "geometry": [
+            "cp_async",
+            16384,
+            4,
+            4096
+          ],
+          "old_gbps": 37.6,
+          "new_gbps": 37.765,
+          "repeat_medians_gbps": [
+            37.765,
+            37.765,
+            37.765,
+            37.594,
+            37.765
+          ],
+          "repeat_range_gbps": [
+            37.594,
+            37.765
+          ],
+          "pooled_median_gbps": 37.765,
+          "pooled_iqr_gbps": 0.008000000000002672
+        },
+        {
+          "geometry": [
+            "cp_async",
+            32768,
+            8,
+            4096
+          ],
+          "old_gbps": 47.789,
+          "new_gbps": 73.854,
+          "repeat_medians_gbps": [
+            73.854,
+            73.854,
+            73.864,
+            73.854,
+            73.854
+          ],
+          "repeat_range_gbps": [
+            73.854,
+            73.864
+          ],
+          "pooled_median_gbps": 73.854,
+          "pooled_iqr_gbps": 0.021000000000000796
+        },
+        {
+          "geometry": [
+            "cp_async",
+            40960,
+            10,
+            4096
+          ],
+          "old_gbps": 91.991,
+          "new_gbps": 90.968,
+          "repeat_medians_gbps": [
+            90.952,
+            89.89,
+            90.968,
+            90.968,
+            90.968
+          ],
+          "repeat_range_gbps": [
+            89.89,
+            90.968
+          ],
+          "pooled_median_gbps": 90.968,
+          "pooled_iqr_gbps": 0.016000000000005343
+        },
+        {
+          "geometry": [
+            "cp_async",
+            49152,
+            12,
+            4096
+          ],
+          "old_gbps": 107.795,
+          "new_gbps": 107.795,
+          "repeat_medians_gbps": [
+            107.795,
+            107.795,
+            106.415,
+            107.795,
+            107.795
+          ],
+          "repeat_range_gbps": [
+            106.415,
+            107.795
+          ],
+          "pooled_median_gbps": 107.795,
+          "pooled_iqr_gbps": 1.3799999999999955
+        },
+        {
+          "geometry": [
+            "cp_async",
+            57344,
+            14,
+            4096
+          ],
+          "old_gbps": 123.849,
+          "new_gbps": 124.026,
+          "repeat_medians_gbps": [
+            124.026,
+            123.879,
+            124.026,
+            122.172,
+            124.026
+          ],
+          "repeat_range_gbps": [
+            122.172,
+            124.026
+          ],
+          "pooled_median_gbps": 124.026,
+          "pooled_iqr_gbps": 1.8539999999999992
+        },
+        {
+          "geometry": [
+            "cp_async",
+            65536,
+            16,
+            4096
+          ],
+          "old_gbps": 139.032,
+          "new_gbps": 139.032,
+          "repeat_medians_gbps": [
+            139.032,
+            138.921,
+            139.032,
+            138.847,
+            139.068
+          ],
+          "repeat_range_gbps": [
+            138.847,
+            139.068
+          ],
+          "pooled_median_gbps": 139.032,
+          "pooled_iqr_gbps": 2.320999999999998
+        },
+        {
+          "geometry": [
+            "cp_async",
+            77824,
+            19,
+            4096
+          ],
+          "old_gbps": 157.352,
+          "new_gbps": 157.352,
+          "repeat_medians_gbps": [
+            157.352,
+            157.399,
+            157.352,
+            157.352,
+            157.352
+          ],
+          "repeat_range_gbps": [
+            157.352,
+            157.399
+          ],
+          "pooled_median_gbps": 157.352,
+          "pooled_iqr_gbps": 3.0200000000000102
+        },
+        {
+          "geometry": [
+            "cp_async",
+            90112,
+            22,
+            4096
+          ],
+          "old_gbps": 174.418,
+          "new_gbps": 174.418,
+          "repeat_medians_gbps": [
+            174.418,
+            174.418,
+            171.113,
+            174.418,
+            174.418
+          ],
+          "repeat_range_gbps": [
+            171.113,
+            174.418
+          ],
+          "pooled_median_gbps": 174.418,
+          "pooled_iqr_gbps": 3.584000000000003
+        },
+        {
+          "geometry": [
+            "cp_async",
+            106496,
+            26,
+            4096
+          ],
+          "old_gbps": 185.875,
+          "new_gbps": 190.206,
+          "repeat_medians_gbps": [
+            190.206,
+            185.942,
+            190.206,
+            185.875,
+            190.206
+          ],
+          "repeat_range_gbps": [
+            185.875,
+            190.206
+          ],
+          "pooled_median_gbps": 190.137,
+          "pooled_iqr_gbps": 4.330999999999989
+        },
+        {
+          "geometry": [
+            "cp_async",
+            131072,
+            32,
+            4096
+          ],
+          "old_gbps": 195.411,
+          "new_gbps": 200.186,
+          "repeat_medians_gbps": [
+            200.186,
+            200.186,
+            200.11,
+            200.186,
+            195.411
+          ],
+          "repeat_range_gbps": [
+            195.411,
+            200.186
+          ],
+          "pooled_median_gbps": 200.186,
+          "pooled_iqr_gbps": 4.852000000000004
+        },
+        {
+          "geometry": [
+            "cp_async",
+            155648,
+            38,
+            4096
+          ],
+          "old_gbps": 214.17,
+          "new_gbps": 199.166,
+          "repeat_medians_gbps": [
+            173.617,
+            203.528,
+            199.166,
+            211.838,
+            197.023
+          ],
+          "repeat_range_gbps": [
+            173.617,
+            211.838
+          ],
+          "pooled_median_gbps": 202.733,
+          "pooled_iqr_gbps": 43.43299999999999
+        },
+        {
+          "geometry": [
+            "cp_async",
+            196608,
+            48,
+            4096
+          ],
+          "old_gbps": 219.797,
+          "new_gbps": 188.277,
+          "repeat_medians_gbps": [
+            188.277,
+            165.634,
+            203.686,
+            208.161,
+            152.173
+          ],
+          "repeat_range_gbps": [
+            152.173,
+            208.161
+          ],
+          "pooled_median_gbps": 186.934,
+          "pooled_iqr_gbps": 77.37899999999999
+        },
+        {
+          "geometry": [
+            "cp_async",
+            229376,
+            28,
+            8192
+          ],
+          "old_gbps": 229.663,
+          "new_gbps": 229.663,
+          "repeat_medians_gbps": [
+            227.838,
+            231.459,
+            229.721,
+            222.264,
+            229.663
+          ],
+          "repeat_range_gbps": [
+            222.264,
+            231.459
+          ],
+          "pooled_median_gbps": 229.663,
+          "pooled_iqr_gbps": 8.894999999999982
+        },
+        {
+          "geometry": [
+            "cp_async",
+            262144,
+            32,
+            8192
+          ],
+          "old_gbps": 197.212,
+          "new_gbps": 227.803,
+          "repeat_medians_gbps": [
+            190.858,
+            229.398,
+            230.659,
+            224.679,
+            227.803
+          ],
+          "repeat_range_gbps": [
+            190.858,
+            230.659
+          ],
+          "pooled_median_gbps": 227.753,
+          "pooled_iqr_gbps": 44.34300000000002
+        },
+        {
+          "geometry": [
+            "cp_async",
+            393216,
+            48,
+            8192
+          ],
+          "old_gbps": 221.78,
+          "new_gbps": 241.015,
+          "repeat_medians_gbps": [
+            252.304,
+            247.034,
+            235.353,
+            239.949,
+            241.015
+          ],
+          "repeat_range_gbps": [
+            235.353,
+            252.304
+          ],
+          "pooled_median_gbps": 242.24,
+          "pooled_iqr_gbps": 18.03800000000001
+        },
+        {
+          "geometry": [
+            "cp_async",
+            524288,
+            32,
+            16384
+          ],
+          "old_gbps": 258.302,
+          "new_gbps": 259.196,
+          "repeat_medians_gbps": [
+            259.196,
+            259.196,
+            259.036,
+            258.175,
+            259.196
+          ],
+          "repeat_range_gbps": [
+            258.175,
+            259.196
+          ],
+          "pooled_median_gbps": 259.196,
+          "pooled_iqr_gbps": 2.0179999999999723
+        },
+        {
+          "geometry": [
+            "cp_async",
+            786432,
+            48,
+            16384
+          ],
+          "old_gbps": 257.446,
+          "new_gbps": 262.253,
+          "repeat_medians_gbps": [
+            262.253,
+            262.253,
+            261.577,
+            262.253,
+            262.253
+          ],
+          "repeat_range_gbps": [
+            261.577,
+            262.253
+          ],
+          "pooled_median_gbps": 262.253,
+          "pooled_iqr_gbps": 1.391999999999996
+        },
+        {
+          "geometry": [
+            "cp_async",
+            1572864,
+            96,
+            16384
+          ],
+          "old_gbps": 257.393,
+          "new_gbps": 263.252,
+          "repeat_medians_gbps": [
+            263.605,
+            262.911,
+            261.49,
+            263.252,
+            263.605
+          ],
+          "repeat_range_gbps": [
+            261.49,
+            263.605
+          ],
+          "pooled_median_gbps": 263.252,
+          "pooled_iqr_gbps": 1.05600000000004
+        },
+        {
+          "geometry": [
+            "cp_async",
+            2359296,
+            144,
+            16384
+          ],
+          "old_gbps": 252.752,
+          "new_gbps": 259.791,
+          "repeat_medians_gbps": [
+            259.791,
+            261.598,
+            260.557,
+            259.012,
+            257.984
+          ],
+          "repeat_range_gbps": [
+            257.984,
+            261.598
+          ],
+          "pooled_median_gbps": 259.541,
+          "pooled_iqr_gbps": 2.3319999999999936
+        },
+        {
+          "geometry": [
+            "cp_async",
+            4718592,
+            144,
+            32768
+          ],
+          "old_gbps": 255.664,
+          "new_gbps": 261.015,
+          "repeat_medians_gbps": [
+            261.031,
+            261.807,
+            261.015,
+            259.445,
+            259.212
+          ],
+          "repeat_range_gbps": [
+            259.212,
+            261.807
+          ],
+          "pooled_median_gbps": 260.511,
+          "pooled_iqr_gbps": 2.0399999999999636
+        },
+        {
+          "geometry": [
+            "cp_async",
+            6291456,
+            192,
+            32768
+          ],
+          "old_gbps": 252.817,
+          "new_gbps": 260.112,
+          "repeat_medians_gbps": [
+            260.112,
+            261.955,
+            260.12,
+            256.992,
+            257.301
+          ],
+          "repeat_range_gbps": [
+            256.992,
+            261.955
+          ],
+          "pooled_median_gbps": 259.345,
+          "pooled_iqr_gbps": 3.656000000000006
+        },
+        {
+          "geometry": [
+            "cp_async",
+            7864320,
+            240,
+            32768
+          ],
+          "old_gbps": 241.813,
+          "new_gbps": 247.764,
+          "repeat_medians_gbps": [
+            254.751,
+            246.151,
+            248.25,
+            247.346,
+            247.764
+          ],
+          "repeat_range_gbps": [
+            246.151,
+            254.751
+          ],
+          "pooled_median_gbps": 248.486,
+          "pooled_iqr_gbps": 8.479000000000013
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            4096,
+            1,
+            4096
+          ],
+          "old_gbps": 9.236,
+          "new_gbps": 9.088,
+          "repeat_medians_gbps": [
+            9.231,
+            9.088,
+            9.078,
+            9.226,
+            9.073
+          ],
+          "repeat_range_gbps": [
+            9.073,
+            9.231
+          ],
+          "pooled_median_gbps": 9.088,
+          "pooled_iqr_gbps": 0.9559999999999995
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            8192,
+            2,
+            4096
+          ],
+          "old_gbps": 18.495,
+          "new_gbps": 18.33,
+          "repeat_medians_gbps": [
+            18.454,
+            18.33,
+            18.289,
+            18.454,
+            18.248
+          ],
+          "repeat_range_gbps": [
+            18.248,
+            18.454
+          ],
+          "pooled_median_gbps": 18.33,
+          "pooled_iqr_gbps": 0.16499999999999915
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            16384,
+            4,
+            4096
+          ],
+          "old_gbps": 36.589,
+          "new_gbps": 36.584,
+          "repeat_medians_gbps": [
+            36.582,
+            36.584,
+            36.584,
+            36.584,
+            36.584
+          ],
+          "repeat_range_gbps": [
+            36.582,
+            36.584
+          ],
+          "pooled_median_gbps": 36.584,
+          "pooled_iqr_gbps": 0.005000000000002558
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            32768,
+            8,
+            4096
+          ],
+          "old_gbps": 71.909,
+          "new_gbps": 71.909,
+          "repeat_medians_gbps": [
+            71.909,
+            71.909,
+            71.909,
+            71.909,
+            71.909
+          ],
+          "repeat_range_gbps": [
+            71.909,
+            71.909
+          ],
+          "pooled_median_gbps": 71.909,
+          "pooled_iqr_gbps": 0.0
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            40960,
+            10,
+            4096
+          ],
+          "old_gbps": 88.989,
+          "new_gbps": 88.075,
+          "repeat_medians_gbps": [
+            88.075,
+            88.989,
+            88.046,
+            88.061,
+            88.105
+          ],
+          "repeat_range_gbps": [
+            88.046,
+            88.989
+          ],
+          "pooled_median_gbps": 88.913,
+          "pooled_iqr_gbps": 0.9579999999999984
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            49152,
+            12,
+            4096
+          ],
+          "old_gbps": 105.028,
+          "new_gbps": 105.028,
+          "repeat_medians_gbps": [
+            105.028,
+            105.028,
+            105.028,
+            105.028,
+            105.028
+          ],
+          "repeat_range_gbps": [
+            105.028,
+            105.028
+          ],
+          "pooled_median_gbps": 105.028,
+          "pooled_iqr_gbps": 0.0
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            57344,
+            14,
+            4096
+          ],
+          "old_gbps": 120.374,
+          "new_gbps": 120.374,
+          "repeat_medians_gbps": [
+            120.374,
+            120.374,
+            120.374,
+            120.374,
+            120.374
+          ],
+          "repeat_range_gbps": [
+            120.374,
+            120.374
+          ],
+          "pooled_median_gbps": 120.374,
+          "pooled_iqr_gbps": 0.0
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            65536,
+            16,
+            4096
+          ],
+          "old_gbps": 136.533,
+          "new_gbps": 136.711,
+          "repeat_medians_gbps": [
+            136.711,
+            134.536,
+            136.711,
+            134.467,
+            136.711
+          ],
+          "repeat_range_gbps": [
+            134.467,
+            136.711
+          ],
+          "pooled_median_gbps": 136.676,
+          "pooled_iqr_gbps": 2.2439999999999998
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            77824,
+            19,
+            4096
+          ],
+          "old_gbps": 131.344,
+          "new_gbps": 154.379,
+          "repeat_medians_gbps": [
+            154.379,
+            154.379,
+            154.379,
+            151.516,
+            154.379
+          ],
+          "repeat_range_gbps": [
+            151.516,
+            154.379
+          ],
+          "pooled_median_gbps": 154.379,
+          "pooled_iqr_gbps": 2.8629999999999995
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            90112,
+            22,
+            4096
+          ],
+          "old_gbps": 91.987,
+          "new_gbps": 143.618,
+          "repeat_medians_gbps": [
+            125.066,
+            149.054,
+            143.776,
+            143.618,
+            116.914
+          ],
+          "repeat_range_gbps": [
+            116.914,
+            149.054
+          ],
+          "pooled_median_gbps": 139.339,
+          "pooled_iqr_gbps": 65.786
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            106496,
+            26,
+            4096
+          ],
+          "old_gbps": 185.875,
+          "new_gbps": 121.936,
+          "repeat_medians_gbps": [
+            185.48,
+            126.268,
+            108.492,
+            96.366,
+            121.936
+          ],
+          "repeat_range_gbps": [
+            96.366,
+            185.48
+          ],
+          "pooled_median_gbps": 125.359,
+          "pooled_iqr_gbps": 83.584
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            131072,
+            32,
+            4096
+          ],
+          "old_gbps": 200.186,
+          "new_gbps": 195.411,
+          "repeat_medians_gbps": [
+            168.095,
+            197.845,
+            195.484,
+            195.411,
+            195.338
+          ],
+          "repeat_range_gbps": [
+            168.095,
+            197.845
+          ],
+          "pooled_median_gbps": 195.411,
+          "pooled_iqr_gbps": 13.607
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            155648,
+            38,
+            4096
+          ],
+          "old_gbps": 211.838,
+          "new_gbps": 198.025,
+          "repeat_medians_gbps": [
+            207.462,
+            196.277,
+            198.025,
+            195.476,
+            202.997
+          ],
+          "repeat_range_gbps": [
+            195.476,
+            207.462
+          ],
+          "pooled_median_gbps": 202.997,
+          "pooled_iqr_gbps": 55.349999999999994
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            196608,
+            48,
+            4096
+          ],
+          "old_gbps": 221.905,
+          "new_gbps": 223.736,
+          "repeat_medians_gbps": [
+            223.8,
+            219.797,
+            223.672,
+            223.736,
+            223.8
+          ],
+          "repeat_range_gbps": [
+            219.797,
+            223.8
+          ],
+          "pooled_median_gbps": 223.736,
+          "pooled_iqr_gbps": 5.8729999999999905
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            229376,
+            28,
+            8192
+          ],
+          "old_gbps": 228.008,
+          "new_gbps": 230.009,
+          "repeat_medians_gbps": [
+            231.518,
+            230.009,
+            231.693,
+            229.663,
+            229.663
+          ],
+          "repeat_range_gbps": [
+            229.663,
+            231.693
+          ],
+          "pooled_median_gbps": 231.518,
+          "pooled_iqr_gbps": 3.5609999999999786
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            262144,
+            32,
+            8192
+          ],
+          "old_gbps": 236.006,
+          "new_gbps": 236.006,
+          "repeat_medians_gbps": [
+            236.059,
+            236.006,
+            234.371,
+            236.006,
+            234.371
+          ],
+          "repeat_range_gbps": [
+            234.371,
+            236.059
+          ],
+          "pooled_median_gbps": 236.006,
+          "pooled_iqr_gbps": 5.010999999999996
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            393216,
+            48,
+            8192
+          ],
+          "old_gbps": 252.385,
+          "new_gbps": 252.264,
+          "repeat_medians_gbps": [
+            251.016,
+            252.264,
+            252.264,
+            250.976,
+            252.385
+          ],
+          "repeat_range_gbps": [
+            250.976,
+            252.385
+          ],
+          "pooled_median_gbps": 252.264,
+          "pooled_iqr_gbps": 2.5889999999999986
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            524288,
+            32,
+            16384
+          ],
+          "old_gbps": 256.156,
+          "new_gbps": 257.161,
+          "repeat_medians_gbps": [
+            257.161,
+            257.288,
+            256.156,
+            257.161,
+            250.018
+          ],
+          "repeat_range_gbps": [
+            250.018,
+            257.288
+          ],
+          "pooled_median_gbps": 256.188,
+          "pooled_iqr_gbps": 3.944000000000017
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            786432,
+            48,
+            16384
+          ],
+          "old_gbps": 256.104,
+          "new_gbps": 261.555,
+          "repeat_medians_gbps": [
+            261.555,
+            261.555,
+            258.801,
+            261.555,
+            260.775
+          ],
+          "repeat_range_gbps": [
+            258.801,
+            261.555
+          ],
+          "pooled_median_gbps": 260.926,
+          "pooled_iqr_gbps": 2.0819999999999936
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            1572864,
+            96,
+            16384
+          ],
+          "old_gbps": 245.195,
+          "new_gbps": 263.55,
+          "repeat_medians_gbps": [
+            263.55,
+            263.605,
+            263.263,
+            263.594,
+            263.252
+          ],
+          "repeat_range_gbps": [
+            263.252,
+            263.605
+          ],
+          "pooled_median_gbps": 263.55,
+          "pooled_iqr_gbps": 0.7160000000000082
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            2359296,
+            144,
+            16384
+          ],
+          "old_gbps": 245.384,
+          "new_gbps": 261.176,
+          "repeat_medians_gbps": [
+            261.185,
+            261.965,
+            261.176,
+            259.849,
+            258.326
+          ],
+          "repeat_range_gbps": [
+            258.326,
+            261.965
+          ],
+          "pooled_median_gbps": 260.67,
+          "pooled_iqr_gbps": 3.127999999999986
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            4718592,
+            144,
+            32768
+          ],
+          "old_gbps": 243.938,
+          "new_gbps": 250.304,
+          "repeat_medians_gbps": [
+            255.501,
+            251.547,
+            248.639,
+            246.729,
+            250.304
+          ],
+          "repeat_range_gbps": [
+            246.729,
+            255.501
+          ],
+          "pooled_median_gbps": 250.692,
+          "pooled_iqr_gbps": 8.119999999999976
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            6291456,
+            192,
+            32768
+          ],
+          "old_gbps": 249.842,
+          "new_gbps": 248.803,
+          "repeat_medians_gbps": [
+            255.43,
+            248.803,
+            249.857,
+            244.4,
+            248.541
+          ],
+          "repeat_range_gbps": [
+            244.4,
+            255.43
+          ],
+          "pooled_median_gbps": 248.931,
+          "pooled_iqr_gbps": 12.34099999999998
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            7864320,
+            240,
+            32768
+          ],
+          "old_gbps": 251.356,
+          "new_gbps": 247.075,
+          "repeat_medians_gbps": [
+            251.523,
+            245.919,
+            243.391,
+            247.075,
+            247.713
+          ],
+          "repeat_range_gbps": [
+            243.391,
+            251.523
+          ],
+          "pooled_median_gbps": 247.485,
+          "pooled_iqr_gbps": 9.272999999999996
+        }
+      ],
+      "active_clock_range_mhz": null,
+      "slowdown_samples": 0
+    },
+    "l2_bw_by_bytes_in_flight": {
+      "points": [
+        {
+          "geometry": [
+            "cp_async",
+            4096,
+            1,
+            4096
+          ],
+          "old_gbps": 28.967,
+          "new_gbps": 28.941,
+          "repeat_medians_gbps": [
+            28.941,
+            28.941,
+            28.942,
+            28.941,
+            28.941
+          ],
+          "repeat_range_gbps": [
+            28.941,
+            28.942
+          ],
+          "pooled_median_gbps": 28.941,
+          "pooled_iqr_gbps": 0.03599999999999781
+        },
+        {
+          "geometry": [
+            "cp_async",
+            8192,
+            2,
+            4096
+          ],
+          "old_gbps": 57.77,
+          "new_gbps": 57.765,
+          "repeat_medians_gbps": [
+            57.765,
+            57.768,
+            57.774,
+            57.765,
+            57.765
+          ],
+          "repeat_range_gbps": [
+            57.765,
+            57.774
+          ],
+          "pooled_median_gbps": 57.768,
+          "pooled_iqr_gbps": 0.011000000000002785
+        },
+        {
+          "geometry": [
+            "cp_async",
+            16384,
+            4,
+            4096
+          ],
+          "old_gbps": 115.298,
+          "new_gbps": 115.279,
+          "repeat_medians_gbps": [
+            115.266,
+            115.266,
+            115.279,
+            115.279,
+            115.279
+          ],
+          "repeat_range_gbps": [
+            115.266,
+            115.279
+          ],
+          "pooled_median_gbps": 115.279,
+          "pooled_iqr_gbps": 0.045000000000001705
+        },
+        {
+          "geometry": [
+            "cp_async",
+            32768,
+            8,
+            4096
+          ],
+          "old_gbps": 230.229,
+          "new_gbps": 228.822,
+          "repeat_medians_gbps": [
+            228.847,
+            228.897,
+            228.822,
+            228.772,
+            228.822
+          ],
+          "repeat_range_gbps": [
+            228.772,
+            228.897
+          ],
+          "pooled_median_gbps": 228.847,
+          "pooled_iqr_gbps": 0.2750000000000057
+        },
+        {
+          "geometry": [
+            "cp_async",
+            40960,
+            10,
+            4096
+          ],
+          "old_gbps": 286.818,
+          "new_gbps": 286.857,
+          "repeat_medians_gbps": [
+            286.857,
+            286.857,
+            286.857,
+            286.74,
+            286.779
+          ],
+          "repeat_range_gbps": [
+            286.74,
+            286.857
+          ],
+          "pooled_median_gbps": 286.818,
+          "pooled_iqr_gbps": 0.23599999999999
+        },
+        {
+          "geometry": [
+            "cp_async",
+            49152,
+            12,
+            4096
+          ],
+          "old_gbps": 340.806,
+          "new_gbps": 340.64,
+          "repeat_medians_gbps": [
+            340.64,
+            340.806,
+            340.751,
+            340.585,
+            340.64
+          ],
+          "repeat_range_gbps": [
+            340.585,
+            340.806
+          ],
+          "pooled_median_gbps": 340.695,
+          "pooled_iqr_gbps": 3.125
+        },
+        {
+          "geometry": [
+            "cp_async",
+            57344,
+            14,
+            4096
+          ],
+          "old_gbps": 398.525,
+          "new_gbps": 398.449,
+          "repeat_medians_gbps": [
+            398.449,
+            398.601,
+            398.449,
+            398.298,
+            398.449
+          ],
+          "repeat_range_gbps": [
+            398.298,
+            398.601
+          ],
+          "pooled_median_gbps": 398.449,
+          "pooled_iqr_gbps": 0.4550000000000409
+        },
+        {
+          "geometry": [
+            "cp_async",
+            65536,
+            16,
+            4096
+          ],
+          "old_gbps": 453.831,
+          "new_gbps": 453.831,
+          "repeat_medians_gbps": [
+            453.831,
+            453.929,
+            454.027,
+            453.634,
+            453.634
+          ],
+          "repeat_range_gbps": [
+            453.634,
+            454.027
+          ],
+          "pooled_median_gbps": 453.831,
+          "pooled_iqr_gbps": 0.39299999999997226
+        },
+        {
+          "geometry": [
+            "cp_async",
+            77824,
+            19,
+            4096
+          ],
+          "old_gbps": 535.201,
+          "new_gbps": 535.065,
+          "repeat_medians_gbps": [
+            534.792,
+            535.338,
+            535.338,
+            535.065,
+            534.928
+          ],
+          "repeat_range_gbps": [
+            534.792,
+            535.338
+          ],
+          "pooled_median_gbps": 535.065,
+          "pooled_iqr_gbps": 0.6829999999999927
+        },
+        {
+          "geometry": [
+            "cp_async",
+            90112,
+            22,
+            4096
+          ],
+          "old_gbps": 616.026,
+          "new_gbps": 615.302,
+          "repeat_medians_gbps": [
+            615.122,
+            616.207,
+            615.302,
+            615.302,
+            614.761
+          ],
+          "repeat_range_gbps": [
+            614.761,
+            616.207
+          ],
+          "pooled_median_gbps": 615.302,
+          "pooled_iqr_gbps": 1.08400000000006
+        },
+        {
+          "geometry": [
+            "cp_async",
+            106496,
+            26,
+            4096
+          ],
+          "old_gbps": 724.979,
+          "new_gbps": 724.729,
+          "repeat_medians_gbps": [
+            724.729,
+            724.979,
+            724.979,
+            724.228,
+            724.228
+          ],
+          "repeat_range_gbps": [
+            724.228,
+            724.979
+          ],
+          "pooled_median_gbps": 724.478,
+          "pooled_iqr_gbps": 1.2520000000000664
+        },
+        {
+          "geometry": [
+            "cp_async",
+            131072,
+            32,
+            4096
+          ],
+          "old_gbps": 880.416,
+          "new_gbps": 880.786,
+          "repeat_medians_gbps": [
+            880.786,
+            881.527,
+            881.156,
+            880.416,
+            880.416
+          ],
+          "repeat_range_gbps": [
+            880.416,
+            881.527
+          ],
+          "pooled_median_gbps": 880.786,
+          "pooled_iqr_gbps": 1.4800000000000182
+        },
+        {
+          "geometry": [
+            "cp_async",
+            155648,
+            38,
+            4096
+          ],
+          "old_gbps": 1048.716,
+          "new_gbps": 1047.145,
+          "repeat_medians_gbps": [
+            1047.145,
+            1021.63,
+            1047.145,
+            1042.977,
+            1048.716
+          ],
+          "repeat_range_gbps": [
+            1021.63,
+            1048.716
+          ],
+          "pooled_median_gbps": 1046.622,
+          "pooled_iqr_gbps": 28.080999999999904
+        },
+        {
+          "geometry": [
+            "cp_async",
+            196608,
+            48,
+            4096
+          ],
+          "old_gbps": 1256.811,
+          "new_gbps": 1255.305,
+          "repeat_medians_gbps": [
+            1251.556,
+            1255.305,
+            1291.679,
+            1295.673,
+            1252.304
+          ],
+          "repeat_range_gbps": [
+            1251.556,
+            1295.673
+          ],
+          "pooled_median_gbps": 1265.924,
+          "pooled_iqr_gbps": 44.91899999999987
+        },
+        {
+          "geometry": [
+            "cp_async",
+            229376,
+            28,
+            8192
+          ],
+          "old_gbps": 1411.879,
+          "new_gbps": 1411.879,
+          "repeat_medians_gbps": [
+            1413.783,
+            1411.879,
+            1412.83,
+            1410.929,
+            1409.032
+          ],
+          "repeat_range_gbps": [
+            1409.032,
+            1413.783
+          ],
+          "pooled_median_gbps": 1411.879,
+          "pooled_iqr_gbps": 4.750999999999976
+        },
+        {
+          "geometry": [
+            "cp_async",
+            262144,
+            32,
+            8192
+          ],
+          "old_gbps": 1545.433,
+          "new_gbps": 1544.295,
+          "repeat_medians_gbps": [
+            1546.572,
+            1547.714,
+            1544.295,
+            1543.158,
+            1543.158
+          ],
+          "repeat_range_gbps": [
+            1543.158,
+            1547.714
+          ],
+          "pooled_median_gbps": 1544.295,
+          "pooled_iqr_gbps": 5.690000000000055
+        },
+        {
+          "geometry": [
+            "cp_async",
+            393216,
+            48,
+            8192
+          ],
+          "old_gbps": 1939.413,
+          "new_gbps": 1875.807,
+          "repeat_medians_gbps": [
+            1875.807,
+            1878.047,
+            1873.572,
+            1944.208,
+            1874.689
+          ],
+          "repeat_range_gbps": [
+            1873.572,
+            1944.208
+          ],
+          "pooled_median_gbps": 1875.807,
+          "pooled_iqr_gbps": 6.720000000000027
+        },
+        {
+          "geometry": [
+            "cp_async",
+            524288,
+            32,
+            16384
+          ],
+          "old_gbps": 2102.408,
+          "new_gbps": 2100.302,
+          "repeat_medians_gbps": [
+            2100.302,
+            2103.462,
+            2100.302,
+            2099.251,
+            2099.251
+          ],
+          "repeat_range_gbps": [
+            2099.251,
+            2103.462
+          ],
+          "pooled_median_gbps": 2100.302,
+          "pooled_iqr_gbps": 5.260999999999967
+        },
+        {
+          "geometry": [
+            "cp_async",
+            786432,
+            48,
+            16384
+          ],
+          "old_gbps": 2082.574,
+          "new_gbps": 2082.574,
+          "repeat_medians_gbps": [
+            2083.264,
+            2038.709,
+            2083.954,
+            2082.574,
+            2079.82
+          ],
+          "repeat_range_gbps": [
+            2038.709,
+            2083.954
+          ],
+          "pooled_median_gbps": 2082.574,
+          "pooled_iqr_gbps": 42.59900000000016
+        },
+        {
+          "geometry": [
+            "cp_async",
+            1572864,
+            96,
+            16384
+          ],
+          "old_gbps": 2108.75,
+          "new_gbps": 2088.797,
+          "repeat_medians_gbps": [
+            2098.201,
+            2065.142,
+            2088.797,
+            2124.415,
+            2087.065
+          ],
+          "repeat_range_gbps": [
+            2065.142,
+            2124.415
+          ],
+          "pooled_median_gbps": 2088.797,
+          "pooled_iqr_gbps": 17.77599999999984
+        },
+        {
+          "geometry": [
+            "cp_async",
+            2359296,
+            144,
+            16384
+          ],
+          "old_gbps": 2190.618,
+          "new_gbps": 2142.137,
+          "repeat_medians_gbps": [
+            2127.648,
+            2110.991,
+            2205.98,
+            2190.873,
+            2142.137
+          ],
+          "repeat_range_gbps": [
+            2110.991,
+            2205.98
+          ],
+          "pooled_median_gbps": 2142.866,
+          "pooled_iqr_gbps": 90.78099999999995
+        },
+        {
+          "geometry": [
+            "cp_async",
+            4718592,
+            144,
+            32768
+          ],
+          "old_gbps": 2297.27,
+          "new_gbps": 2276.489,
+          "repeat_medians_gbps": [
+            2279.651,
+            2277.175,
+            2258.78,
+            2276.489,
+            2251.371
+          ],
+          "repeat_range_gbps": [
+            2251.371,
+            2279.651
+          ],
+          "pooled_median_gbps": 2270.191,
+          "pooled_iqr_gbps": 28.817000000000007
+        },
+        {
+          "geometry": [
+            "cp_async",
+            6291456,
+            192,
+            32768
+          ],
+          "old_gbps": 1895.374,
+          "new_gbps": 2068.707,
+          "repeat_medians_gbps": [
+            1896.659,
+            1887.838,
+            2109.988,
+            2096.191,
+            2068.707
+          ],
+          "repeat_range_gbps": [
+            1887.838,
+            2109.988
+          ],
+          "pooled_median_gbps": 2055.024,
+          "pooled_iqr_gbps": 203.33799999999997
+        },
+        {
+          "geometry": [
+            "cp_async",
+            7864320,
+            240,
+            32768
+          ],
+          "old_gbps": 2109.882,
+          "new_gbps": 2138.642,
+          "repeat_medians_gbps": [
+            2205.594,
+            2129.521,
+            2137.116,
+            2166.927,
+            2138.642
+          ],
+          "repeat_range_gbps": [
+            2129.521,
+            2205.594
+          ],
+          "pooled_median_gbps": 2145.644,
+          "pooled_iqr_gbps": 67.38500000000022
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            4096,
+            1,
+            4096
+          ],
+          "old_gbps": 26.231,
+          "new_gbps": 26.212,
+          "repeat_medians_gbps": [
+            26.212,
+            26.212,
+            26.212,
+            26.21,
+            26.211
+          ],
+          "repeat_range_gbps": [
+            26.21,
+            26.212
+          ],
+          "pooled_median_gbps": 26.211,
+          "pooled_iqr_gbps": 0.3359999999999985
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            8192,
+            2,
+            4096
+          ],
+          "old_gbps": 52.497,
+          "new_gbps": 52.492,
+          "repeat_medians_gbps": [
+            51.678,
+            52.492,
+            52.492,
+            52.493,
+            46.952
+          ],
+          "repeat_range_gbps": [
+            46.952,
+            52.493
+          ],
+          "pooled_median_gbps": 52.048,
+          "pooled_iqr_gbps": 5.907000000000004
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            16384,
+            4,
+            4096
+          ],
+          "old_gbps": 104.826,
+          "new_gbps": 104.784,
+          "repeat_medians_gbps": [
+            104.942,
+            90.208,
+            104.784,
+            94.714,
+            104.978
+          ],
+          "repeat_range_gbps": [
+            90.208,
+            104.978
+          ],
+          "pooled_median_gbps": 101.053,
+          "pooled_iqr_gbps": 14.760000000000005
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            32768,
+            8,
+            4096
+          ],
+          "old_gbps": 208.423,
+          "new_gbps": 208.423,
+          "repeat_medians_gbps": [
+            208.03,
+            208.423,
+            208.506,
+            208.485,
+            200.072
+          ],
+          "repeat_range_gbps": [
+            200.072,
+            208.506
+          ],
+          "pooled_median_gbps": 208.402,
+          "pooled_iqr_gbps": 26.817999999999984
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            40960,
+            10,
+            4096
+          ],
+          "old_gbps": 261.524,
+          "new_gbps": 261.622,
+          "repeat_medians_gbps": [
+            259.742,
+            261.655,
+            261.687,
+            261.622,
+            261.59
+          ],
+          "repeat_range_gbps": [
+            259.742,
+            261.687
+          ],
+          "pooled_median_gbps": 261.622,
+          "pooled_iqr_gbps": 1.2350000000000136
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            49152,
+            12,
+            4096
+          ],
+          "old_gbps": 311.351,
+          "new_gbps": 261.068,
+          "repeat_medians_gbps": [
+            288.158,
+            250.794,
+            261.068,
+            260.355,
+            311.444
+          ],
+          "repeat_range_gbps": [
+            250.794,
+            311.444
+          ],
+          "pooled_median_gbps": 266.24,
+          "pooled_iqr_gbps": 60.465
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            57344,
+            14,
+            4096
+          ],
+          "old_gbps": 363.055,
+          "new_gbps": 363.243,
+          "repeat_medians_gbps": [
+            363.117,
+            363.243,
+            363.306,
+            363.055,
+            363.243
+          ],
+          "repeat_range_gbps": [
+            363.055,
+            363.306
+          ],
+          "pooled_median_gbps": 363.18,
+          "pooled_iqr_gbps": 0.37700000000000955
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            65536,
+            16,
+            4096
+          ],
+          "old_gbps": 413.721,
+          "new_gbps": 413.884,
+          "repeat_medians_gbps": [
+            413.721,
+            413.884,
+            413.884,
+            413.639,
+            413.884
+          ],
+          "repeat_range_gbps": [
+            413.639,
+            413.884
+          ],
+          "pooled_median_gbps": 413.803,
+          "pooled_iqr_gbps": 0.4089999999999918
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            77824,
+            19,
+            4096
+          ],
+          "old_gbps": 487.418,
+          "new_gbps": 487.645,
+          "repeat_medians_gbps": [
+            488.212,
+            487.531,
+            487.645,
+            484.713,
+            487.985
+          ],
+          "repeat_range_gbps": [
+            484.713,
+            488.212
+          ],
+          "pooled_median_gbps": 487.645,
+          "pooled_iqr_gbps": 1.136000000000024
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            90112,
+            22,
+            4096
+          ],
+          "old_gbps": 562.444,
+          "new_gbps": 562.746,
+          "repeat_medians_gbps": [
+            562.746,
+            563.049,
+            562.897,
+            536.518,
+            562.595
+          ],
+          "repeat_range_gbps": [
+            536.518,
+            563.049
+          ],
+          "pooled_median_gbps": 562.746,
+          "pooled_iqr_gbps": 1.2089999999999463
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            106496,
+            26,
+            4096
+          ],
+          "old_gbps": 666.023,
+          "new_gbps": 666.023,
+          "repeat_medians_gbps": [
+            666.023,
+            666.023,
+            666.023,
+            665.178,
+            665.811
+          ],
+          "repeat_range_gbps": [
+            665.178,
+            666.023
+          ],
+          "pooled_median_gbps": 666.023,
+          "pooled_iqr_gbps": 1.0570000000000164
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            131072,
+            32,
+            4096
+          ],
+          "old_gbps": 815.061,
+          "new_gbps": 815.378,
+          "repeat_medians_gbps": [
+            814.744,
+            816.33,
+            815.695,
+            815.061,
+            815.378
+          ],
+          "repeat_range_gbps": [
+            814.744,
+            816.33
+          ],
+          "pooled_median_gbps": 815.378,
+          "pooled_iqr_gbps": 1.9020000000000437
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            155648,
+            38,
+            4096
+          ],
+          "old_gbps": 956.816,
+          "new_gbps": 958.566,
+          "repeat_medians_gbps": [
+            959.005,
+            959.005,
+            958.128,
+            958.566,
+            957.69
+          ],
+          "repeat_range_gbps": [
+            957.69,
+            959.005
+          ],
+          "pooled_median_gbps": 958.566,
+          "pooled_iqr_gbps": 2.189999999999941
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            196608,
+            48,
+            4096
+          ],
+          "old_gbps": 1160.722,
+          "new_gbps": 1162.01,
+          "repeat_medians_gbps": [
+            1160.722,
+            1162.01,
+            1162.655,
+            1160.722,
+            1162.01
+          ],
+          "repeat_range_gbps": [
+            1160.722,
+            1162.655
+          ],
+          "pooled_median_gbps": 1162.01,
+          "pooled_iqr_gbps": 3.224999999999909
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            229376,
+            28,
+            8192
+          ],
+          "old_gbps": 1202.906,
+          "new_gbps": 1203.597,
+          "repeat_medians_gbps": [
+            1203.597,
+            1204.29,
+            1202.906,
+            1202.215,
+            1205.677
+          ],
+          "repeat_range_gbps": [
+            1202.215,
+            1205.677
+          ],
+          "pooled_median_gbps": 1203.597,
+          "pooled_iqr_gbps": 4.84699999999998
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            262144,
+            32,
+            8192
+          ],
+          "old_gbps": 1353.001,
+          "new_gbps": 1355.625,
+          "repeat_medians_gbps": [
+            1355.625,
+            1357.38,
+            1355.625,
+            1353.875,
+            1210.128
+          ],
+          "repeat_range_gbps": [
+            1210.128,
+            1357.38
+          ],
+          "pooled_median_gbps": 1354.749,
+          "pooled_iqr_gbps": 6.122000000000071
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            393216,
+            48,
+            8192
+          ],
+          "old_gbps": 1806.851,
+          "new_gbps": 1808.929,
+          "repeat_medians_gbps": [
+            1809.97,
+            1808.929,
+            1808.929,
+            1807.89,
+            1804.778
+          ],
+          "repeat_range_gbps": [
+            1804.778,
+            1809.97
+          ],
+          "pooled_median_gbps": 1808.929,
+          "pooled_iqr_gbps": 6.2409999999999854
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            524288,
+            32,
+            16384
+          ],
+          "old_gbps": 1973.79,
+          "new_gbps": 1974.719,
+          "repeat_medians_gbps": [
+            1974.719,
+            1974.719,
+            1974.719,
+            1973.79,
+            1973.79
+          ],
+          "repeat_range_gbps": [
+            1973.79,
+            1974.719
+          ],
+          "pooled_median_gbps": 1974.719,
+          "pooled_iqr_gbps": 4.645999999999958
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            786432,
+            48,
+            16384
+          ],
+          "old_gbps": 2082.574,
+          "new_gbps": 2041.355,
+          "repeat_medians_gbps": [
+            2040.031,
+            2002.373,
+            2085.335,
+            2079.82,
+            2041.355
+          ],
+          "repeat_range_gbps": [
+            2002.373,
+            2085.335
+          ],
+          "pooled_median_gbps": 2041.355,
+          "pooled_iqr_gbps": 46.56500000000028
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            1572864,
+            96,
+            16384
+          ],
+          "old_gbps": 2104.518,
+          "new_gbps": 2087.065,
+          "repeat_medians_gbps": [
+            2087.065,
+            2066.499,
+            2111.227,
+            2109.457,
+            2085.335
+          ],
+          "repeat_range_gbps": [
+            2066.499,
+            2111.227
+          ],
+          "pooled_median_gbps": 2087.411,
+          "pooled_iqr_gbps": 42.61899999999969
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            2359296,
+            144,
+            16384
+          ],
+          "old_gbps": 2125.492,
+          "new_gbps": 2126.21,
+          "repeat_medians_gbps": [
+            2125.731,
+            2082.574,
+            2158.551,
+            2142.137,
+            2126.21
+          ],
+          "repeat_range_gbps": [
+            2082.574,
+            2158.551
+          ],
+          "pooled_median_gbps": 2126.929,
+          "pooled_iqr_gbps": 33.07800000000043
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            4718592,
+            144,
+            32768
+          ],
+          "old_gbps": 2062.998,
+          "new_gbps": 2124.057,
+          "repeat_medians_gbps": [
+            2124.057,
+            2082.574,
+            2147.01,
+            2131.733,
+            2123.818
+          ],
+          "repeat_range_gbps": [
+            2082.574,
+            2147.01
+          ],
+          "pooled_median_gbps": 2124.535,
+          "pooled_iqr_gbps": 33.30600000000004
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            6291456,
+            192,
+            32768
+          ],
+          "old_gbps": 2242.544,
+          "new_gbps": 2229.926,
+          "repeat_medians_gbps": [
+            2230.617,
+            2221.559,
+            2229.926,
+            2240.348,
+            2205.014
+          ],
+          "repeat_range_gbps": [
+            2205.014,
+            2240.348
+          ],
+          "pooled_median_gbps": 2223.031,
+          "pooled_iqr_gbps": 48.83899999999994
+        },
+        {
+          "geometry": [
+            "ld_global_v4",
+            7864320,
+            240,
+            32768
+          ],
+          "old_gbps": 2263.684,
+          "new_gbps": 2240.707,
+          "repeat_medians_gbps": [
+            2253.468,
+            2230.538,
+            2240.707,
+            2271.284,
+            2220.54
+          ],
+          "repeat_range_gbps": [
+            2220.54,
+            2271.284
+          ],
+          "pooled_median_gbps": 2239.271,
+          "pooled_iqr_gbps": 41.777000000000044
+        }
+      ],
+      "active_clock_range_mhz": [
+        2470,
+        2470
+      ],
+      "slowdown_samples": 0
+    },
+    "dram_bw_by_bytes_in_flight_strided": {
+      "points": [
+        {
+          "geometry": [
+            128,
+            4096,
+            16384,
+            4,
+            4096
+          ],
+          "old_gbps": 32.912,
+          "new_gbps": 32.778,
+          "repeat_medians_gbps": [
+            32.778,
+            32.778,
+            32.778,
+            32.881,
+            32.778
+          ],
+          "repeat_range_gbps": [
+            32.778,
+            32.881
+          ],
+          "pooled_median_gbps": 32.778,
+          "pooled_iqr_gbps": 0.1280000000000001
+        },
+        {
+          "geometry": [
+            128,
+            4096,
+            32768,
+            8,
+            4096
+          ],
+          "old_gbps": 64.047,
+          "new_gbps": 63.581,
+          "repeat_medians_gbps": [
+            64.039,
+            63.542,
+            64.008,
+            63.542,
+            63.581
+          ],
+          "repeat_range_gbps": [
+            63.542,
+            64.039
+          ],
+          "pooled_median_gbps": 63.581,
+          "pooled_iqr_gbps": 0.4969999999999999
+        },
+        {
+          "geometry": [
+            128,
+            4096,
+            65536,
+            16,
+            4096
+          ],
+          "old_gbps": 120.471,
+          "new_gbps": 69.14,
+          "repeat_medians_gbps": [
+            69.14,
+            68.552,
+            75.764,
+            68.213,
+            96.483
+          ],
+          "repeat_range_gbps": [
+            68.213,
+            96.483
+          ],
+          "pooled_median_gbps": 69.47,
+          "pooled_iqr_gbps": 48.133
+        },
+        {
+          "geometry": [
+            128,
+            4096,
+            131072,
+            32,
+            4096
+          ],
+          "old_gbps": 182.361,
+          "new_gbps": 182.552,
+          "repeat_medians_gbps": [
+            134.813,
+            182.552,
+            189.753,
+            195.411,
+            172.861
+          ],
+          "repeat_range_gbps": [
+            134.813,
+            195.411
+          ],
+          "pooled_median_gbps": 186.05,
+          "pooled_iqr_gbps": 84.59100000000001
+        },
+        {
+          "geometry": [
+            128,
+            4096,
+            196608,
+            48,
+            4096
+          ],
+          "old_gbps": 209.735,
+          "new_gbps": 204.319,
+          "repeat_medians_gbps": [
+            199.328,
+            204.399,
+            204.319,
+            204.399,
+            199.328
+          ],
+          "repeat_range_gbps": [
+            199.328,
+            204.399
+          ],
+          "pooled_median_gbps": 199.481,
+          "pooled_iqr_gbps": 14.987000000000023
+        },
+        {
+          "geometry": [
+            128,
+            4096,
+            393216,
+            48,
+            8192
+          ],
+          "old_gbps": 221.78,
+          "new_gbps": 206.196,
+          "repeat_medians_gbps": [
+            219.551,
+            212.779,
+            203.107,
+            178.735,
+            206.196
+          ],
+          "repeat_range_gbps": [
+            178.735,
+            219.551
+          ],
+          "pooled_median_gbps": 211.919,
+          "pooled_iqr_gbps": 49.58600000000001
+        },
+        {
+          "geometry": [
+            128,
+            4096,
+            786432,
+            48,
+            16384
+          ],
+          "old_gbps": 224.631,
+          "new_gbps": 227.72,
+          "repeat_medians_gbps": [
+            218.605,
+            227.72,
+            230.93,
+            231.202,
+            218.271
+          ],
+          "repeat_range_gbps": [
+            218.271,
+            231.202
+          ],
+          "pooled_median_gbps": 224.663,
+          "pooled_iqr_gbps": 13.774000000000001
+        },
+        {
+          "geometry": [
+            128,
+            4096,
+            1572864,
+            96,
+            16384
+          ],
+          "old_gbps": 226.084,
+          "new_gbps": 235.865,
+          "repeat_medians_gbps": [
+            235.865,
+            234.703,
+            238.602,
+            237.539,
+            223.371
+          ],
+          "repeat_range_gbps": [
+            223.371,
+            238.602
+          ],
+          "pooled_median_gbps": 235.865,
+          "pooled_iqr_gbps": 4.0379999999999825
+        },
+        {
+          "geometry": [
+            128,
+            4096,
+            2359296,
+            144,
+            16384
+          ],
+          "old_gbps": 227.791,
+          "new_gbps": 236.081,
+          "repeat_medians_gbps": [
+            236.081,
+            233.995,
+            238.626,
+            238.667,
+            226.251
+          ],
+          "repeat_range_gbps": [
+            226.251,
+            238.667
+          ],
+          "pooled_median_gbps": 236.081,
+          "pooled_iqr_gbps": 11.563999999999993
+        },
+        {
+          "geometry": [
+            128,
+            4096,
+            4718592,
+            144,
+            32768
+          ],
+          "old_gbps": 229.727,
+          "new_gbps": 233.343,
+          "repeat_medians_gbps": [
+            233.343,
+            230.872,
+            237.182,
+            237.182,
+            225.279
+          ],
+          "repeat_range_gbps": [
+            225.279,
+            237.182
+          ],
+          "pooled_median_gbps": 233.356,
+          "pooled_iqr_gbps": 7.9739999999999895
+        },
+        {
+          "geometry": [
+            128,
+            16384,
+            16384,
+            4,
+            4096
+          ],
+          "old_gbps": 32.701,
+          "new_gbps": 32.648,
+          "repeat_medians_gbps": [
+            32.648,
+            32.53,
+            32.648,
+            32.648,
+            32.646
+          ],
+          "repeat_range_gbps": [
+            32.53,
+            32.648
+          ],
+          "pooled_median_gbps": 32.648,
+          "pooled_iqr_gbps": 0.13000000000000256
+        },
+        {
+          "geometry": [
+            128,
+            16384,
+            32768,
+            8,
+            4096
+          ],
+          "old_gbps": 55.829,
+          "new_gbps": 63.542,
+          "repeat_medians_gbps": [
+            63.542,
+            63.542,
+            63.542,
+            63.542,
+            63.542
+          ],
+          "repeat_range_gbps": [
+            63.542,
+            63.542
+          ],
+          "pooled_median_gbps": 63.542,
+          "pooled_iqr_gbps": 0.0
+        },
+        {
+          "geometry": [
+            128,
+            16384,
+            65536,
+            16,
+            4096
+          ],
+          "old_gbps": 120.637,
+          "new_gbps": 120.609,
+          "repeat_medians_gbps": [
+            118.859,
+            120.609,
+            120.609,
+            120.609,
+            118.94
+          ],
+          "repeat_range_gbps": [
+            118.859,
+            120.609
+          ],
+          "pooled_median_gbps": 120.609,
+          "pooled_iqr_gbps": 1.75
+        },
+        {
+          "geometry": [
+            128,
+            16384,
+            131072,
+            32,
+            4096
+          ],
+          "old_gbps": 186.513,
+          "new_gbps": 190.858,
+          "repeat_medians_gbps": [
+            190.858,
+            186.513,
+            190.858,
+            190.858,
+            186.513
+          ],
+          "repeat_range_gbps": [
+            186.513,
+            190.858
+          ],
+          "pooled_median_gbps": 190.858,
+          "pooled_iqr_gbps": 4.344999999999999
+        },
+        {
+          "geometry": [
+            128,
+            16384,
+            196608,
+            48,
+            4096
+          ],
+          "old_gbps": 204.639,
+          "new_gbps": 204.88,
+          "repeat_medians_gbps": [
+            210.072,
+            209.904,
+            204.399,
+            204.88,
+            204.399
+          ],
+          "repeat_range_gbps": [
+            204.399,
+            210.072
+          ],
+          "pooled_median_gbps": 209.651,
+          "pooled_iqr_gbps": 5.673000000000002
+        },
+        {
+          "geometry": [
+            128,
+            16384,
+            393216,
+            48,
+            8192
+          ],
+          "old_gbps": 217.848,
+          "new_gbps": 212.091,
+          "repeat_medians_gbps": [
+            212.148,
+            205.067,
+            222.596,
+            212.091,
+            206.793
+          ],
+          "repeat_range_gbps": [
+            205.067,
+            222.596
+          ],
+          "pooled_median_gbps": 208.547,
+          "pooled_iqr_gbps": 17.644000000000005
+        },
+        {
+          "geometry": [
+            128,
+            16384,
+            786432,
+            48,
+            16384
+          ],
+          "old_gbps": 222.596,
+          "new_gbps": 217.637,
+          "repeat_medians_gbps": [
+            212.291,
+            224.599,
+            226.735,
+            217.637,
+            214.141
+          ],
+          "repeat_range_gbps": [
+            212.291,
+            226.735
+          ],
+          "pooled_median_gbps": 219.49,
+          "pooled_iqr_gbps": 26.844000000000023
+        },
+        {
+          "geometry": [
+            128,
+            16384,
+            1572864,
+            96,
+            16384
+          ],
+          "old_gbps": 226.084,
+          "new_gbps": 225.032,
+          "repeat_medians_gbps": [
+            226.035,
+            222.706,
+            225.032,
+            229.431,
+            219.092
+          ],
+          "repeat_range_gbps": [
+            219.092,
+            229.431
+          ],
+          "pooled_median_gbps": 225.032,
+          "pooled_iqr_gbps": 12.165999999999997
+        },
+        {
+          "geometry": [
+            128,
+            16384,
+            2359296,
+            144,
+            16384
+          ],
+          "old_gbps": 228.263,
+          "new_gbps": 223.89,
+          "repeat_medians_gbps": [
+            223.567,
+            215.108,
+            228.725,
+            233.668,
+            223.89
+          ],
+          "repeat_range_gbps": [
+            215.108,
+            233.668
+          ],
+          "pooled_median_gbps": 223.89,
+          "pooled_iqr_gbps": 14.810999999999979
+        },
+        {
+          "geometry": [
+            128,
+            16384,
+            4718592,
+            144,
+            32768
+          ],
+          "old_gbps": 228.454,
+          "new_gbps": 231.283,
+          "repeat_medians_gbps": [
+            218.199,
+            231.283,
+            236.321,
+            238.05,
+            215.937
+          ],
+          "repeat_range_gbps": [
+            215.937,
+            238.05
+          ],
+          "pooled_median_gbps": 232.522,
+          "pooled_iqr_gbps": 18.551999999999992
+        },
+        {
+          "geometry": [
+            512,
+            16384,
+            16384,
+            4,
+            4096
+          ],
+          "old_gbps": 32.012,
+          "new_gbps": 32.01,
+          "repeat_medians_gbps": [
+            32.01,
+            32.01,
+            32.01,
+            32.01,
+            32.01
+          ],
+          "repeat_range_gbps": [
+            32.01,
+            32.01
+          ],
+          "pooled_median_gbps": 32.01,
+          "pooled_iqr_gbps": 0.0040000000000048885
+        },
+        {
+          "geometry": [
+            512,
+            16384,
+            32768,
+            8,
+            4096
+          ],
+          "old_gbps": 62.579,
+          "new_gbps": 63.053,
+          "repeat_medians_gbps": [
+            63.053,
+            63.053,
+            63.053,
+            63.053,
+            63.053
+          ],
+          "repeat_range_gbps": [
+            63.053,
+            63.053
+          ],
+          "pooled_median_gbps": 63.053,
+          "pooled_iqr_gbps": 0.0
+        },
+        {
+          "geometry": [
+            512,
+            16384,
+            65536,
+            16,
+            4096
+          ],
+          "old_gbps": 118.886,
+          "new_gbps": 120.609,
+          "repeat_medians_gbps": [
+            120.609,
+            120.609,
+            120.609,
+            120.609,
+            120.609
+          ],
+          "repeat_range_gbps": [
+            120.609,
+            120.609
+          ],
+          "pooled_median_gbps": 120.609,
+          "pooled_iqr_gbps": 0.11099999999999
+        },
+        {
+          "geometry": [
+            512,
+            16384,
+            131072,
+            32,
+            4096
+          ],
+          "old_gbps": 190.928,
+          "new_gbps": 200.186,
+          "repeat_medians_gbps": [
+            200.186,
+            200.11,
+            200.186,
+            200.186,
+            200.186
+          ],
+          "repeat_range_gbps": [
+            200.11,
+            200.186
+          ],
+          "pooled_median_gbps": 200.186,
+          "pooled_iqr_gbps": 0.07699999999999818
+        },
+        {
+          "geometry": [
+            512,
+            16384,
+            196608,
+            48,
+            4096
+          ],
+          "old_gbps": 215.268,
+          "new_gbps": 221.288,
+          "repeat_medians_gbps": [
+            227.16,
+            221.007,
+            221.288,
+            227.16,
+            221.007
+          ],
+          "repeat_range_gbps": [
+            221.007,
+            227.16
+          ],
+          "pooled_median_gbps": 221.101,
+          "pooled_iqr_gbps": 6.152999999999992
+        },
+        {
+          "geometry": [
+            512,
+            16384,
+            393216,
+            48,
+            8192
+          ],
+          "old_gbps": 227.885,
+          "new_gbps": 241.311,
+          "repeat_medians_gbps": [
+            241.311,
+            241.311,
+            241.385,
+            243.704,
+            238.964
+          ],
+          "repeat_range_gbps": [
+            238.964,
+            243.704
+          ],
+          "pooled_median_gbps": 241.311,
+          "pooled_iqr_gbps": 4.740000000000009
+        },
+        {
+          "geometry": [
+            512,
+            16384,
+            786432,
+            48,
+            16384
+          ],
+          "old_gbps": 234.266,
+          "new_gbps": 247.189,
+          "repeat_medians_gbps": [
+            247.189,
+            244.766,
+            248.438,
+            249.701,
+            245.952
+          ],
+          "repeat_range_gbps": [
+            244.766,
+            249.701
+          ],
+          "pooled_median_gbps": 247.189,
+          "pooled_iqr_gbps": 2.48599999999999
+        },
+        {
+          "geometry": [
+            512,
+            16384,
+            1572864,
+            96,
+            16384
+          ],
+          "old_gbps": 235.847,
+          "new_gbps": 247.092,
+          "repeat_medians_gbps": [
+            248.969,
+            245.933,
+            251.417,
+            246.472,
+            247.092
+          ],
+          "repeat_range_gbps": [
+            245.933,
+            251.417
+          ],
+          "pooled_median_gbps": 247.695,
+          "pooled_iqr_gbps": 3.1129999999999995
+        },
+        {
+          "geometry": [
+            512,
+            16384,
+            2359296,
+            144,
+            16384
+          ],
+          "old_gbps": 234.401,
+          "new_gbps": 248.18,
+          "repeat_medians_gbps": [
+            248.18,
+            247.241,
+            248.903,
+            249.17,
+            239.527
+          ],
+          "repeat_range_gbps": [
+            239.527,
+            249.17
+          ],
+          "pooled_median_gbps": 246.281,
+          "pooled_iqr_gbps": 10.869
+        },
+        {
+          "geometry": [
+            512,
+            16384,
+            4718592,
+            144,
+            32768
+          ],
+          "old_gbps": 235.893,
+          "new_gbps": 242.555,
+          "repeat_medians_gbps": [
+            242.033,
+            239.804,
+            248.028,
+            242.555,
+            242.795
+          ],
+          "repeat_range_gbps": [
+            239.804,
+            248.028
+          ],
+          "pooled_median_gbps": 242.484,
+          "pooled_iqr_gbps": 9.846000000000004
+        },
+        {
+          "geometry": [
+            4096,
+            16384,
+            16384,
+            4,
+            4096
+          ],
+          "old_gbps": 32.389,
+          "new_gbps": 32.262,
+          "repeat_medians_gbps": [
+            32.268,
+            31.885,
+            32.262,
+            32.262,
+            32.262
+          ],
+          "repeat_range_gbps": [
+            31.885,
+            32.268
+          ],
+          "pooled_median_gbps": 32.262,
+          "pooled_iqr_gbps": 10.071000000000002
+        },
+        {
+          "geometry": [
+            4096,
+            16384,
+            32768,
+            8,
+            4096
+          ],
+          "old_gbps": 63.061,
+          "new_gbps": 61.63,
+          "repeat_medians_gbps": [
+            49.466,
+            48.635,
+            61.63,
+            63.542,
+            63.542
+          ],
+          "repeat_range_gbps": [
+            48.635,
+            63.542
+          ],
+          "pooled_median_gbps": 63.542,
+          "pooled_iqr_gbps": 19.466
+        },
+        {
+          "geometry": [
+            4096,
+            16384,
+            65536,
+            16,
+            4096
+          ],
+          "old_gbps": 120.637,
+          "new_gbps": 122.411,
+          "repeat_medians_gbps": [
+            122.411,
+            122.411,
+            122.411,
+            122.411,
+            122.411
+          ],
+          "repeat_range_gbps": [
+            122.411,
+            122.411
+          ],
+          "pooled_median_gbps": 122.411,
+          "pooled_iqr_gbps": 0.0
+        },
+        {
+          "geometry": [
+            4096,
+            16384,
+            131072,
+            32,
+            4096
+          ],
+          "old_gbps": 190.928,
+          "new_gbps": 200.186,
+          "repeat_medians_gbps": [
+            200.569,
+            200.186,
+            200.186,
+            200.186,
+            205.04
+          ],
+          "repeat_range_gbps": [
+            200.186,
+            205.04
+          ],
+          "pooled_median_gbps": 200.186,
+          "pooled_iqr_gbps": 5.014999999999986
+        },
+        {
+          "geometry": [
+            4096,
+            16384,
+            196608,
+            48,
+            4096
+          ],
+          "old_gbps": 221.101,
+          "new_gbps": 221.007,
+          "repeat_medians_gbps": [
+            221.007,
+            221.007,
+            221.007,
+            221.007,
+            221.476
+          ],
+          "repeat_range_gbps": [
+            221.007,
+            221.476
+          ],
+          "pooled_median_gbps": 221.007,
+          "pooled_iqr_gbps": 3.5030000000000143
+        },
+        {
+          "geometry": [
+            4096,
+            16384,
+            393216,
+            48,
+            8192
+          ],
+          "old_gbps": 234.476,
+          "new_gbps": 246.145,
+          "repeat_medians_gbps": [
+            246.145,
+            246.145,
+            248.635,
+            248.635,
+            246.145
+          ],
+          "repeat_range_gbps": [
+            246.145,
+            248.635
+          ],
+          "pooled_median_gbps": 248.635,
+          "pooled_iqr_gbps": 2.5679999999999836
+        },
+        {
+          "geometry": [
+            4096,
+            16384,
+            786432,
+            48,
+            16384
+          ],
+          "old_gbps": 239.985,
+          "new_gbps": 257.509,
+          "repeat_medians_gbps": [
+            257.551,
+            257.425,
+            257.551,
+            257.509,
+            256.209
+          ],
+          "repeat_range_gbps": [
+            256.209,
+            257.551
+          ],
+          "pooled_median_gbps": 257.425,
+          "pooled_iqr_gbps": 1.3419999999999845
+        },
+        {
+          "geometry": [
+            4096,
+            16384,
+            1572864,
+            96,
+            16384
+          ],
+          "old_gbps": 240.444,
+          "new_gbps": 258.822,
+          "repeat_medians_gbps": [
+            258.822,
+            258.801,
+            259.484,
+            259.484,
+            258.122
+          ],
+          "repeat_range_gbps": [
+            258.122,
+            259.484
+          ],
+          "pooled_median_gbps": 258.801,
+          "pooled_iqr_gbps": 1.3619999999999663
+        },
+        {
+          "geometry": [
+            4096,
+            16384,
+            2359296,
+            144,
+            16384
+          ],
+          "old_gbps": 239.995,
+          "new_gbps": 256.959,
+          "repeat_medians_gbps": [
+            256.455,
+            257.465,
+            256.959,
+            257.973,
+            255.453
+          ],
+          "repeat_range_gbps": [
+            255.453,
+            257.973
+          ],
+          "pooled_median_gbps": 256.927,
+          "pooled_iqr_gbps": 2.011999999999972
+        },
+        {
+          "geometry": [
+            4096,
+            16384,
+            4718592,
+            144,
+            32768
+          ],
+          "old_gbps": 239.335,
+          "new_gbps": 257.344,
+          "repeat_medians_gbps": [
+            255.827,
+            259.428,
+            259.913,
+            257.344,
+            257.344
+          ],
+          "repeat_range_gbps": [
+            255.827,
+            259.913
+          ],
+          "pooled_median_gbps": 257.344,
+          "pooled_iqr_gbps": 3.5679999999999836
+        }
+      ],
+      "active_clock_range_mhz": null,
+      "slowdown_samples": 0
+    }
+  },
+  "ceilings": {
+    "dram_bw_read_gbps": {
+      "old_gbps": 258.302,
+      "active_sm_sweep_gbps": 257.738,
+      "repeat_mlp_peak_gbps": 263.55,
+      "new_gbps": 263.55,
+      "source": "dram_bw_by_bytes_in_flight"
+    },
+    "l2_bw_read_gbps": {
+      "old_gbps": 2297.27,
+      "active_sm_sweep_gbps": 2156.177,
+      "repeat_mlp_peak_gbps": 2276.489,
+      "new_gbps": 2276.489,
+      "source": "l2_bw_by_bytes_in_flight"
+    }
+  },
+  "measurement_telemetry": {
+    "temperature_range_c": [
+      48,
+      52
+    ],
+    "active_sm_clock_range_mhz": [
+      2470,
+      2470
+    ],
+    "active_mem_clock_range_mhz": null,
+    "slowdown_samples": 0,
+    "sw_power_cap_samples": 0
+  },
+  "capture_harness_sha256": "8c1cfdaccaa134d222534e5877351c66acd8fe142cf130ecaa2b72a04fc48522"
+}

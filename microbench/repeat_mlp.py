@@ -1,0 +1,444 @@
+"""Capture and reduce independent MLP sweeps for the reference profiles."""
+
+from __future__ import annotations
+
+import argparse
+import csv
+import hashlib
+import json
+import math
+import platform
+import statistics
+import subprocess
+import tempfile
+import time
+from collections import Counter
+from datetime import datetime, timezone
+from pathlib import Path
+
+CONTIGUOUS = ("dram_bw_by_bytes_in_flight", "l2_bw_by_bytes_in_flight")
+STRIDED = "dram_bw_by_bytes_in_flight_strided"
+MODES = {"mlp": CONTIGUOUS, "strided-mlp": (STRIDED,)}
+REPEATS = 5
+SAMPLES = 15
+WARMUP = 3
+TELEMETRY = (
+    "uuid",
+    "name",
+    "driver_version",
+    "temperature.gpu",
+    "pstate",
+    "power.draw",
+    "power.limit",
+    "utilization.gpu",
+    "clocks.current.sm",
+    "clocks.current.memory",
+    "clocks_event_reasons.hw_thermal_slowdown",
+    "clocks_event_reasons.sw_thermal_slowdown",
+    "clocks_event_reasons.hw_power_brake_slowdown",
+    "clocks_event_reasons.sw_power_cap",
+)
+WINDOWS_SMI = Path("/mnt/c/Windows/System32/nvidia-smi.exe")
+
+
+def utc():
+    return datetime.now(timezone.utc).isoformat()
+
+
+def digest(path):
+    with path.open("rb") as source:
+        return hashlib.file_digest(source, "sha256").hexdigest()
+
+
+def write_json(path, data):
+    raw = (json.dumps(data, indent=2, allow_nan=False) + "\n").encode()
+    with path.open("xb") as output:
+        output.write(raw)
+
+
+def command(*args):
+    return subprocess.check_output(args, text=True).strip()
+
+
+def telemetry(smi):
+    raw = command(
+        smi, f"--query-gpu={','.join(TELEMETRY)}", "--format=csv,noheader,nounits", "--id=0"
+    )
+    (row,) = csv.reader(raw.splitlines(), skipinitialspace=True)
+    if len(row) != len(TELEMETRY):
+        raise ValueError("Unexpected nvidia-smi telemetry format")
+    return {"utc": utc(), **dict(zip(TELEMETRY, row))}
+
+
+def host_snapshot(smi):
+    output = {
+        "utc": utc(),
+        "uptime": command("uptime"),
+        "nvidia_smi": command(smi),
+        "compute_apps": command(
+            smi, "--query-compute-apps=pid,process_name", "--format=csv,noheader"
+        ),
+    }
+    if WINDOWS_SMI.is_file():
+        output["windows_nvidia_smi"] = command(WINDOWS_SMI)
+    return output
+
+
+def require_quiet(snapshot, own_pid=None):
+    foreign = [
+        line
+        for line in snapshot["compute_apps"].splitlines()
+        if line.partition(",")[0].strip() != str(own_pid)
+    ]
+    if foreign:
+        raise RuntimeError(f"Other compute app activity: {foreign}")
+    if "gameviewer.exe" in snapshot.get("windows_nvidia_smi", "").lower():
+        raise RuntimeError(
+            "Windows GameViewer is using the GPU. Wait for the operator to clear it."
+        )
+
+
+def point_key(field, row):
+    layout = ("segment_bytes", "stride_bytes") if field == STRIDED else ("issue_mode",)
+    return tuple(row[key] for key in (*layout, "bytes_in_flight", "active_ctas", "bytes_per_cta"))
+
+
+def point_maps(profile, mode, raw):
+    maps = {}
+    for field in MODES[mode]:
+        expected = [point_key(field, row) for row in profile["measured"]["memory"][field]]
+        records = raw[field]
+        observed = {point_key(field, row): row["gbps_samples"] for row in records}
+        if len(observed) != len(records) or set(observed) != set(expected):
+            raise ValueError(f"{field}: captured geometry differs from base profile")
+        for key, samples in observed.items():
+            if (
+                not isinstance(samples, list)
+                or len(samples) != SAMPLES
+                or not all(type(x) in (int, float) and math.isfinite(x) and x > 0 for x in samples)
+            ):
+                raise ValueError(f"{field} {key}: expected {SAMPLES} finite positive samples")
+        maps[field] = observed
+    return maps
+
+
+def warm_device(smi, binary, seconds):
+    if not seconds:
+        return []
+    temps = []
+    deadline = time.monotonic() + seconds
+    while time.monotonic() < deadline:
+        require_quiet(host_snapshot(smi))
+        command(binary, "--mode", "mlp", "--samples", "1", "--warmup", str(WARMUP))
+        temps.append(telemetry(smi))
+    return temps
+
+
+def capture(args):
+    from shutil import which
+
+    smi = which("nvidia-smi") or "/usr/lib/wsl/lib/nvidia-smi"
+    before = host_snapshot(smi)
+    require_quiet(before)
+    profile = json.loads(args.profile.read_bytes())
+    initial = telemetry(smi)
+    if initial["name"] != profile["identity"]["sku"]:
+        # NVIDIA tools may omit the vendor prefix used by the profile.
+        if initial["name"].removeprefix("NVIDIA ") != profile["identity"]["sku"].removeprefix(
+            "NVIDIA "
+        ):
+            raise ValueError("Capture device name differs from the profile")
+    query = json.loads(command(args.binary, "--mode", "query", "--device", "0"))
+    target = f"sm_{query['major']}{query['minor']}"
+    if target != profile["identity"]["arch"] or query["sm_count"] != profile["specs"]["sm_count"]:
+        raise ValueError("Capture device architecture or SM count differs from profile")
+    warm = warm_device(smi, args.binary, args.warmup_seconds)
+    run_args = [
+        str(args.binary),
+        "--mode",
+        args.mode,
+        "--device",
+        "0",
+        "--samples",
+        str(SAMPLES),
+        "--warmup",
+        str(WARMUP),
+    ]
+    with tempfile.TemporaryFile(mode="w+t") as out, tempfile.TemporaryFile(mode="w+t") as err:
+        started = utc()
+        process = subprocess.Popen(run_args, stdout=out, stderr=err, text=True)
+        snaps = []
+        try:
+            while process.poll() is None:
+                snaps.append(telemetry(smi))
+                apps = command(
+                    smi, "--query-compute-apps=pid,process_name", "--format=csv,noheader"
+                )
+                require_quiet({"compute_apps": apps}, own_pid=process.pid)
+                time.sleep(0.2)
+        finally:
+            if process.poll() is None:
+                process.terminate()
+                process.wait(timeout=10)
+        err.seek(0)
+        if process.returncode:
+            raise RuntimeError(
+                f"Microbenchmark exited with status {process.returncode}: {err.read()}"
+            )
+        out.seek(0)
+        raw = json.load(out)
+    after = host_snapshot(smi)
+    require_quiet(after)
+    point_maps(profile, args.mode, raw)
+    if not snaps:
+        raise ValueError("No telemetry was recorded during the sweep")
+    return {
+        "source_revision": args.revision,
+        "source_bundle_sha256": args.source_sha256,
+        "base_profile_sha256": digest(args.profile),
+        "binary_sha256": digest(args.binary),
+        "nvcc": command(args.nvcc, "--version"),
+        "target": target,
+        "device_query": query,
+        "mode": args.mode,
+        "repeat": args.repeat,
+        "command": run_args,
+        "initial_gpu": initial,
+        "host": platform.node(),
+        "platform": platform.platform(),
+        "started_utc": started,
+        "finished_utc": after["utc"],
+        "clock_policy": "record_only",
+        "before": before,
+        "after": after,
+        "thermal_warmup": warm,
+        "telemetry": snaps,
+        "raw": raw,
+    }
+
+
+def active_clock_samples(telemetry_rows, domain):
+    readings = [
+        int(value)
+        for snap in telemetry_rows
+        if (value := snap[f"clocks.current.{domain}"]).isdecimal() and int(value) > 0
+    ]
+    peak = max(readings, default=0)
+    return [value for value in readings if value >= 0.5 * peak]
+
+
+def clock_range(readings):
+    return [min(readings), max(readings)] if readings else None
+
+
+def slowdown_samples(telemetry_rows):
+    return sum(
+        any(row[key].lower() == "active" for key in TELEMETRY[-4:-1]) for row in telemetry_rows
+    )
+
+
+def reduce_runs(base, paths, revision):
+    from microbench.collect_profile import make_measured
+
+    profile = json.loads(base.read_bytes())
+    records = [(path, json.loads(path.read_bytes())) for path in paths]
+    expected = Counter((mode, i) for mode in MODES for i in range(1, REPEATS + 1))
+    if Counter((item["mode"], item["repeat"]) for _, item in records) != expected:
+        raise ValueError("Expected repeats 1 through 5 for each benchmark")
+    for attr in (
+        "source_revision",
+        "source_bundle_sha256",
+        "base_profile_sha256",
+        "binary_sha256",
+        "nvcc",
+        "target",
+        "host",
+    ):
+        if len({item[attr] for _, item in records}) != 1:
+            raise ValueError(f"Conflicting capture provenance for {attr}")
+    origin = records[0][1]
+    if (
+        origin["base_profile_sha256"] != digest(base)
+        or origin["target"] != profile["identity"]["arch"]
+    ):
+        raise ValueError("Base profile or architecture changed")
+    if len({item["initial_gpu"]["uuid"] for _, item in records}) != 1:
+        raise ValueError("Captures came from different GPUs")
+    if any(item["clock_policy"] != "record_only" or not item["telemetry"] for _, item in records):
+        raise ValueError("Capture is missing the approved clock policy or telemetry")
+    memory = profile["measured"]["memory"]
+    previous = dict(profile["provenance"])
+    evidence = {
+        "base_profile_sha256": digest(base),
+        "previous_provenance": previous,
+        "source_revision": origin["source_revision"],
+        "source_bundle_sha256": origin["source_bundle_sha256"],
+        "binary_sha256": origin["binary_sha256"],
+        "nvcc": origin["nvcc"],
+        "target": origin["target"],
+        "host": origin["host"],
+        "gpu": origin["initial_gpu"],
+        "new_revision": revision,
+        "procedure": "Median of five per-process medians; existing bootstrap over those five medians.",
+        "samples_per_run": SAMPLES,
+        "warmups_per_point": WARMUP,
+        "runs": [],
+        "fields": {},
+        "ceilings": {},
+    }
+    for mode, fields in MODES.items():
+        subset = sorted(
+            (item["repeat"], path, item) for path, item in records if item["mode"] == mode
+        )
+        maps = [point_maps(profile, mode, item["raw"]) for _, _, item in subset]
+        snapshots = [row for _, _, item in subset for row in item["telemetry"]]
+        events = slowdown_samples(snapshots)
+        for index, path, item in subset:
+            evidence["runs"].append(
+                {
+                    "file": path.name,
+                    "sha256": digest(path),
+                    "mode": mode,
+                    "repeat": index,
+                    "command": item["command"],
+                    "started_utc": item["started_utc"],
+                    "finished_utc": item["finished_utc"],
+                }
+            )
+        for field in fields:
+            clock = "memory" if field.startswith("dram_") else "sm"
+            clocks = clock_range(active_clock_samples(snapshots, clock))
+            notes = []
+            for point in memory[field]:
+                key = point_key(field, point)
+                samples = [run[field][key] for run in maps]
+                medians = [statistics.median(group) for group in samples]
+                pooled = [value for group in samples for value in group]
+                old = point["bw_gbps"]
+                measured = make_measured(
+                    medians,
+                    old["unit"],
+                    old["method"],
+                    old["perturb_group"],
+                    clocks,
+                    False,
+                    events,
+                )
+                if origin["target"] == "sm_121":
+                    measured["rel_uncertainty"] = max(0.15, measured["rel_uncertainty"])
+                point["bw_gbps"] = measured
+                q1, _, q3 = statistics.quantiles(pooled)
+                notes.append(
+                    {
+                        "geometry": key,
+                        "old_gbps": old["value"],
+                        "new_gbps": measured["value"],
+                        "repeat_medians_gbps": medians,
+                        "repeat_range_gbps": [min(medians), max(medians)],
+                        "pooled_median_gbps": statistics.median(pooled),
+                        "pooled_iqr_gbps": q3 - q1,
+                    }
+                )
+            evidence["fields"][field] = {
+                "points": notes,
+                "active_clock_range_mhz": clocks,
+                "slowdown_samples": events,
+            }
+    for level, field in zip(("dram", "l2"), CONTIGUOUS):
+        scalar = f"{level}_bw_read_gbps"
+        sweep = max(memory[f"{level}_bw_by_active_sms"], key=lambda row: row["active_sms"])[
+            "bw_gbps"
+        ]
+        peak = max(memory[field], key=lambda row: row["bw_gbps"]["value"])["bw_gbps"]
+        old = memory[scalar]
+        depended_on_mlp = old["method"].startswith("cuda_mlp_")
+        if depended_on_mlp:
+            chosen, source = (
+                (peak, field)
+                if peak["value"] > sweep["value"]
+                else (sweep, f"{level}_bw_by_active_sms")
+            )
+        else:
+            chosen, source = old, "unchanged_independent_measurement"
+        evidence["ceilings"][scalar] = {
+            "old_gbps": old["value"],
+            "active_sm_sweep_gbps": sweep["value"],
+            "repeat_mlp_peak_gbps": peak["value"],
+            "new_gbps": chosen["value"],
+            "source": source,
+        }
+        memory[scalar] = chosen
+    snapshots = [row for _, item in records for row in item["telemetry"]]
+    sm_clocks = active_clock_samples(snapshots, "sm")
+    mem_clocks = active_clock_samples(snapshots, "memory")
+    temperatures = [
+        int(row["temperature.gpu"]) for row in snapshots if row["temperature.gpu"].isdecimal()
+    ]
+    evidence["measurement_telemetry"] = {
+        "temperature_range_c": clock_range(temperatures),
+        "active_sm_clock_range_mhz": clock_range(sm_clocks),
+        "active_mem_clock_range_mhz": clock_range(mem_clocks),
+        "slowdown_samples": slowdown_samples(snapshots),
+        "sw_power_cap_samples": sum(row[TELEMETRY[-1]].lower() == "active" for row in snapshots),
+    }
+    provenance = profile["provenance"]
+    ended = max(item["finished_utc"] for _, item in records)
+    stamp = datetime.fromisoformat(ended).strftime("%Y%m%dT%H%M%SZ")
+    provenance.update(
+        profile_revision=revision,
+        calibration_run_id=f"cal-mlp-{stamp}-{origin['target']}",
+        timestamp_utc=ended,
+        driver_version=origin["initial_gpu"]["driver_version"],
+    )
+    clock_policy = provenance["clock_policy"].copy()
+    provenance["clock_policy"] = clock_policy
+    clock_policy.update(
+        locked=False,
+        sm_clock_locked=False,
+        mem_clock_locked=False,
+        observed_sm_clock_range_mhz=clock_range(sm_clocks),
+        observed_mem_clock_range_mhz=clock_range(mem_clocks),
+        throttle_events=slowdown_samples(snapshots),
+    )
+    if sm_clocks:
+        clock_policy["sm_clock_mhz"] = statistics.median(sm_clocks)
+    if mem_clocks:
+        clock_policy["mem_clock_mhz"] = statistics.median(mem_clocks)
+    return profile, evidence
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    commands = parser.add_subparsers(dest="action", required=True)
+    sample = commands.add_parser("capture")
+    sample.add_argument("profile", type=Path)
+    sample.add_argument("binary", type=Path)
+    sample.add_argument("mode", choices=MODES)
+    sample.add_argument("repeat", type=int, choices=range(1, REPEATS + 1))
+    sample.add_argument("output", type=Path)
+    sample.add_argument("--revision", required=True)
+    sample.add_argument("--source-sha256", required=True)
+    sample.add_argument("--nvcc", type=Path, required=True)
+    sample.add_argument("--warmup-seconds", type=int, default=0)
+    reduce = commands.add_parser("reduce")
+    reduce.add_argument("profile", type=Path)
+    reduce.add_argument("revision")
+    reduce.add_argument("output", type=Path)
+    reduce.add_argument("manifest", type=Path)
+    reduce.add_argument("runs", nargs="+", type=Path)
+    reduce.add_argument("--capture-harness", required=True, type=Path)
+    args = parser.parse_args()
+    if args.action == "capture":
+        if args.output.exists():
+            raise FileExistsError(args.output)
+        write_json(args.output, capture(args))
+    else:
+        profile, manifest = reduce_runs(args.profile, args.runs, args.revision)
+        manifest["capture_harness_sha256"] = digest(args.capture_harness)
+        write_json(args.manifest, manifest)
+        profile["provenance"]["calibration_manifest_digest"] = digest(args.manifest)
+        write_json(args.output, profile)
+
+
+if __name__ == "__main__":
+    main()

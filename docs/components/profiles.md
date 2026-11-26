@@ -285,3 +285,15 @@ helper or has no location are reported separately and stay in the launch
 totals. Launch-level L1TEX sectors have no loop attribution. See the
 [Nsight Compute Profiling Guide](https://docs.nvidia.com/nsight-compute/ProfilingGuide/)
 for metric definitions.
+
+## Independent MLP repeat reduction
+
+The MLP refresh captures five separate processes for each of `mlp`
+and `strided-mlp`, with three warmups and 15 samples per point.
+`microbench.repeat_mlp` verifies geometry against the existing profile
+and stores the raw samples and active-load telemetry. Run each capture
+under the shared GPU lock. The reducer uses the median of the five
+sweep medians, stores the pooled statistics as descriptive data, and
+binds the new profile to a calibration manifest digest. See the
+[measurement plan and archive](../results/analysis/v0.3-mlp-repeat-plan.md)
+for the protocol and evidence.
