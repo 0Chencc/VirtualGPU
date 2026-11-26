@@ -6,7 +6,7 @@ This is the one plan for VirtualGPU, from where it is now to 1.0.0, the first re
 
 - 0.2.0 ranks Triton GEMM and fused attention configs on a CPU, using only a GPU profile. On fresh sealed holdouts on the RTX 4070 and GB10, the GPU agrees with 87% to 94% of the pairs VirtualGPU orders, against 54% to 76% for the baselines.
 - Both GPUs formally failed the v0.2 criteria, because the shortlist still misses the 1% top-5 regret ceiling on RTX 4070 attention and GB10 GEMM. Details: [docs/results/v0.2.md](docs/results/v0.2.md).
-- Profiles exist for four GPUs (RTX 4070, GB10, L40S, RTX 3070), all consumer or workstation cards. Nothing data center class has been tested.
+- Profiles exist for seven GPUs: RTX 4070, GB10, L40S, L4, RTX 3070, RTX PRO 6000 Blackwell and A100 80GB. Only the RTX 4070 and GB10 have been checked against a sealed holdout, and no data center card has been tested that way.
 - Wheels are on GitHub Releases only. Autotuning takes GEMM shapes only.
 
 ## How a milestone is tested
@@ -31,7 +31,7 @@ Fix what made v0.2 miss on the GPUs we already have.
 - Synchronous load GEMM (`num_stages = 1`) is still predicted slow, +9.1% warm. Find the missing mechanism with a microbenchmark, not with GEMM timings.
 - GB10 decode shapes: predictions are too compressed. Find out why.
 - Measure `non_mma_issue_rate_per_sm_gips` and the local memory rates that are still estimated, on every profile.
-- Validate the L40S and RTX 3070 profiles: one sealed GEMM holdout each, so every bundled profile has been checked against hardware.
+- Validate the L40S, L4, RTX 3070 and RTX PRO 6000 profiles: one sealed GEMM holdout each, so every consumer and workstation profile has been checked against hardware.
 
 Exit: pass the v0.2 criteria on fresh GEMM and attention holdouts on both the RTX 4070 and the GB10.
 
@@ -39,7 +39,7 @@ Exit: pass the v0.2 criteria on fresh GEMM and attention holdouts on both the RT
 
 Most people who tune kernels for inference target data center cards. The model has to work there before launch.
 
-- Profiles for Ampere `sm_80` (A100) and Hopper `sm_90` (H100), measured with the same suite. This needs access to both cards for a few hours each.
+- A Hopper `sm_90` (H100) profile, measured with the same suite. The A100 80GB (`sm_80`) profile already exists. This needs an H100 for a few hours.
 - Hopper mechanisms in the frontend, Kernel IR and core: TMA, `wgmma`, warp specialization with producer and consumer warp groups, and persistent kernels.
 - Thread block clusters, if Triton emits them for the kernels we cover.
 - Extend the microbenchmark suite for the new mechanisms, with the same no fitting rule.

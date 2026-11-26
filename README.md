@@ -78,7 +78,7 @@ List the bundled GPU profiles. Any profile can be passed by name or by path to a
 ```python
 import virtualgpu
 
-virtualgpu.list_profiles()  # ['gb10', 'l40s', 'rtx3070', 'rtx4070']
+virtualgpu.list_profiles()  # ['a100-80gb', 'gb10', 'l4', 'l40s', 'rtx3070', 'rtx4070', 'rtxpro6000']
 ```
 
 Rank the configs of a `@triton.autotune` GEMM kernel on a CPU:
@@ -114,7 +114,7 @@ The full report format is in [docs/components/autotune.md](docs/components/autot
 | --- | --- |
 | Kernels | Triton GEMM and fused attention (causal, non-causal, GQA) |
 | Autotuning | GEMM shapes, offline from the CLI or Python, or online inside `@triton.autotune` |
-| GPUs | NVIDIA GPUs with a profile: `sm_86`, `sm_89` and `sm_121` today |
+| GPUs | NVIDIA GPUs with a profile: `sm_80`, `sm_86`, `sm_89`, `sm_120` and `sm_121` today |
 | Platforms | Linux. Triton needs Linux, so on Windows use WSL2 |
 
 Bundled profiles:
