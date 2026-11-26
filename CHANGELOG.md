@@ -4,6 +4,7 @@
 
 ### Added
 
+- NVIDIA L4 (`sm_89`) profile
 - NVIDIA L40S (`sm_89`) profile
 - NVIDIA GeForce RTX 3070 (`sm_86`) profile
 
