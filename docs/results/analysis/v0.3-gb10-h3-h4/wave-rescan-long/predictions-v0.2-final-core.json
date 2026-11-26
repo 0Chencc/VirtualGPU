@@ -1,0 +1,2369 @@
+{
+ "build": {
+  "commit": "e70824b9c3ea5d6818a5bef306ee21c9e5d2d74a",
+  "dirty": false,
+  "result_class": "formal"
+ },
+ "post_hoc": true,
+ "profile_revision": "0.22.0-posthoc",
+ "wave_rescan_long": [
+  {
+   "ctas_per_sm": 1,
+   "footprint_bytes": 12582912,
+   "footprint_ratio_nominal": 0.5,
+   "k_steps": 32,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.04417218719464991,
+     "l2_bandwidth": 0.9556998633016726,
+     "launch": 0.00012794950367749108
+    },
+    "ctas_per_sm": 1,
+    "dram_bytes": 12582912.0,
+    "l2_hit_bytes": 2277507072.0,
+    "merged_bytes": 0.0,
+    "time_ns": 1105647.892160969
+   },
+   "panels": 48,
+   "rewave_hit_fraction": {
+    "core": 1.0,
+    "form_b": 1.0,
+    "form_c_forward": 1.0,
+    "form_c_reversed": 1.0
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 1,
+   "slots": 48,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.022524098080875788,
+     "l2_bandwidth": 0.9773454149610059,
+     "launch": 0.00013048695811830897
+    },
+    "ctas_per_sm": 1,
+    "dram_bytes": 12582912.0,
+    "l2_hit_bytes": 4567597056.0,
+    "merged_bytes": 0.0,
+    "time_ns": 2167895.9810767993
+   },
+   "waves_n": 182
+  },
+  {
+   "ctas_per_sm": 1,
+   "footprint_bytes": 18874368,
+   "footprint_ratio_nominal": 0.75,
+   "k_steps": 48,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.06466216209637721,
+     "l2_bandwidth": 0.9352541356584867,
+     "launch": 8.370224513598648e-05
+    },
+    "ctas_per_sm": 1,
+    "dram_bytes": 18874368.0,
+    "l2_hit_bytes": 2283798528.0,
+    "merged_bytes": 0.0,
+    "time_ns": 1132929.4247446111
+   },
+   "panels": 48,
+   "rewave_hit_fraction": {
+    "core": 1.0,
+    "form_b": 1.0,
+    "form_c_forward": 1.0,
+    "form_c_reversed": 1.0
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 1,
+   "slots": 48,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.03327839702754069,
+     "l2_bandwidth": 0.9666354482119184,
+     "launch": 8.61547605408006e-05
+    },
+    "ctas_per_sm": 1,
+    "dram_bytes": 18874368.0,
+    "l2_hit_bytes": 4586471424.0,
+    "merged_bytes": 0.0,
+    "time_ns": 2200966.6446215147
+   },
+   "waves_n": 122
+  },
+  {
+   "ctas_per_sm": 1,
+   "footprint_bytes": 22806528,
+   "footprint_ratio_nominal": 0.9,
+   "k_steps": 58,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.07791308413340911,
+     "l2_bandwidth": 0.9220185009669372,
+     "launch": 6.841489965372778e-05
+    },
+    "ctas_per_sm": 1,
+    "dram_bytes": 22806528.0,
+    "l2_hit_bytes": 2257846272.0,
+    "merged_bytes": 0.0,
+    "time_ns": 1136132.5175768337
+   },
+   "panels": 48,
+   "rewave_hit_fraction": {
+    "core": 1.0,
+    "form_b": 1.0,
+    "form_c_forward": 1.0,
+    "form_c_reversed": 1.0
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 1,
+   "slots": 48,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.04034020642614856,
+     "l2_bandwidth": 0.9595889487034333,
+     "launch": 7.084487041816893e-05
+    },
+    "ctas_per_sm": 1,
+    "dram_bytes": 22806528.0,
+    "l2_hit_bytes": 4538499072.0,
+    "merged_bytes": 0.0,
+    "time_ns": 2193940.0792718674
+   },
+   "waves_n": 100
+  },
+  {
+   "ctas_per_sm": 1,
+   "footprint_bytes": 25165824,
+   "footprint_ratio_nominal": 1.0,
+   "k_steps": 64,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.08418648591460315,
+     "l2_bandwidth": 0.9157518803446808,
+     "launch": 6.163374071606047e-05
+    },
+    "ctas_per_sm": 1,
+    "dram_bytes": 25165824.0,
+    "l2_hit_bytes": 2290089984.0,
+    "merged_bytes": 0.0,
+    "time_ns": 1160234.2673282532
+   },
+   "panels": 48,
+   "rewave_hit_fraction": {
+    "core": 1.0,
+    "form_b": 1.0,
+    "form_c_forward": 1.0,
+    "form_c_reversed": 1.0
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 1,
+   "slots": 48,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.04371333064680882,
+     "l2_bandwidth": 0.9562226634487363,
+     "launch": 6.400590445487415e-05
+    },
+    "ctas_per_sm": 1,
+    "dram_bytes": 25165824.0,
+    "l2_hit_bytes": 4605345792.0,
+    "merged_bytes": 0.0,
+    "time_ns": 2234083.9281662353
+   },
+   "waves_n": 92
+  },
+  {
+   "ctas_per_sm": 1,
+   "footprint_bytes": 27525120,
+   "footprint_ratio_nominal": 1.1,
+   "k_steps": 70,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.0918284258545642,
+     "dram_latency": 0.0265071093085007,
+     "l2_bandwidth": 0.8782959022300182,
+     "l2_latency": 0.003312592404987513,
+     "launch": 5.597020192953892e-05
+    },
+    "ctas_per_sm": 1,
+    "dram_bytes": 51617033.03146666,
+    "l2_hit_bytes": 2260493046.9685335,
+    "merged_bytes": 23509145.594666667,
+    "time_ns": 1168359.0003617592
+   },
+   "panels": 48,
+   "rewave_hit_fraction": {
+    "core": 0.989417422273597,
+    "form_b": 0.37355,
+    "form_c_forward": 0.0,
+    "form_c_reversed": 0.9142857142857143
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 1,
+   "slots": 48,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.04783492898005517,
+     "dram_latency": 0.02794895356094289,
+     "l2_bandwidth": 0.9229681288347598,
+     "l2_latency": 0.0011896770369665183,
+     "launch": 5.8311587275581794e-05
+    },
+    "ctas_per_sm": 1,
+    "dram_bytes": 76085117.66506664,
+    "l2_hit_bytes": 4548135042.334933,
+    "merged_bytes": 47593625.59466667,
+    "time_ns": 2242099.897319723
+   },
+   "waves_n": 84
+  },
+  {
+   "ctas_per_sm": 1,
+   "footprint_bytes": 31457280,
+   "footprint_ratio_nominal": 1.25,
+   "k_steps": 80,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.10092181052126659,
+     "dram_latency": 0.19820458787837592,
+     "l2_bandwidth": 0.4093219068232235,
+     "l2_latency": 0.29150418714537923,
+     "launch": 4.7507631754795664e-05
+    },
+    "ctas_per_sm": 1,
+    "dram_bytes": 203239771.4261334,
+    "l2_hit_bytes": 2124598948.5738668,
+    "merged_bytes": 167584475.35786667,
+    "time_ns": 1215703.145661613
+   },
+   "panels": 48,
+   "rewave_hit_fraction": {
+    "core": 0.9270833333333334,
+    "form_b": 0.008800000000000002,
+    "form_c_forward": 0.0,
+    "form_c_reversed": 0.8
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 1,
+   "slots": 48,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.05292903403162642,
+     "dram_latency": 0.20582030747548272,
+     "l2_bandwidth": 0.4374088290410376,
+     "l2_latency": 0.30379199814096175,
+     "launch": 4.983131089154805e-05
+    },
+    "ctas_per_sm": 1,
+    "dram_bytes": 372978011.4261334,
+    "l2_hit_bytes": 4282699428.573867,
+    "merged_bytes": 337322715.35786664,
+    "time_ns": 2313386.975363725
+   },
+   "waves_n": 74
+  },
+  {
+   "ctas_per_sm": 1,
+   "footprint_bytes": 37748736,
+   "footprint_ratio_nominal": 1.5,
+   "k_steps": 96,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.09067313577712248,
+     "dram_latency": 0.5169196263370696,
+     "l2_latency": 0.39237900680943283,
+     "launch": 2.8231076375213054e-05
+    },
+    "ctas_per_sm": 1,
+    "dram_bytes": 400456954.8458667,
+    "l2_hit_bytes": 1939964677.1541333,
+    "merged_bytes": 355056820.51413333,
+    "time_ns": 1712601.8912998885
+   },
+   "panels": 48,
+   "rewave_hit_fraction": {
+    "core": 0.84375,
+    "form_b": 0.0077,
+    "form_c_forward": 0.0,
+    "form_c_reversed": 0.6666666666666666
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 1,
+   "slots": 48,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.04706038146403493,
+     "dram_latency": 0.5423842406723062,
+     "l2_latency": 0.41052607336873953,
+     "launch": 2.9304494919498487e-05
+    },
+    "ctas_per_sm": 1,
+    "dram_bytes": 766147834.8458667,
+    "l2_hit_bytes": 3914695429.1541333,
+    "merged_bytes": 720747700.5141333,
+    "time_ns": 3294979.1956911306
+   },
+   "waves_n": 62
+  },
+  {
+   "ctas_per_sm": 1,
+   "footprint_bytes": 50331648,
+   "footprint_ratio_nominal": 2.0,
+   "k_steps": 128,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.2702365758148699,
+     "dram_latency": 0.5092115121731088,
+     "l2_latency": 0.22053662845528957,
+     "launch": 1.5283556731802904e-05
+    },
+    "ctas_per_sm": 1,
+    "dram_bytes": 580892723.3365333,
+    "l2_hit_bytes": 1734363084.6634667,
+    "merged_bytes": 507483977.59146667,
+    "time_ns": 2351557.5645728344
+   },
+   "panels": 48,
+   "rewave_hit_fraction": {
+    "core": 0.7708333333333334,
+    "form_b": 0.0077,
+    "form_c_forward": 0.0,
+    "form_c_reversed": 0.5
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 1,
+   "slots": 48,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.21791727239286274,
+     "dram_latency": 0.5500695658458163,
+     "l2_latency": 0.23199726277131963,
+     "launch": 1.5898990001252515e-05
+    },
+    "ctas_per_sm": 1,
+    "dram_bytes": 1111472179.3365333,
+    "l2_hit_bytes": 3519039436.6634665,
+    "merged_bytes": 1038063433.5914667,
+    "time_ns": 4508955.851159978
+   },
+   "waves_n": 46
+  },
+  {
+   "ctas_per_sm": 1,
+   "footprint_bytes": 75497472,
+   "footprint_ratio_nominal": 3.0,
+   "k_steps": 192,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.5764922511200574,
+     "dram_latency": 0.3192051397552331,
+     "l2_latency": 0.10429536332448765,
+     "launch": 7.245800221689571e-06
+    },
+    "ctas_per_sm": 1,
+    "dram_bytes": 878329559.2277334,
+    "l2_hit_bytes": 1537589544.7722664,
+    "merged_bytes": 670374330.2826667,
+    "time_ns": 3467816.8523933617
+   },
+   "panels": 48,
+   "rewave_hit_fraction": {
+    "core": 0.6770833333333333,
+    "form_b": -8.673617379884035e-19,
+    "form_c_forward": 0.0,
+    "form_c_reversed": 0.3333333333333333
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 1,
+   "slots": 48,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.5338291003818875,
+     "dram_latency": 0.3562591523686265,
+     "l2_latency": 0.10990411183448916,
+     "launch": 7.635414996932756e-06
+    },
+    "ctas_per_sm": 1,
+    "dram_bytes": 1658470103.2277334,
+    "l2_hit_bytes": 3173368104.7722664,
+    "merged_bytes": 1450514874.2826667,
+    "time_ns": 6548986.004697796
+   },
+   "waves_n": 32
+  },
+  {
+   "ctas_per_sm": 1,
+   "footprint_bytes": 12582912,
+   "footprint_ratio_nominal": 0.5,
+   "k_steps": 64,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.021879490656847866,
+     "dram_latency": 0.000754618483605291,
+     "l2_bandwidth": 0.9773004701584972,
+     "launch": 6.542070104967788e-05
+    },
+    "ctas_per_sm": 1,
+    "dram_bytes": 12582912.0,
+    "l2_hit_bytes": 4567597056.0,
+    "merged_bytes": 12582912.0,
+    "time_ns": 2162024.3641773215
+   },
+   "panels": 24,
+   "rewave_hit_fraction": {
+    "core": 1.0,
+    "form_b": 1.0,
+    "form_c_forward": 1.0,
+    "form_c_reversed": 1.0
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 2,
+   "slots": 48,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.01103483614764465,
+     "dram_latency": 0.000380588901778764,
+     "l2_bandwidth": 0.9885185855975274,
+     "launch": 6.598935304934062e-05
+    },
+    "ctas_per_sm": 1,
+    "dram_bytes": 12582912.0,
+    "l2_hit_bytes": 9147777024.0,
+    "merged_bytes": 12582912.0,
+    "time_ns": 4286379.128008944
+   },
+   "waves_n": 182
+  },
+  {
+   "ctas_per_sm": 1,
+   "footprint_bytes": 18874368,
+   "footprint_ratio_nominal": 0.75,
+   "k_steps": 96,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.03271507528325425,
+     "dram_latency": 0.0007442211205652955,
+     "l2_bandwidth": 0.9664974543852088,
+     "launch": 4.3249210971571985e-05
+    },
+    "ctas_per_sm": 1,
+    "dram_bytes": 18874368.0,
+    "l2_hit_bytes": 4586471424.0,
+    "merged_bytes": 18874368.0,
+    "time_ns": 2192223.772241505
+   },
+   "panels": 24,
+   "rewave_hit_fraction": {
+    "core": 1.0,
+    "form_b": 1.0,
+    "form_c_forward": 1.0,
+    "form_c_reversed": 1.0
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 2,
+   "slots": 48,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.016568552356252268,
+     "dram_latency": 0.00037691084290508985,
+     "l2_bandwidth": 0.9830107296684949,
+     "launch": 4.380713234769078e-05
+    },
+    "ctas_per_sm": 1,
+    "dram_bytes": 18874368.0,
+    "l2_hit_bytes": 9191817216.0,
+    "merged_bytes": 18874368.0,
+    "time_ns": 4328203.417995296
+   },
+   "waves_n": 122
+  },
+  {
+   "ctas_per_sm": 1,
+   "footprint_bytes": 22609920,
+   "footprint_ratio_nominal": 0.9,
+   "k_steps": 115,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.039072850949553595,
+     "dram_latency": 0.0007393985211954338,
+     "l2_bandwidth": 0.9601518256665875,
+     "launch": 3.592486266339177e-05
+    },
+    "ctas_per_sm": 1,
+    "dram_bytes": 22609920.0,
+    "l2_hit_bytes": 4589813760.0,
+    "merged_bytes": 22609920.0,
+    "time_ns": 2206519.4670539433
+   },
+   "panels": 24,
+   "rewave_hit_fraction": {
+    "core": 1.0,
+    "form_b": 1.0,
+    "form_c_forward": 1.0,
+    "form_c_reversed": 1.0
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 2,
+   "slots": 48,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.019837013717795636,
+     "dram_latency": 0.00037538746857270736,
+     "l2_bandwidth": 0.979751121209559,
+     "launch": 3.6477604072644306e-05
+    },
+    "ctas_per_sm": 1,
+    "dram_bytes": 22609920.0,
+    "l2_hit_bytes": 9202237440.0,
+    "merged_bytes": 22609920.0,
+    "time_ns": 4345766.182723317
+   },
+   "waves_n": 102
+  },
+  {
+   "ctas_per_sm": 1,
+   "footprint_bytes": 25165824,
+   "footprint_ratio_nominal": 1.0,
+   "k_steps": 128,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.04325567234884178,
+     "dram_latency": 0.0007340986784655216,
+     "l2_bandwidth": 0.955978058411514,
+     "launch": 3.217056117875564e-05
+    },
+    "ctas_per_sm": 1,
+    "dram_bytes": 25165824.0,
+    "l2_hit_bytes": 4605345792.0,
+    "merged_bytes": 25165824.0,
+    "time_ns": 2222446.4903056845
+   },
+   "panels": 24,
+   "rewave_hit_fraction": {
+    "core": 1.0,
+    "form_b": 1.0,
+    "form_c_forward": 1.0,
+    "form_c_reversed": 1.0
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 2,
+   "slots": 48,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.021996100583393626,
+     "dram_latency": 0.000373299211244287,
+     "l2_bandwidth": 0.9775978818652653,
+     "launch": 3.2718340096779394e-05
+    },
+    "ctas_per_sm": 1,
+    "dram_bytes": 25165824.0,
+    "l2_hit_bytes": 9235857408.0,
+    "merged_bytes": 25165824.0,
+    "time_ns": 4370074.327981632
+   },
+   "waves_n": 92
+  },
+  {
+   "ctas_per_sm": 1,
+   "footprint_bytes": 27721728,
+   "footprint_ratio_nominal": 1.1,
+   "k_steps": 141,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.04304547090916687,
+     "dram_latency": 0.38527376525965246,
+     "l2_bandwidth": 0.045312611916034,
+     "l2_latency": 0.5263417340140081,
+     "launch": 2.6417901138452064e-05
+    },
+    "ctas_per_sm": 1,
+    "dram_bytes": 474452324.17992485,
+    "l2_hit_bytes": 4182797979.820009,
+    "merged_bytes": 898921146.73845,
+    "time_ns": 2491217.8886515815
+   },
+   "panels": 24,
+   "rewave_hit_fraction": {
+    "core": 0.7974956407335125,
+    "form_b": 0.2883875,
+    "form_c_forward": 0.0,
+    "form_c_reversed": 0.9078014184397163
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 2,
+   "slots": 48,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.021819361719250082,
+     "dram_latency": 0.40156829775288383,
+     "l2_bandwidth": 0.022968555087392425,
+     "l2_latency": 0.5536170034479143,
+     "launch": 2.678199255943202e-05
+    },
+    "ctas_per_sm": 1,
+    "dram_bytes": 946009068.5575118,
+    "l2_hit_bytes": 8368491539.442614,
+    "merged_bytes": 1821864815.1544483,
+    "time_ns": 4894672.167597365
+   },
+   "waves_n": 84
+  },
+  {
+   "ctas_per_sm": 1,
+   "footprint_bytes": 31457280,
+   "footprint_ratio_nominal": 1.25,
+   "k_steps": 160,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.043199465015822176,
+     "dram_latency": 0.5190260388041648,
+     "l2_bandwidth": 0.02071553356594636,
+     "l2_latency": 0.41703846362121577,
+     "launch": 2.049899285076593e-05
+    },
+    "ctas_per_sm": 1,
+    "dram_bytes": 541144668.4671946,
+    "l2_hit_bytes": 4114532771.532766,
+    "merged_bytes": 1124005777.7834585,
+    "time_ns": 2828698.235246039
+   },
+   "panels": 24,
+   "rewave_hit_fraction": {
+    "core": 0.773221748186167,
+    "form_b": 0.008800000000000002,
+    "form_c_forward": 0.0,
+    "form_c_reversed": 0.8
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 2,
+   "slots": 48,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.021813512361451355,
+     "dram_latency": 0.5368888754465297,
+     "l2_bandwidth": 0.01046028110184529,
+     "l2_latency": 0.4308166292118618,
+     "launch": 2.0701878311859373e-05
+    },
+    "ctas_per_sm": 1,
+    "dram_bytes": 1069047863.8933455,
+    "l2_hit_bytes": 8242307016.106714,
+    "merged_bytes": 2263202872.064009,
+    "time_ns": 5578664.306897142
+   },
+   "waves_n": 74
+  },
+  {
+   "ctas_per_sm": 1,
+   "footprint_bytes": 37748736,
+   "footprint_ratio_nominal": 1.5,
+   "k_steps": 192,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.049907606494790306,
+     "dram_latency": 0.5313244790610891,
+     "l2_bandwidth": 0.0075769121675447705,
+     "l2_latency": 0.4111744139293153,
+     "launch": 1.6588347260459203e-05
+    },
+    "ctas_per_sm": 1,
+    "dram_bytes": 570067981.4912025,
+    "l2_hit_bytes": 4110775282.5087686,
+    "merged_bytes": 1200561229.849602,
+    "time_ns": 2924821.133620362
+   },
+   "panels": 24,
+   "rewave_hit_fraction": {
+    "core": 0.7655038345099854,
+    "form_b": 0.0077,
+    "form_c_forward": 0.0,
+    "form_c_reversed": 0.6666666666666666
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 2,
+   "slots": 48,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.025262258439999054,
+     "dram_latency": 0.5494712283665596,
+     "l2_bandwidth": 0.0038352853762616333,
+     "l2_latency": 0.4214144344205407,
+     "launch": 1.679339663904411e-05
+    },
+    "ctas_per_sm": 1,
+    "dram_bytes": 1118887879.8250847,
+    "l2_hit_bytes": 8242798648.174928,
+    "merged_bytes": 2402954503.8421617,
+    "time_ns": 5757706.5698620435
+   },
+   "waves_n": 62
+  },
+  {
+   "ctas_per_sm": 1,
+   "footprint_bytes": 50331648,
+   "footprint_ratio_nominal": 2.0,
+   "k_steps": 256,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.04642569740078099,
+     "dram_latency": 0.7772741729885261,
+     "l2_latency": 0.17629156552825748,
+     "launch": 8.56408243555266e-06
+    },
+    "ctas_per_sm": 1,
+    "dram_bytes": 979425729.6270603,
+    "l2_hit_bytes": 3651085886.372849,
+    "merged_bytes": 1883630399.328779,
+    "time_ns": 4211811.0738894325
+   },
+   "panels": 24,
+   "rewave_hit_fraction": {
+    "core": 0.5833333333334142,
+    "form_b": 0.0077,
+    "form_c_forward": 0.0,
+    "form_c_reversed": 0.5
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 2,
+   "slots": 48,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.023288663066510597,
+     "dram_latency": 0.8012021472060201,
+     "l2_latency": 0.17550059767429685,
+     "launch": 8.592053172347357e-06
+    },
+    "ctas_per_sm": 1,
+    "dram_bytes": 1944115649.626873,
+    "l2_hit_bytes": 7316907582.373493,
+    "merged_bytes": 3813010239.3284307,
+    "time_ns": 8356618.928869078
+   },
+   "waves_n": 46
+  },
+  {
+   "ctas_per_sm": 1,
+   "footprint_bytes": 75497472,
+   "footprint_ratio_nominal": 3.0,
+   "k_steps": 384,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.055543515803068585,
+     "dram_latency": 0.8464107666229308,
+     "l2_latency": 0.09804097822959991,
+     "launch": 4.739344400740074e-06
+    },
+    "ctas_per_sm": 1,
+    "dram_bytes": 1254596343.671467,
+    "l2_hit_bytes": 3577241864.3285336,
+    "merged_bytes": 2339936209.032533,
+    "time_ns": 5298794.520677407
+   },
+   "panels": 24,
+   "rewave_hit_fraction": {
+    "core": 0.5000000000000001,
+    "form_b": -8.673617379884035e-19,
+    "form_c_forward": 0.0,
+    "form_c_reversed": 0.3333333333333333
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 2,
+   "slots": 48,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.02810858827849631,
+     "dram_latency": 0.8737934633792932,
+     "l2_latency": 0.09809315151656678,
+     "launch": 4.796825643616955e-06
+    },
+    "ctas_per_sm": 1,
+    "dram_bytes": 2462555895.671467,
+    "l2_hit_bytes": 7201120520.328531,
+    "merged_bytes": 4755855313.032533,
+    "time_ns": 10421960.097141206
+   },
+   "waves_n": 32
+  },
+  {
+   "ctas_per_sm": 2,
+   "footprint_bytes": 12582912,
+   "footprint_ratio_nominal": 0.5,
+   "k_steps": 16,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.04417218719463858,
+     "l2_bandwidth": 0.955699863301684,
+     "launch": 0.00012794950367745833
+    },
+    "ctas_per_sm": 2,
+    "dram_bytes": 12582912.0,
+    "l2_hit_bytes": 2277507072.0,
+    "merged_bytes": 0.0,
+    "time_ns": 1105647.8921609768
+   },
+   "panels": 96,
+   "rewave_hit_fraction": {
+    "core": 1.0,
+    "form_b": 1.0,
+    "form_c_forward": 1.0,
+    "form_c_reversed": 1.0
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 1,
+   "slots": 96,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.02252409808088745,
+     "l2_bandwidth": 0.9773454149609943,
+     "launch": 0.00013048695811825533
+    },
+    "ctas_per_sm": 2,
+    "dram_bytes": 12582912.0,
+    "l2_hit_bytes": 4567597056.0,
+    "merged_bytes": 0.0,
+    "time_ns": 2167895.981076807
+   },
+   "waves_n": 182
+  },
+  {
+   "ctas_per_sm": 2,
+   "footprint_bytes": 18874368,
+   "footprint_ratio_nominal": 0.75,
+   "k_steps": 24,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.06466216209637725,
+     "l2_bandwidth": 0.9352541356584867,
+     "launch": 8.370224513598675e-05
+    },
+    "ctas_per_sm": 2,
+    "dram_bytes": 18874368.0,
+    "l2_hit_bytes": 2283798528.0,
+    "merged_bytes": 0.0,
+    "time_ns": 1132929.4247446163
+   },
+   "panels": 96,
+   "rewave_hit_fraction": {
+    "core": 1.0,
+    "form_b": 1.0,
+    "form_c_forward": 1.0,
+    "form_c_reversed": 1.0
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 1,
+   "slots": 96,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.033278397027559505,
+     "l2_bandwidth": 0.9666354482118997,
+     "launch": 8.615476054082922e-05
+    },
+    "ctas_per_sm": 2,
+    "dram_bytes": 18874368.0,
+    "l2_hit_bytes": 4586471424.0,
+    "merged_bytes": 0.0,
+    "time_ns": 2200966.644621525
+   },
+   "waves_n": 122
+  },
+  {
+   "ctas_per_sm": 2,
+   "footprint_bytes": 22806528,
+   "footprint_ratio_nominal": 0.9,
+   "k_steps": 29,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.07791308413343401,
+     "l2_bandwidth": 0.9220185009669123,
+     "launch": 6.841489965374993e-05
+    },
+    "ctas_per_sm": 2,
+    "dram_bytes": 22806528.0,
+    "l2_hit_bytes": 2257846272.0,
+    "merged_bytes": 0.0,
+    "time_ns": 1136132.5175768337
+   },
+   "panels": 96,
+   "rewave_hit_fraction": {
+    "core": 1.0,
+    "form_b": 1.0,
+    "form_c_forward": 1.0,
+    "form_c_reversed": 1.0
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 1,
+   "slots": 96,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.04034020642615978,
+     "l2_bandwidth": 0.959588948703422,
+     "launch": 7.084487041818877e-05
+    },
+    "ctas_per_sm": 2,
+    "dram_bytes": 22806528.0,
+    "l2_hit_bytes": 4538499072.0,
+    "merged_bytes": 0.0,
+    "time_ns": 2193940.0792718716
+   },
+   "waves_n": 100
+  },
+  {
+   "ctas_per_sm": 2,
+   "footprint_bytes": 25165824,
+   "footprint_ratio_nominal": 1.0,
+   "k_steps": 32,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.0841864859146215,
+     "l2_bandwidth": 0.9157518803446624,
+     "launch": 6.16337407160742e-05
+    },
+    "ctas_per_sm": 2,
+    "dram_bytes": 25165824.0,
+    "l2_hit_bytes": 2290089984.0,
+    "merged_bytes": 0.0,
+    "time_ns": 1160234.267328257
+   },
+   "panels": 96,
+   "rewave_hit_fraction": {
+    "core": 1.0,
+    "form_b": 1.0,
+    "form_c_forward": 1.0,
+    "form_c_reversed": 1.0
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 1,
+   "slots": 96,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.04371333064679953,
+     "l2_bandwidth": 0.9562226634487455,
+     "launch": 6.400590445486069e-05
+    },
+    "ctas_per_sm": 2,
+    "dram_bytes": 25165824.0,
+    "l2_hit_bytes": 4605345792.0,
+    "merged_bytes": 0.0,
+    "time_ns": 2234083.928166239
+   },
+   "waves_n": 92
+  },
+  {
+   "ctas_per_sm": 2,
+   "footprint_bytes": 27525120,
+   "footprint_ratio_nominal": 1.1,
+   "k_steps": 35,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.10048003142123797,
+     "l2_bandwidth": 0.8994640124489534,
+     "launch": 5.595612980868968e-05
+    },
+    "ctas_per_sm": 2,
+    "dram_bytes": 58595215.16800044,
+    "l2_hit_bytes": 2253514864.831999,
+    "merged_bytes": 0.0,
+    "time_ns": 1166828.7641964501
+   },
+   "panels": 96,
+   "rewave_hit_fraction": {
+    "core": 0.9864001139322914,
+    "form_b": 0.37355,
+    "form_c_forward": 0.0,
+    "form_c_reversed": 0.9142857142857143
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 1,
+   "slots": 96,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.05705426885798939,
+     "l2_bandwidth": 0.9428874248615057,
+     "launch": 5.830628050494546e-05
+    },
+    "ctas_per_sm": 2,
+    "dram_bytes": 90039648.83200102,
+    "l2_hit_bytes": 4534180511.168034,
+    "merged_bytes": 0.0,
+    "time_ns": 2239213.2712941677
+   },
+   "waves_n": 84
+  },
+  {
+   "ctas_per_sm": 2,
+   "footprint_bytes": 31457280,
+   "footprint_ratio_nominal": 1.25,
+   "k_steps": 40,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.11194284489005109,
+     "dram_latency": 0.004296163249490149,
+     "l2_bandwidth": 0.883007522571536,
+     "l2_latency": 0.0007050073272849842,
+     "launch": 4.846196163770811e-05
+    },
+    "ctas_per_sm": 2,
+    "dram_bytes": 55441630.03306667,
+    "l2_hit_bytes": 2272397089.9669333,
+    "merged_bytes": 6558160.413866667,
+    "time_ns": 1189609.4618254623
+   },
+   "panels": 96,
+   "rewave_hit_fraction": {
+    "core": 1.0,
+    "form_b": 0.008800000000000002,
+    "form_c_forward": 0.0,
+    "form_c_reversed": 0.8
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 1,
+   "slots": 96,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.058610409869718105,
+     "dram_latency": 0.002249361173259018,
+     "l2_bandwidth": 0.9387193720830644,
+     "l2_latency": 0.0003701099872330774,
+     "launch": 5.074688672538953e-05
+    },
+    "ctas_per_sm": 2,
+    "dram_bytes": 55441630.03306667,
+    "l2_hit_bytes": 4600235809.966933,
+    "merged_bytes": 6558160.413866667,
+    "time_ns": 2269219.5351545587
+   },
+   "waves_n": 74
+  },
+  {
+   "ctas_per_sm": 2,
+   "footprint_bytes": 37748736,
+   "footprint_ratio_nominal": 1.5,
+   "k_steps": 48,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.44081883277622597,
+     "dram_latency": 0.1801147630175429,
+     "l2_bandwidth": 0.09828438658900328,
+     "l2_latency": 0.28074502293448134,
+     "launch": 3.699468274664346e-05
+    },
+    "ctas_per_sm": 2,
+    "dram_bytes": 336528835.77599967,
+    "l2_hit_bytes": 2003892796.2240155,
+    "merged_bytes": 349304015.80800045,
+    "time_ns": 1311930.7120269453
+   },
+   "panels": 96,
+   "rewave_hit_fraction": {
+    "core": 0.872405167264038,
+    "form_b": 0.0077,
+    "form_c_forward": 0.0,
+    "form_c_reversed": 0.6666666666666666
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 1,
+   "slots": 96,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.4039573521281698,
+     "dram_latency": 0.1928354976457086,
+     "l2_bandwidth": 0.09925751189018273,
+     "l2_latency": 0.3039105483227573,
+     "launch": 3.9090013181577324e-05
+    },
+    "ctas_per_sm": 2,
+    "dram_bytes": 635154542.4426668,
+    "l2_hit_bytes": 4045688721.5572557,
+    "merged_bytes": 708921893.1413282,
+    "time_ns": 2475319.6831157375
+   },
+   "waves_n": 62
+  },
+  {
+   "ctas_per_sm": 2,
+   "footprint_bytes": 50331648,
+   "footprint_ratio_nominal": 2.0,
+   "k_steps": 64,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.8449758194327848,
+     "dram_latency": 0.0017252596762004119,
+     "l2_bandwidth": 0.003795522882359522,
+     "l2_latency": 0.1494877132501173,
+     "launch": 1.56847585379605e-05
+    },
+    "ctas_per_sm": 2,
+    "dram_bytes": 591057631.1637332,
+    "l2_hit_bytes": 1724198176.836267,
+    "merged_bytes": 518720272.2474667,
+    "time_ns": 2295195.573132341
+   },
+   "panels": 96,
+   "rewave_hit_fraction": {
+    "core": 0.7656206564198369,
+    "form_b": 0.0077,
+    "form_c_forward": 0.0,
+    "form_c_reversed": 0.5
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 1,
+   "slots": 96,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.8382528217570125,
+     "dram_latency": 0.0009156829353607402,
+     "l2_bandwidth": 0.0019730481856436175,
+     "l2_latency": 0.1588421401280144,
+     "launch": 1.6306993968822023e-05
+    },
+    "ctas_per_sm": 2,
+    "dram_bytes": 1133705767.6629333,
+    "l2_hit_bytes": 3496805848.337067,
+    "merged_bytes": 1061358352.2474667,
+    "time_ns": 4400089.716523927
+   },
+   "waves_n": 46
+  },
+  {
+   "ctas_per_sm": 2,
+   "footprint_bytes": 75497472,
+   "footprint_ratio_nominal": 3.0,
+   "k_steps": 96,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.930920738605009,
+     "dram_latency": 0.0023444481647656476,
+     "l2_latency": 0.06672770155074123,
+     "launch": 7.111679484179038e-06
+    },
+    "ctas_per_sm": 2,
+    "dram_bytes": 907647293.4826672,
+    "l2_hit_bytes": 1508271810.517333,
+    "merged_bytes": 678839673.6597333,
+    "time_ns": 3524147.0392753086
+   },
+   "panels": 96,
+   "rewave_hit_fraction": {
+    "core": 0.6791046875000004,
+    "form_b": -8.673617379884035e-19,
+    "form_c_forward": 0.0,
+    "form_c_reversed": 0.3333333333333333
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 1,
+   "slots": 96,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.9251445845953887,
+     "dram_latency": 0.0012114607742947183,
+     "l2_latency": 0.07363630874435294,
+     "launch": 7.645885963687124e-06
+    },
+    "ctas_per_sm": 2,
+    "dram_bytes": 1682904409.3354664,
+    "l2_hit_bytes": 3148933798.6645255,
+    "merged_bytes": 1446397305.6597333,
+    "time_ns": 6531651.752090292
+   },
+   "waves_n": 32
+  },
+  {
+   "ctas_per_sm": 2,
+   "footprint_bytes": 12582912,
+   "footprint_ratio_nominal": 0.5,
+   "k_steps": 32,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.0225863835364115,
+     "l2_bandwidth": 0.9773481925679908,
+     "launch": 6.542389559789194e-05
+    },
+    "ctas_per_sm": 2,
+    "dram_bytes": 12582912.0,
+    "l2_hit_bytes": 4567597056.0,
+    "merged_bytes": 12582912.0,
+    "time_ns": 2161918.816115727
+   },
+   "panels": 48,
+   "rewave_hit_fraction": {
+    "core": 1.0,
+    "form_b": 1.0,
+    "form_c_forward": 1.0,
+    "form_c_reversed": 1.0
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 2,
+   "slots": 96,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.0113910791257952,
+     "l2_bandwidth": 0.9885429298960324,
+     "launch": 6.599097817242369e-05
+    },
+    "ctas_per_sm": 2,
+    "dram_bytes": 12582912.0,
+    "l2_hit_bytes": 9147777024.0,
+    "merged_bytes": 12582912.0,
+    "time_ns": 4286273.579947351
+   },
+   "waves_n": 182
+  },
+  {
+   "ctas_per_sm": 2,
+   "footprint_bytes": 18874368,
+   "footprint_ratio_nominal": 0.75,
+   "k_steps": 48,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.03341274972879786,
+     "l2_bandwidth": 0.9665439989774347,
+     "launch": 4.325129376742424e-05
+    },
+    "ctas_per_sm": 2,
+    "dram_bytes": 18874368.0,
+    "l2_hit_bytes": 4586471424.0,
+    "merged_bytes": 18874368.0,
+    "time_ns": 2192118.224179907
+   },
+   "panels": 48,
+   "rewave_hit_fraction": {
+    "core": 1.0,
+    "form_b": 1.0,
+    "form_c_forward": 1.0,
+    "form_c_reversed": 1.0
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 2,
+   "slots": 96,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.01692148743570085,
+     "l2_bandwidth": 0.9830347043635371,
+     "launch": 4.380820076189748e-05
+    },
+    "ctas_per_sm": 2,
+    "dram_bytes": 18874368.0,
+    "l2_hit_bytes": 9191817216.0,
+    "merged_bytes": 18874368.0,
+    "time_ns": 4328097.869933693
+   },
+   "waves_n": 122
+  },
+  {
+   "ctas_per_sm": 2,
+   "footprint_bytes": 22806528,
+   "footprint_ratio_nominal": 0.9,
+   "k_steps": 58,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.04053711454609907,
+     "l2_bandwidth": 0.9594272901151364,
+     "launch": 3.5595338764594475e-05
+    },
+    "ctas_per_sm": 2,
+    "dram_bytes": 22806528.0,
+    "l2_hit_bytes": 4538499072.0,
+    "merged_bytes": 22806528.0,
+    "time_ns": 2183285.080654911
+   },
+   "panels": 48,
+   "rewave_hit_fraction": {
+    "core": 1.0,
+    "form_b": 1.0,
+    "form_c_forward": 1.0,
+    "form_c_reversed": 1.0
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 2,
+   "slots": 96,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.020586055281037213,
+     "l2_bandwidth": 0.9793777917949197,
+     "launch": 3.6152924043070815e-05
+    },
+    "ctas_per_sm": 2,
+    "dram_bytes": 22806528.0,
+    "l2_hit_bytes": 9099804672.0,
+    "merged_bytes": 22806528.0,
+    "time_ns": 4298822.504044964
+   },
+   "waves_n": 100
+  },
+  {
+   "ctas_per_sm": 2,
+   "footprint_bytes": 25165824,
+   "footprint_ratio_nominal": 1.0,
+   "k_steps": 64,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.043944357710598896,
+     "l2_bandwidth": 0.9560234702000254,
+     "launch": 3.21720893756781e-05
+    },
+    "ctas_per_sm": 2,
+    "dram_bytes": 25165824.0,
+    "l2_hit_bytes": 4605345792.0,
+    "merged_bytes": 25165824.0,
+    "time_ns": 2222340.9422440864
+   },
+   "panels": 48,
+   "rewave_hit_fraction": {
+    "core": 1.0,
+    "form_b": 1.0,
+    "form_c_forward": 1.0,
+    "form_c_reversed": 1.0
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 2,
+   "slots": 96,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.022345784794116353,
+     "l2_bandwidth": 0.9776214960754643,
+     "launch": 3.2719130419448065e-05
+    },
+    "ctas_per_sm": 2,
+    "dram_bytes": 25165824.0,
+    "l2_hit_bytes": 9235857408.0,
+    "merged_bytes": 25165824.0,
+    "time_ns": 4369968.779920034
+   },
+   "waves_n": 92
+  },
+  {
+   "ctas_per_sm": 2,
+   "footprint_bytes": 27525120,
+   "footprint_ratio_nominal": 1.1,
+   "k_steps": 70,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.04797687837499654,
+     "l2_bandwidth": 0.951993800439532,
+     "launch": 2.9321185471448447e-05
+    },
+    "ctas_per_sm": 2,
+    "dram_bytes": 51920129.407999724,
+    "l2_hit_bytes": 4572300030.5920315,
+    "merged_bytes": 51920129.40799973,
+    "time_ns": 2226382.2980668154
+   },
+   "panels": 48,
+   "rewave_hit_fraction": {
+    "core": 0.9893219075520832,
+    "form_b": 0.37355,
+    "form_c_forward": 0.0,
+    "form_c_reversed": 0.9142857142857143
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 2,
+   "slots": 96,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.024434454399447036,
+     "l2_bandwidth": 0.9755356792485264,
+     "launch": 2.986635202648862e-05
+    },
+    "ctas_per_sm": 2,
+    "dram_bytes": 76609054.59200011,
+    "l2_hit_bytes": 9171831265.40809,
+    "merged_bytes": 76609054.59200013,
+    "time_ns": 4371086.044262239
+   },
+   "waves_n": 84
+  },
+  {
+   "ctas_per_sm": 2,
+   "footprint_bytes": 31457280,
+   "footprint_ratio_nominal": 1.25,
+   "k_steps": 80,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.15024900547493591,
+     "l2_bandwidth": 0.8497254643444992,
+     "launch": 2.5530180564867187e-05
+    },
+    "ctas_per_sm": 2,
+    "dram_bytes": 310909160.10666746,
+    "l2_hit_bytes": 4344768279.893356,
+    "merged_bytes": 310909160.10666746,
+    "time_ns": 2252572.984308275
+   },
+   "panels": 48,
+   "rewave_hit_fraction": {
+    "core": 0.8783077256944429,
+    "form_b": 0.008800000000000002,
+    "form_c_forward": 0.0,
+    "form_c_reversed": 0.8
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 2,
+   "slots": 96,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.12641691928962787,
+     "l2_bandwidth": 0.8735570130515151,
+     "launch": 2.6067658857103867e-05
+    },
+    "ctas_per_sm": 2,
+    "dram_bytes": 594189148.1600044,
+    "l2_hit_bytes": 8717165731.840012,
+    "merged_bytes": 594189148.1600044,
+    "time_ns": 4411858.3379063755
+   },
+   "waves_n": 74
+  },
+  {
+   "ctas_per_sm": 2,
+   "footprint_bytes": 37748736,
+   "footprint_ratio_nominal": 1.5,
+   "k_steps": 96,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.0729663761653351,
+     "dram_latency": 0.34953631053342593,
+     "l2_bandwidth": 0.5753819931807101,
+     "l2_latency": 0.0020941744620321875,
+     "launch": 2.114565849667588e-05
+    },
+    "ctas_per_sm": 2,
+    "dram_bytes": 534616455.586128,
+    "l2_hit_bytes": 4146226808.413875,
+    "merged_bytes": 968387575.7994562,
+    "time_ns": 2290012.6547286566
+   },
+   "panels": 48,
+   "rewave_hit_fraction": {
+    "core": 0.7847116460127865,
+    "form_b": 0.0077,
+    "form_c_forward": 0.0,
+    "form_c_reversed": 0.6666666666666666
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 2,
+   "slots": 96,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.04222113359726074,
+     "dram_latency": 0.3582962469688018,
+     "l2_bandwidth": 0.5985165782076218,
+     "l2_latency": 0.000944384058695936,
+     "launch": 2.1657167619605393e-05
+    },
+    "ctas_per_sm": 2,
+    "dram_bytes": 1038481976.3754758,
+    "l2_hit_bytes": 8323204551.624512,
+    "merged_bytes": 1921617061.6277595,
+    "time_ns": 4459878.9306759
+   },
+   "waves_n": 62
+  },
+  {
+   "ctas_per_sm": 2,
+   "footprint_bytes": 50331648,
+   "footprint_ratio_nominal": 2.0,
+   "k_steps": 128,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.7589567196910557,
+     "dram_latency": 0.0684674879157709,
+     "l2_bandwidth": 0.007559694619456442,
+     "l2_latency": 0.165005549291364,
+     "launch": 1.0548482352950318e-05
+    },
+    "ctas_per_sm": 2,
+    "dram_bytes": 877482960.816381,
+    "l2_hit_bytes": 3753028655.1835265,
+    "merged_bytes": 1714171549.2978227,
+    "time_ns": 3417121.8372186683
+   },
+   "panels": 48,
+   "rewave_hit_fraction": {
+    "core": 0.6250000000000564,
+    "form_b": 0.0077,
+    "form_c_forward": 0.0,
+    "form_c_reversed": 0.5
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 2,
+   "slots": 96,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.7860139790955635,
+     "dram_latency": 0.041924972740559376,
+     "l2_bandwidth": 0.0037909222259233113,
+     "l2_latency": 0.1682595465486492,
+     "launch": 1.0579389304599884e-05
+    },
+    "ctas_per_sm": 2,
+    "dram_bytes": 1745703888.8162506,
+    "l2_hit_bytes": 7515319343.184141,
+    "merged_bytes": 3450613405.297577,
+    "time_ns": 6785959.860343295
+   },
+   "waves_n": 46
+  },
+  {
+   "ctas_per_sm": 2,
+   "footprint_bytes": 75497472,
+   "footprint_ratio_nominal": 3.0,
+   "k_steps": 192,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.8700922743023491,
+     "dram_latency": 0.01940289845471148,
+     "l2_latency": 0.11049899093927891,
+     "launch": 5.836303660415258e-06
+    },
+    "ctas_per_sm": 2,
+    "dram_bytes": 1104794525.1498666,
+    "l2_hit_bytes": 3727043682.850134,
+    "merged_bytes": 2063927222.8181343,
+    "time_ns": 4295526.286481071
+   },
+   "panels": 48,
+   "rewave_hit_fraction": {
+    "core": 0.5694444444444444,
+    "form_b": -8.673617379884035e-19,
+    "form_c_forward": 0.0,
+    "form_c_reversed": 0.3333333333333333
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 2,
+   "slots": 96,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.8697862441672606,
+     "dram_latency": 0.014881997576542308,
+     "l2_latency": 0.11532576377437352,
+     "launch": 5.994481823549686e-06
+    },
+    "ctas_per_sm": 2,
+    "dram_bytes": 2144981917.1498666,
+    "l2_hit_bytes": 7518694498.850133,
+    "merged_bytes": 4144302006.818135,
+    "time_ns": 8330413.513590485
+   },
+   "waves_n": 32
+  },
+  {
+   "ctas_per_sm": 4,
+   "footprint_bytes": 12582912,
+   "footprint_ratio_nominal": 0.5,
+   "k_steps": 8,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.044172187194662,
+     "l2_bandwidth": 0.9556998633016607,
+     "launch": 0.00012794950367740724
+    },
+    "ctas_per_sm": 4,
+    "dram_bytes": 12582912.0,
+    "l2_hit_bytes": 2277507072.0,
+    "merged_bytes": 0.0,
+    "time_ns": 1105647.8921609686
+   },
+   "panels": 192,
+   "rewave_hit_fraction": {
+    "core": 1.0,
+    "form_b": 1.0,
+    "form_c_forward": 1.0,
+    "form_c_reversed": 1.0
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 1,
+   "slots": 192,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.022524098080902628,
+     "l2_bandwidth": 0.9773454149609789,
+     "launch": 0.00013048695811849312
+    },
+    "ctas_per_sm": 4,
+    "dram_bytes": 12582912.0,
+    "l2_hit_bytes": 4567597056.0,
+    "merged_bytes": 0.0,
+    "time_ns": 2167895.981076838
+   },
+   "waves_n": 182
+  },
+  {
+   "ctas_per_sm": 4,
+   "footprint_bytes": 18874368,
+   "footprint_ratio_nominal": 0.75,
+   "k_steps": 12,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.06466216209641129,
+     "l2_bandwidth": 0.9352541356584527,
+     "launch": 8.370224513601176e-05
+    },
+    "ctas_per_sm": 4,
+    "dram_bytes": 18874368.0,
+    "l2_hit_bytes": 2283798528.0,
+    "merged_bytes": 0.0,
+    "time_ns": 1132929.4247446116
+   },
+   "panels": 192,
+   "rewave_hit_fraction": {
+    "core": 1.0,
+    "form_b": 1.0,
+    "form_c_forward": 1.0,
+    "form_c_reversed": 1.0
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 1,
+   "slots": 192,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.03327839702757717,
+     "l2_bandwidth": 0.966635448211882,
+     "launch": 8.615476054082487e-05
+    },
+    "ctas_per_sm": 4,
+    "dram_bytes": 18874368.0,
+    "l2_hit_bytes": 4586471424.0,
+    "merged_bytes": 0.0,
+    "time_ns": 2200966.644621546
+   },
+   "waves_n": 122
+  },
+  {
+   "ctas_per_sm": 4,
+   "footprint_bytes": 22020096,
+   "footprint_ratio_nominal": 0.9,
+   "k_steps": 14,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.07511442937424509,
+     "l2_bandwidth": 0.9248145250600668,
+     "launch": 7.104556568807172e-05
+    },
+    "ctas_per_sm": 4,
+    "dram_bytes": 22020096.0,
+    "l2_hit_bytes": 2268069888.0,
+    "merged_bytes": 0.0,
+    "time_ns": 1137825.8885948176
+   },
+   "panels": 192,
+   "rewave_hit_fraction": {
+    "core": 1.0,
+    "form_b": 1.0,
+    "form_c_forward": 1.0,
+    "form_c_reversed": 1.0
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 1,
+   "slots": 192,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.03884162261959666,
+     "l2_bandwidth": 0.9610849021487006,
+     "launch": 7.347523170281779e-05
+    },
+    "ctas_per_sm": 4,
+    "dram_bytes": 22020096.0,
+    "l2_hit_bytes": 4558159872.0,
+    "merged_bytes": 0.0,
+    "time_ns": 2200013.3715106626
+   },
+   "waves_n": 104
+  },
+  {
+   "ctas_per_sm": 4,
+   "footprint_bytes": 25165824,
+   "footprint_ratio_nominal": 1.0,
+   "k_steps": 16,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.08418648591460043,
+     "l2_bandwidth": 0.9157518803446835,
+     "launch": 6.16337407160588e-05
+    },
+    "ctas_per_sm": 4,
+    "dram_bytes": 25165824.0,
+    "l2_hit_bytes": 2290089984.0,
+    "merged_bytes": 0.0,
+    "time_ns": 1160234.267328254
+   },
+   "panels": 192,
+   "rewave_hit_fraction": {
+    "core": 1.0,
+    "form_b": 1.0,
+    "form_c_forward": 1.0,
+    "form_c_reversed": 1.0
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 1,
+   "slots": 192,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.043713330646822396,
+     "l2_bandwidth": 0.9562226634487228,
+     "launch": 6.400590445483371e-05
+    },
+    "ctas_per_sm": 4,
+    "dram_bytes": 25165824.0,
+    "l2_hit_bytes": 4605345792.0,
+    "merged_bytes": 0.0,
+    "time_ns": 2234083.928166255
+   },
+   "waves_n": 92
+  },
+  {
+   "ctas_per_sm": 4,
+   "footprint_bytes": 28311552,
+   "footprint_ratio_nominal": 1.1,
+   "k_steps": 18,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.09360761266219901,
+     "l2_bandwidth": 0.9063380922153185,
+     "launch": 5.4295122482572114e-05
+    },
+    "ctas_per_sm": 4,
+    "dram_bytes": 110601370.59840009,
+    "l2_hit_bytes": 2210945893.4015923,
+    "merged_bytes": 0.0,
+    "time_ns": 1173890.5736200742
+   },
+   "panels": 192,
+   "rewave_hit_fraction": {
+    "core": 0.9641162841796882,
+    "form_b": 0.032899999999999985,
+    "form_c_forward": 0.0,
+    "form_c_reversed": 0.8888888888888888
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 1,
+   "slots": 192,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.04881544832863233,
+     "l2_bandwidth": 0.9511279229278142,
+     "launch": 5.6628743553312055e-05
+    },
+    "ctas_per_sm": 4,
+    "dram_bytes": 193907112.8831984,
+    "l2_hit_bytes": 4449187415.116863,
+    "merged_bytes": 0.0,
+    "time_ns": 2250650.339938604
+   },
+   "waves_n": 82
+  },
+  {
+   "ctas_per_sm": 4,
+   "footprint_bytes": 31457280,
+   "footprint_ratio_nominal": 1.25,
+   "k_steps": 20,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.10693003530122833,
+     "dram_latency": 0.002127957873037449,
+     "l2_bandwidth": 0.8904603284745751,
+     "l2_latency": 0.00043324683791748765,
+     "launch": 4.843151324152651e-05
+    },
+    "ctas_per_sm": 4,
+    "dram_bytes": 54968806.876800016,
+    "l2_hit_bytes": 2272869913.1232,
+    "merged_bytes": 4324608.485333333,
+    "time_ns": 1189274.1352817754
+   },
+   "panels": 192,
+   "rewave_hit_fraction": {
+    "core": 1.0,
+    "form_b": 0.008800000000000002,
+    "form_c_forward": 0.0,
+    "form_c_reversed": 0.8
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 1,
+   "slots": 192,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.056002523347721815,
+     "dram_latency": 0.001114476490464408,
+     "l2_bandwidth": 0.9426053787538358,
+     "l2_latency": 0.00022689128442698018,
+     "launch": 5.07301235510075e-05
+    },
+    "ctas_per_sm": 4,
+    "dram_bytes": 54968806.876800016,
+    "l2_hit_bytes": 4600708633.123199,
+    "merged_bytes": 4324608.485333333,
+    "time_ns": 2268887.732248506
+   },
+   "waves_n": 74
+  },
+  {
+   "ctas_per_sm": 4,
+   "footprint_bytes": 37748736,
+   "footprint_ratio_nominal": 1.5,
+   "k_steps": 24,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.18780577789551714,
+     "dram_latency": 0.0029143444178296504,
+     "l2_bandwidth": 0.8083109115897957,
+     "l2_latency": 0.0009306717309666816,
+     "launch": 3.8294365890876736e-05
+    },
+    "ctas_per_sm": 4,
+    "dram_bytes": 99236692.2730666,
+    "l2_hit_bytes": 2241184939.7269335,
+    "merged_bytes": 41025482.779733345,
+    "time_ns": 1263152.2856015258
+   },
+   "panels": 192,
+   "rewave_hit_fraction": {
+    "core": 1.0,
+    "form_b": 0.0077,
+    "form_c_forward": 0.0,
+    "form_c_reversed": 0.6666666666666666
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 1,
+   "slots": 192,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.10081674523043534,
+     "dram_latency": 0.0015644604866711426,
+     "l2_bandwidth": 0.8970781894250908,
+     "l2_latency": 0.0004994909647900726,
+     "launch": 4.111389301268905e-05
+    },
+    "ctas_per_sm": 4,
+    "dram_bytes": 99236692.2730666,
+    "l2_hit_bytes": 4581606571.7269335,
+    "merged_bytes": 41025482.779733345,
+    "time_ns": 2348601.908829591
+   },
+   "waves_n": 62
+  },
+  {
+   "ctas_per_sm": 4,
+   "footprint_bytes": 50331648,
+   "footprint_ratio_nominal": 2.0,
+   "k_steps": 32,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.7112052832745858,
+     "dram_latency": 0.00030398484734368207,
+     "l2_bandwidth": 0.28784320805429625,
+     "l2_latency": 0.0006301303835345098,
+     "launch": 1.7393440239846762e-05
+    },
+    "ctas_per_sm": 4,
+    "dram_bytes": 533158833.6554667,
+    "l2_hit_bytes": 1782096974.3445337,
+    "merged_bytes": 456154816.40106666,
+    "time_ns": 2069935.6667525878
+   },
+   "panels": 192,
+   "rewave_hit_fraction": {
+    "core": 0.7942708333333334,
+    "form_b": 0.0077,
+    "form_c_forward": 0.0,
+    "form_c_reversed": 0.5
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 1,
+   "slots": 192,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.691061568236849,
+     "dram_latency": 0.0001678975599934152,
+     "l2_bandwidth": 0.3084918238553401,
+     "l2_latency": 0.0002603936308581677,
+     "launch": 1.8316716959313657e-05
+    },
+    "ctas_per_sm": 4,
+    "dram_bytes": 1009474481.6554667,
+    "l2_hit_bytes": 3621037134.344534,
+    "merged_bytes": 932470464.4010667,
+    "time_ns": 3917958.687051855
+   },
+   "waves_n": 46
+  },
+  {
+   "ctas_per_sm": 4,
+   "footprint_bytes": 75497472,
+   "footprint_ratio_nominal": 3.0,
+   "k_steps": 48,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.8916763240885224,
+     "dram_latency": 9.312209840747667e-05,
+     "l2_bandwidth": 0.10806058914736917,
+     "l2_latency": 0.00016326412269272944,
+     "launch": 6.700543008173672e-06
+    },
+    "ctas_per_sm": 4,
+    "dram_bytes": 963820737.8047956,
+    "l2_hit_bytes": 1452098366.1952057,
+    "merged_bytes": 544955048.6912005,
+    "time_ns": 3739713.7698186054
+   },
+   "panels": 192,
+   "rewave_hit_fraction": {
+    "core": 0.7052608896025928,
+    "form_b": -8.673617379884035e-19,
+    "form_c_forward": 0.0,
+    "form_c_reversed": 0.3333333333333333
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 1,
+   "slots": 192,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.8670034739102926,
+     "dram_latency": 0.00010955108500137284,
+     "l2_bandwidth": 0.1327124319333774,
+     "l2_latency": 0.00016686358944960968,
+     "launch": 7.679481878931611e-06
+    },
+    "ctas_per_sm": 4,
+    "dram_bytes": 1675886585.3098567,
+    "l2_hit_bytes": 3155951622.69013,
+    "merged_bytes": 1237860209.0581336,
+    "time_ns": 6502506.791137259
+   },
+   "waves_n": 32
+  },
+  {
+   "ctas_per_sm": 4,
+   "footprint_bytes": 12582912,
+   "footprint_ratio_nominal": 0.5,
+   "k_steps": 16,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.022586383536423078,
+     "l2_bandwidth": 0.977348192567979,
+     "launch": 6.542389559786468e-05
+    },
+    "ctas_per_sm": 4,
+    "dram_bytes": 12582912.0,
+    "l2_hit_bytes": 4567597056.0,
+    "merged_bytes": 12582912.0,
+    "time_ns": 2161918.816115743
+   },
+   "panels": 96,
+   "rewave_hit_fraction": {
+    "core": 1.0,
+    "form_b": 1.0,
+    "form_c_forward": 1.0,
+    "form_c_reversed": 1.0
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 2,
+   "slots": 192,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.011391079125783266,
+     "l2_bandwidth": 0.9885429298960443,
+     "launch": 6.599097817243037e-05
+    },
+    "ctas_per_sm": 4,
+    "dram_bytes": 12582912.0,
+    "l2_hit_bytes": 9147777024.0,
+    "merged_bytes": 12582912.0,
+    "time_ns": 4286273.579947366
+   },
+   "waves_n": 182
+  },
+  {
+   "ctas_per_sm": 4,
+   "footprint_bytes": 18874368,
+   "footprint_ratio_nominal": 0.75,
+   "k_steps": 24,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.033412749728816415,
+     "l2_bandwidth": 0.9665439989774162,
+     "launch": 4.3251293767438425e-05
+    },
+    "ctas_per_sm": 4,
+    "dram_bytes": 18874368.0,
+    "l2_hit_bytes": 4586471424.0,
+    "merged_bytes": 18874368.0,
+    "time_ns": 2192118.224179917
+   },
+   "panels": 96,
+   "rewave_hit_fraction": {
+    "core": 1.0,
+    "form_b": 1.0,
+    "form_c_forward": 1.0,
+    "form_c_reversed": 1.0
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 2,
+   "slots": 192,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.0169214874356907,
+     "l2_bandwidth": 0.9830347043635475,
+     "launch": 4.380820076184575e-05
+    },
+    "ctas_per_sm": 4,
+    "dram_bytes": 18874368.0,
+    "l2_hit_bytes": 9191817216.0,
+    "merged_bytes": 18874368.0,
+    "time_ns": 4328097.8699337095
+   },
+   "waves_n": 122
+  },
+  {
+   "ctas_per_sm": 4,
+   "footprint_bytes": 22806528,
+   "footprint_ratio_nominal": 0.9,
+   "k_steps": 29,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.040537114546110205,
+     "l2_bandwidth": 0.9594272901151253,
+     "launch": 3.559533876460448e-05
+    },
+    "ctas_per_sm": 4,
+    "dram_bytes": 22806528.0,
+    "l2_hit_bytes": 4538499072.0,
+    "merged_bytes": 22806528.0,
+    "time_ns": 2183285.0806549108
+   },
+   "panels": 96,
+   "rewave_hit_fraction": {
+    "core": 1.0,
+    "form_b": 1.0,
+    "form_c_forward": 1.0,
+    "form_c_reversed": 1.0
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 2,
+   "slots": 192,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.020586055281021073,
+     "l2_bandwidth": 0.9793777917949359,
+     "launch": 3.615292404300451e-05
+    },
+    "ctas_per_sm": 4,
+    "dram_bytes": 22806528.0,
+    "l2_hit_bytes": 9099804672.0,
+    "merged_bytes": 22806528.0,
+    "time_ns": 4298822.504044968
+   },
+   "waves_n": 100
+  },
+  {
+   "ctas_per_sm": 4,
+   "footprint_bytes": 25165824,
+   "footprint_ratio_nominal": 1.0,
+   "k_steps": 32,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.04394435771058986,
+     "l2_bandwidth": 0.9560234702000346,
+     "launch": 3.2172089375671506e-05
+    },
+    "ctas_per_sm": 4,
+    "dram_bytes": 25165824.0,
+    "l2_hit_bytes": 4605345792.0,
+    "merged_bytes": 25165824.0,
+    "time_ns": 2222340.9422440943
+   },
+   "panels": 96,
+   "rewave_hit_fraction": {
+    "core": 1.0,
+    "form_b": 1.0,
+    "form_c_forward": 1.0,
+    "form_c_reversed": 1.0
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 2,
+   "slots": 192,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.02234578479409041,
+     "l2_bandwidth": 0.9776214960754902,
+     "launch": 3.2719130419379184e-05
+    },
+    "ctas_per_sm": 4,
+    "dram_bytes": 25165824.0,
+    "l2_hit_bytes": 9235857408.0,
+    "merged_bytes": 25165824.0,
+    "time_ns": 4369968.7799200425
+   },
+   "waves_n": 92
+  },
+  {
+   "ctas_per_sm": 4,
+   "footprint_bytes": 27525120,
+   "footprint_ratio_nominal": 1.1,
+   "k_steps": 35,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.04797687837502328,
+     "l2_bandwidth": 0.9519938004395051,
+     "launch": 2.932118547146492e-05
+    },
+    "ctas_per_sm": 4,
+    "dram_bytes": 58595215.16800045,
+    "l2_hit_bytes": 4565624944.832104,
+    "merged_bytes": 58595215.16800045,
+    "time_ns": 2226382.2980668154
+   },
+   "panels": 96,
+   "rewave_hit_fraction": {
+    "core": 0.9864001139322902,
+    "form_b": 0.37355,
+    "form_c_forward": 0.0,
+    "form_c_reversed": 0.9142857142857143
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 2,
+   "slots": 192,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.024434454399458454,
+     "l2_bandwidth": 0.9755356792485151,
+     "launch": 2.9866352026478458e-05
+    },
+    "ctas_per_sm": 4,
+    "dram_bytes": 90039648.83200376,
+    "l2_hit_bytes": 9158400671.16806,
+    "merged_bytes": 90039648.83200376,
+    "time_ns": 4371086.044262239
+   },
+   "waves_n": 84
+  },
+  {
+   "ctas_per_sm": 4,
+   "footprint_bytes": 31457280,
+   "footprint_ratio_nominal": 1.25,
+   "k_steps": 40,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.23201968784083793,
+     "l2_bandwidth": 0.7679547819785972,
+     "launch": 2.5530180564869234e-05
+    },
+    "ctas_per_sm": 4,
+    "dram_bytes": 323369969.66399735,
+    "l2_hit_bytes": 4332307470.336009,
+    "merged_bytes": 323369969.6639968,
+    "time_ns": 2252572.9843082726
+   },
+   "panels": 96,
+   "rewave_hit_fraction": {
+    "core": 0.8728814453125007,
+    "form_b": 0.008800000000000002,
+    "form_c_forward": 0.0,
+    "form_c_reversed": 0.8
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 2,
+   "slots": 192,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.21048095648754842,
+     "l2_bandwidth": 0.7894929758535945,
+     "launch": 2.6067658857079994e-05
+    },
+    "ctas_per_sm": 4,
+    "dram_bytes": 619281463.2959958,
+    "l2_hit_bytes": 8692073416.703836,
+    "merged_bytes": 619281463.2959952,
+    "time_ns": 4411858.33790638
+   },
+   "waves_n": 74
+  },
+  {
+   "ctas_per_sm": 4,
+   "footprint_bytes": 37748736,
+   "footprint_ratio_nominal": 1.5,
+   "k_steps": 48,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.19912729660350006,
+     "dram_latency": 0.013735432129608411,
+     "l2_bandwidth": 0.7864799776968541,
+     "l2_latency": 0.0006366084906649987,
+     "launch": 2.0685079372424316e-05
+    },
+    "ctas_per_sm": 4,
+    "dram_bytes": 588187424.5525322,
+    "l2_hit_bytes": 4092655839.447369,
+    "merged_bytes": 774091433.7898706,
+    "time_ns": 2336909.963680721
+   },
+   "panels": 96,
+   "rewave_hit_fraction": {
+    "core": 0.7603194339729271,
+    "form_b": 0.0077,
+    "form_c_forward": 0.0,
+    "form_c_reversed": 0.6666666666666666
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 2,
+   "slots": 192,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.1732721491444538,
+     "dram_latency": 0.01342020611723633,
+     "l2_bandwidth": 0.8130555003968796,
+     "l2_latency": 0.0002309754179711039,
+     "launch": 2.11689234591741e-05
+    },
+    "ctas_per_sm": 4,
+    "dram_bytes": 1149141006.0522978,
+    "l2_hit_bytes": 8212545521.947689,
+    "merged_bytes": 1522068703.9253519,
+    "time_ns": 4559127.018162344
+   },
+   "waves_n": 62
+  },
+  {
+   "ctas_per_sm": 4,
+   "footprint_bytes": 50331648,
+   "footprint_ratio_nominal": 2.0,
+   "k_steps": 64,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.7085770664489988,
+     "dram_latency": 0.0018183605371663192,
+     "l2_bandwidth": 0.2890996127293811,
+     "l2_latency": 0.0004943075038669757,
+     "launch": 1.0652780586764986e-05
+    },
+    "ctas_per_sm": 4,
+    "dram_bytes": 869009259.6053834,
+    "l2_hit_bytes": 3761502356.3944197,
+    "merged_bytes": 1546106493.1840603,
+    "time_ns": 3373982.184869274
+   },
+   "panels": 96,
+   "rewave_hit_fraction": {
+    "core": 0.6383021621189269,
+    "form_b": 0.0077,
+    "form_c_forward": 0.0,
+    "form_c_reversed": 0.5
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 2,
+   "slots": 192,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.7024188746896954,
+     "dram_latency": 0.0008599413350617822,
+     "l2_bandwidth": 0.29636779177463013,
+     "l2_latency": 0.00034255606149720435,
+     "launch": 1.083613911546061e-05
+    },
+    "ctas_per_sm": 4,
+    "dram_bytes": 1706432279.5005803,
+    "l2_hit_bytes": 7554590952.500202,
+    "merged_bytes": 3096104116.616226,
+    "time_ns": 6622244.547354731
+   },
+   "waves_n": 46
+  },
+  {
+   "ctas_per_sm": 4,
+   "footprint_bytes": 75497472,
+   "footprint_ratio_nominal": 3.0,
+   "k_steps": 96,
+   "n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.881343758266115,
+     "dram_latency": 0.0005839283728111325,
+     "l2_bandwidth": 0.11764891444976162,
+     "l2_latency": 0.0004184235166610771,
+     "launch": 4.975394651139633e-06
+    },
+    "ctas_per_sm": 4,
+    "dram_bytes": 1298071560.4394665,
+    "l2_hit_bytes": 3533766647.560533,
+    "merged_bytes": 2239335005.1925344,
+    "time_ns": 5039959.615170379
+   },
+   "panels": 96,
+   "rewave_hit_fraction": {
+    "core": 0.47688802083333337,
+    "form_b": -8.673617379884035e-19,
+    "form_c_forward": 0.0,
+    "form_c_reversed": 0.3333333333333333
+   },
+   "row_bytes": 256,
+   "rows_per_wave": 2,
+   "slots": 192,
+   "stage_bytes": 8192,
+   "two_n_waves": {
+    "bound_fraction": {
+     "dram_bandwidth": 0.8812552659906446,
+     "dram_latency": 0.00044171887717031275,
+     "l2_bandwidth": 0.1182135500975757,
+     "l2_latency": 8.44437214994541e-05,
+     "launch": 5.021313109982984e-06
+    },
+    "ctas_per_sm": 4,
+    "dram_bytes": 2561867784.4394665,
+    "l2_hit_bytes": 7101808631.560529,
+    "merged_bytes": 4549085789.192534,
+    "time_ns": 9942968.222048517
+   },
+   "waves_n": 32
+  }
+ ]
+}
