@@ -53,7 +53,14 @@ except ImportError:  # imported as microbench.capture_posthoc
         write_json,
     )
 
-MODES = ("wave-rescan", "wave-rescan-long", "b-stream", "staged-mma", "dram-probe-sweep")
+MODES = (
+    "wave-rescan",
+    "wave-rescan-long",
+    "wave-rescan-v3",
+    "b-stream",
+    "staged-mma",
+    "dram-probe-sweep",
+)
 POWERSHELL = Path("/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe")
 QUIET_PERCENT = 5
 QUIET_SECONDS = 60

@@ -350,7 +350,9 @@ static uint32_t long_waves(double l2_gbps, uint64_t footprint) {
   return waves + (waves & 1u);  // even, so a reversed walk has as many up as down waves
 }
 
-static int run_wave_rescan_long(int device, int samples, int warmup, double l2_gbps) {
+static int run_wave_rescan_long_grid(int device, int samples, int warmup, double l2_gbps,
+                                     const char* mode, const std::vector<double>& ratios,
+                                     const std::vector<uint32_t>& variants) {
   if (l2_gbps <= 0.0) {
     std::fprintf(stderr, "wave-rescan-long needs --l2-gbps (the profile's l2_bw_read_gbps)\n");
     return 2;
@@ -359,7 +361,6 @@ static int run_wave_rescan_long(int device, int samples, int warmup, double l2_g
   CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
   const int sms = prop.multiProcessorCount;
   const size_t l2 = prop.l2CacheSize;
-  const std::vector<double> ratios = {0.5, 0.75, 0.9, 1.0, 1.1, 1.25, 1.5, 2.0, 3.0};
   const uint32_t row_bytes = 256;
   const int vpt = 4;
   const uint32_t stage = 128u * 16u * vpt;
@@ -369,9 +370,9 @@ static int run_wave_rescan_long(int device, int samples, int warmup, double l2_g
   cudaEvent_t e0, e1;
   CUDA_CHECK(cudaEventCreate(&e0));
   CUDA_CHECK(cudaEventCreate(&e1));
-  std::printf("{\n  \"mode\": \"wave-rescan-long\", \"sm_count\": %d, \"l2_bytes\": %zu, "
+  std::printf("{\n  \"mode\": \"%s\", \"sm_count\": %d, \"l2_bytes\": %zu, "
               "\"samples\": %d, \"l2_gbps\": %.3f,\n",
-              sms, l2, samples, l2_gbps);
+              mode, sms, l2, samples, l2_gbps);
   std::printf("  \"row_bytes\": %u, \"stage_bytes\": %u, \"tokens\": 3, \"num_warps\": 4,\n",
               row_bytes, stage);
   std::printf("  \"blocks\": [");
@@ -392,7 +393,7 @@ static int run_wave_rescan_long(int device, int samples, int warmup, double l2_g
         const uint32_t groups =
             static_cast<uint32_t>((4 * l2 + footprint - 1) / footprint) + 1;
         // 0: forward, 1: reversed, 2: no-reuse forward, 3: no-reuse reversed
-        for (uint32_t variant : {0u, 1u, 2u, 3u}) {
+        for (uint32_t variant : variants) {
           const uint32_t g = variant >= 2 ? groups : 1u;
           const uint64_t row_stride = static_cast<uint64_t>(panels) * row_bytes;
           BStreamPoint p{3, vpt, cps, slots, panels, row_bytes, row_stride, k_steps, 1,
@@ -430,6 +431,19 @@ static int run_wave_rescan_long(int device, int samples, int warmup, double l2_g
   std::printf("\n  ]\n}\n");
   posthoc_free(b);
   return 0;
+}
+
+static int run_wave_rescan_long(int device, int samples, int warmup, double l2_gbps) {
+  return run_wave_rescan_long_grid(device, samples, warmup, l2_gbps, "wave-rescan-long",
+                                   {0.5, 0.75, 0.9, 1.0, 1.1, 1.25, 1.5, 2.0, 3.0}, {0u, 1u, 2u, 3u});
+}
+
+// wave-rescan-v3: the registered qualifying grid. Forward walks and their no-reuse
+// references only, footprints away from capacity (0.85 to 1.15 times L2 excluded,
+// from the run-to-run bistability seen there in wave-rescan-long).
+static int run_wave_rescan_v3(int device, int samples, int warmup, double l2_gbps) {
+  return run_wave_rescan_long_grid(device, samples, warmup, l2_gbps, "wave-rescan-v3",
+                                   {0.5, 0.75, 1.25, 1.5, 2.0, 3.0}, {0u, 2u});
 }
 
 // ---------------------------------------------------------------------------

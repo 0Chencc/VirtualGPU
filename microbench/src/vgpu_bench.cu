@@ -579,6 +579,9 @@ int main(int argc, char** argv) {
   if (mode == "wave-rescan-long") {
     return run_wave_rescan_long(device, samples, warmup, l2_gbps);
   }
+  if (mode == "wave-rescan-v3") {
+    return run_wave_rescan_v3(device, samples, warmup, l2_gbps);
+  }
   if (mode == "b-stream") {
     return run_b_stream(device, samples, warmup);
   }
