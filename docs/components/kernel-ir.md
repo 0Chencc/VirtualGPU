@@ -60,7 +60,10 @@ Terminology note: `cta` refers to a thread block (NVIDIA), workgroup (AMD), or b
       "ascend": {
         "ub_bytes": 0,                   // Unified Buffer footprint per AIV core
         "l0c_bytes": 65536,              // L0C accumulator buffer footprint per AIC core
-        "workspace_bytes": 0             // Global-memory Cube/Vector workspace per AI Core
+        "workspace_bytes": 0,            // Global-memory Cube/Vector workspace per AI Core
+        "workspace_loop_bytes": 0,       // Per-iteration AIC <-> AIV workspace bytes (store + load)
+        "workspace_multibuffer": 0,      // Workspace ring-buffer slot count (>= 2 enables AIC/AIV overlap)
+        "cv_sync_hops_per_iter": 0       // Cross-core AIC <-> AIV sync_block handoffs per steady-state iter
       }
     }
   },
@@ -211,7 +214,7 @@ Because the model core's event loop runs at **per-CTA-phase segment** granularit
 
 ### D6. Vendor-Specific On-Chip Resources in `resources.vendor_extensions`
 
-- **Decision**: Keep the top-level `resources` fields strictly vendor-neutral (`static_smem_bytes`, `registers_per_thread`, spill counters, `barriers`), and isolate architecture-specific on-chip scratchpad and inter-core workspace footprints under an optional `resources.vendor_extensions.<vendor>` object (starting with `resources.vendor_extensions.ascend.{ub_bytes, l0c_bytes, workspace_bytes}` to pair with `specs.ascend` in the GPU profile).
+- **Decision**: Keep the top-level `resources` fields strictly vendor-neutral (`static_smem_bytes`, `registers_per_thread`, spill counters, `barriers`), and isolate architecture-specific on-chip scratchpad and Cube/Vector inter-core workspace metadata under an optional `resources.vendor_extensions.<vendor>` object (starting with `resources.vendor_extensions.ascend.{ub_bytes, l0c_bytes, workspace_bytes, workspace_loop_bytes, workspace_multibuffer, cv_sync_hops_per_iter}` to pair with `specs.ascend` and `specs.capabilities.cube_vector_split` in the hardware profile).
 - **Alternatives**: (A) Put `ub_bytes`, `l0c_bytes`, and `workspace_bytes` directly on `resources`; (B) Invent premature generic names for every specialized SRAM bank across vendors before a second architecture needs them.
 - **Trade-off**: Keeping vendor-specific banks inside `vendor_extensions` avoids leaking Ascend-only terminology into the shared IR contract, stays 100% backward compatible with NVIDIA/AMD IR documents (which omit `vendor_extensions`), and gives the model core explicit typed bounds to enforce in occupancy checks without overloading `static_smem_bytes`.
 

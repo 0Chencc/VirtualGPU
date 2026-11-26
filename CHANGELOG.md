@@ -4,6 +4,7 @@
 
 ### Added
 
+- Huawei Ascend 910B3 Cube/Vector split modeling and Triton-Ascend forward GQA Attention frontend: L2-resident inter-core GM workspace accounting, multi-buffered AIC/AIV steady-state overlap, isolated FFTS+ cross-core sync microbenchmark (`cv_sync_hop_ns_by_active_sms`, profile `0.3.1-ascend`), `equal_to_1` stride specialization in Ascend AOT (fixing GEMM `multibuffer=False` overestimate), and CPU-only `extract_ascend_attention_kernel_ir` routed via `extract_attention_kernel_ir`
 - Huawei Ascend 910B3 (`ascend910b3`) support: AscendC M1/M2 microbenchmark suite (`microbench/ascend/`), measured `profiles/ascend910b3.json` profile, optional `specs.ascend` and `resources.vendor_extensions.ascend` on-chip SRAM checks (`OccupancyError::TooMuchOnChipBuffer`), automatic `unvalidated_feature` / `unvalidated_target_ascend` flagging, and CPU-only Triton-Ascend HIVM GEMM frontend
 - Post-hoc microbenchmarks for the merged wait of single-buffer loops (delayed followers, free-running groups) and issue stamps for the attention ablation, with GB10 data
 - Post-hoc GB10 GEMM analysis of H3 and H4 with the `wave-rescan`, `b-stream` and `staged-mma` microbenchmarks and their frozen predictions

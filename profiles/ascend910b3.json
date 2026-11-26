@@ -7,13 +7,13 @@
     "memory_type": "discrete"
   },
   "provenance": {
-    "profile_revision": "0.3.0-ascend",
+    "profile_revision": "0.3.1-ascend",
     "calibration_run_id": "cal-20261126T193546Z-ascend910b3",
     "calibration_manifest_digest": null,
     "source": "partial",
     "driver_version": "26.1.1",
     "toolkit_version": "CANN 9.2.1",
-    "suite_version": "0.3.0-ascend",
+    "suite_version": "0.3.1-ascend",
     "host_os": "linux",
     "is_wsl": false,
     "power_limit_w": null,
@@ -5627,7 +5627,100 @@
         "method": "ascendc_32b_hot_l2_mte2_roundtrip",
         "source": "measured",
         "perturb_group": null
-      }
+      },
+      "cv_sync_hop_ns_by_active_sms": [
+        {
+          "active_sms": 1,
+          "latency_ns": {
+            "value": 295.942,
+            "ci95_low": 179.042,
+            "ci95_high": 336.598,
+            "rel_uncertainty": 0.2662,
+            "unit": "ns",
+            "method": "ascendc_cross_core_sync_pingpong",
+            "source": "measured",
+            "perturb_group": "cv_sync"
+          }
+        },
+        {
+          "active_sms": 2,
+          "latency_ns": {
+            "value": 306.894,
+            "ci95_low": 243.656,
+            "ci95_high": 348.548,
+            "rel_uncertainty": 0.1709,
+            "unit": "ns",
+            "method": "ascendc_cross_core_sync_pingpong",
+            "source": "measured",
+            "perturb_group": "cv_sync"
+          }
+        },
+        {
+          "active_sms": 4,
+          "latency_ns": {
+            "value": 270.548,
+            "ci95_low": 260.46,
+            "ci95_high": 386.278,
+            "rel_uncertainty": 0.2325,
+            "unit": "ns",
+            "method": "ascendc_cross_core_sync_pingpong",
+            "source": "measured",
+            "perturb_group": "cv_sync"
+          }
+        },
+        {
+          "active_sms": 8,
+          "latency_ns": {
+            "value": 306.506,
+            "ci95_low": 265.136,
+            "ci95_high": 371.508,
+            "rel_uncertainty": 0.1735,
+            "unit": "ns",
+            "method": "ascendc_cross_core_sync_pingpong",
+            "source": "measured",
+            "perturb_group": "cv_sync"
+          }
+        },
+        {
+          "active_sms": 10,
+          "latency_ns": {
+            "value": 346.084,
+            "ci95_low": 343.994,
+            "ci95_high": 347.532,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_cross_core_sync_pingpong",
+            "source": "measured",
+            "perturb_group": "cv_sync"
+          }
+        },
+        {
+          "active_sms": 15,
+          "latency_ns": {
+            "value": 427.694,
+            "ci95_low": 423.016,
+            "ci95_high": 437.732,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_cross_core_sync_pingpong",
+            "source": "measured",
+            "perturb_group": "cv_sync"
+          }
+        },
+        {
+          "active_sms": 20,
+          "latency_ns": {
+            "value": 570.166,
+            "ci95_low": 565.4799,
+            "ci95_high": 573.588,
+            "rel_uncertainty": 0.1,
+            "unit": "ns",
+            "method": "ascendc_cross_core_sync_pingpong",
+            "source": "measured",
+            "perturb_group": "cv_sync"
+          }
+        }
+      ]
     }
   }
 }

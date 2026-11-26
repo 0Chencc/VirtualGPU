@@ -100,6 +100,15 @@ pub struct Pipeline {
     /// Per-stage commit, wait, and barrier cost with no data moved.
     #[serde(default)]
     pub fixed_sync_ns: Vec<SyncPoint>,
+    /// Per-handoff cross-core Cube/Vector sync latency by active AI Cores.
+    #[serde(default)]
+    pub cv_sync_hop_ns_by_active_sms: Vec<ActiveSmLatencyPoint>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ActiveSmLatencyPoint {
+    pub active_sms: u32,
+    pub latency_ns: MeasuredValue,
 }
 
 #[derive(Debug, Clone, Deserialize)]

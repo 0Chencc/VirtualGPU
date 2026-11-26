@@ -72,6 +72,19 @@ pub enum TripCounts {
     PerProgram(Vec<u32>),
 }
 
+/// Cube/Vector split inter-core workspace traffic and pipeline overlap.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct CvWorkspace {
+    /// Per-AI-Core GM workspace allocation in bytes (used to check L2 residency).
+    pub bytes_per_core: u64,
+    /// Total GM workspace bytes moved (store + load) per pipeline iteration.
+    pub loop_bytes_per_iter: u64,
+    /// True when a multi-buffered workspace ring (>= 2 slots) overlaps Cube and Vector work.
+    pub overlap: bool,
+    /// Cross-core AIC <-> AIV synchronization handoffs per steady-state iteration.
+    pub sync_hops_per_iter: u32,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Kernel {
     /// Number of programs (CTAs) launched.
@@ -84,6 +97,8 @@ pub struct Kernel {
     pub ub_bytes: u64,
     /// Optional Ascend L0C accumulator footprint per AIC core (0 on non-Ascend).
     pub l0c_bytes: u64,
+    /// Optional Cube/Vector split workspace traffic and overlap (default zero/false on non-Ascend).
+    pub cv_workspace: CvWorkspace,
     /// Tiles processed by each program: one for ordinary kernels, more for
     /// persistent kernels.
     pub tiles_per_program: TripCounts,

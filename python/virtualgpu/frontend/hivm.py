@@ -41,13 +41,20 @@ class HivmSummary:
     mma_ops: list[HivmMmaOp] = field(default_factory=list)
     loop_vec_ops: int = 0
     loop_sfu_ops: int = 0
+    loop_vec_insts: float = 0.0
+    loop_sfu_insts: float = 0.0
+    aiv_inner_loop_count: int = 0
+    aiv_loop_max_rows: int = 0
     loop_sync_blocks: int = 0
+    loop_cv_sync_hops: int = 0
     loop_barriers: int = 0
     diagnostics: list[str] = field(default_factory=list)
     unsupported_features: list[str] = field(default_factory=list)
 
 
 _DTYPE_NORM: dict[str, str] = {
+    "i1": "i1",
+    "bool": "i1",
     "f16": "f16",
     "fp16": "f16",
     "bf16": "bf16",
@@ -73,7 +80,10 @@ _RE_ALLOC_WORKSPACE = re.compile(
     r"(%[A-Za-z0-9_]+)\s*=\s*memref_ext\.alloc_workspace\(\)\s*from\s+%[A-Za-z0-9_]+\s*offset\s*=\s*\[([^\]]+)\]\s*:\s*from\s+memref<[^\n]+?>\s+to\s+memref<([0-9x]+)x([a-zA-Z0-9_]+)"
 )
 _RE_MMAD_L1 = re.compile(
-    r"hivm\.hir\.mmadL1\b[^\n]*?ins\(([^:]+):\s*memref<[^>]*x([a-zA-Z0-9_]+),\s*#hivm\.address_space<cbuf>>,\s*memref<[^>]*x([a-zA-Z0-9_]+),\s*#hivm\.address_space<cbuf>>[^)]*\)\s*outs\([^:]+:\s*memref<[^>]*x([a-zA-Z0-9_]+),\s*#hivm\.address_space<cc>>"
+    r"hivm\.hir\.mmadL1\b[^\n]*?ins\(([^:]+):\s*memref<[^>]*x([a-zA-Z0-9_]+),\s*#hivm\.address_space<cbuf>>,\s*memref<[^>]*x([a-zA-Z0-9_]+),\s*#hivm\.address_space<cbuf>>[^)]*\)\s*outs\((%[A-Za-z0-9_]+)\s*:\s*memref<[^>]*x([a-zA-Z0-9_]+),\s*#hivm\.address_space<cc>>"
+)
+_RE_MEMREF_ALIAS = re.compile(
+    r"^\s*(%[A-Za-z0-9_]+)\s*=\s*memref\.(?:subview|collapse_shape|expand_shape|reinterpret_cast|cast)\s+(%[A-Za-z0-9_]+)\b"
 )
 _RE_AUTOBLOCKIFY_FOR = re.compile(
     r"scf\.for\s+%[A-Za-z0-9_]+\s*=\s*[^\s]+\s+to\s+[^\s]+\s+step\s+(%[A-Za-z0-9_]+)"
@@ -82,6 +92,7 @@ _RE_VEC_SFU = re.compile(r"\bhivm\.hir\.(?:vexp|vln|vrec|vrsqrt|vsqrt)\b")
 _RE_VEC_ALU = re.compile(
     r"\bhivm\.hir\.(?:vadd|vsub|vmul|vdiv|vmax|vmin|vbrc|vreduce|vcast|vsel|vcmp|vrelu|vabs|vmla|vmadd|vaxpy)\b"
 )
+_RE_OUTS_SHAPE = re.compile(r"outs\([^:]+:\s*memref<([0-9x]+)x[a-zA-Z0-9_]+")
 _RE_SYNC_BLOCK = re.compile(r"\bhivm\.hir\.sync_block_(?:set|wait)\b")
 _RE_PIPE_BARRIER = re.compile(r"\bhivm\.hir\.pipe_barrier\b")
 _RE_WORKSPACE_STORE = re.compile(
@@ -110,7 +121,10 @@ def _memref_bytes(shape_str: str, dtype_str: str) -> int | None:
     numel = _shape_numel(shape_str)
     if numel is None:
         return None
-    bits = dtype_bits(_norm_dtype(dtype_str))
+    norm = _norm_dtype(dtype_str)
+    if norm == "i1":
+        return max(1, (numel + 7) // 8)
+    bits = dtype_bits(norm)
     return (numel * bits + 7) // 8
 
 
@@ -209,7 +223,13 @@ def parse_hivm_summary(
     mma_ops: list[HivmMmaOp] = []
     loop_vec_ops = 0
     loop_sfu_ops = 0
+    loop_vec_insts = 0.0
+    loop_sfu_insts = 0.0
+    aiv_inner_loop_count = 0
+    aiv_loop_max_rows = 0
     loop_sync_blocks = 0
+    aic_loop_sync_blocks = 0
+    aiv_loop_sync_blocks = 0
     loop_barriers = 0
     ws_loop_store_bytes = 0
     ws_loop_load_bytes = 0
@@ -217,8 +237,27 @@ def parse_hivm_summary(
     for _core_type, ftext in funcs:
         consts = _parse_constants(ftext)
 
-        # Static SRAM footprints from pointer_cast byte offsets + memref shapes.
-        for m in _RE_POINTER_CAST.finditer(ftext):
+        # Build SSA alias table for memref view/cast chains (subview -> collapse_shape -> cast).
+        aliases: dict[str, str] = {}
+        for line in ftext.splitlines():
+            ma = _RE_MEMREF_ALIAS.match(line)
+            if ma:
+                aliases[ma.group(1)] = ma.group(2)
+
+        def _resolve_root(var: str, _aliases: dict[str, str] = aliases) -> str:
+            seen: set[str] = set()
+            cur = var
+            while cur in _aliases and cur not in seen:
+                seen.add(cur)
+                cur = _aliases[cur]
+            return cur
+
+        # Track static 2D tile shapes of pointer_cast buffers (e.g., fractal 4x4x16x16 -> (64, 64)).
+        ptr_tile_shapes: dict[str, tuple[int, int]] = {}
+        for line in ftext.splitlines():
+            m = _RE_POINTER_CAST.search(line)
+            if not m:
+                continue
             off_args = [tok.strip() for tok in m.group(1).split(",")]
             shape_str, dtype_str, space = m.group(2), m.group(3), m.group(4)
             buf_bytes = _memref_bytes(shape_str, dtype_str)
@@ -234,6 +273,15 @@ def parse_hivm_summary(
                 l0c_bytes = max(l0c_bytes, high_water)
             elif space == "ub":
                 ub_bytes = max(ub_bytes, high_water)
+
+            lhs_m = re.match(r"^\s*(%[A-Za-z0-9_]+)\s*=", line)
+            if lhs_m and space in ("cbuf", "cc"):
+                dims = [int(x) for x in shape_str.split("x") if x.isdigit()]
+                if len(dims) == 4:
+                    # Fractal NZ layout: (M1, N1, M0, N0) or (K1, N1, N0, K0)
+                    ptr_tile_shapes[lhs_m.group(1)] = (dims[0] * dims[2], dims[1] * dims[3])
+                elif len(dims) == 2:
+                    ptr_tile_shapes[lhs_m.group(1)] = (dims[0], dims[1])
 
         # Explicit multi_buffer annotations on cbuf memrefs.
         for line in ftext.splitlines():
@@ -276,8 +324,7 @@ def parse_hivm_summary(
 
         # Scan inner loops (or whole function if unrolled/loop-free) for MMA, vector, and workspace ops.
         scan_regions = inner_bodies if inner_bodies else [ftext]
-        # Avoid double counting nested loops by picking innermost loops that contain mmadL1 or vector ops
-        # or top-level non-autoblockify loops.
+        # Avoid double counting nested loops by picking innermost loops.
         primary_regions: list[str] = []
         for idx, reg in enumerate(scan_regions):
             if not any(
@@ -286,16 +333,45 @@ def parse_hivm_summary(
             ):
                 primary_regions.append(reg)
 
-        for reg in primary_regions:
+        if _core_type == "AIV" and inner_bodies:
+            aiv_inner_loop_count += len(primary_regions)
+
+        # When a core function has multiple sequential peer loops (e.g., causal attention's
+        # steady-state off-diagonal loop followed by a 1-iteration diagonal masked loop),
+        # pick the steady-state unmasked loop (fewest mask ops, tie-broken by first) for
+        # per-iteration compute and cross-core sync accounting.
+        if len(primary_regions) > 1:
+            steady_regions = [
+                min(
+                    primary_regions,
+                    key=lambda r: r.count("hivm.hir.vcmp") + r.count("hivm.hir.vsel"),
+                )
+            ]
+        else:
+            steady_regions = primary_regions
+
+        for reg in steady_regions:
             for m in _RE_MMAD_L1.finditer(reg):
                 ins_args = [tok.strip() for tok in m.group(1).split(",")]
                 a_dt = _norm_dtype(m.group(2))
                 b_dt = _norm_dtype(m.group(3))
-                acc_dt = _norm_dtype(m.group(4))
+                out_var = m.group(4).strip()
+                acc_dt = _norm_dtype(m.group(5))
                 # mmadL1 ins(lhs, rhs, init_flag, M, K, N)
                 tile_m = consts.get(ins_args[3], 0) if len(ins_args) >= 6 else 0
                 tile_k = consts.get(ins_args[4], 0) if len(ins_args) >= 6 else 0
                 tile_n = consts.get(ins_args[5], 0) if len(ins_args) >= 6 else 0
+                # Fall back to static L0C/L1 fractal tile dims when M/N/K are runtime-clamped.
+                cc_shape = ptr_tile_shapes.get(_resolve_root(out_var))
+                if cc_shape is not None:
+                    if tile_m <= 0:
+                        tile_m = cc_shape[0]
+                    if tile_n <= 0:
+                        tile_n = cc_shape[1]
+                if tile_k <= 0 and len(ins_args) >= 1:
+                    a_shape = ptr_tile_shapes.get(_resolve_root(ins_args[0]))
+                    if a_shape is not None:
+                        tile_k = a_shape[1]
                 if tile_m > 0 and tile_n > 0 and tile_k > 0:
                     im, in_, ik = _cube_inst_mnk(a_dt, b_dt)
                     cnt = max(
@@ -314,20 +390,45 @@ def parse_hivm_summary(
                         )
                     )
 
-            loop_sfu_ops += len(_RE_VEC_SFU.findall(reg))
-            loop_vec_ops += len(_RE_VEC_ALU.findall(reg))
-            loop_sync_blocks += len(_RE_SYNC_BLOCK.findall(reg))
+            for line in reg.splitlines():
+                if _RE_VEC_SFU.search(line):
+                    loop_sfu_ops += 1
+                    om = _RE_OUTS_SHAPE.search(line)
+                    numel = _shape_numel(om.group(1)) if om else None
+                    loop_sfu_insts += max(1.0, (numel or 32) / 32.0)
+                    if _core_type == "AIV" and om:
+                        dims = [int(x) for x in om.group(1).split("x") if x.isdigit()]
+                        if len(dims) >= 2:
+                            aiv_loop_max_rows = max(aiv_loop_max_rows, dims[0])
+                elif _RE_VEC_ALU.search(line):
+                    loop_vec_ops += 1
+                    om = _RE_OUTS_SHAPE.search(line)
+                    numel = _shape_numel(om.group(1)) if om else None
+                    loop_vec_insts += max(1.0, (numel or 32) / 32.0)
+                    if _core_type == "AIV" and om:
+                        dims = [int(x) for x in om.group(1).split("x") if x.isdigit()]
+                        if len(dims) >= 2:
+                            aiv_loop_max_rows = max(aiv_loop_max_rows, dims[0])
+
+            sb_cnt = len(_RE_SYNC_BLOCK.findall(reg))
+            loop_sync_blocks += sb_cnt
+            if _core_type == "AIC":
+                aic_loop_sync_blocks += sb_cnt
+            elif _core_type == "AIV":
+                aiv_loop_sync_blocks += sb_cnt
             loop_barriers += len(_RE_PIPE_BARRIER.findall(reg))
 
             if ws_vars:
                 for ms in _RE_WORKSPACE_STORE.finditer(reg):
-                    var = ms.group(1)
-                    if var in ws_vars:
-                        ws_loop_store_bytes += ws_vars[var]
+                    root = _resolve_root(ms.group(1))
+                    if root in ws_vars:
+                        ws_loop_store_bytes += ws_vars[root]
                 for ml in _RE_WORKSPACE_LOAD.finditer(reg):
-                    var = ml.group(1)
-                    if var in ws_vars:
-                        ws_loop_load_bytes += ws_vars[var]
+                    root = _resolve_root(ml.group(1))
+                    if root in ws_vars:
+                        ws_loop_load_bytes += ws_vars[root]
+
+    loop_cv_sync_hops = max(aic_loop_sync_blocks, aiv_loop_sync_blocks) if mix_mode == "mix" else 0
 
     num_stages = max_cbuf_multibuffer
     prefetch_distance = max(0, num_stages - 1)
@@ -358,7 +459,12 @@ def parse_hivm_summary(
         mma_ops=mma_ops,
         loop_vec_ops=loop_vec_ops,
         loop_sfu_ops=loop_sfu_ops,
+        loop_vec_insts=loop_vec_insts,
+        loop_sfu_insts=loop_sfu_insts,
+        aiv_inner_loop_count=aiv_inner_loop_count,
+        aiv_loop_max_rows=aiv_loop_max_rows,
         loop_sync_blocks=loop_sync_blocks,
+        loop_cv_sync_hops=loop_cv_sync_hops,
         loop_barriers=loop_barriers,
         diagnostics=diagnostics,
         unsupported_features=unsupported_features,

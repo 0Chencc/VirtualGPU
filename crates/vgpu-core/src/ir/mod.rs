@@ -69,6 +69,12 @@ pub struct AscendResourceUsage {
     pub l0c_bytes: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub workspace_bytes: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workspace_loop_bytes: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workspace_multibuffer: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cv_sync_hops_per_iter: Option<u32>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]

@@ -19,7 +19,7 @@ from virtualgpu.frontend.compiler import (
     hash_ttgir,
 )
 
-ASCEND_AOT_CACHE_VERSION = "1"
+ASCEND_AOT_CACHE_VERSION = "2"
 
 _CANONICAL_TO_BISHENGIR_ARCH: dict[str, str] = {
     "ascend910b1": "Ascend910B1",
@@ -153,6 +153,9 @@ def _mock_signature_for_fn(
     constexpr_names = {
         p.name for p in getattr(fn, "params", []) if getattr(p, "is_constexpr", False)
     }
+    do_not_specialize = {
+        p.name for p in getattr(fn, "params", []) if getattr(p, "do_not_specialize", False)
+    }
     dtype_to_triton = {
         "torch.float16": "*fp16",
         "torch.bfloat16": "*bf16",
@@ -181,7 +184,12 @@ def _mock_signature_for_fn(
         elif isinstance(val, bool):
             signature[name] = "i1"
         elif isinstance(val, int):
-            signature[name] = "i32"
+            # Match Triton's runtime equal_to_1 specialization (e.g., contiguous stride == 1
+            # allows BiShengIR to lower unmasked GEMM as pure AIC_ONLY without AIV workspace).
+            if val == 1 and name not in do_not_specialize:
+                constants[name] = 1
+            else:
+                signature[name] = "i32"
         elif isinstance(val, float):
             signature[name] = "fp32"
         else:

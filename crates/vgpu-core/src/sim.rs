@@ -146,6 +146,12 @@ pub struct Machine {
     pub assumed_spill_scale: f64,
     /// (warps, stage buffers, ns): per-stage synchronization cost.
     pub fixed_sync: Vec<(u32, u32, f64)>,
+    /// (active AI Cores, ns): cross-core AIC <-> AIV handoff latency (empty on non-Ascend).
+    pub cv_sync_hop_ns: Vec<(f64, f64)>,
+    /// True on architectures with physically separate Cube and Vector units (Ascend).
+    pub cube_vector_split: bool,
+    /// Effective L2 capacity in bytes (used to check inter-core workspace L2 residency).
+    pub l2_effective_capacity_bytes: f64,
 }
 
 fn curve<T>(
@@ -346,6 +352,19 @@ impl Machine {
                 .iter()
                 .map(|q| (q.num_warps, q.tokens, q.overhead_ns.value))
                 .collect(),
+            cv_sync_hop_ns: curve(
+                &m.pipeline.cv_sync_hop_ns_by_active_sms,
+                |q| (q.active_sms.into(), q.latency_ns.value),
+                "cv_sync_hop_ns_by_active_sms",
+            )
+            .unwrap_or_default(),
+            cube_vector_split: p
+                .specs
+                .capabilities
+                .get("cube_vector_split")
+                .copied()
+                .unwrap_or(false),
+            l2_effective_capacity_bytes: m.memory.l2_effective_capacity_bytes.value,
         })
     }
 }
@@ -442,6 +461,9 @@ struct Demand {
     /// Fraction of loaded bytes fetched from DRAM: only these occupy DRAM
     /// in flight, merged requests ride on their fills.
     dram_fraction: f64,
+    /// True when Cube (MMA) and Vector (non-MMA) units execute concurrently via a
+    /// multi-buffered inter-core workspace ring on `cube_vector_split` hardware.
+    cv_overlap: bool,
 }
 
 impl Demand {
@@ -603,6 +625,37 @@ impl<'a, L: L2> Sim<'a, L> {
         );
         self.dram_bytes += spill_dram;
         let steps = f64::from(steps);
+        let (ws_l2, ws_dram) = if phase == Phase::Main
+            && self.m.cube_vector_split
+            && k.cv_workspace.loop_bytes_per_iter > 0
+        {
+            let ws_total = k.cv_workspace.loop_bytes_per_iter as f64 * steps;
+            let active_cores = f64::from(self.m.sm_count.min(k.grid).max(1));
+            let ws_footprint = k.cv_workspace.bytes_per_core as f64 * active_cores;
+            let dram_overflow = if ws_footprint <= self.m.l2_effective_capacity_bytes
+                || self.m.l2_effective_capacity_bytes <= 0.0
+            {
+                0.0
+            } else {
+                let fit = (self.m.l2_effective_capacity_bytes / ws_footprint).clamp(0.0, 1.0);
+                ws_total * (1.0 - fit)
+            };
+            self.l2_hit_bytes += ws_total - dram_overflow;
+            self.dram_bytes += dram_overflow;
+            (ws_total, dram_overflow)
+        } else {
+            (0.0, 0.0)
+        };
+        let total_bytes = if ws_l2 > 0.0 {
+            load_bytes + stores + spill_l2 + spill_dram + ws_l2
+        } else {
+            load_bytes + stores + spill_l2 + spill_dram
+        };
+        let total_dram_bytes = if ws_dram > 0.0 {
+            misses + stores + spill_dram + ws_dram
+        } else {
+            misses + stores + spill_dram
+        };
         Demand {
             flops: compute.mma_flops * steps,
             warp_insts: (compute.alu_insts_per_warp
@@ -622,16 +675,29 @@ impl<'a, L: L2> Sim<'a, L> {
                 * steps,
             // Local accesses go through the SM's L1 and LSU wherever they are served.
             local_bytes: spill_l1 + spill_l2 + spill_dram,
-            bytes: load_bytes + stores + spill_l2 + spill_dram,
-            dram_bytes: misses + stores + spill_dram,
+            bytes: total_bytes,
+            dram_bytes: total_dram_bytes,
             fixed_latency_ns: 0.0,
             load_bytes,
             round_trips: if load_bytes > 0.0 { round_trips } else { 0.0 },
             stages: if phase == Phase::Main { steps } else { 0.0 },
             tokens: d + 1,
-            sync_ns: match phase {
-                Phase::Main => self.m.sync_ns(k.num_warps, d + 1) * steps,
-                _ => 0.0,
+            sync_ns: {
+                let base_sync = match phase {
+                    Phase::Main => self.m.sync_ns(k.num_warps, d + 1) * steps,
+                    _ => 0.0,
+                };
+                if phase == Phase::Main
+                    && self.m.cube_vector_split
+                    && k.cv_workspace.sync_hops_per_iter > 0
+                    && !self.m.cv_sync_hop_ns.is_empty()
+                {
+                    let active_cores = f64::from(self.m.sm_count.min(k.grid).max(1));
+                    let hop_ns = interpolate(&self.m.cv_sync_hop_ns, active_cores);
+                    base_sync + f64::from(k.cv_workspace.sync_hops_per_iter) * hop_ns * steps
+                } else {
+                    base_sync
+                }
             },
             exposed_compute: if load_bytes > 0.0 {
                 round_trips / steps
@@ -648,6 +714,7 @@ impl<'a, L: L2> Sim<'a, L> {
             } else {
                 0.0
             },
+            cv_overlap: phase == Phase::Main && self.m.cube_vector_split && k.cv_workspace.overlap,
         }
     }
 
@@ -963,16 +1030,22 @@ fn rates(ctas: &[Cta], m: &Machine, per_cta: &[PerCta], lat: Latency, s: &mut Sc
             // memory issue bounds only the SM's throughput.
             0.0,
         ];
-        // The other pipes' work in an iteration depends on its MMA results
-        // and the next MMAs on that work (the softmax between attention's two
-        // MMAs), so one CTA takes the sum; CTAs on the same SM overlap.
+        // On unified SMs, other pipes depend on MMA results and the next MMAs
+        // depend on that work (e.g., softmax between attention's two MMAs), so
+        // one CTA takes the sum. On cube_vector_split architectures with a
+        // multi-buffered inter-core workspace ring, Cube (AIC) and Vector (AIV)
+        // execute in pipeline parallel, so steady-state service takes their max.
         let (other, &t_other) =
             alone[1..]
                 .iter()
                 .enumerate()
                 .fold((0, &0.0), |b, x| if x.1 > b.1 { x } else { b });
         let kind = if alone[0] >= t_other { MMA } else { other + 1 };
-        let longest = alone[0] + t_other;
+        let longest = if d.cv_overlap {
+            alone[0].max(t_other)
+        } else {
+            alone[0] + t_other
+        };
         let (launch, l2_latency, dram_latency) =
             d.latency_parts(m.port_floor(lat, d, s.resident[i]));
         // Steady state with compute and loads: the stage buffers of all CTAs

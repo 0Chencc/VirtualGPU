@@ -22,6 +22,10 @@ from virtualgpu.frontend.compiler import (
 )
 from virtualgpu.frontend.hivm import HivmMmaOp, HivmSummary, parse_hivm_summary
 from virtualgpu.frontend.scalar_eval import ScalarEvalResult, evaluate_ttgir_cta_offsets
+from virtualgpu.frontend.triton_ascend_attention import (
+    assemble_ascend_attention_kernel_ir,
+    extract_ascend_attention_kernel_ir,
+)
 from virtualgpu.frontend.triton_ascend_gemm import (
     assemble_ascend_gemm_kernel_ir,
     extract_ascend_gemm_kernel_ir,
@@ -39,12 +43,14 @@ __all__ = [
     "PtxasReport",
     "ScalarEvalResult",
     "artifact_hashes",
+    "assemble_ascend_attention_kernel_ir",
     "assemble_ascend_gemm_kernel_ir",
     "bishengir_target_arch",
     "canonical_ascend_arch",
     "compile_triton_aot",
     "compile_triton_ascend_aot",
     "evaluate_ttgir_cta_offsets",
+    "extract_ascend_attention_kernel_ir",
     "extract_ascend_gemm_kernel_ir",
     "extract_attention_kernel_ir",
     "extract_gemm_kernel_ir",

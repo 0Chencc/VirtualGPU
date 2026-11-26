@@ -25,7 +25,7 @@ from virtualgpu.frontend.hivm import HivmSummary, parse_hivm_summary
 from virtualgpu.frontend.scalar_eval import evaluate_ttgir_cta_offsets
 from virtualgpu.frontend.ttgir import dtype_bits
 
-ASCEND_KERNEL_IR_CACHE_VERSION = "2"
+ASCEND_KERNEL_IR_CACHE_VERSION = "4"
 
 
 def _align_up(value: int, alignment: int = 256) -> int:
@@ -198,11 +198,9 @@ def assemble_ascend_gemm_kernel_ir(
     elem_bytes = elem_bits // 8
     size_a = M * K * elem_bytes
     size_b = K * N * elem_bytes
-    size_c = M * N * elem_bytes
     base_a = 0
     base_b = _align_up(size_a)
     base_c = _align_up(base_b + size_b)
-    base_ws = _align_up(base_c + size_c)
 
     num_pid_m = math.ceil(M / block_m)
     num_pid_n = math.ceil(N / block_n)
@@ -392,64 +390,13 @@ def assemble_ascend_gemm_kernel_ir(
         },
     ]
 
-    # In mixed Cube+Vector kernels (e.g., masked loads routed through AIV->GM workspace->AIC),
-    # explicitly model the per-iteration GM workspace store+reload traffic (which hits L2).
-    ws_bounce_bytes = max(summary.workspace_loop_store_bytes, summary.workspace_loop_load_bytes)
-    if summary.mix_mode == "mix" and ws_bounce_bytes > 0:
-        ws_total = max(summary.workspace_bytes, ws_bounce_bytes)
-        tensors.append(
-            {
-                "id": "workspace",
-                "dtype": "u8",
-                "element_bits": 8,
-                "shape": [max(1, grid[0]), ws_total],
-                "strides": [ws_total, 1],
-                "base_addr": base_ws,
-                "cache_policy": "default",
-            }
-        )
-        ws_entries = [
-            [
-                idx,
-                0,
-                base_ws + (idx % max(1, grid[0])) * ws_total,
-                1,
-                ws_bounce_bytes,
-                ws_bounce_bytes,
-                0,
-                False,
-            ]
-            for idx in range(len(ordered_coords))
-        ]
-        access_map["acc_WS"] = {
-            "encoding": "strided_2d_per_outer_tile",
-            "sidecar_ref": None,
-            "entries": ws_entries,
-        }
-        pipeline_ops.append(
-            {
-                "op_id": "ws_store",
-                "kind": "gmem_store",
-                "warp_group_id": 0,
-                "stage_offset": 0,
-                "tensor_id": "workspace",
-                "nominal_bytes_per_cta": ws_bounce_bytes,
-                "transfer_width_bytes": dma_width,
-                "access_ref": "acc_WS",
-            }
-        )
-        pipeline_ops.append(
-            {
-                "op_id": "ws_load",
-                "kind": "gmem_load",
-                "warp_group_id": 0,
-                "stage_offset": 0,
-                "tensor_id": "workspace",
-                "nominal_bytes_per_cta": ws_bounce_bytes,
-                "transfer_width_bytes": dma_width,
-                "access_ref": "acc_WS",
-            }
-        )
+    # In mixed Cube+Vector kernels, inter-core GM workspace traffic stays L2-resident when
+    # total workspace fits in L2; report it via vendor_extensions.ascend so the model core
+    # charges L2 bounce bandwidth rather than write-through DRAM stores.
+    ws_loop_bytes = summary.workspace_loop_store_bytes + summary.workspace_loop_load_bytes
+    if summary.mix_mode == "mix" and ws_loop_bytes == 0 and summary.workspace_bytes > 0:
+        slots = max(1, summary.workspace_multibuffer)
+        ws_loop_bytes = 2 * (summary.workspace_bytes // slots)
 
     if summary.mma_ops:
         for idx, mma in enumerate(summary.mma_ops):
@@ -552,6 +499,9 @@ def assemble_ascend_gemm_kernel_ir(
                 "ub_bytes": summary.ub_bytes,
                 "l0c_bytes": l0c_used,
                 "workspace_bytes": summary.workspace_bytes,
+                "workspace_loop_bytes": ws_loop_bytes,
+                "workspace_multibuffer": summary.workspace_multibuffer,
+                "cv_sync_hops_per_iter": summary.loop_cv_sync_hops,
             }
         },
     }

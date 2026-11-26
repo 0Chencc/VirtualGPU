@@ -826,6 +826,24 @@ __global__ __aicore__ void stage_sync_hot_l2_kernel(GM_ADDR hot_src, GM_ADDR out
 }
 
 // ---------------------------------------------------------------------------
+// 13. M2: Cross-Core AIC <-> AIV Sync Latency (FFTS+ CrossCoreSetFlag/WaitFlag)
+// ---------------------------------------------------------------------------
+__global__ __aicore__ void cv_sync_pingpong_kernel(GM_ADDR sink, uint32_t iters) {
+    KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_MIX_AIC_1_2);
+    for (uint32_t i = 0; i < iters; ++i) {
+#ifdef __DAV_C220_CUBE__
+        CrossCoreSetFlag<0x2, PIPE_FIX>(0);
+        CrossCoreWaitFlag(1);
+#endif
+#ifdef __DAV_C220_VEC__
+        CrossCoreWaitFlag(0);
+        CrossCoreSetFlag<0x2, PIPE_MTE3>(1);
+#endif
+    }
+    (void)sink;
+}
+
+// ---------------------------------------------------------------------------
 // Host Harness
 // ---------------------------------------------------------------------------
 #ifndef __CCE_KT_TEST__
@@ -1607,7 +1625,38 @@ int main(int argc, char** argv) {
         std::printf("  ],\n");
         std::printf("  \"min_async_roundtrip_ns\": ");
         print_samples(min_rt_samples);
-        std::printf("\n");
+        std::printf(",\n");
+    }
+
+    // 16. M2: Cross-Core AIC <-> AIV Sync Handoff Latency vs Active AI Cores
+    {
+        const uint32_t cv_steps = 5000;
+        std::printf("  \"cv_sync_hop_ns_by_active_cores\": [\n");
+        for (size_t i = 0; i < active_list.size(); ++i) {
+            uint32_t ac = active_list[i];
+            for (int w = 0; w < 2; ++w) {
+                cv_sync_pingpong_kernel<<<ac, nullptr, stream>>>((uint8_t*)d_sink, cv_steps);
+            }
+            ACL_CHECK(aclrtSynchronizeStream(stream));
+            std::vector<double> hop_ns_s;
+            hop_ns_s.reserve(samples);
+            for (int s = 0; s < samples; ++s) {
+                double ms1 = time_ms([&]() {
+                    cv_sync_pingpong_kernel<<<ac, nullptr, stream>>>((uint8_t*)d_sink, cv_steps);
+                });
+                double ms2 = time_ms([&]() {
+                    cv_sync_pingpong_kernel<<<ac, nullptr, stream>>>(
+                        (uint8_t*)d_sink, cv_steps * 2u);
+                });
+                double hop_ns =
+                    std::max(0.1, (ms2 - ms1) * 1e6 / (static_cast<double>(cv_steps) * 2.0));
+                hop_ns_s.push_back(hop_ns);
+            }
+            std::printf("    {\"active_cores\": %u, \"hop_ns\": ", ac);
+            print_samples(hop_ns_s);
+            std::printf("}%s\n", (i + 1 < active_list.size()) ? "," : "");
+        }
+        std::printf("  ]\n");
     }
 
     aclrtFree(d_bg);

@@ -26,6 +26,7 @@ fn gemm(grid: u32, iterations: u32, prefetch_distance: u32) -> Kernel {
         smem_per_cta_bytes: 16384 * u64::from(prefetch_distance + 1),
         ub_bytes: 0,
         l0c_bytes: 0,
+        cv_workspace: vgpu_core::kernel::CvWorkspace::default(),
         tiles_per_program: TripCounts::Uniform(1),
         mma_key: MMA.to_string(),
         spill: Spill::default(),
