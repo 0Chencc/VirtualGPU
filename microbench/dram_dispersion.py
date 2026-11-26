@@ -7,14 +7,17 @@ the GPU process starts 5 s after it reports ready; it stops 5 s after the GPU
 process ends. Records /proc/stat (busy CPUs), PSI, vmstat faults, load average,
 the top CPU processes and GPU telemetry once per second. PSI memory counts
 reclaim and fault stalls, not bandwidth, so busy CPUs and the load's own
-bandwidth are the CPU-side measures. Run under the GPU lock.
+bandwidth are the CPU-side measures. Run under the GPU lock. `dram_dispersion.py summarize CAPTURE OUTPUT` writes the
+per-run summary.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import signal
+import statistics
 import subprocess
 import sys
 import threading
@@ -107,7 +110,57 @@ def run_condition(smi, binary, load_binary, threads):
     }
 
 
+def summarize(record):
+    """Per run: dispersion shares, each point's median relative to the quiet runs' median,
+    the busy share of all CPUs per second (median) and the load's bandwidth."""
+
+    def iqr(v):
+        q = statistics.quantiles(v, n=4, method="inclusive")
+        return (q[2] - q[0]) / statistics.median(v)
+
+    def point(row):
+        return f"{row['width_bytes']}B-{row['ctas_per_sm']}cta-{row['dram_request_bytes'] >> 20}MiB"
+
+    quiet = {}
+    for run in record["runs"]:
+        if run["condition"] == "quiet":
+            for row in run["result"]:
+                quiet.setdefault(point(row), []).append(statistics.median(row["elapsed_ns"]))
+    quiet = {k: statistics.median(v) for k, v in quiet.items()}
+    out = []
+    for run in record["runs"]:
+        lists = [row["elapsed_ns"] for row in run["result"]]
+        trace = run["host_trace"]
+        busy = [
+            (b["cpu_jiffies"]["busy"] - a["cpu_jiffies"]["busy"])
+            / (b["cpu_jiffies"]["total"] - a["cpu_jiffies"]["total"])
+            for a, b in zip(trace, trace[1:])
+            if b["cpu_jiffies"]["total"] > a["cpu_jiffies"]["total"]
+        ]
+        out.append(
+            {
+                "cycle": run["cycle"],
+                "condition": run["condition"],
+                "load_threads": run["load_threads"],
+                "load_gbps": run["load_report"]["gbps"] if run["load_report"] else 0.0,
+                "busy_fraction_median": statistics.median(busy) if busy else None,
+                "iqr_share": sum(iqr(v) > 0.10 for v in lists) / len(lists),
+                "spike_share": sum(max(v) / min(v) > 1.5 for v in lists) / len(lists),
+                "max_iqr": max(iqr(v) for v in lists),
+                "median_vs_quiet": {
+                    point(r): statistics.median(r["elapsed_ns"]) / quiet[point(r)] - 1
+                    for r in run["result"]
+                },
+            }
+        )
+    return out
+
+
 def main():
+    if len(sys.argv) == 4 and sys.argv[1] == "summarize":
+        record = json.loads(Path(sys.argv[2]).read_text())
+        Path(sys.argv[3]).write_text(json.dumps(summarize(record), indent=1) + "\n")
+        return
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("binary", type=Path)
     parser.add_argument("load_binary", type=Path)
@@ -139,6 +192,7 @@ def main():
         args.output,
         {
             "samples": SAMPLES,
+            "cpu_count": os.cpu_count(),
             "warmup": WARMUP,
             "host_before": before,
             "thermal_warmup": warm,
