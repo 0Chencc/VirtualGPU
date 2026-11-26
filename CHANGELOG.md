@@ -14,6 +14,7 @@
 - NVIDIA RTX PRO 5000 72GB Blackwell (`sm_120`) profile
 - Draft the v0.3 workload holdout protocol and audit the two reference profiles for MLP repeat coverage
 - Post-hoc Nsight Compute capture for dynamic local loads and stores in the spill microbenchmark and causal attention
+- Optional `l2_bw_by_active_sms_cp_async` curve in the GPU profile schema and microbenchmarks, and physical sanity checks in `scripts/check_profiles.py`
 - NVIDIA A100-SXM4-80GB (`sm_80`) profile
 - NVIDIA RTX PRO 6000 Blackwell Server Edition (`sm_120`) profile
 - NVIDIA L4 (`sm_89`) profile
@@ -24,6 +25,7 @@
 
 - Cross-wave L2 reuse: chunks that end together share one stream clock, and re-reads hit per K slice under LRU with the effective L2 capacity. Kept on GB10 microbenchmarks that agree in direction but fail the cross-run capture rule: forward re-reads at 1.5 times L2 or more do not hit in any run (the old clock charged 50% to 90%); from about 0.75 to 1.25 times L2 the hardware steady state is bistable across runs, a known limit; the reversed-walk detail is provisional; the sealed v0.3 holdout decides
 - Mark the GB10 MLP medians from five independent sweeps as provisional after the dispersion audit and propose long-launch recapture on both GPUs
+- Scale the DRAM streaming bandwidth buffer to at least 16x L2 capacity, map per-architecture unified L1 capacity in `collect_profile.py`, and re-collect `rtxpro6000.json` with locked SM clocks
 - The L2 miss merging model no longer fails on GPUs with more than 128 SMs
 
 ## 0.2.0
