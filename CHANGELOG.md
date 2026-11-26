@@ -5,6 +5,11 @@
 ### Added
 
 - Huawei Ascend 910B3 (`ascend910b3`) support: AscendC M1/M2 microbenchmark suite (`microbench/ascend/`), measured `profiles/ascend910b3.json` profile, optional `specs.ascend` and `resources.vendor_extensions.ascend` on-chip SRAM checks (`OccupancyError::TooMuchOnChipBuffer`), automatic `unvalidated_feature` / `unvalidated_target_ascend` flagging, and CPU-only Triton-Ascend HIVM GEMM frontend
+- Post-hoc microbenchmarks for the merged wait of single-buffer loops (delayed followers, free-running groups) and issue stamps for the attention ablation, with GB10 data
+- Post-hoc GB10 GEMM analysis of H3 and H4 with the `wave-rescan`, `b-stream` and `staged-mma` microbenchmarks and their frozen predictions
+- Post-hoc single-buffer loop microbenchmarks and a fused attention ablation for the `num_stages = 2` round trip, with RTX 4070 and GB10 data
+- Candidate v0.3 GEMM and attention holdouts for RTX 4070 and GB10, with a historical shape audit and CPU AOT resource checks
+- NVIDIA RTX PRO 5000 72GB Blackwell (`sm_120`) profile
 - Draft the v0.3 workload holdout protocol and audit the two reference profiles for MLP repeat coverage
 - Post-hoc Nsight Compute capture for dynamic local loads and stores in the spill microbenchmark and causal attention
 - NVIDIA A100-SXM4-80GB (`sm_80`) profile
@@ -15,6 +20,7 @@
 
 ### Fixed
 
+- Cross-wave L2 reuse: chunks that end together share one stream clock, and re-reads hit per K slice under LRU with the effective L2 capacity
 - Replace the GB10 MLP curves with medians from five independent sweeps
 - The L2 miss merging model no longer fails on GPUs with more than 128 SMs
 

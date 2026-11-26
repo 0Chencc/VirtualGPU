@@ -49,6 +49,62 @@ any timing or ranking preview.
   reviewed amendment before any v0.3 workload labels are collected.
   Record every attempted configuration and why any attempt is invalid.
 
+## Candidate manifests for review
+
+The [GEMM candidates](v03-gemm-holdout.json) cover nine shapes and
+324 planned configurations per device. Each wave triplet uses one
+output tile in M and moves N across three adjacent CTA counts while
+holding M and K fixed. All three shapes in each triplet have the same
+64-column tail for the reference configuration. Aligned prefill cases
+are divisible by the largest candidate tiles on each axis.
+
+The [attention candidates](v03-attention-holdout.json) cover eight
+shapes and 228 planned configurations per device, one for each
+causality, grouping, and head dimension stratum. Each device has
+four sequence lengths aligned to both query tile sizes and four odd
+sequence lengths. All 16 sequence lengths are distinct.
+
+The [historical inventory](v03-holdout-history.json) records each
+source manifest's SHA-256 and excluded axes or sequence lengths.
+It includes the original M1 suite, the materialized Phase 1 and
+Phase 2 manifests, and all v0.2 workload groups. The historical
+checks use manifest metadata and published seal/index digests.
+
+The [CPU AOT audit](v03-holdout-aot-audit.json) records resource status
+by case, including every configuration exceeding a profile limit,
+and identifies the full resource reports by SHA-256. Resource
+eligibility is a static check. Capture still checks the approved
+toolchain, compiled resources and JIT artifacts. Review the candidate
+manifests and release them in a separate amendment before collection.
+
+| Cohort | Cases | Compiled | Fits profile | Exceeds a resource limit | Wave boundary CTAs |
+| --- | ---: | ---: | ---: | ---: | --- |
+| RTX 4070 GEMM | 9 | 324 | 324 | 0 | 91 / 92 / 93 |
+| GB10 GEMM | 9 | 324 | 324 | 0 | 95 / 96 / 97 |
+| RTX 4070 attention | 8 | 228 | 188 | 40 | n/a |
+| GB10 attention | 8 | 228 | 188 | 40 | n/a |
+
+The GEMM wave reference is `m64n128k32-w4-s4-g1`. AOT reported
+128 registers per thread and 36,864 bytes of shared memory for all six
+boundary cases. Each admits two resident CTAs per SM. Keep all
+planned configurations in the manifests, with resource-limit flags
+available for review and later capture.
+
+The audit used Triton 3.9.0, `ptxas` 12.9 (V12.9.86) for `sm_89`
+and `ptxas-blackwell` 13.4 (V13.4.59) for the GB10 PTX target
+`sm_121a`. The profiles are RTX 4070 `0.21.0-posthoc` and GB10
+`0.22.0-posthoc`. The audit did not collect timing or run either GPU.
+The complete CPU review bundle is
+`results/v03-holdout-review.tar.gz` (SHA-256
+`0063e98648cadd13f7773fc442527ec273929765c65e841226ab2834e88e28dd`).
+
+Run the [candidate generator](v03_candidates.py) on a checkout with
+the archived historical manifests and AOT index:
+
+```sh
+CUDA_VISIBLE_DEVICES="" .venv/bin/python -m validation.v03_candidates results/v03-candidate-audit
+```
+
 ## Hardware and baselines
 
 Reuse the reviewed v0.2 capture protocol. Measure warm and clean-cold

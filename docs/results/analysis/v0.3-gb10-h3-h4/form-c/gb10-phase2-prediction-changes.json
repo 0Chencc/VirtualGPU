@@ -1,0 +1,106 @@
+{
+ "cases": {
+  "primary:decode-1": {
+   "changed_over_1pct": 0,
+   "configs_and_caches": 72,
+   "max_abs_change": 1.6474805434207873e-05
+  },
+  "primary:decode-16": {
+   "changed_over_1pct": 0,
+   "configs_and_caches": 72,
+   "max_abs_change": 0.0070719869931241686
+  },
+  "primary:decode-32": {
+   "changed_over_1pct": 0,
+   "configs_and_caches": 72,
+   "max_abs_change": 0.009809262502298077
+  },
+  "primary:m1-cube": {
+   "changed_over_1pct": 0,
+   "configs_and_caches": 2,
+   "max_abs_change": 0.00023414565917567742
+  },
+  "primary:mask-m": {
+   "changed_over_1pct": 18,
+   "configs_and_caches": 72,
+   "max_abs_change": 0.46224207396071315
+  },
+  "primary:sm-round-above": {
+   "changed_over_1pct": 0,
+   "configs_and_caches": 72,
+   "max_abs_change": 0.0
+  },
+  "primary:sm-round-below": {
+   "changed_over_1pct": 0,
+   "configs_and_caches": 72,
+   "max_abs_change": 0.0
+  },
+  "primary:sm-round-exact": {
+   "changed_over_1pct": 0,
+   "configs_and_caches": 72,
+   "max_abs_change": 0.0
+  },
+  "primary:swizzle-320": {
+   "changed_over_1pct": 2,
+   "configs_and_caches": 4,
+   "max_abs_change": 0.13544940033404962
+  },
+  "secondary:l2-working-set-above": {
+   "changed_over_1pct": 14,
+   "configs_and_caches": 72,
+   "max_abs_change": 0.326171102741158
+  },
+  "secondary:l2-working-set-below": {
+   "changed_over_1pct": 6,
+   "configs_and_caches": 72,
+   "max_abs_change": 0.37759841012656037
+  },
+  "secondary:mask-mnk": {
+   "changed_over_1pct": 60,
+   "configs_and_caches": 72,
+   "max_abs_change": 0.4963579490357024
+  },
+  "secondary:prefill-1024": {
+   "changed_over_1pct": 72,
+   "configs_and_caches": 72,
+   "max_abs_change": 0.5901936474486384
+  },
+  "secondary:prefill-2048": {
+   "changed_over_1pct": 68,
+   "configs_and_caches": 72,
+   "max_abs_change": 1.4036674892481087
+  },
+  "secondary:prefill-256": {
+   "changed_over_1pct": 40,
+   "configs_and_caches": 72,
+   "max_abs_change": 0.5425207425136351
+  },
+  "secondary:resident-wave-above": {
+   "changed_over_1pct": 40,
+   "configs_and_caches": 72,
+   "max_abs_change": 0.26325906344619443
+  },
+  "secondary:resident-wave-below": {
+   "changed_over_1pct": 44,
+   "configs_and_caches": 72,
+   "max_abs_change": 0.2750146963166413
+  },
+  "secondary:resident-wave-exact": {
+   "changed_over_1pct": 42,
+   "configs_and_caches": 72,
+   "max_abs_change": 0.26436832829725154
+  }
+ },
+ "new_build": {
+  "commit": "f48763fd7eb88b36ba191c4739c236e18f013290",
+  "dirty": false,
+  "result_class": "formal"
+ },
+ "note": "GB10 Phase 2 development AOT IR, v0.2-final profile, nominal. Labels are only in sealed reports, not read, so no score.",
+ "old_build": {
+  "commit": "e70824b9c3ea5d6818a5bef306ee21c9e5d2d74a",
+  "dirty": false,
+  "result_class": "formal"
+ },
+ "post_hoc": true
+}

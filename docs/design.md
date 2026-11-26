@@ -148,6 +148,8 @@ What the core computes in v0.2. Each mechanism was checked on its own microbench
 
 **Pipelined loop as a closed loop.** A CTA with prefetch distance `d` (from the PTX `cp.async.wait_group`) cycles `d + 1` stage buffers: a stage arrives a round trip after its load, is computed, and only then is its buffer reloaded. Where loads and compute both exist, the stage buffers of all CTAs on an SM are a closed queueing network, one server (the SM's pipes, a stage's compute alone plus its synchronization) and one delay (the round trip), solved by exact mean value analysis. Basis `dram_closed_loop`, `l2_closed_loop` (720 points, predicted from the open-loop MLP curves alone): median error 2.6% DRAM and 6.8% L2, p90 7.3% and 16.6%. `dram_closed_loop_mma` (MMA contention, 150 points): median 1.0% to 1.9%, at most 16%. Synchronous loads are `d = 0`; while one CTA waits, the others on its SM use the pipes it leaves idle.
 
+**Cross-wave reuse.** A chunk read again after its last tile ended hits per K slice under LRU with capacity `l2_effective_capacity_bytes`: chunks ending in one event streamed side by side, so a later wave that walks K the same way starts on the slices evicted first, and a lone re-reader hits only the recent K tail. Basis `wave-rescan` (GB10, 96 held-out points, post-hoc): mean absolute error of the re-read hit fraction 0.085 forward and 0.046 for reversed K walks (9.3).
+
 **Miss merging.** The L2 model splits loads into resident hits (L2 latency and bandwidth), requests merged into a fill another CTA has in flight (DRAM latency, L2 bandwidth only), and fetches (DRAM latency and bandwidth). Basis `l2_merge_by_sharing` (42 points): stage turnaround median error 5.0% (p90 16.8%).
 
 **Round-trip port floor.** A round trip takes at least the level's idle latency plus its own bytes over the L2 ceiling at one active SM, and at least the bytes of all the SM's resident CTAs over that ceiling, since their round trips run out of phase. The MLP curves are indexed by bytes in flight over the whole GPU and do not see one SM receiving them all. Basis `serial_stage_fill` (one CTA, warm L2, 2 to 16 KiB per stage): MAPE 17.4% to 9.2% on the RTX 4070 and 15.8% to 8.6% on GB10 (64 points each). On `sync_stage_loop` as remeasured in profile `0.21.0` (564 points each, 1 to 8 CTAs per SM, 2 to 32 KiB): MAPE 4.4% (RTX 4070) and 7.1% (GB10), against 4.7% and 7.8% when every round trip waits for all the SM's bytes after the latency.
@@ -296,7 +298,11 @@ These are residuals of the v0.2 core on the development set, not of `phase1-fina
 
 The serial-fill explanation ruled out in 9.1 was ruled out as an addition to the round trip. `e51f8ef` uses it as a floor under the round trip instead, which the MLP curves, indexed by bytes in flight over the whole GPU, do not provide.
 
-### 9.3 Ascend 910B3 mapping and known limits
+### 9.3 Cross-wave L2 reuse near capacity
+
+The cross-wave reuse of 6.4 is a step at `l2_effective_capacity_bytes`: a forward re-read of a wave hits fully if the wave fits and not at all otherwise. On GB10 the hardware falls off a slope instead, 0.89 to 0.99 of a re-read hitting at 1.0 times L2 and 0.13 to 0.60 at 1.09 to 1.12 times (`wave-rescan`), so between 1.0 and 1.12 times L2 the error of the hit fraction is 0.23 on average. No smoothing parameter is fitted to it. The form is checked on GB10 only; on the RTX 4070 it is unvalidated until `wave-rescan` is captured there.
+
+### 9.4 Ascend 910B3 mapping and known limits
 
 Ascend 910B3 (`profiles/ascend910b3.json`, `0.3.0-ascend`) brings a second vendor into the existing schema and core, with three deliberate approximations left for follow-up work:
 
