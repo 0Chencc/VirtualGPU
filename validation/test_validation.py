@@ -441,8 +441,10 @@ class V02ScoreTest(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "published tag"):
                     v02_score.require_release(Path(tmp), "amendment")
             published = f"{_V02_REVISION}\trefs/tags/{v02_score.TAG}\n".encode()
+            main = f"{_V02_REVISION} refs/heads/main".encode()
             calls = [_V02_REVISION.encode(), _V02_REVISION.encode(), published, _V02_REVISION.encode(),
-                     _V02_REVISION.encode(), b"", b"unpublished evidence", b"different published evidence"]
+                     main, _V02_REVISION.encode(), _V02_REVISION.encode(), b"",
+                     b"unpublished evidence", b"different published evidence"]
             with patch.object(v02_score, "git", side_effect=calls), patch.object(v02_score.subprocess, "run"):
                 with self.assertRaisesRegex(ValueError, "published on origin/main"):
                     v02_score.require_release(Path(tmp), "amendment")
@@ -465,12 +467,36 @@ class V02ScoreTest(unittest.TestCase):
             (root / "aot-index.json").write_bytes(index)
             (root / "prediction-evidence.json").write_bytes(evidence)
             calls = [_V02_REVISION.encode(), _V02_REVISION.encode(), f"{_V02_REVISION} refs/tags/{v02_score.TAG}".encode(),
+                     _V02_REVISION.encode(), f"{_V02_REVISION} refs/heads/main".encode(),
                      _V02_REVISION.encode(), _V02_REVISION.encode(), b"", evidence, evidence]
             with patch.object(v02_score, "git", side_effect=calls), patch.object(v02_score.subprocess, "run"):
                 revision, _, records, returned_index, _ = v02_score.require_release(root, "amendment")
             self.assertEqual(revision, _V02_REVISION)
             self.assertEqual(records, data)
             self.assertEqual(returned_index, json.loads(index))
+
+    def test_stale_local_main_prevents_release_even_with_the_published_tag(self):
+        ref = _V02_REVISION.encode()
+        published_tag = f"{_V02_REVISION} refs/tags/{v02_score.TAG}".encode()
+        published_main = f"{'b' * 40} refs/heads/main".encode()
+        calls = [ref, ref, published_tag, ref, published_main]
+        with patch.object(v02_score, "git", side_effect=calls) as git:
+            with self.assertRaisesRegex(ValueError, "origin/main differs from published main"):
+                v02_score.require_release(Path("unused"), "amendment")
+        git.assert_called_with("ls-remote", "--exit-code", "origin", "refs/heads/main")
+
+    def test_each_retry_marker_requires_history_and_full_linkage(self):
+        slot = "example-session-2.json"
+        for field in ("report_path", "repeat_of", "retry_receipt_sha256"):
+            with self.subTest(field=field):
+                seal = {"reports": {slot: {field: "fixture"}}}
+                with self.assertRaisesRegex(ValueError, "failed report history"):
+                    v02_score.sealed_retry_slots(seal)
+                seal["failed_reports"] = {slot: [{}]}
+                self.assertEqual(v02_score.sealed_retry_slots(seal), {slot})
+                with self.assertRaisesRegex(ValueError, "incomplete retry linkage"):
+                    v02_score.retry_receipts("rtx4070-gemm", {"case_id": "example"}, 2, slot,
+                                            seal, Path("unused"), None)
 
     def test_retry_is_bound_to_the_failed_receipt_and_standalone_digest(self):
         slot = "example-session-2.json"
@@ -535,14 +561,52 @@ class V02ScoreTest(unittest.TestCase):
         collection["gb10-attention"]["example"]["forecasts"] = failing
         snapshots = {name: {"example": {}} for name in v02_score.COHORTS}
         status_by_config = {key: {"1": "ok", "2": "ok", "3": "ok"} for key in measured}
-        with patch.object(v02_score, "report_timings", return_value=({cache: measured for cache in v02_score.CACHES},
-                                                             status_by_config)):
+        probes = {"1": {"median_ns": {"warm": 4., "cold": 8.}}}
+        with patch.object(v02_score, "report_timings",
+                          return_value=({cache: measured for cache in v02_score.CACHES}, status_by_config, probes)):
             cohorts, devices = v02_score.evaluate(collection, snapshots)
         self.assertEqual(devices, {"rtx4070": True, "gb10": False})
         core = cohorts["gb10-attention"]["cases"]["example"]["cache"]["warm"]["core"]
         self.assertEqual(core["top_k_regret"], 1.0)
         self.assertEqual(core["missing_or_invalid_predictions"], {"a": "unsupported"})
         self.assertEqual((core["measured_configs"], core["scored_configs"]), (3, 2))
+        self.assertEqual(cohorts["gb10-attention"]["cases"]["example"]["cache_control_ns"], probes)
+
+    def test_missing_eligible_shortlist_fails_each_shortlist_gate(self):
+        measured = {"a": {("session", 0): 1.}, "b": {("session", 0): 2.}}
+        forward = {"a": {"status": "ok", "nominal_latency_ns": 1., "draws": {"0": 1.}},
+                   "b": {"status": "ok", "nominal_latency_ns": 2., "draws": {"0": 2.}}}
+        reversed_ = {"a": {"status": "ok", "nominal_latency_ns": 2.},
+                     "b": {"status": "ok", "nominal_latency_ns": 1.}}
+        empty = {key: {"status": "unsupported"} for key in measured}
+        timings = {cache: measured for cache in v02_score.CACHES}
+        statuses = {key: {"1": "ok"} for key in measured}
+        good = {cache: {"core": forward, "roofline_wave": reversed_, "neusight_style": reversed_}
+                for cache in v02_score.CACHES}
+        missing = dict(good, warm={**good["warm"], "core": empty})
+        cases = {"good": v02_score.scored_case(timings, good, statuses),
+                 "missing": v02_score.scored_case(timings, missing, statuses)}
+        gates = v02_score.aggregate(cases)["gates"]
+        self.assertEqual(gates["warm"]["cases_missing_core_shortlist"], ["missing"])
+        self.assertFalse(gates["warm"]["absolute_regret_pass"])
+        self.assertFalse(gates["warm"]["pass"])
+        for baseline in gates["warm"]["baselines"].values():
+            self.assertTrue(baseline["ranking_pass"])
+            self.assertFalse(baseline["non_inferiority_pass"])
+        self.assertTrue(gates["cold"]["pass"])
+
+    def test_cache_read_probe_rejects_missing_invalid_or_unseparated_samples(self):
+        values = {"warm": [8., 2., 2.], "cold": [3., 3., 3.]}
+        self.assertEqual(v02_score.check_cache_control(values, "fixture"),
+                         {"samples_ns": values, "median_ns": {"warm": 2., "cold": 3.}})
+        for bad in (None, {}, {"warm": [2.]}, {"warm": [], "cold": [3.]},
+                    {"warm": [float("inf")], "cold": [3.]},
+                    {"warm": [2.], "cold": [float("nan")]},
+                    {"warm": [2.], "cold": [0.]},
+                    {"warm": [2.], "cold": [2.]},
+                    {"warm": [3.], "cold": [2.]}):
+            with self.subTest(values=bad), self.assertRaisesRegex(ValueError, "read probe"):
+                v02_score.check_cache_control(bad, "fixture")
 
     def test_legacy_report_validates_all_blocks_and_lists_invalid_candidates(self):
         case = {"case_id": "example", "config_ids": ["ok", "bad", "absent"],
@@ -561,6 +625,7 @@ class V02ScoreTest(unittest.TestCase):
                 "split": "holdout", "shape": [1, 4, 2, 65, 64, True], "manifest_sha256": _V02_DIGEST,
                 "aot_sha256": _V02_DIGEST, "kernel_key": "kernel", "source": _V02_BUILD,
                 "gpu": {"arch": "sm_89", "uuid": "fixture"}, "protocol": protocol,
+                "cache_control_ns": {"warm": [2., 3.], "cold": [4., 5.]},
                 "configs": {"ok": {"status": "ok"}, "bad": {"status": "launch_failed"}},
                 "samples": [{"block": block, "cache": cache, "config_id": "ok", "latency_ns": 10.}
                             for block in range(10) for cache in v02_score.CACHES],
@@ -571,12 +636,19 @@ class V02ScoreTest(unittest.TestCase):
             return {order: json.dumps(record).encode() for order, record in reports.items()}
 
         with patch.object(v02_score, "check_artifact", return_value={"status": "matched", "ttgir_match": True}):
-            timings, statuses = v02_score.report_timings("rtx4070-attention", "example", entry, snapshots(), set(), {})
+            timings, statuses, probes = v02_score.report_timings(
+                "rtx4070-attention", "example", entry, snapshots(), set(), {},
+            )
             self.assertEqual(len(timings["warm"]["ok"]), 30)
+            self.assertEqual(probes["2"]["median_ns"], {"warm": 2.5, "cold": 4.5})
             self.assertEqual(set(statuses["bad"].values()), {"launch_failed"})
             self.assertEqual(set(statuses["absent"].values()), {"missing"})
             reports[2]["samples"].pop()
             with self.assertRaisesRegex(ValueError, "incomplete randomized blocks"):
+                v02_score.report_timings("rtx4070-attention", "example", entry, snapshots(), set(), {})
+
+            reports[2].pop("cache_control_ns")
+            with self.assertRaisesRegex(ValueError, "example/2: missing warm or cold read probe"):
                 v02_score.report_timings("rtx4070-attention", "example", entry, snapshots(), set(), {})
 
     def test_legacy_receipt_needs_digest_and_utc(self):

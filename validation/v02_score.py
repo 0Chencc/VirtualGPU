@@ -7,6 +7,7 @@ import hashlib
 import json
 import math
 from pathlib import Path
+from statistics import median
 import subprocess
 import tempfile
 
@@ -20,6 +21,7 @@ from validation.v02_inputs import COHORTS, DRAWS, SEED, TAG, TARGETS, case_input
 
 AMENDMENT = "validation/v02-freeze-amendment.json"
 RETRY = "validation/v02-rtx4070-gemm-retry.json"
+RETRY_MARKERS = {"report_path", "repeat_of", "retry_receipt_sha256"}
 CACHES = ("warm", "cold")
 METHODS = ("core", "roofline_wave", "neusight_style")
 LOCATIONS = {
@@ -56,14 +58,17 @@ def require_release(directory, amendment):
     tag = git("rev-parse", "--verify", tag_ref).decode().strip()
     if git("ls-remote", "--exit-code", "origin", tag_ref).decode().split() != [tag, tag_ref]:
         raise ValueError(f"The local {TAG} tag differs from the published tag")
+    origin_main = git("rev-parse", "--verify", "refs/remotes/origin/main^{commit}").decode().strip()
+    if git("ls-remote", "--exit-code", "origin", "refs/heads/main").decode().split() != [origin_main, "refs/heads/main"]:
+        raise ValueError("Local origin/main differs from published main. Fetch origin before scoring.")
     approved = git("rev-parse", "--verify", f"{amendment}^{{commit}}").decode().strip()
-    for ancestor, descendant in ((revision, approved), (approved, "origin/main")):
+    for ancestor, descendant in ((revision, approved), (approved, origin_main)):
         subprocess.run(["git", "merge-base", "--is-ancestor", ancestor, descendant],
                        cwd=REPO_ROOT, check=True)
     if git("rev-parse", "HEAD").decode().strip() != revision or git("status", "--porcelain", "--untracked-files=all"):
         raise ValueError(f"Scoring requires the clean {TAG} checkout")
     amendment_raw = git("show", f"{approved}:{AMENDMENT}")
-    if git("show", f"origin/main:{AMENDMENT}") != amendment_raw:
+    if git("show", f"{origin_main}:{AMENDMENT}") != amendment_raw:
         raise ValueError("The freeze amendment must be published on origin/main")
     evidence = json.loads(amendment_raw)
     local_evidence = json.loads((directory / "prediction-evidence.json").read_bytes())
@@ -109,8 +114,17 @@ def check_receipt(receipt, label, *, legacy=False):
         raise ValueError(f"{label}: expected a complete 10-block receipt")
 
 
+def sealed_retry_slots(seal):
+    slots = {slot for slot, entry in seal["reports"].items() if RETRY_MARKERS & entry.keys()}
+    if set(seal.get("failed_reports", {})) != slots:
+        raise ValueError("Orphaned or missing failed report history")
+    return slots
+
+
 def retry_receipts(name, case, session, slot, seal, root, retry_raw):
     effective = seal["reports"][slot]
+    if not RETRY_MARKERS <= effective.keys():
+        raise ValueError(f"{slot}: incomplete retry linkage")
     history = seal.get("failed_reports", {}).get(slot)
     if name != "rtx4070-gemm" or not history or retry_raw is None:
         raise ValueError(f"{slot}: missing authorized retry history")
@@ -180,10 +194,7 @@ def prepare_collection(directory, root, revision, archive, index):
         expected = {case["case_id"] for case in cases}
         if set(archive["cohorts"][name]) != expected or set(index[name]) != expected:
             raise ValueError(f"{name}: prediction or AOT case census differs from the manifest")
-        histories = seal.get("failed_reports", {})
-        retry_slots = {slot for slot, entry in seal["reports"].items() if "report_path" in entry}
-        if set(histories) != retry_slots:
-            raise ValueError(f"{name}: orphaned or missing failed report history")
+        retry_slots = sealed_retry_slots(seal)
         retry_raw = git("show", f"{revision}:{RETRY}") if retry_slots else None
         if retry_slots and git("show", f"origin/main:{RETRY}") != retry_raw:
             raise ValueError("The frozen retry receipt is not published")
@@ -250,6 +261,23 @@ def verify_reports(collection):
     return verified
 
 
+def check_cache_control(control, label):
+    if not isinstance(control, dict) or set(control) != set(CACHES):
+        raise ValueError(f"{label}: missing warm or cold read probe")
+    for cache in CACHES:
+        values = control[cache]
+        if (not isinstance(values, list) or not values
+                or any(type(value) not in (int, float) or not math.isfinite(value) or value <= 0
+                       for value in values)):
+            raise ValueError(f"{label}: read probe must contain finite positive durations")
+    medians = {cache: median(control[cache]) for cache in CACHES}
+    # The capture control measures the same cache-sensitive read with warm
+    # priming and cold eviction. Require the expected direction only.
+    if medians["cold"] <= medians["warm"]:
+        raise ValueError(f"{label}: cold read probe did not exceed the warm median")
+    return {"samples_ns": control, "median_ns": medians}
+
+
 def report_timings(name, case_id, entry, snapshots, sessions_seen, device_uuids):
     case = entry["case"]
     device, family = name.split("-")
@@ -258,6 +286,7 @@ def report_timings(name, case_id, entry, snapshots, sessions_seen, device_uuids)
     expected_toolchain = entry["capture"]["configs"]
     timings = {cache: {} for cache in CACHES}
     statuses = {key: {} for key in case["config_ids"]}
+    probes = {}
     legacy = name == "rtx4070-attention"
     if set(snapshots) != {1, 2, 3}:
         raise ValueError(f"{case_id}: expected all three case-sessions")
@@ -289,6 +318,7 @@ def report_timings(name, case_id, entry, snapshots, sessions_seen, device_uuids)
         if (report.get("complete_blocks", 10 if legacy else None) != 10
                 or report.get("collection_status", "complete" if legacy else None) != "complete"):
             raise ValueError(f"{case_id}/{order}: expected ten completed blocks")
+        probes[str(order)] = check_cache_control(report.get("cache_control_ns"), f"{case_id}/{order}")
         if not report["configs"].keys() <= config_ids:
             raise ValueError(f"{case_id}/{order}: unexpected capture candidates")
         measured, eligible = set(), set()
@@ -322,7 +352,7 @@ def report_timings(name, case_id, entry, snapshots, sessions_seen, device_uuids)
         # The complete sample census still establishes all ten randomized blocks.
         if not expected_trials or observed != expected_trials:
             raise ValueError(f"{case_id}/{order}: incomplete randomized blocks")
-    return timings, statuses
+    return timings, statuses, probes
 
 
 def scored_case(timings, forecasts, statuses):
@@ -378,7 +408,11 @@ def aggregate(cases):
             key for key, case in cases.items()
             if case["cache"][cache]["core"]["measured_configs"] and not case["cache"][cache]["core"]["shortlist"]
         ]
-        gate["pass"] = gate["pass"] and not gate["cases_missing_core_shortlist"]
+        if gate["cases_missing_core_shortlist"]:
+            gate["absolute_regret_pass"] = False
+            for baseline in gate["baselines"].values():
+                baseline["non_inferiority_pass"] = False
+            gate["pass"] = False
     return {"cases": cases, "summary": summary, "gates": gates,
             "pass": all(row["pass"] for row in gates.values())}
 
@@ -389,9 +423,10 @@ def evaluate(collection, snapshots):
     for name, entries in collection.items():
         cases = {}
         for case_id, entry in entries.items():
-            timings, statuses = report_timings(name, case_id, entry, snapshots[name][case_id],
-                                               sessions_seen, device_uuids)
+            timings, statuses, probes = report_timings(name, case_id, entry, snapshots[name][case_id],
+                                                       sessions_seen, device_uuids)
             scored = scored_case(timings, entry["forecasts"], statuses)
+            scored["cache_control_ns"] = probes
             scored["failed_capture_attempts"] = [receipt for _, receipt in entry["failed"]]
             cases[case_id] = scored
         cohorts[name] = aggregate(cases)
