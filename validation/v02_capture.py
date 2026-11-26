@@ -1,4 +1,4 @@
-"""Capture preregistered GB10 v0.2 holdouts without releasing their labels."""
+"""Capture preregistered v0.2 holdouts without releasing their labels."""
 
 import argparse
 from collections import Counter
@@ -7,9 +7,11 @@ from functools import partial
 import json
 import math
 import os
+import shutil
 from pathlib import Path
 import stat
 import subprocess
+import time
 from types import SimpleNamespace
 
 import triton
@@ -18,12 +20,12 @@ from virtualgpu.frontend.compiler import MockTensor, specialize_triton_call
 from validation import attention, attention_runner, runner
 from validation.baseline import residency
 from validation.holdout import seal_report, sha256
-from validation.phase2_capture import SparkSession
+from validation.phase2_capture import SparkSession, command, power_mode
 from validation.provenance import REPO_ROOT, source_info
 
 APPROVAL = "29a6ac2"
-TARGET = "sm_121"
-ARCH = 121
+DEVICE_ARCH = {"gb10": 121, "rtx4070": 89}
+RTX_WARMUP_SECONDS = 2
 GEMM_POINTERS = tuple(MockTensor("f16") for _ in range(3))
 
 
@@ -31,7 +33,7 @@ def utc():
     return datetime.now(timezone.utc).isoformat()
 
 
-def inputs(family):
+def inputs(family, device):
     subprocess.run(["git", "merge-base", "--is-ancestor", APPROVAL, "origin/main"],
                    cwd=REPO_ROOT, check=True)
     relative = f"validation/v02-{family}-holdout.json"
@@ -42,13 +44,13 @@ def inputs(family):
     manifest = json.loads(raw)
     source = source_info()
     if (source["python_dirty"] or source["validation_dirty"] or triton.__version__ != "3.9.0"
-            or manifest["devices"]["gb10"]["target"] != TARGET):
-        raise ValueError("Use a clean capture checkout and Triton 3.9.0 for GB10")
+            or manifest["devices"][device]["target"] != f"sm_{DEVICE_ARCH[device]}"):
+        raise ValueError("Use a clean capture checkout and Triton 3.9.0")
     return manifest, sha256(raw), source
 
 
-def case_configs(manifest, case_id):
-    case = next(row for row in manifest["devices"]["gb10"]["cases"] if row["case_id"] == case_id)
+def case_configs(manifest, case_id, device):
+    case = next(row for row in manifest["devices"][device]["cases"] if row["case_id"] == case_id)
     keys = set(case["config_ids"])
     configs = [row for row in manifest["configs"] if row["config_id"] in keys]
     if len(configs) != len(keys):
@@ -73,17 +75,17 @@ def gemm_artifact(case, config, target):
                                              parsed, signature, constexprs, attrs)
 
 
-def compile_case(directory, family, case_id):
+def compile_case(directory, family, case_id, device):
     from triton.runtime.errors import PTXASError
 
-    manifest, digest, source = inputs(family)
-    case, configs = case_configs(manifest, case_id)
+    manifest, digest, source = inputs(family, device)
+    case, configs = case_configs(manifest, case_id, device)
     kernel = runner.dense_gemm if family == "gemm" else attention.fused_attention
     compile_artifact = gemm_artifact if family == "gemm" else attention_runner.compile_artifact
     rows = {}
     for config in configs:
         try:
-            row = compile_artifact(case, config, TARGET)
+            row = compile_artifact(case, config, f"sm_{DEVICE_ARCH[device]}")
         except (triton.CompilationError, PTXASError, RuntimeError) as error:
             row = {"status": "compile_failed", "reason": str(error)}
         rows[config["config_id"]] = row
@@ -101,35 +103,76 @@ def read_aot(base, case, digest, kernel, source):
     return archive, sha256(raw)
 
 
-def load_policy():
-    raw = (REPO_ROOT / "profiles" / "gb10.json").read_bytes()
+def load_policy(device):
+    raw = (REPO_ROOT / "profiles" / f"{device}.json").read_bytes()
     profile = json.loads(raw)
     fields = profile["provenance"]
-    if profile["identity"]["arch"] != TARGET or fields["clock_policy"]["locked"]:
-        raise ValueError("GB10 capture requires the record-only profile")
+    if profile["identity"]["arch"] != f"sm_{DEVICE_ARCH[device]}" or fields["clock_policy"]["locked"]:
+        raise ValueError("Capture requires the target record-only profile")
     policy = {"l2_bytes": profile["specs"]["l2_size_bytes"], "clock_policy": "record_only",
               "driver_version": fields["driver_version"],
               "power_mode": {"unavailable": "nvpmodel is not installed"}}
     return policy, profile["specs"], sha256(raw)
 
 
-def boundary(directory):
-    manifest, digest, source = inputs("gemm")
-    policy, specs, profile_sha = load_policy()
+class Rtx4070Session(SparkSession):
+    """Use the established record-only RTX 4070 collection protocol."""
+
+    def __init__(self, policy):
+        self.clock_policy = policy["clock_policy"]
+        self.driver_version = policy["driver_version"]
+        self.l2_bytes = policy["l2_bytes"]
+        self.initial_power = power_mode()
+        self.smi = shutil.which("nvidia-smi") or "/usr/lib/wsl/lib/nvidia-smi"
+        self.before = self.snapshot()
+        self.soaks = []
+        processes = self.before["compute_processes"]
+        if (self.before["gpu"]["status"] or processes["status"] or processes["stdout"]
+                or self.before["uptime"]["status"]):
+            raise ValueError("RTX 4070 GPU availability could not be verified")
+
+    def snapshot(self):
+        return {
+            "time_utc": utc(), "uptime": command("uptime"), "gpu": command(self.smi),
+            "compute_processes": command(self.smi, "--query-compute-apps=pid",
+                                         "--format=csv,noheader,nounits"),
+        }
+
+    def stabilize(self, warmup, telemetry, has_operations):
+        if not has_operations:
+            return
+        start = time.monotonic()
+        while time.monotonic() - start < RTX_WARMUP_SECONDS:
+            warmup()
+        self.soaks.append({"elapsed_seconds": time.monotonic() - start})
+
+    def provenance(self):
+        return {"before": self.before, "after": self.snapshot(), "thermal_soaks": self.soaks}
+
+
+def capture_session(device, policy, trace):
+    if device == "gb10":
+        return SparkSession(policy, trace)
+    return Rtx4070Session(policy)
+
+
+def boundary(directory, device):
+    manifest, digest, source = inputs("gemm", device)
+    policy, specs, profile_sha = load_policy(device)
     base = directory / "gemm"
     output = base / "wave-boundary.json"
     if output.exists():
         raise FileExistsError(output)
-    spark = SparkSession(policy, base / "wave-boundary-untimed.json")
-    ref = manifest["devices"]["gb10"]["wave_reference"]
+    spark = capture_session(device, policy, base / "wave-boundary-untimed.json")
+    ref = manifest["devices"][device]["wave_reference"]
     key = ref["config_id"]
     records = {}
-    for case in manifest["devices"]["gb10"]["cases"]:
+    for case in manifest["devices"][device]["cases"]:
         if "reference_ctas" not in case:
             continue
         config = next(cfg for cfg in manifest["configs"] if cfg["config_id"] == key)
         archive, aot_sha = read_aot(base, case, digest, runner.dense_gemm, source)
-        _, rows = runner.prepare_candidates(case, [config], manifest["input_seed"], ARCH)
+        _, rows = runner.prepare_candidates(case, [config], manifest["input_seed"], DEVICE_ARCH[device])
         attention_runner.verify_artifacts(archive, rows)
         jit = rows[key]
         if jit["status"] != "ok":
@@ -148,19 +191,19 @@ def boundary(directory):
     print({name: (row["ctas"], row["full_wave_capacity"]) for name, row in records.items()})
 
 
-def capture(directory, family, case_id, session):
-    manifest, digest, source = inputs(family)
-    case, configs = case_configs(manifest, case_id)
-    policy, _, profile_sha = load_policy()
+def capture(directory, family, case_id, session, device):
+    manifest, digest, source = inputs(family, device)
+    case, configs = case_configs(manifest, case_id, device)
+    policy, _, profile_sha = load_policy(device)
     base = directory / family
     if family == "gemm":
         wave = json.loads((base / "wave-boundary.json").read_bytes())
         if (wave["source"] != source or wave["manifest_sha256"] != digest
                 or wave["profile_sha256"] != profile_sha or len(wave["cases"]) != 3):
-            raise ValueError("GB10 GEMM requires the untimed capture-resource wave check")
+            raise ValueError("GEMM requires the untimed capture-resource wave check")
     is_attention = family == "attention"
     kernel = attention.fused_attention if is_attention else runner.dense_gemm
-    prepare = partial(attention.prepare_candidates, arch=ARCH) if is_attention else None
+    prepare = partial(attention.prepare_candidates, arch=DEVICE_ARCH[device]) if is_attention else None
     archive, aot_sha = read_aot(base, case, digest, kernel, source)
     if is_attention:
         case = dict(case, shape=[case[key] for key in attention.SHAPE_FIELDS])
@@ -172,12 +215,13 @@ def capture(directory, family, case_id, session):
         if path.exists():
             raise FileExistsError(path)
         path.parent.mkdir(mode=0o700, exist_ok=True)
-    spark = SparkSession(policy, trace)
-    args = SimpleNamespace(cache="both", blocks=10, seed=100 + session, warmup_seconds=60)
+    spark = capture_session(device, policy, trace)
+    args = SimpleNamespace(cache="both", blocks=10, seed=100 + session,
+                           warmup_seconds=60 if device == "gb10" else RTX_WARMUP_SECONDS)
     try:
         report = runner.measure(
             case, configs, manifest["input_seed"], args, digest,
-            verify_artifacts=partial(attention_runner.verify_artifacts, archive), device_arch=ARCH,
+            verify_artifacts=partial(attention_runner.verify_artifacts, archive), device_arch=DEVICE_ARCH[device],
             kernel=kernel, spark=spark, prepare=prepare, retry_rejected_blocks=False,
         )
     except (RuntimeError, ValueError) as error:
@@ -186,7 +230,10 @@ def capture(directory, family, case_id, session):
             details["thermal_trace_sha256"] = sha256(trace.read_bytes())
         attention_runner.write_json(failure, details)
         raise
-    after = report["spark"]["after"]["compute_processes"]
+    if device == "rtx4070":
+        report["rtx4070"] = report.pop("spark")
+    environment = report["spark" if device == "gb10" else "rtx4070"]
+    after = environment["after"]["compute_processes"]
     other_compute = set(after["stdout"].split()) - {str(os.getpid())}
     valid = report["complete_blocks"] == 10 and after["status"] == 0 and not other_compute
     report.update(aot_sha256=aot_sha, kernel_key=kernel.cache_key,
@@ -199,13 +246,13 @@ def capture(directory, family, case_id, session):
     print(f"{case_id} session {session}: sealed", flush=True)
 
 
-def audit(directory, family, output):
-    manifest, digest, source = inputs(family)
+def audit(directory, family, output, device):
+    manifest, digest, source = inputs(family, device)
     base = directory / family
-    _, _, profile_sha = load_policy()
+    _, _, profile_sha = load_policy(device)
     reports, failures, aot = {}, {}, {}
     expected = set()
-    for case in manifest["devices"]["gb10"]["cases"]:
+    for case in manifest["devices"][device]["cases"]:
         case_id = case["case_id"]
         kernel = runner.dense_gemm if family == "gemm" else attention.fused_attention
         _, aot[case_id] = read_aot(base, case, digest, kernel, source)
@@ -221,7 +268,8 @@ def audit(directory, family, output):
                 reports[name] = json.loads(receipt.read_bytes())
             elif failure.exists():
                 failures[name] = json.loads(failure.read_bytes())
-    record = {"timestamp_utc": utc(), "source": source, "device": "GB10", "family": family,
+    record = {"timestamp_utc": utc(), "source": source,
+              "device": "GB10" if device == "gb10" else "RTX 4070", "family": family,
               "preregistration_commit": APPROVAL, "manifest_sha256": digest,
               "profile_sha256": profile_sha, "aot_sha256_by_case": aot, "reports": reports,
               "protocol_failures_without_report": failures,
@@ -234,6 +282,7 @@ def audit(directory, family, output):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--device", choices=DEVICE_ARCH, default="gb10")
     commands = parser.add_subparsers(dest="command", required=True)
     for name in ("aot", "boundary", "capture", "audit"):
         cmd = commands.add_parser(name)
@@ -247,14 +296,16 @@ def main():
         if name == "audit":
             cmd.add_argument("output", type=Path)
     args = parser.parse_args()
+    if args.device == "rtx4070" and getattr(args, "family", "gemm") == "attention":
+        parser.error("RTX 4070 attention already uses the original sealed reports")
     if args.command == "aot":
-        compile_case(args.directory, args.family, args.case)
+        compile_case(args.directory, args.family, args.case, args.device)
     elif args.command == "boundary":
-        boundary(args.directory)
+        boundary(args.directory, args.device)
     elif args.command == "capture":
-        capture(args.directory, args.family, args.case, args.session)
+        capture(args.directory, args.family, args.case, args.session, args.device)
     else:
-        audit(args.directory, args.family, args.output)
+        audit(args.directory, args.family, args.output, args.device)
 
 
 if __name__ == "__main__":
