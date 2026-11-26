@@ -100,8 +100,10 @@ Bundled profiles:
 | `l4` | NVIDIA L4 | Not yet |
 | `l40s` | NVIDIA L40S | Not yet |
 | `rtx3070` | NVIDIA GeForce RTX 3070 | Not yet |
+| `rtx4090` | NVIDIA GeForce RTX 4090 | Not yet |
 | `rtxpro5000-72gb` | NVIDIA RTX PRO 5000 72GB Blackwell | Not yet |
 | `rtxpro6000` | NVIDIA RTX PRO 6000 Blackwell Server Edition | Not yet |
+| `ascend910b3` | Huawei Ascend 910B3 | Not yet |
 
 How well it does right now: in the latest test (v0.2), when VirtualGPU said one config was faster than another, the real RTX 4070 and GB10 agreed 87% to 94% of the time. The simple baselines we compare against agreed 54% to 76% of the time. The shortlist isn't good enough yet to skip measuring altogether, so v0.2 didn't pass all of its own targets. The numbers are in [docs/results/v0.2.md](docs/results/v0.2.md), and the known gaps are in [design.md](docs/design.md#9-known-limits).
 
@@ -109,7 +111,7 @@ How well it does right now: in the latest test (v0.2), when VirtualGPU said one 
 
 ## Roadmap
 
-What we are working on before the 1.0.0 release is in [ROADMAP.md](ROADMAP.md).
+What we are building, version by version up to 1.0.0 and after, is in [ROADMAP.md](ROADMAP.md).
 
 <br />
 

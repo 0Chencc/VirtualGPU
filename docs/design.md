@@ -15,7 +15,7 @@ What comes next is in the [roadmap](../ROADMAP.md).
 
 ## Decisions
 
-- **Scope:** an open-source tool for kernel developers. The first application is GPU-free autotuning for Triton.
+- **Scope:** an open-source performance oracle for GPU kernels: which variant is faster on a given GPU, by roughly how much, and why. The first application is GPU-free autotuning for Triton; the others are in section 4.
 - **Relative, not absolute:** the product is a ranking with confidence, not a predicted time.
 - **One neutral Kernel IR:** the IR is independent of the source language and of the GPU vendor. Triton is the first frontend; a PTX frontend follows and covers CUDA, CUTLASS, TileLang and other languages that compile to PTX. AMD follows through its public ISA.
 - **Implementation:** the model core (scheduler, L2 model, perturbation) is written in Rust and exposed to Python through PyO3. Frontends are written in Python. The microbenchmark suite is written in CUDA C++ to control the exact instructions it measures.
@@ -49,7 +49,8 @@ Goals:
 - Report when two variants are indistinguishable instead of forcing an order.
 - Explain each prediction: which resource bounds the kernel and why.
 - Support GPUs the user does not own, through community-contributed GPU profiles.
-- One frontend for NVIDIA and AMD.
+- One Kernel IR for every language and vendor: Triton and PTX for NVIDIA, Triton for AMD and Ascend.
+- Fast and deterministic enough to sit inside automated loops: CI checks, kernel search and AI agents.
 
 Non-goals:
 
@@ -65,8 +66,11 @@ Ordered by difficulty.
 1. **Config ranking.** Rank the autotuning configs of one kernel (tile sizes, `num_warps`, `num_stages`). Systematic errors cancel almost entirely. This is the first target.
 2. **Algorithm comparison.** Compare different implementations of the same operator, such as split-K versus stream-K GEMM. Variants may be bound by different resources, so per-resource scales must be roughly right.
 3. **Bottleneck finding in a full model.** Find which operators in an end-to-end model are far from their achievable speed. This compares unrelated operators (GEMM versus normalization versus attention), so each operator class needs coarse absolute calibration.
+4. **Regression checks.** Predict whether a code change makes a kernel slower on a set of GPUs the CI machine does not have. This is use case 1 or 2 applied to the old and new version.
+5. **Scoring for kernel search.** Rank many candidate kernels from a search or an AI agent, so only the best few are measured. Needs high throughput, deterministic output and a reason per verdict.
+6. **Hardware choice.** Rank GPUs for a set of kernels. Like use case 3 it compares across profiles, so it needs coarse absolute calibration.
 
-The most direct application of use case 1 is **GPU-free autotuning**: a drop-in replacement for the measurement step of `@triton.autotune` that ranks configs against a chosen GPU profile.
+The most direct application of use case 1 is **GPU-free autotuning**: a drop-in replacement for the measurement step of `@triton.autotune` that ranks configs against a chosen GPU profile. When each use case ships is in the [roadmap](../ROADMAP.md).
 
 ## 5. Input: one neutral IR, Triton first
 

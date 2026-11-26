@@ -1,85 +1,187 @@
 # Roadmap
 
-This is the one plan for VirtualGPU, from where it is now to 1.0.0, the first release we announce widely. Each milestone ends with a test that has to pass before the next one starts. When something here is done, move it into the CHANGELOG and delete it from this file.
+The one plan for VirtualGPU, from now to 1.0.0 and after. 1.0.0 is the first release we announce. When an item ships, move it to the CHANGELOG and delete it here.
 
-## Where we are
+## What VirtualGPU is for
 
-- 0.2.0 ranks Triton GEMM and fused attention configs on a CPU, using only a GPU profile. On fresh sealed holdouts on the RTX 4070 and GB10, the GPU agrees with 87% to 94% of the pairs VirtualGPU orders, against 54% to 76% for the baselines.
-- Both GPUs formally failed the v0.2 criteria, because the shortlist still misses the 1% top-5 regret ceiling on RTX 4070 attention and GB10 GEMM. Details: [docs/results/v0.2.md](docs/results/v0.2.md).
-- Profiles exist for seven GPUs: RTX 4070, GB10, L40S, L4, RTX 3070, RTX PRO 6000 Blackwell and A100 80GB. Only the RTX 4070 and GB10 have been checked against a sealed holdout, and no data center card has been tested that way.
-- Wheels are on GitHub Releases only. Autotuning takes GEMM shapes only.
+VirtualGPU is a performance oracle for GPU kernels. Give it two or more versions of a kernel and a GPU, and it tells you which is faster, by roughly how much, why, and when it can't tell. It runs on a CPU in seconds, from a profile of the GPU, with no access to the card.
 
-## How a milestone is tested
+That one answer powers several tools:
 
-Every milestone that changes the model ends the same way the earlier phases did:
+- Autotuning without the GPU: rank Triton autotune configs and only measure the shortlist.
+- Comparing implementations: split-K against stream-K, Triton against CUTLASS, two attention designs.
+- Performance checks in CI: flag a change that makes a kernel slower on GPUs the CI machine doesn't have.
+- A scorer for kernel search and AI agents: thousands of candidate kernels ranked per minute, deterministic, with a reason for each verdict, so only the best few reach a real GPU.
+- Later: which GPU suits a set of kernels, and which kernels in a whole model are furthest from their best speed.
 
-1. Write the preregistration (cases, cache regimes, baselines, pass criteria) and commit it before any label is captured.
-2. Capture and seal a fresh holdout. Old holdouts that were opened can't be used again.
-3. Freeze the model and the baselines, archive the predictions, then open the labels and score them.
+What it will not do: predict exact run times, compute kernel outputs, or replace a final check on real hardware.
+
+## How it fits together
+
+- Frontends turn a kernel into one Kernel IR: Triton for NVIDIA, AMD and Ascend, and PTX for everything that compiles to it (CUDA, CUTLASS, CuTe, TileLang, ThunderKittens).
+- The Rust core plays the kernel out on a GPU profile and returns ranked verdicts with the resource that bounds each variant.
+- GPU profiles are JSON files of public specs and our own microbenchmark results, one per SKU, measured once by anyone who has the card.
+- Every tool (CLI, Python API, Triton plugin, local server, GitHub Action) reads the same versioned report format.
+
+## Rules for every milestone
+
+A milestone that changes the model ends with a sealed test:
+
+1. Commit the preregistration (cases, cache regimes, baselines, pass criteria) before any label is captured.
+2. Capture and seal a fresh holdout. An opened holdout is never reused.
+3. Freeze the model and baselines with a tag, archive the predictions, then open the labels and score.
 4. Publish the report in `validation/` and the summary in `docs/results/`, pass or fail.
 
-The pass criteria stay the ones from v0.2: rank correlation above both baselines by the set margin, mean top-5 regret at most 1%, in both warm and cold L2, for every kernel family on the device.
+Pass criteria for a kernel family on a GPU, unchanged from v0.2: median Kendall tau-b at least 0.05 above each baseline, mean top-5 regret at most 1% and no more than 0.5 points worse than any baseline, in warm and cold L2. A GPU passes when every family run on it passes.
+
+A milestone starts only when the one before it has published its exit report. Work that needs no hardware (frontends, docs, tooling) can start early.
+
+## GPUs to profile by 1.0.0
+
+Required means the profile ships at 1.0 and has a sealed holdout. Profile only means it ships flagged as not validated.
+
+| Architecture | GPU | Target | Status |
+| --- | --- | --- | --- |
+| Ampere `sm_80` | A100 80GB SXM | Required | Profile, holdout open |
+| Ampere `sm_86` | A10G | Required | To do |
+| Ampere `sm_86` | RTX 3090 | Profile only | To do |
+| Ampere `sm_86` | RTX 3070 | Profile only | Profile |
+| Turing `sm_75` | T4 | Profile only | To do |
+| Ada `sm_89` | RTX 4070 | Required | Validated (dev GPU) |
+| Ada `sm_89` | RTX 4090 | Required | Profile |
+| Ada `sm_89` | L4 | Required | Profile |
+| Ada `sm_89` | L40S | Required | Profile |
+| Hopper `sm_90` | H100 SXM | Required | To do |
+| Hopper `sm_90` | H200 | Required | To do |
+| Hopper `sm_90` | H100 PCIe | Profile only | To do |
+| Hopper `sm_90` | H20 | Profile only | To do |
+| Hopper `sm_90` | GH200 | Profile only | To do |
+| Blackwell `sm_100` | B200 | Required | To do |
+| Blackwell `sm_100` | GB200 | Profile only | To do |
+| Blackwell `sm_103` | B300 | Profile only | To do |
+| Blackwell `sm_120` | RTX 5090 | Required | To do |
+| Blackwell `sm_120` | RTX 5080 | Profile only | To do |
+| Blackwell `sm_120` | RTX PRO 6000 | Required | Profile |
+| Blackwell `sm_120` | RTX PRO 5000 72GB | Profile only | Profile |
+| Blackwell `sm_121` | GB10 | Required | Validated (dev GPU) |
+| AMD CDNA3 | MI300X | Beta, holdout if possible | To do |
+| AMD CDNA3 | MI325X | Beta | To do |
+| AMD CDNA4 | MI355X | Beta | To do |
+| AMD RDNA3 | RX 7900 XTX | Beta | To do |
+| Ascend | 910B3 | Beta, holdout if possible | Profile |
 
 ## 0.3.0: close the known model gaps
 
-Fix what made v0.2 miss on the GPUs we already have.
+Fix what made v0.2 miss on the RTX 4070 and GB10, and fix the profiles we already have.
 
-- Spill reloads cost latency on the critical path, not only bandwidth. Use the measured `spill_reload_latency_by_count` curves.
-- Spill traffic moves from L1 to L2 as a step at the L1 capacity for the chosen shared memory carveout, using `l1_to_l2_spill_threshold_by_carveout`.
-- Get the dynamic count of local loads per iteration, so the two causal attention loops are not summed into one spill figure. Needs a counter based measurement path that stays out of the model inputs.
-- Narrow loads on unaligned shapes: use the 2-byte load width the compiler emits instead of 16-byte loads.
-- Synchronous load GEMM (`num_stages = 1`) is still predicted slow, +9.1% warm. Find the missing mechanism with a microbenchmark, not with GEMM timings.
-- GB10 decode shapes: predictions are too compressed. Find out why.
-- Measure `non_mma_issue_rate_per_sm_gips` and the local memory rates that are still estimated, on every profile.
-- Validate the L40S, L4, RTX 3070 and RTX PRO 6000 profiles: one sealed GEMM holdout each, so every consumer and workstation profile has been checked against hardware.
+- Spill reloads cost latency on the critical path, using `spill_reload_latency_by_count`
+- Spill traffic moves from L1 to L2 as a step at the L1 capacity for the chosen carveout (`l1_to_l2_spill_threshold_by_carveout`)
+- Dynamic count of local loads per iteration, so the two causal attention loops are not summed into one spill figure
+- Narrow register-staged loads on unaligned shapes (H5): redo both forms with launches over 1 ms and captures that pass the dispersion rule, then decide
+- Synchronous load GEMM (`num_stages = 1`, +9.1% warm): find the missing mechanism with a microbenchmark
+- GB10 decode shapes are predicted too compressed: find out why
+- Measure `non_mma_issue_rate_per_sm_gips` and the local memory rates that are still estimated, on every profile
+- Fix the measurement problems in the rtxpro6000, a100-80gb and rtx3070 profiles (issue #8)
+- Sealed v0.3 holdout decides the cross-wave L2 reuse change
 
-Exit: pass the v0.2 criteria on fresh GEMM and attention holdouts on both the RTX 4070 and the GB10.
+Exit: pass on fresh GEMM and attention holdouts on both the RTX 4070 and GB10.
 
-## 0.4.0: data center GPUs
+## 0.4.0: data center NVIDIA (Ampere and Hopper)
 
-Most people who tune kernels for inference target data center cards. The model has to work there before launch.
+Most inference kernels are tuned for data center cards, so the model has to work there first.
 
-- A Hopper `sm_90` (H100) profile, measured with the same suite. The A100 80GB (`sm_80`) profile already exists. This needs an H100 for a few hours.
-- Hopper mechanisms in the frontend, Kernel IR and core: TMA, `wgmma`, warp specialization with producer and consumer warp groups, and persistent kernels.
-- Thread block clusters, if Triton emits them for the kernels we cover.
-- Extend the microbenchmark suite for the new mechanisms, with the same no fitting rule.
+- H100 SXM and H200 profiles, plus A10G, measured with the same suite
+- Hopper mechanisms in the frontend, Kernel IR and core: TMA loads and stores, `wgmma` with its async wait, warp specialization with producer and consumer warp groups, register reallocation (`setmaxnreg`), persistent kernels with an outer tile loop, epilogues that overlap the next tile
+- Thread block clusters and distributed shared memory, for the kernels Triton emits them in
+- New microbenchmarks for each mechanism, under the same no fitting rule
+- Publish wheels to PyPI from the release workflow with build attestations, so testers install with one command (no announcement yet)
 
-Exit: a sealed transfer holdout on one Hopper or Ampere card, scored with a model frozen before its labels were captured, passing the same criteria.
+Exit: sealed holdouts for GEMM and attention on H100 and A100 with a model frozen before their labels exist, passing.
 
-## 0.5.0: make it easy to use
+## 0.5.0: any Triton kernel
 
-Turn the research tool into something people can install and use in a few minutes.
+Move from two kernel families to the kernels that make up an inference engine.
 
-- Publish wheels to PyPI, from the same release workflow, with build provenance attestations.
-- Autotuning for any kernel, not only GEMM shapes: take real call arguments, so attention and other kernels can be tuned from the CLI and `@virtualgpu.autotune`.
-- Warn when an online run targets a profile for a different GPU than the one in the machine.
-- A profile submission flow: an issue form, a CI check that validates the profile and its provenance, and a review checklist. Version the profile format so old profiles keep loading.
-- Docs site at virtualgpu.site built from `docs/`: install, quick start, reading a report, contributing a profile.
-- Runnable examples: a GEMM and an attention kernel tuned for a GPU you don't own, with the commands and the expected output.
-- Stable output: freeze the `AutotuneReport` and CLI formats, and document what counts as a breaking change after 1.0.0.
+- A general Triton frontend: read any `@triton.jit` kernel and its real call arguments, not only GEMM and attention shapes
+- Kernel families, each with its own holdout cases: split-K, stream-K and grouped GEMM; reductions and norms (softmax, LayerNorm, RMSNorm); fused elementwise kernels (SwiGLU, rotary embedding, quantize and dequantize); decode attention with split KV
+- Data dependent kernels with a workload description as input: MoE grouped GEMM with an expert routing histogram, paged attention with a page table
+- Low precision: FP8 GEMM on Ada and Hopper, measured per dtype
+- Autotuning for any kernel from the CLI and `@virtualgpu.autotune`, driven by real call arguments
+- Warn when a run targets a profile for a different GPU than the one in the machine
 
-Exit: someone outside the project installs from PyPI, tunes a kernel for a GPU they don't own, and the result holds on that GPU.
+Exit: every new family passes on H100 and on one Ada GPU.
+
+## 0.6.0: PTX frontend and implementation comparison
+
+Cover kernels that are not written in Triton, and compare unrelated implementations of one operator.
+
+- PTX frontend: recover tiles, loops, pipelining and memory traffic from public PTX, with registers and spills from `ptxas --verbose`. Inputs: a `.ptx` or `.cubin` with embedded PTX, or a CUDA source compiled with `nvcc`
+- First libraries through PTX: CUTLASS and CuTe GEMM, TileLang, ThunderKittens
+- `virtualgpu compare`: rank different implementations of one operator (Triton against CUTLASS, split-K against stream-K), with the bound resource for each
+- Core wheels for macOS and Windows that take PTX or Kernel IR directly, so the oracle runs on any laptop; Triton input stays Linux and WSL2
+- Pass criteria for comparison: pair accuracy on resolved pairs, written into a preregistration before any label
+
+Exit: a sealed holdout of CUTLASS GEMM configs and a sealed comparison holdout (several implementations per operator) on H100, passing.
+
+## 0.7.0: Blackwell
+
+- B200 profile and data center Blackwell mechanisms: `tcgen05` MMA, Tensor Memory, two CTA MMA, cluster launch control
+- Block scaled low precision (FP8, MXFP8, NVFP4) on `sm_100` and `sm_120`
+- RTX 5090 profile
+- Validate the consumer and workstation Blackwell profiles (RTX 5090, RTX PRO 6000) and the Ada profiles (RTX 4090, L4, L40S) with a smaller sealed GEMM and attention holdout each
+
+Exit: full holdouts pass on B200; every profile marked Required in the GPU table that exists so far has passed its holdout.
+
+## 0.8.0: tools people use every day
+
+Turn the oracle into tools that fit how people already work.
+
+- Stable formats: report schema v1, Kernel IR schema v1 and profile format v1, each versioned, with loaders for older versions and a written rule for what counts as breaking after 1.0
+- Stable Python API: `rank`, `compare`, `explain`, documented and typed
+- `virtualgpu serve`: a local batch server with a JSON API for search loops and AI agents, with a cache of compiled kernels and a throughput target written into the docs
+- A GitHub Action that predicts a kernel change on a list of GPU profiles and comments when it gets slower
+- Profile hub: `virtualgpu profile collect` measures a GPU in one command, an issue form and CI check validate a submitted profile and its provenance, and a review checklist covers the rest
+- Public dataset: every sealed holdout so far (kernel, config, shape, GPU, driver, clocks, time) published with a loader, as a benchmark for performance models
+- Docs site at virtualgpu.site built from `docs/`: install, quick start, reading a report, comparing kernels, using it from an agent, contributing a profile
+- Runnable examples: tune a GEMM, an attention and a norm kernel for a GPU you don't own, compare a Triton and a CUTLASS GEMM, gate a PR in CI
+
+Exit: at least five people outside the project install from PyPI, finish each example on a GPU they don't own, and the results hold when checked on that GPU. Their problems are fixed before 0.9.0.
+
+## 0.9.0: AMD and Ascend beta, release candidate
+
+- AMD through Triton's AMD backend and the public CDNA and RDNA ISA docs: MFMA and WMMA, LDS, Infinity Cache, registers and spills from the compiler's public metadata
+- MI300X, MI325X, MI355X and RX 7900 XTX profiles, with a ROCm port of the microbenchmark suite
+- Ascend: a sealed holdout on the 910B3 if hardware time allows
+- AMD and Ascend predictions carry `unvalidated_feature` unless a sealed holdout passed
+- 1.0.0 release candidates through the full release workflow
+- Launch evaluation: one preregistered sealed holdout across every Required GPU and every kernel family, scored with the frozen release candidate. This is the number the launch reports
+
+Exit: the launch evaluation is published, pass or fail per GPU, and every failure is either fixed in a new release candidate with a fresh holdout or listed as a known limit.
 
 ## 1.0.0: launch
 
-Everything here must be true before we tell people about VirtualGPU.
+Everything here must be true before we announce.
 
-- [ ] 0.3.0, 0.4.0 and 0.5.0 exit tests passed, with their reports published
-- [ ] At least 6 bundled profiles across at least 3 architectures, every one validated on a sealed holdout
-- [ ] Install from PyPI and the quick start work on a clean Linux machine and in WSL2
-- [ ] README, docs site and examples match what the release does
-- [ ] Report and CLI formats are frozen and documented
-- [ ] Security policy, issue forms and the profile submission flow are live
+- [ ] 0.3.0 to 0.9.0 exit reports published
+- [ ] Every Required GPU in the table has a profile and a passing sealed holdout; every other profile is marked not validated
+- [ ] Triton any kernel and PTX input both work on the documented kernel families
+- [ ] PyPI install and the quick start work on a clean Linux machine, in WSL2, and (PTX input) on macOS and Windows
+- [ ] Report, Kernel IR and profile formats v1 frozen and documented
+- [ ] `serve`, the GitHub Action and the profile hub are live and documented
+- [ ] Public dataset released
+- [ ] Docs site, README and examples match the release
+- [ ] Security policy, issue forms and the profile review flow are live
 - [ ] CI green on `main`, release workflow tested end to end with a release candidate
-- [ ] Launch post with the results, the limits and how to contribute a profile
+- [ ] Technical report with the method, the launch evaluation and the limits, plus a launch post on how to contribute a profile
 
 ## After 1.0.0
 
-Not needed for launch, in rough order:
+Rough order:
 
-- Mixture of experts kernels, with a workload description of the expert routing as an extra input
-- Paged and sparse attention, with the page table or sparsity pattern as input
-- Whole model view: which kernels in an end to end model are furthest from their achievable speed
-- PTX frontend, so CUDA, CUTLASS, TileLang and other kernels that compile to PTX work without Triton
-- Data center Blackwell (`sm_100`, `tcgen05`, Tensor Memory) once the public docs and a test card allow it
-- AMD CDNA3 and CDNA4 through the public ISA, including register and spill data for AMD targets
+- 1.1: AMD validated: sealed holdouts on MI300X and MI355X, AMD out of beta
+- 1.2: Hardware what-if: rank GPUs for a set of kernels. Needs coarse absolute calibration per kernel family, checked on sealed holdouts across GPUs
+- 1.3: Whole model view: take a `torch.compile` graph or a serving trace, list the kernels furthest from their achievable speed
+- 1.4: Multi GPU kernels: collectives and communication overlap over NVLink and PCIe
+- Profiles from specs only for announced GPUs, reported as trends
+- Effects the core leaves out today: shared memory bank conflicts, instruction scheduling, clock and power limits
+- More vendors through the same Kernel IR, each one beta until a sealed holdout passes
