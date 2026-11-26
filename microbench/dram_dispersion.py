@@ -37,7 +37,11 @@ from repeat_mlp import (
     write_json,
 )  # noqa: E402
 
-CONDITIONS = (("quiet", 0), ("load", 4), ("quiet", 0), ("load", 16), ("quiet", 0))
+CONDITIONS = {
+    "load": (("quiet", 0), ("load", 4), ("quiet", 0), ("load", 16), ("quiet", 0)),
+    # Another process building vgpu_bench in a loop, as other sessions do on the Spark.
+    "build": (("quiet", 0), ("build", 0), ("quiet", 0), ("build", 0), ("quiet", 0)),
+}
 CYCLES = 3
 SAMPLES = 30
 WARMUP = 3
@@ -64,7 +68,16 @@ def host_state():
     }
 
 
-def run_condition(smi, binary, load_binary, threads):
+def start_build(build_cmd):
+    """Build vgpu_bench in a loop in its own process group until stopped."""
+    proc = subprocess.Popen(
+        ["sh", "-c", f"while true; do {build_cmd} >/dev/null 2>&1; done"], start_new_session=True
+    )
+    time.sleep(LOAD_LEAD_SECONDS)
+    return proc
+
+
+def run_condition(smi, binary, load_binary, threads, build_cmd=None):
     trace, done = [], threading.Event()
 
     def sample():
@@ -80,6 +93,7 @@ def run_condition(smi, binary, load_binary, threads):
         if load.stdout.readline().strip() != "ready":
             raise RuntimeError("cpu_stream did not report ready")
         time.sleep(LOAD_LEAD_SECONDS)
+    build = start_build(build_cmd) if build_cmd else None
     started = utc()
     out = command(
         str(binary),
@@ -94,6 +108,10 @@ def run_condition(smi, binary, load_binary, threads):
     )
     finished = utc()
     load_report = None
+    if build:
+        time.sleep(LOAD_LEAD_SECONDS)
+        os.killpg(build.pid, signal.SIGTERM)
+        build.wait(timeout=60)
     if load:
         time.sleep(LOAD_LEAD_SECONDS)
         load.send_signal(signal.SIGTERM)
@@ -166,6 +184,10 @@ def main():
     parser.add_argument("load_binary", type=Path)
     parser.add_argument("output", type=Path)
     parser.add_argument("--warmup-seconds", type=int, default=120)
+    parser.add_argument("--conditions", choices=sorted(CONDITIONS), default="load")
+    parser.add_argument(
+        "--build-cmd", help="Command that builds vgpu_bench, for --conditions build"
+    )
     args = parser.parse_args()
     if args.output.exists():
         raise FileExistsError(args.output)
@@ -180,12 +202,13 @@ def main():
     )
     runs = []
     for cycle in range(CYCLES):
-        for name, threads in CONDITIONS:
+        for name, threads in CONDITIONS[args.conditions]:
+            build_cmd = args.build_cmd if name == "build" else None
             runs.append(
                 {
                     "cycle": cycle,
                     "condition": name,
-                    **run_condition(smi, args.binary, args.load_binary, threads),
+                    **run_condition(smi, args.binary, args.load_binary, threads, build_cmd),
                 }
             )
     write_json(
