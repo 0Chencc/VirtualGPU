@@ -1,0 +1,1102 @@
+{
+ "build": {
+  "commit": "f48763fd7eb88b36ba191c4739c236e18f013290",
+  "dirty": false,
+  "result_class": "formal"
+ },
+ "cohorts": {
+  "gb10-attention": {
+   "cases": {
+    "b1-q20-kv20-s897-d64-full:cold": {
+     "archived": {
+      "best_rank": 8,
+      "tau_b": 0.6014492753623188,
+      "top5_regret_pct": 0.2302717948025501
+     },
+     "changed": {
+      "best_rank": 8,
+      "tau_b": 0.6014492753623188,
+      "top5_regret_pct": 0.2302717948025501
+     },
+     "configs": 24,
+     "configs_changed_over_1pct": 0,
+     "max_abs_prediction_change": 0.0
+    },
+    "b1-q20-kv20-s897-d64-full:warm": {
+     "archived": {
+      "best_rank": 12,
+      "tau_b": 0.3576737620151926,
+      "top5_regret_pct": 2.866100379723524
+     },
+     "changed": {
+      "best_rank": 12,
+      "tau_b": 0.3576737620151926,
+      "top5_regret_pct": 2.866100379723524
+     },
+     "configs": 24,
+     "configs_changed_over_1pct": 0,
+     "max_abs_prediction_change": 0.0
+    },
+    "b1-q28-kv28-s4608-d128-causal:cold": {
+     "archived": {
+      "best_rank": 2,
+      "tau_b": 0.7922077922077922,
+      "top5_regret_pct": 0.0
+     },
+     "changed": {
+      "best_rank": 2,
+      "tau_b": 0.7922077922077922,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 22,
+     "configs_changed_over_1pct": 0,
+     "max_abs_prediction_change": 0.0
+    },
+    "b1-q28-kv28-s4608-d128-causal:warm": {
+     "archived": {
+      "best_rank": 2,
+      "tau_b": 0.7748917748917749,
+      "top5_regret_pct": 0.0
+     },
+     "changed": {
+      "best_rank": 2,
+      "tau_b": 0.7748917748917749,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 22,
+     "configs_changed_over_1pct": 0,
+     "max_abs_prediction_change": 0.0
+    },
+    "b1-q36-kv6-s2816-d128-full:cold": {
+     "archived": {
+      "best_rank": 2,
+      "tau_b": 0.7101449275362319,
+      "top5_regret_pct": 0.0
+     },
+     "changed": {
+      "best_rank": 2,
+      "tau_b": 0.6666666666666666,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 24,
+     "configs_changed_over_1pct": 6,
+     "max_abs_prediction_change": 0.03405808548960043
+    },
+    "b1-q36-kv6-s2816-d128-full:warm": {
+     "archived": {
+      "best_rank": 2,
+      "tau_b": 0.7101449275362319,
+      "top5_regret_pct": 0.0
+     },
+     "changed": {
+      "best_rank": 2,
+      "tau_b": 0.6739130434782609,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 24,
+     "configs_changed_over_1pct": 6,
+     "max_abs_prediction_change": 0.03440939408895449
+    },
+    "b1-q48-kv8-s1857-d64-causal:cold": {
+     "archived": {
+      "best_rank": 4,
+      "tau_b": 0.6666666666666666,
+      "top5_regret_pct": 0.0
+     },
+     "changed": {
+      "best_rank": 4,
+      "tau_b": 0.6666666666666666,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 24,
+     "configs_changed_over_1pct": 0,
+     "max_abs_prediction_change": 0.0
+    },
+    "b1-q48-kv8-s1857-d64-causal:warm": {
+     "archived": {
+      "best_rank": 8,
+      "tau_b": 0.6304347826086957,
+      "top5_regret_pct": 1.0293317982697392
+     },
+     "changed": {
+      "best_rank": 8,
+      "tau_b": 0.6304347826086957,
+      "top5_regret_pct": 1.0293317982697392
+     },
+     "configs": 24,
+     "configs_changed_over_1pct": 0,
+     "max_abs_prediction_change": 0.0
+    },
+    "b2-q12-kv12-s2304-d128-full:cold": {
+     "archived": {
+      "best_rank": 2,
+      "tau_b": 0.7753623188405797,
+      "top5_regret_pct": 0.0
+     },
+     "changed": {
+      "best_rank": 2,
+      "tau_b": 0.7753623188405797,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 24,
+     "configs_changed_over_1pct": 0,
+     "max_abs_prediction_change": 0.004472556591265553
+    },
+    "b2-q12-kv12-s2304-d128-full:warm": {
+     "archived": {
+      "best_rank": 2,
+      "tau_b": 0.7681159420289855,
+      "top5_regret_pct": 0.0
+     },
+     "changed": {
+      "best_rank": 2,
+      "tau_b": 0.7681159420289855,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 24,
+     "configs_changed_over_1pct": 0,
+     "max_abs_prediction_change": 0.005046847805457055
+    },
+    "b2-q20-kv20-s1345-d64-causal:cold": {
+     "archived": {
+      "best_rank": 2,
+      "tau_b": 0.7150646985110184,
+      "top5_regret_pct": 0.0
+     },
+     "changed": {
+      "best_rank": 2,
+      "tau_b": 0.7150646985110184,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 24,
+     "configs_changed_over_1pct": 0,
+     "max_abs_prediction_change": 0.0
+    },
+    "b2-q20-kv20-s1345-d64-causal:warm": {
+     "archived": {
+      "best_rank": 5,
+      "tau_b": 0.717391304347826,
+      "top5_regret_pct": 0.0
+     },
+     "changed": {
+      "best_rank": 5,
+      "tau_b": 0.717391304347826,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 24,
+     "configs_changed_over_1pct": 0,
+     "max_abs_prediction_change": 0.0
+    },
+    "b2-q28-kv7-s1409-d64-full:cold": {
+     "archived": {
+      "best_rank": 4,
+      "tau_b": 0.6956521739130435,
+      "top5_regret_pct": 0.0
+     },
+     "changed": {
+      "best_rank": 4,
+      "tau_b": 0.6956521739130435,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 24,
+     "configs_changed_over_1pct": 0,
+     "max_abs_prediction_change": 0.0
+    },
+    "b2-q28-kv7-s1409-d64-full:warm": {
+     "archived": {
+      "best_rank": 5,
+      "tau_b": 0.6159420289855072,
+      "top5_regret_pct": 0.0
+     },
+     "changed": {
+      "best_rank": 5,
+      "tau_b": 0.6159420289855072,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 24,
+     "configs_changed_over_1pct": 0,
+     "max_abs_prediction_change": 0.0
+    },
+    "b2-q32-kv8-s2433-d128-causal:cold": {
+     "archived": {
+      "best_rank": 11,
+      "tau_b": 0.6190476190476191,
+      "top5_regret_pct": 2.4235200073713603
+     },
+     "changed": {
+      "best_rank": 11,
+      "tau_b": 0.6190476190476191,
+      "top5_regret_pct": 2.4235200073713603
+     },
+     "configs": 22,
+     "configs_changed_over_1pct": 0,
+     "max_abs_prediction_change": 0.0
+    },
+    "b2-q32-kv8-s2433-d128-causal:warm": {
+     "archived": {
+      "best_rank": 11,
+      "tau_b": 0.6103896103896104,
+      "top5_regret_pct": 2.666968811409176
+     },
+     "changed": {
+      "best_rank": 11,
+      "tau_b": 0.6103896103896104,
+      "top5_regret_pct": 2.666968811409176
+     },
+     "configs": 22,
+     "configs_changed_over_1pct": 0,
+     "max_abs_prediction_change": 0.0
+    }
+   },
+   "summary": {
+    "cold": {
+     "archived_mean_top5_regret_pct": 0.3317239752717388,
+     "archived_median_tau_b": 0.7028985507246377,
+     "changed_mean_top5_regret_pct": 0.3317239752717388,
+     "changed_median_tau_b": 0.681159420289855
+    },
+    "warm": {
+     "archived_mean_top5_regret_pct": 0.8203001236753049,
+     "archived_median_tau_b": 0.6702898550724639,
+     "changed_mean_top5_regret_pct": 0.8203001236753049,
+     "changed_median_tau_b": 0.6521739130434783
+    }
+   }
+  },
+  "gb10-gemm": {
+   "cases": {
+    "v02-gb10-decode-40:cold": {
+     "archived": {
+      "best_rank": 6,
+      "tau_b": 0.8158730158730159,
+      "top5_regret_pct": 0.01784625446239474
+     },
+     "changed": {
+      "best_rank": 6,
+      "tau_b": 0.834920634920635,
+      "top5_regret_pct": 0.01784625446239474
+     },
+     "configs": 36,
+     "configs_changed_over_1pct": 15,
+     "max_abs_prediction_change": 0.12387133327623956
+    },
+    "v02-gb10-decode-40:warm": {
+     "archived": {
+      "best_rank": 6,
+      "tau_b": 0.819047619047619,
+      "top5_regret_pct": 0.08657235729203627
+     },
+     "changed": {
+      "best_rank": 6,
+      "tau_b": 0.8380952380952381,
+      "top5_regret_pct": 0.08657235729203627
+     },
+     "configs": 36,
+     "configs_changed_over_1pct": 15,
+     "max_abs_prediction_change": 0.12387133327623956
+    },
+    "v02-gb10-decode-4:cold": {
+     "archived": {
+      "best_rank": 8,
+      "tau_b": 0.6210222576160914,
+      "top5_regret_pct": 0.9456758296826573
+     },
+     "changed": {
+      "best_rank": 8,
+      "tau_b": 0.6210222576160914,
+      "top5_regret_pct": 0.9456758296826573
+     },
+     "configs": 36,
+     "configs_changed_over_1pct": 0,
+     "max_abs_prediction_change": 0.0022342594386441927
+    },
+    "v02-gb10-decode-4:warm": {
+     "archived": {
+      "best_rank": 8,
+      "tau_b": 0.6039888572503135,
+      "top5_regret_pct": 0.9240801302845325
+     },
+     "changed": {
+      "best_rank": 8,
+      "tau_b": 0.6039888572503135,
+      "top5_regret_pct": 0.9240801302845325
+     },
+     "configs": 36,
+     "configs_changed_over_1pct": 0,
+     "max_abs_prediction_change": 0.0022283757309293772
+    },
+    "v02-gb10-mask-mnk-1153:cold": {
+     "archived": {
+      "best_rank": 13,
+      "tau_b": 0.5884898863364997,
+      "top5_regret_pct": 4.032554299849256
+     },
+     "changed": {
+      "best_rank": 1,
+      "tau_b": 0.5590653920196748,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 36,
+     "configs_changed_over_1pct": 27,
+     "max_abs_prediction_change": 1.4553476770083975
+    },
+    "v02-gb10-mask-mnk-1153:warm": {
+     "archived": {
+      "best_rank": 15,
+      "tau_b": 0.5884898863364997,
+      "top5_regret_pct": 3.5669433476442247
+     },
+     "changed": {
+      "best_rank": 3,
+      "tau_b": 0.5590653920196748,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 36,
+     "configs_changed_over_1pct": 27,
+     "max_abs_prediction_change": 1.4553476770083975
+    },
+    "v02-gb10-mask-mnk-641:cold": {
+     "archived": {
+      "best_rank": 3,
+      "tau_b": 0.8500409469304996,
+      "top5_regret_pct": 0.0
+     },
+     "changed": {
+      "best_rank": 3,
+      "tau_b": 0.6506082632275747,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 36,
+     "configs_changed_over_1pct": 33,
+     "max_abs_prediction_change": 0.6652853502870821
+    },
+    "v02-gb10-mask-mnk-641:warm": {
+     "archived": {
+      "best_rank": 2,
+      "tau_b": 0.8108082878413996,
+      "top5_regret_pct": 0.0
+     },
+     "changed": {
+      "best_rank": 2,
+      "tau_b": 0.7192654166334996,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 36,
+     "configs_changed_over_1pct": 33,
+     "max_abs_prediction_change": 0.6268818744131559
+    },
+    "v02-gb10-prefill-1792:cold": {
+     "archived": {
+      "best_rank": 3,
+      "tau_b": 0.6888888888888889,
+      "top5_regret_pct": 0.0
+     },
+     "changed": {
+      "best_rank": 3,
+      "tau_b": 0.780952380952381,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 36,
+     "configs_changed_over_1pct": 34,
+     "max_abs_prediction_change": 1.2215030871702943
+    },
+    "v02-gb10-prefill-1792:warm": {
+     "archived": {
+      "best_rank": 3,
+      "tau_b": 0.6825396825396826,
+      "top5_regret_pct": 0.0
+     },
+     "changed": {
+      "best_rank": 3,
+      "tau_b": 0.780952380952381,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 36,
+     "configs_changed_over_1pct": 34,
+     "max_abs_prediction_change": 1.2215030871702943
+    },
+    "v02-gb10-prefill-896:cold": {
+     "archived": {
+      "best_rank": 6,
+      "tau_b": 0.7047619047619048,
+      "top5_regret_pct": 1.8880036908539344
+     },
+     "changed": {
+      "best_rank": 1,
+      "tau_b": 0.7799843604158032,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 36,
+     "configs_changed_over_1pct": 36,
+     "max_abs_prediction_change": 1.4336594729918817
+    },
+    "v02-gb10-prefill-896:warm": {
+     "archived": {
+      "best_rank": 6,
+      "tau_b": 0.6984126984126984,
+      "top5_regret_pct": 5.272913049495953
+     },
+     "changed": {
+      "best_rank": 1,
+      "tau_b": 0.7672758575984377,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 36,
+     "configs_changed_over_1pct": 36,
+     "max_abs_prediction_change": 1.419904757250726
+    },
+    "v02-gb10-resident-wave-above:cold": {
+     "archived": {
+      "best_rank": 1,
+      "tau_b": 0.8220336797189709,
+      "top5_regret_pct": 0.0
+     },
+     "changed": {
+      "best_rank": 1,
+      "tau_b": 0.8284184073284386,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 36,
+     "configs_changed_over_1pct": 13,
+     "max_abs_prediction_change": 0.39205660457782265
+    },
+    "v02-gb10-resident-wave-above:warm": {
+     "archived": {
+      "best_rank": 3,
+      "tau_b": 0.8239046440230393,
+      "top5_regret_pct": 0.0
+     },
+     "changed": {
+      "best_rank": 3,
+      "tau_b": 0.8302791480386915,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 36,
+     "configs_changed_over_1pct": 13,
+     "max_abs_prediction_change": 0.39092409330245226
+    },
+    "v02-gb10-resident-wave-below:cold": {
+     "archived": {
+      "best_rank": 21,
+      "tau_b": 0.37951832165730137,
+      "top5_regret_pct": 5.574540691323726
+     },
+     "changed": {
+      "best_rank": 21,
+      "tau_b": 0.3987344392095698,
+      "top5_regret_pct": 5.574540691323726
+     },
+     "configs": 36,
+     "configs_changed_over_1pct": 9,
+     "max_abs_prediction_change": 0.40199569893723575
+    },
+    "v02-gb10-resident-wave-below:warm": {
+     "archived": {
+      "best_rank": 23,
+      "tau_b": 0.3846798384704311,
+      "top5_regret_pct": 4.555528532446829
+     },
+     "changed": {
+      "best_rank": 23,
+      "tau_b": 0.3961706835282384,
+      "top5_regret_pct": 4.555528532446829
+     },
+     "configs": 36,
+     "configs_changed_over_1pct": 9,
+     "max_abs_prediction_change": 0.40005943150763223
+    },
+    "v02-gb10-resident-wave-exact:cold": {
+     "archived": {
+      "best_rank": 19,
+      "tau_b": 0.3090552614392999,
+      "top5_regret_pct": 5.522201122339787
+     },
+     "changed": {
+      "best_rank": 19,
+      "tau_b": 0.32052311031802494,
+      "top5_regret_pct": 5.522201122339787
+     },
+     "configs": 36,
+     "configs_changed_over_1pct": 9,
+     "max_abs_prediction_change": 0.40975070234974553
+    },
+    "v02-gb10-resident-wave-exact:warm": {
+     "archived": {
+      "best_rank": 20,
+      "tau_b": 0.3089187640449275,
+      "top5_regret_pct": 4.666017909857856
+     },
+     "changed": {
+      "best_rank": 20,
+      "tau_b": 0.3235085435931759,
+      "top5_regret_pct": 4.666017909857856
+     },
+     "configs": 36,
+     "configs_changed_over_1pct": 9,
+     "max_abs_prediction_change": 0.408576441481286
+    }
+   },
+   "summary": {
+    "cold": {
+     "archived_mean_top5_regret_pct": 1.9978690987235284,
+     "archived_median_tau_b": 0.6888888888888889,
+     "changed_mean_top5_regret_pct": 1.3400293219787294,
+     "changed_median_tau_b": 0.6506082632275747
+    },
+    "warm": {
+     "archived_mean_top5_regret_pct": 2.119117258557937,
+     "archived_median_tau_b": 0.6825396825396826,
+     "changed_mean_top5_regret_pct": 1.1369109922090281,
+     "changed_median_tau_b": 0.7192654166334996
+    }
+   }
+  },
+  "rtx4070-attention": {
+   "cases": {
+    "b1-q12-kv12-s641-d64-full:cold": {
+     "archived": {
+      "best_rank": 1,
+      "tau_b": 0.7391353531215468,
+      "top5_regret_pct": 0.0
+     },
+     "changed": {
+      "best_rank": 1,
+      "tau_b": 0.7391353531215468,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 24,
+     "configs_changed_over_1pct": 0,
+     "max_abs_prediction_change": 0.0
+    },
+    "b1-q12-kv12-s641-d64-full:warm": {
+     "archived": {
+      "best_rank": 1,
+      "tau_b": 0.7214338956576267,
+      "top5_regret_pct": 0.0
+     },
+     "changed": {
+      "best_rank": 1,
+      "tau_b": 0.7214338956576267,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 24,
+     "configs_changed_over_1pct": 0,
+     "max_abs_prediction_change": 0.0
+    },
+    "b1-q24-kv24-s4096-d128-causal:cold": {
+     "archived": {
+      "best_rank": 6,
+      "tau_b": 0.6796536796536796,
+      "top5_regret_pct": 2.3777712242108118
+     },
+     "changed": {
+      "best_rank": 6,
+      "tau_b": 0.6796536796536796,
+      "top5_regret_pct": 2.3777712242108118
+     },
+     "configs": 22,
+     "configs_changed_over_1pct": 0,
+     "max_abs_prediction_change": 0.0
+    },
+    "b1-q24-kv24-s4096-d128-causal:warm": {
+     "archived": {
+      "best_rank": 6,
+      "tau_b": 0.68546799014873,
+      "top5_regret_pct": 1.6985143514322676
+     },
+     "changed": {
+      "best_rank": 6,
+      "tau_b": 0.68546799014873,
+      "top5_regret_pct": 1.6985143514322676
+     },
+     "configs": 22,
+     "configs_changed_over_1pct": 0,
+     "max_abs_prediction_change": 0.0
+    },
+    "b1-q32-kv4-s3072-d128-full:cold": {
+     "archived": {
+      "best_rank": 7,
+      "tau_b": 0.7223242385974247,
+      "top5_regret_pct": 5.069787068914433
+     },
+     "changed": {
+      "best_rank": 7,
+      "tau_b": 0.7223242385974247,
+      "top5_regret_pct": 5.069787068914433
+     },
+     "configs": 24,
+     "configs_changed_over_1pct": 0,
+     "max_abs_prediction_change": 0.008580472279054785
+    },
+    "b1-q32-kv4-s3072-d128-full:warm": {
+     "archived": {
+      "best_rank": 7,
+      "tau_b": 0.7586219390294561,
+      "top5_regret_pct": 4.753122475551241
+     },
+     "changed": {
+      "best_rank": 7,
+      "tau_b": 0.7586219390294561,
+      "top5_regret_pct": 4.753122475551241
+     },
+     "configs": 24,
+     "configs_changed_over_1pct": 0,
+     "max_abs_prediction_change": 0.0
+    },
+    "b1-q40-kv5-s2177-d128-causal:cold": {
+     "archived": {
+      "best_rank": 3,
+      "tau_b": 0.5411255411255411,
+      "top5_regret_pct": 0.0
+     },
+     "changed": {
+      "best_rank": 3,
+      "tau_b": 0.5411255411255411,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 22,
+     "configs_changed_over_1pct": 0,
+     "max_abs_prediction_change": 0.0
+    },
+    "b1-q40-kv5-s2177-d128-causal:warm": {
+     "archived": {
+      "best_rank": 3,
+      "tau_b": 0.5497835497835498,
+      "top5_regret_pct": 0.0
+     },
+     "changed": {
+      "best_rank": 3,
+      "tau_b": 0.5497835497835498,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 22,
+     "configs_changed_over_1pct": 0,
+     "max_abs_prediction_change": 0.0
+    },
+    "b2-q16-kv16-s1153-d64-causal:cold": {
+     "archived": {
+      "best_rank": 3,
+      "tau_b": 0.7395374532379897,
+      "top5_regret_pct": 0.0
+     },
+     "changed": {
+      "best_rank": 3,
+      "tau_b": 0.7395374532379897,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 24,
+     "configs_changed_over_1pct": 0,
+     "max_abs_prediction_change": 0.0
+    },
+    "b2-q16-kv16-s1153-d64-causal:warm": {
+     "archived": {
+      "best_rank": 1,
+      "tau_b": 0.7445453821540743,
+      "top5_regret_pct": 0.0
+     },
+     "changed": {
+      "best_rank": 1,
+      "tau_b": 0.7445453821540743,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 24,
+     "configs_changed_over_1pct": 0,
+     "max_abs_prediction_change": 0.0
+    },
+    "b2-q24-kv6-s1283-d64-full:cold": {
+     "archived": {
+      "best_rank": 11,
+      "tau_b": 0.463768115942029,
+      "top5_regret_pct": 0.2762452037971652
+     },
+     "changed": {
+      "best_rank": 11,
+      "tau_b": 0.463768115942029,
+      "top5_regret_pct": 0.2762452037971652
+     },
+     "configs": 24,
+     "configs_changed_over_1pct": 0,
+     "max_abs_prediction_change": 0.0
+    },
+    "b2-q24-kv6-s1283-d64-full:warm": {
+     "archived": {
+      "best_rank": 9,
+      "tau_b": 0.4782608695652174,
+      "top5_regret_pct": 0.4172493504462249
+     },
+     "changed": {
+      "best_rank": 9,
+      "tau_b": 0.4782608695652174,
+      "top5_regret_pct": 0.4172493504462249
+     },
+     "configs": 24,
+     "configs_changed_over_1pct": 0,
+     "max_abs_prediction_change": 0.0
+    },
+    "b2-q32-kv8-s1667-d64-causal:cold": {
+     "archived": {
+      "best_rank": 3,
+      "tau_b": 0.7078051584246121,
+      "top5_regret_pct": 0.0
+     },
+     "changed": {
+      "best_rank": 3,
+      "tau_b": 0.7078051584246121,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 24,
+     "configs_changed_over_1pct": 0,
+     "max_abs_prediction_change": 0.0
+    },
+    "b2-q32-kv8-s1667-d64-causal:warm": {
+     "archived": {
+      "best_rank": 3,
+      "tau_b": 0.7028985507246377,
+      "top5_regret_pct": 0.0
+     },
+     "changed": {
+      "best_rank": 3,
+      "tau_b": 0.7028985507246377,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 24,
+     "configs_changed_over_1pct": 0,
+     "max_abs_prediction_change": 0.0
+    },
+    "b3-q16-kv16-s2560-d128-full:cold": {
+     "archived": {
+      "best_rank": 7,
+      "tau_b": 0.7150646985110184,
+      "top5_regret_pct": 3.7390618684908894
+     },
+     "changed": {
+      "best_rank": 7,
+      "tau_b": 0.7150646985110184,
+      "top5_regret_pct": 3.7390618684908894
+     },
+     "configs": 24,
+     "configs_changed_over_1pct": 0,
+     "max_abs_prediction_change": 0.005658226522401444
+    },
+    "b3-q16-kv16-s2560-d128-full:warm": {
+     "archived": {
+      "best_rank": 7,
+      "tau_b": 0.717391304347826,
+      "top5_regret_pct": 3.558647353048916
+     },
+     "changed": {
+      "best_rank": 7,
+      "tau_b": 0.717391304347826,
+      "top5_regret_pct": 3.558647353048916
+     },
+     "configs": 24,
+     "configs_changed_over_1pct": 0,
+     "max_abs_prediction_change": 0.005660835582643298
+    }
+   },
+   "summary": {
+    "cold": {
+     "archived_mean_top5_regret_pct": 1.4328581706766625,
+     "archived_median_tau_b": 0.7114349284678152,
+     "changed_mean_top5_regret_pct": 1.4328581706766625,
+     "changed_median_tau_b": 0.7114349284678152
+    },
+    "warm": {
+     "archived_mean_top5_regret_pct": 1.3034416913098312,
+     "archived_median_tau_b": 0.7101449275362319,
+     "changed_mean_top5_regret_pct": 1.3034416913098312,
+     "changed_median_tau_b": 0.7101449275362319
+    }
+   }
+  },
+  "rtx4070-gemm": {
+   "cases": {
+    "v02-rtx4070-decode-24:cold": {
+     "archived": {
+      "best_rank": 10,
+      "tau_b": 0.6313247304935244,
+      "top5_regret_pct": 0.7575704960361973
+     },
+     "changed": {
+      "best_rank": 10,
+      "tau_b": 0.6280620703876147,
+      "top5_regret_pct": 0.7575704960361973
+     },
+     "configs": 36,
+     "configs_changed_over_1pct": 1,
+     "max_abs_prediction_change": 0.016521267222929348
+    },
+    "v02-rtx4070-decode-24:warm": {
+     "archived": {
+      "best_rank": 10,
+      "tau_b": 0.6,
+      "top5_regret_pct": 0.9416212784846945
+     },
+     "changed": {
+      "best_rank": 10,
+      "tau_b": 0.5967479674796748,
+      "top5_regret_pct": 0.9416212784846945
+     },
+     "configs": 36,
+     "configs_changed_over_1pct": 1,
+     "max_abs_prediction_change": 0.0159538900882652
+    },
+    "v02-rtx4070-decode-2:cold": {
+     "archived": {
+      "best_rank": 1,
+      "tau_b": 0.8582755508658252,
+      "top5_regret_pct": 0.0
+     },
+     "changed": {
+      "best_rank": 1,
+      "tau_b": 0.8582755508658252,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 36,
+     "configs_changed_over_1pct": 0,
+     "max_abs_prediction_change": 0.0
+    },
+    "v02-rtx4070-decode-2:warm": {
+     "archived": {
+      "best_rank": 1,
+      "tau_b": 0.891019027901732,
+      "top5_regret_pct": 0.0
+     },
+     "changed": {
+      "best_rank": 1,
+      "tau_b": 0.891019027901732,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 36,
+     "configs_changed_over_1pct": 0,
+     "max_abs_prediction_change": 0.0
+    },
+    "v02-rtx4070-mask-mnk-385:cold": {
+     "archived": {
+      "best_rank": 7,
+      "tau_b": 0.8093945495276775,
+      "top5_regret_pct": 0.1647411070416327
+     },
+     "changed": {
+      "best_rank": 7,
+      "tau_b": 0.8093945495276775,
+      "top5_regret_pct": 0.1647411070416327
+     },
+     "configs": 36,
+     "configs_changed_over_1pct": 0,
+     "max_abs_prediction_change": 0.003329709411476145
+    },
+    "v02-rtx4070-mask-mnk-385:warm": {
+     "archived": {
+      "best_rank": 5,
+      "tau_b": 0.872643477671945,
+      "top5_regret_pct": 0.0
+     },
+     "changed": {
+      "best_rank": 5,
+      "tau_b": 0.872643477671945,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 36,
+     "configs_changed_over_1pct": 0,
+     "max_abs_prediction_change": 0.0
+    },
+    "v02-rtx4070-mask-mnk-769:cold": {
+     "archived": {
+      "best_rank": 1,
+      "tau_b": 0.6385450795111055,
+      "top5_regret_pct": 0.0
+     },
+     "changed": {
+      "best_rank": 1,
+      "tau_b": 0.5697786863329865,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 36,
+     "configs_changed_over_1pct": 21,
+     "max_abs_prediction_change": 0.5192036506732975
+    },
+    "v02-rtx4070-mask-mnk-769:warm": {
+     "archived": {
+      "best_rank": 1,
+      "tau_b": 0.6571470397424247,
+      "top5_regret_pct": 0.0
+     },
+     "changed": {
+      "best_rank": 1,
+      "tau_b": 0.5754123333067998,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 36,
+     "configs_changed_over_1pct": 21,
+     "max_abs_prediction_change": 0.5102825195615823
+    },
+    "v02-rtx4070-prefill-1536:cold": {
+     "archived": {
+      "best_rank": 13,
+      "tau_b": 0.5619047619047619,
+      "top5_regret_pct": 5.661378690631302
+     },
+     "changed": {
+      "best_rank": 9,
+      "tau_b": 0.6984126984126984,
+      "top5_regret_pct": 4.57671435496072
+     },
+     "configs": 36,
+     "configs_changed_over_1pct": 17,
+     "max_abs_prediction_change": 0.4967316201356693
+    },
+    "v02-rtx4070-prefill-1536:warm": {
+     "archived": {
+      "best_rank": 13,
+      "tau_b": 0.6158730158730159,
+      "top5_regret_pct": 5.286697840783572
+     },
+     "changed": {
+      "best_rank": 9,
+      "tau_b": 0.7714285714285715,
+      "top5_regret_pct": 3.577070541592442
+     },
+     "configs": 36,
+     "configs_changed_over_1pct": 17,
+     "max_abs_prediction_change": 0.48932817276762797
+    },
+    "v02-rtx4070-prefill-768:cold": {
+     "archived": {
+      "best_rank": 3,
+      "tau_b": 0.6931637519872814,
+      "top5_regret_pct": 0.0
+     },
+     "changed": {
+      "best_rank": 3,
+      "tau_b": 0.6963434022257552,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 36,
+     "configs_changed_over_1pct": 5,
+     "max_abs_prediction_change": 0.15282554695990114
+    },
+    "v02-rtx4070-prefill-768:warm": {
+     "archived": {
+      "best_rank": 3,
+      "tau_b": 0.6772655007949125,
+      "top5_regret_pct": 0.0
+     },
+     "changed": {
+      "best_rank": 3,
+      "tau_b": 0.6740858505564388,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 36,
+     "configs_changed_over_1pct": 4,
+     "max_abs_prediction_change": 0.14316279743557714
+    },
+    "v02-rtx4070-resident-wave-above:cold": {
+     "archived": {
+      "best_rank": 2,
+      "tau_b": 0.5396825396825397,
+      "top5_regret_pct": 0.0
+     },
+     "changed": {
+      "best_rank": 2,
+      "tau_b": 0.5714285714285714,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 36,
+     "configs_changed_over_1pct": 8,
+     "max_abs_prediction_change": 0.556338479459966
+    },
+    "v02-rtx4070-resident-wave-above:warm": {
+     "archived": {
+      "best_rank": 1,
+      "tau_b": 0.7482131033723897,
+      "top5_regret_pct": 0.0
+     },
+     "changed": {
+      "best_rank": 1,
+      "tau_b": 0.8022242403461927,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 36,
+     "configs_changed_over_1pct": 8,
+     "max_abs_prediction_change": 0.5477072193777093
+    },
+    "v02-rtx4070-resident-wave-below:cold": {
+     "archived": {
+      "best_rank": 13,
+      "tau_b": 0.787404067909605,
+      "top5_regret_pct": 0.0
+     },
+     "changed": {
+      "best_rank": 13,
+      "tau_b": 0.8166273116670749,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 36,
+     "configs_changed_over_1pct": 8,
+     "max_abs_prediction_change": 0.5455394130208262
+    },
+    "v02-rtx4070-resident-wave-below:warm": {
+     "archived": {
+      "best_rank": 8,
+      "tau_b": 0.7871216561245136,
+      "top5_regret_pct": 0.3759427289109274
+     },
+     "changed": {
+      "best_rank": 8,
+      "tau_b": 0.8134688245303551,
+      "top5_regret_pct": 0.3759427289109274
+     },
+     "configs": 36,
+     "configs_changed_over_1pct": 8,
+     "max_abs_prediction_change": 0.5367630587346608
+    },
+    "v02-rtx4070-resident-wave-exact:cold": {
+     "archived": {
+      "best_rank": 3,
+      "tau_b": 0.8171215404955865,
+      "top5_regret_pct": 0.0
+     },
+     "changed": {
+      "best_rank": 3,
+      "tau_b": 0.8366543263241663,
+      "top5_regret_pct": 0.0
+     },
+     "configs": 36,
+     "configs_changed_over_1pct": 8,
+     "max_abs_prediction_change": 0.550870513023046
+    },
+    "v02-rtx4070-resident-wave-exact:warm": {
+     "archived": {
+      "best_rank": 8,
+      "tau_b": 0.7982801164327421,
+      "top5_regret_pct": 0.7462634700236004
+     },
+     "changed": {
+      "best_rank": 8,
+      "tau_b": 0.8216118943660581,
+      "top5_regret_pct": 0.7462634700236004
+     },
+     "configs": 36,
+     "configs_changed_over_1pct": 8,
+     "max_abs_prediction_change": 0.5430428452042313
+    }
+   },
+   "summary": {
+    "cold": {
+     "archived_mean_top5_regret_pct": 0.7315211437454592,
+     "archived_median_tau_b": 0.6931637519872814,
+     "changed_mean_top5_regret_pct": 0.6110028842265056,
+     "changed_median_tau_b": 0.6984126984126984
+    },
+    "warm": {
+     "archived_mean_top5_regret_pct": 0.816725035355866,
+     "archived_median_tau_b": 0.7482131033723897,
+     "changed_mean_top5_regret_pct": 0.6267664465568515,
+     "changed_median_tau_b": 0.8022242403461927
+    }
+   }
+  }
+ },
+ "post_hoc": true
+}
