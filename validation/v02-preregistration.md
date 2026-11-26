@@ -170,3 +170,54 @@ criterion. Each device passes only when both kernel families meet all
 three criteria in both cache regimes. Report the RTX 4070 and GB10
 decisions independently. A secondary diagnostic never changes a
 decision.
+
+## v0.2 final freeze record
+
+The annotated tag object `ea2ced7e13023f528b859e7ad8860f9373d773e8` resolves to
+`e70824b9c3ea5d6818a5bef306ee21c9e5d2d74a`. That commit identifies the
+core, Python frontend, and scoring implementation. The build is clean
+and formal. The SHA-256 of `validation/v02_score.py` is
+`05d4cb57861703636f78d926cb9ef988768263b8203e59ce585d78c35b657be9`.
+
+| Artifact | Recorded UTC | SHA-256 |
+| --- | --- | --- |
+| [Frozen NeuSight-style fit bundle](v02-frozen-fit.json) | 2026-11-26T02:15:06.877007+00:00 | `9bbd965c362aed8f55dbb01224e76aef5073074ef726753a4ad9b045e860bcd4` |
+| Prediction archive | 2026-11-26T03:08:34.217587+00:00 | `74caeeeb72380b0961b26db2f9ec63ebf1974b1153266b0c84bd2ff404f06d93` |
+| Frozen AOT index | 2026-11-26T03:08:34.217587+00:00 | `8d752498cb7a015428a960dd1a07a10e003cc84a3891bf135776287c5512e0fd` |
+
+The [machine-readable amendment](v02-freeze-amendment.json) binds the
+binary, profiles, manifests, seals, and per-method status counts to this
+archive. All 1,104 regenerated AOT artifacts matched the capture
+artifacts. Each attention cohort contains 40 unsupported candidates
+per method and cache state. The archive retains all 6,624 prediction
+rows and their statuses. The prediction and regenerated IR files are archived in
+`results/v02-formal/`. The raw historical input hash indexes, feature
+vectors, and deterministic row order are archived in
+`results/v02-freeze/*-training-inputs.json`. The local fit driver is
+`results/v02-freeze/fit_historical.py` (SHA-256 `5e59841dc99116f0109e233cf2c67f3d53e8204ffc14ffb961b33a6b9153f65e`).
+Training rows retain their original split and device. Both fits use
+ridge penalty 1 and one median per eligible case, configuration, and
+cache regime. The published fit bundle records the normalization,
+coefficients, intercepts, and feature and training-input hashes.
+
+| Family | Source | Training rows |
+| --- | --- | ---: |
+| gemm | gb10-phase2-primary | 510 |
+| gemm | gb10-phase2-secondary | 648 |
+| gemm | rtx4070-m2-development | 510 |
+| gemm | rtx4070-phase1-workload | 648 |
+| attention | rtx4070-attention-development | 376 |
+
+Triton 3.9.0 uses artifact hash version 2, FP fusion on,
+assembler optimizations on, and no extra PTX options. The frontend
+runs the assembler with `-lineinfo -v --regAllocOptLevel=2` and the
+target-specific GPU name.
+
+| Device | Profile revision | Requested target | PTX target | Assembler |
+| --- | --- | --- | --- | --- |
+| rtx4070 | `0.21.0-posthoc` | `sm_89` | `sm_89` | `ptxas` 12.9 (V12.9.86) |
+| gb10 | `0.21.0-posthoc` | `sm_121` | `sm_121a` | `ptxas-blackwell` 13.4 (V13.4.59) |
+
+The four v0.2 label cohorts remained sealed during fitting and
+prediction. Label release requires publication of this amendment
+and approval under the preregistered procedure.
