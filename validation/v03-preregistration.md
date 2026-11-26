@@ -13,30 +13,38 @@ v0.3 holdout labels. Earlier release decisions remain frozen.
 | DGX Spark GB10 | Separate fresh workload holdout | Separate fresh workload holdout |
 
 Report four cohorts and two independent device decisions. Both families
-and both cache regimes must pass for a device to pass. GB10 tests
-cross-device prediction on fresh workloads using its calibration
-profile. Both devices were used in earlier releases, so this test
-measures transfer on unseen workloads for these devices.
+and both cache regimes must pass for a device to pass. The evaluation
+measures generalization to new workloads on two previously studied
+devices. VirtualGPU uses each target's calibration profile. The
+learned comparator can use historical labels from both devices.
 
-Select shapes from a versioned inventory of every previously opened
-development, diagnostic and holdout workload, including the released
-v0.2 cohorts. Reject previously opened exact workload tuples on either
-device. Use different tuples on the two devices and record the
+Publish a versioned inventory of previously opened development,
+diagnostic and holdout workloads through the v0.3 manifest approval.
+Use disjoint workload tuples on the two devices and publish the
 novelty audit. Determine eligibility and case mix from the workload
 specification, compiler resource reports and profile metadata before
 any timing or ranking preview.
 
-- **GEMM.** Cover decode-like and aligned prefill-like workloads,
+- **GEMM.** For each new tuple, require that M, N, and K are each
+  absent from the corresponding historical axis across both GPUs.
+  The inventory must include RTX 4070 M2 development, Phase 1 workload
+  holdout, GB10 Phase 2 primary, secondary and TMA diagnostic, and both
+  v0.2 GEMM holdouts. Include other opened GEMM datasets from the
+  inventory. Cover decode-like and aligned prefill-like workloads,
   shapes with non-aligned M, N and K, and an adjacent triplet below,
-  at and above a resident-wave boundary per device. Favor novel
-  dimensions as well as new tuples. Declare the reference configuration
-  and verify its occupancy and CTA counts offline from compiled
-  resources. Use the reviewed 36-config space as the starting point.
-- **Attention.** Cover forward prefill with equal query and KV lengths,
-  causal and non-causal, MHA and GQA, head dimensions 64 and 128,
-  aligned lengths, and distinct odd sequence tails. Include both short
-  and longer sequence regimes on both GPUs. Use the existing
-  versioned Triton configuration space as the starting point.
+  at and above a resident-wave boundary per device. Declare the
+  reference configuration and verify its occupancy and CTA counts
+  offline from compiled resources. Use the reviewed 36-config space
+  as the starting point.
+- **Attention.** Require every new `seq_len` on either GPU to be
+  absent from the entire opened attention inventory, including Phase 4
+  development, the Phase 4/v0.2 RTX 4070 holdout and the v0.2 GB10
+  holdout. Use disjoint `seq_len` sets across the two device cohorts.
+  Cover forward prefill with equal query and KV lengths, causal and
+  non-causal, MHA and GQA, head dimensions 64 and 128, aligned lengths,
+  and distinct odd sequence tails. Include both short and longer
+  sequence regimes on both GPUs. Use the existing versioned Triton
+  configuration space as the starting point.
 - Freeze exact case counts, configuration filters and manifests in a
   reviewed amendment before any v0.3 workload labels are collected.
   Record every attempted configuration and why any attempt is invalid.
@@ -53,13 +61,27 @@ its immutable receipt and any authorized retry.
 
 Compare with roofline plus wave quantization and the independently
 implemented NeuSight-style tile baseline, each for both kernel
-families. The draft uses historic eligible RTX 4070 labels only for the
-frozen learned fits, including for transfer to GB10, as specified in
-[design section 8](../docs/design.md#8-validation). Freeze the exact
-training inventory, profile features, fitted coefficients and feature
-builders before opening the new labels. Previously opened GB10 labels
-may support post-hoc diagnosis. Use hardware specifications and
-isolated microbenchmarks for model/profile calibration.
+families. Train one frozen learned fit per family on all eligible
+published historical labels from both devices. Use the same fitted
+coefficients on both devices with the target's hardware features.
+The currently published sources are:
+
+| Family | RTX 4070 | GB10 |
+| --- | --- | --- |
+| GEMM | M2 development (original warm and clean-cold replacement), Phase 1 workload holdout, v0.2 GEMM holdout | Phase 2 primary and secondary cohorts, v0.2 GEMM holdout |
+| Attention | Phase 4 development, Phase 4/v0.2 holdout | v0.2 attention holdout |
+
+Preserve the original split, device and source receipt for every
+training observation. Keep observations of the same workload on
+different devices distinct. Derive one row per eligible case,
+configuration and cache regime for each source. Use effective valid
+sessions and deduplicate reused reports, including the Phase 4/v0.2
+RTX 4070 attention holdout. Exclude the Phase 2 TMA diagnostic,
+invalid or failed captures, and all v0.3 holdout labels. Freeze the
+exact training inventory, data digests, profile features, feature
+builders and fitted coefficients before opening the new labels.
+Use hardware specifications and isolated microbenchmarks for
+model/profile calibration.
 
 ## Freeze and release
 
