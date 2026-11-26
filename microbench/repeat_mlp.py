@@ -159,24 +159,22 @@ def thermal_stability(windows):
     }
 
 
-def warm_device(smi, binary, seconds, *, stabilize, timeout_report):
+def warm_device(smi, binary, seconds, *, timeout_report):
     start = time.monotonic()
-    minimum = max(seconds, 2 * WINDOW_SECONDS) if stabilize else seconds
-    if stabilize and minimum > THERMAL_TIMEOUT_SECONDS:
-        raise ValueError("GB10 warmup exceeds the thermal gate timeout")
+    minimum = max(seconds, 2 * WINDOW_SECONDS)
+    if minimum > THERMAL_TIMEOUT_SECONDS:
+        raise ValueError("Requested warmup exceeds the thermal gate timeout")
     trace = []
     while True:
         elapsed = time.monotonic() - start
         if elapsed >= minimum:
-            if not stabilize:
-                return trace, None
             gate_end = min(elapsed, THERMAL_TIMEOUT_SECONDS)
             result = thermal_stability(thermal_windows(trace, gate_end))
             if result is not None:
                 return trace, {"elapsed_seconds": gate_end, **result}
             if elapsed >= THERMAL_TIMEOUT_SECONDS:
                 write_json(timeout_report, {"utc": utc(), "warmup_telemetry": trace})
-                raise RuntimeError("GB10 thermal/clock gate did not pass within twenty minutes")
+                raise RuntimeError("Thermal/clock gate did not pass within twenty minutes")
         require_quiet(host_snapshot(smi))
         command(binary, "--mode", "mlp", "--samples", "1", "--warmup", str(WARMUP))
         snap = telemetry(smi)
@@ -231,7 +229,6 @@ def capture(args):
         smi,
         args.binary,
         args.warmup_seconds,
-        stabilize=target == "sm_121",
         timeout_report=args.output.with_suffix(".thermal-timeout.json"),
     )
     run_args = [

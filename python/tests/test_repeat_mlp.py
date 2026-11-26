@@ -4,6 +4,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from microbench import repeat_mlp as mlp
 
@@ -33,21 +34,36 @@ class RepeatMlpTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "geometry differs"):
             mlp.point_maps(self.profile, "mlp", raw)
 
-    def test_gb10_gate_requires_temperature_clock_and_event_stability(self):
+    def test_gate_requires_temperature_clock_and_event_stability(self):
         row = {key: "Not Active" for key in mlp.THERMAL_EVENT_FIELDS}
         row.update({"temperature.gpu": "48", "clocks.current.sm": "2500"})
         trace = [{**row, "elapsed_seconds": second} for second in range(60)]
         windows = mlp.thermal_windows(trace, 60)
         self.assertEqual(mlp.thermal_stability(windows)["samples_per_window"], [30, 30])
-        for patch in (
+        for override in (
             {"temperature.gpu": "49"},
             {"clocks.current.sm": "2530"},
             {mlp.THERMAL_EVENT_FIELDS[-1]: "Active"},
             {mlp.THERMAL_EVENT_FIELDS[-1]: "[N/A]"},
         ):
-            with self.subTest(patch=patch):
-                recent = [{**sample, **patch} for sample in windows[1]]
+            with self.subTest(override=override):
+                recent = [{**sample, **override} for sample in windows[1]]
                 self.assertIsNone(mlp.thermal_stability((windows[0], recent)))
+
+    def test_default_warmup_requires_both_observation_windows(self):
+        row = {key: "Not Active" for key in mlp.THERMAL_EVENT_FIELDS}
+        row.update({"temperature.gpu": "48", "clocks.current.sm": "2500"})
+        with (
+            patch.object(mlp.time, "monotonic", side_effect=[0, 0, 15, 15, 45, 60]),
+            patch.object(mlp, "host_snapshot", return_value={"compute_apps": ""}),
+            patch.object(mlp, "command") as warm_launch,
+            patch.object(mlp, "telemetry", return_value=row),
+        ):
+            trace, gate = mlp.warm_device("smi", "binary", 0, timeout_report=Path("unused"))
+        self.assertEqual(warm_launch.call_count, 2)
+        self.assertEqual(len(trace), 2)
+        self.assertEqual(gate["elapsed_seconds"], 60)
+        self.assertEqual(gate["samples_per_window"], [1, 1])
 
     def test_reduce_uses_independent_medians_and_existing_ceiling(self):
         snapshot = {key: "Not Active" for key in mlp.TELEMETRY}
