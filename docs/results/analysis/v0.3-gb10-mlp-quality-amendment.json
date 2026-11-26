@@ -18,7 +18,7 @@
     "iqr_over_median": {"point_threshold": 0.1, "max_share": 0.05},
     "max_over_min": {"point_threshold": 1.5, "max_share": 0.15},
     "cross_process_median_relative_range": {"point_threshold": 0.1, "max_share": 0.05},
-    "reported_iqr_failed_sweeps": 9,
+    "reported_iqr_failed_sweeps": 10,
     "total_sweeps": 10,
     "cross_process_status": "failed",
     "contiguous_cross_process_check": {"flagged_points": 11, "total_points": 96}
