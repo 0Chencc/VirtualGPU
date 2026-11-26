@@ -203,6 +203,7 @@ class RepeatMlpTests(unittest.TestCase):
         memory = updated["measured"]["memory"]
         for field in (*mlp.CONTIGUOUS, mlp.STRIDED):
             self.assertEqual(memory[field][0]["bw_gbps"]["value"], 20.2)
+            self.assertEqual(memory[field][0]["bw_gbps"]["rel_uncertainty"], 0.15)
             point = audit["fields"][field]["points"][0]
             self.assertEqual(point["repeat_range_gbps"], [19.8, 20.6])
             self.assertEqual(point["pooled_median_gbps"], 20.2)
