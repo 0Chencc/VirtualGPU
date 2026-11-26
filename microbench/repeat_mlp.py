@@ -18,7 +18,10 @@ from pathlib import Path
 
 CONTIGUOUS = ("dram_bw_by_bytes_in_flight", "l2_bw_by_bytes_in_flight")
 STRIDED = "dram_bw_by_bytes_in_flight_strided"
-MODES = {"mlp": CONTIGUOUS, "strided-mlp": (STRIDED,)}
+MLP_MODES = {"mlp": CONTIGUOUS, "strided-mlp": (STRIDED,)}
+ACTIVE_MODES = {"dram-bw": ("dram_bw_by_active_sms",), "l2": ("l2_bw_by_active_sms",)}
+MODES = {**MLP_MODES, **ACTIVE_MODES}
+ACTIVE_FIELDS = {fields[0] for fields in ACTIVE_MODES.values()}
 REPEATS = 5
 SAMPLES = 15
 WARMUP = 3
@@ -103,6 +106,8 @@ def require_quiet(snapshot, own_pid=None):
 
 
 def point_key(field, row):
+    if field in ACTIVE_FIELDS:
+        return (row["active_sms"] if "active_sms" in row else row["target_sms"],)
     layout = ("segment_bytes", "stride_bytes") if field == STRIDED else ("issue_mode",)
     return tuple(row[key] for key in (*layout, "bytes_in_flight", "active_ctas", "bytes_per_cta"))
 
@@ -111,7 +116,7 @@ def point_maps(profile, mode, raw):
     maps = {}
     for field in MODES[mode]:
         expected = [point_key(field, row) for row in profile["measured"]["memory"][field]]
-        records = raw[field]
+        records = raw["read_curve"] if field in ACTIVE_FIELDS else raw[field]
         observed = {point_key(field, row): row["gbps_samples"] for row in records}
         if len(observed) != len(records) or set(observed) != set(expected):
             raise ValueError(f"{field}: captured geometry differs from base profile")
@@ -252,7 +257,10 @@ def capture(args):
                 apps = command(
                     smi, "--query-compute-apps=pid,process_name", "--format=csv,noheader"
                 )
-                require_quiet({"compute_apps": apps}, own_pid=process.pid)
+                activity = {"compute_apps": apps}
+                if WINDOWS_SMI.is_file():
+                    activity["windows_nvidia_smi"] = command(WINDOWS_SMI)
+                require_quiet(activity, own_pid=process.pid)
                 time.sleep(0.2)
         finally:
             if process.poll() is None:
@@ -279,6 +287,7 @@ def capture(args):
         "target": target,
         "device_query": query,
         "mode": args.mode,
+        "session_id": args.session_id,
         "repeat": args.repeat,
         "command": run_args,
         "initial_gpu": initial,
@@ -321,7 +330,9 @@ def reduce_runs(base, paths, revision):
 
     profile = json.loads(base.read_bytes())
     records = [(path, json.loads(path.read_bytes())) for path in paths]
-    expected = Counter((mode, i) for mode in MODES for i in range(1, REPEATS + 1))
+    include_active = any(item["mode"] in ACTIVE_MODES for _, item in records)
+    modes = MODES if include_active else MLP_MODES
+    expected = Counter((mode, i) for mode in modes for i in range(1, REPEATS + 1))
     if Counter((item["mode"], item["repeat"]) for _, item in records) != expected:
         raise ValueError("Expected repeats 1 through 5 for each benchmark")
     for attr in (
@@ -336,6 +347,12 @@ def reduce_runs(base, paths, revision):
         if len({item[attr] for _, item in records}) != 1:
             raise ValueError(f"Conflicting capture provenance for {attr}")
     origin = records[0][1]
+    if include_active and (
+        not origin.get("session_id")
+        or any(item.get("session_id") != origin["session_id"] for _, item in records)
+        or any(not item.get("thermal_stability") for _, item in records)
+    ):
+        raise ValueError("MLP and active-SM repeats require one session and a passing thermal gate")
     if (
         origin["base_profile_sha256"] != digest(base)
         or origin["target"] != profile["identity"]["arch"]
@@ -365,7 +382,9 @@ def reduce_runs(base, paths, revision):
         "fields": {},
         "ceilings": {},
     }
-    for mode, fields in MODES.items():
+    if include_active:
+        evidence["session_id"] = origin["session_id"]
+    for mode, fields in modes.items():
         subset = sorted(
             (item["repeat"], path, item) for path, item in records if item["mode"] == mode
         )
@@ -432,7 +451,7 @@ def reduce_runs(base, paths, revision):
         peak = max(memory[field], key=lambda row: row["bw_gbps"]["value"])["bw_gbps"]
         old = memory[scalar]
         depended_on_mlp = old["method"].startswith("cuda_mlp_")
-        if depended_on_mlp:
+        if depended_on_mlp or include_active:
             chosen, source = (
                 (peak, field)
                 if peak["value"] > sweep["value"]
@@ -483,6 +502,7 @@ def main():
     sample.add_argument("repeat", type=int, choices=range(1, REPEATS + 1))
     sample.add_argument("output", type=Path)
     sample.add_argument("--revision", required=True)
+    sample.add_argument("--session-id")
     sample.add_argument("--source-sha256", required=True)
     sample.add_argument("--nvcc", type=Path, required=True)
     sample.add_argument("--warmup-seconds", type=int, default=0)

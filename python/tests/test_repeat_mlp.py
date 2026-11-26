@@ -85,7 +85,7 @@ class RepeatMlpTests(unittest.TestCase):
             "finished_utc": "2026-11-26T10:01:00+00:00",
         }
         with tempfile.TemporaryDirectory() as temp:
-            for mode in mlp.MODES:
+            for mode in mlp.MLP_MODES:
                 for number, value in enumerate((20.0, 23.0, 22.0, 90.0, 1.0), start=1):
                     path = Path(temp) / f"{mode}-{number}.json"
                     mlp.write_json(
@@ -96,6 +96,40 @@ class RepeatMlpTests(unittest.TestCase):
             updated, audit = mlp.reduce_runs(self.base, paths, "fixture")
             with self.assertRaisesRegex(ValueError, "Expected repeats"):
                 mlp.reduce_runs(self.base, paths[:-1], "fixture")
+            session = {
+                "session_id": "fixture-session",
+                "thermal_stability": {"elapsed_seconds": 60},
+            }
+            for path in paths:
+                data = json.loads(path.read_bytes())
+                path.write_text(json.dumps({**data, **session}))
+            for mode, (field,) in mlp.ACTIVE_MODES.items():
+                raw = {
+                    "read_curve": [
+                        {"target_sms": row["active_sms"], "gbps_samples": [100.0] * mlp.SAMPLES}
+                        for row in self.profile["measured"]["memory"][field]
+                    ]
+                }
+                for number in range(1, mlp.REPEATS + 1):
+                    path = Path(temp) / f"{mode}-{number}.json"
+                    mlp.write_json(
+                        path, {**source, **session, "mode": mode, "repeat": number, "raw": raw}
+                    )
+                    paths.append(path)
+            combined, combined_audit = mlp.reduce_runs(self.base, paths, "fixture")
+            self.assertEqual(combined_audit["session_id"], "fixture-session")
+            for level in ("dram", "l2"):
+                self.assertEqual(
+                    combined["measured"]["memory"][f"{level}_bw_read_gbps"]["value"], 100.0
+                )
+                self.assertEqual(
+                    combined_audit["ceilings"][f"{level}_bw_read_gbps"]["source"],
+                    f"{level}_bw_by_active_sms",
+                )
+            latest = json.loads(path.read_bytes())
+            path.write_text(json.dumps({**latest, "session_id": "mismatched"}))
+            with self.assertRaisesRegex(ValueError, "require one session"):
+                mlp.reduce_runs(self.base, paths, "fixture")
         self.assertEqual(audit["previous_provenance"], self.profile["provenance"])
         self.assertEqual(
             updated["provenance"]["clock_policy"], self.profile["provenance"]["clock_policy"]
