@@ -8,6 +8,7 @@ It does not take the GPU lock itself: it must run inside an external
 `dispersion_check` are meant to be called by other drivers while they hold it.
 
 Usage:
+    python microbench/capture_posthoc.py check RUN.json [RUN.json ...]
     python microbench/capture_posthoc.py --binary vgpu_bench_sm121 --mode wave-rescan \
         --revision <commit> --output wave-rescan.json
 """
@@ -17,7 +18,9 @@ from __future__ import annotations
 import argparse
 import json
 import platform
+import statistics
 import subprocess
+import sys
 import tempfile
 import time
 from pathlib import Path
@@ -50,13 +53,18 @@ except ImportError:  # imported as microbench.capture_posthoc
         write_json,
     )
 
-MODES = ("wave-rescan", "b-stream", "staged-mma", "dram-probe-sweep")
+MODES = ("wave-rescan", "wave-rescan-long", "b-stream", "staged-mma", "dram-probe-sweep")
 POWERSHELL = Path("/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe")
 QUIET_PERCENT = 5
 QUIET_SECONDS = 60
 QUIET_TIMEOUT_SECONDS = 20 * 60
-DISPERSION_RATIO = 1.3
-DISPERSION_MAX_SHARE = 0.10
+# Capture rules (adopted 2026-11-27, after an independent audit; fixed in advance).
+IQR_RATIO = 0.10  # 1) IQR over median above this ...
+IQR_MAX_SHARE = 0.05  # ... in at most this share of lists
+SPIKE_RATIO = 1.5  # 2) max over min above this ...
+SPIKE_MAX_SHARE = 0.15  # ... in at most this share of lists
+REPRO_RANGE = 0.10  # 3) across runs, range of a point's medians over their median above this ...
+REPRO_MAX_SHARE = 0.05  # ... in at most this share of points
 # Timing and bandwidth samples only; other *_samples fields (offsets, spreads) vary by design.
 DISPERSION_SUFFIXES = ("_ns_samples", "gbps_samples")
 
@@ -116,16 +124,17 @@ def wait_for_quiet_desktop():
         time.sleep(1)
 
 
-def sample_lists(node, suffixes=DISPERSION_SUFFIXES):
+def sample_lists(node, suffixes=DISPERSION_SUFFIXES, path=()):
+    """Yield (path, samples) for every timing or bandwidth sample list in a raw capture."""
     if isinstance(node, dict):
         for key, value in node.items():
             if key.endswith(suffixes) and isinstance(value, list):
-                yield key, value
+                yield path + (key,), value
             else:
-                yield from sample_lists(value, suffixes)
+                yield from sample_lists(value, suffixes, path + (key,))
     elif isinstance(node, list):
-        for item in node:
-            yield from sample_lists(item, suffixes)
+        for index, item in enumerate(node):
+            yield from sample_lists(item, suffixes, path + (index,))
 
 
 def valid_samples(values):
@@ -134,26 +143,63 @@ def valid_samples(values):
     )
 
 
-def dispersion_check(raw, suffixes=DISPERSION_SUFFIXES):
-    """Share of timing or bandwidth sample lists whose max over min exceeds 1.3.
+def iqr_ratio(values):
+    q1, _, q3 = statistics.quantiles(values, n=4, method="inclusive")
+    return (q3 - q1) / statistics.median(values)
 
-    Above 10% the capture is void. So is a capture with no checkable list, or with
-    a list that is not at least two positive numbers.
+
+def dispersion_check(raw, suffixes=DISPERSION_SUFFIXES):
+    """Rules 1 and 2 on one run.
+
+    1) at most 5% of lists may have IQR over median above 10%;
+    2) at most 15% of lists may have max over min above 1.5.
+    A run with no checkable list, or with a list that is not at least two positive
+    numbers, fails as well.
     """
     found = [v for _, v in sample_lists(raw, suffixes)]
     lists = [v for v in found if valid_samples(v)]
-    spread = [v for v in lists if max(v) / min(v) > DISPERSION_RATIO]
-    share = len(spread) / len(lists) if lists else 1.0
-    failed = not lists or len(lists) != len(found) or share > DISPERSION_MAX_SHARE
+    n = max(len(lists), 1)
+    wide = sum(iqr_ratio(v) > IQR_RATIO for v in lists)
+    spiky = sum(max(v) / min(v) > SPIKE_RATIO for v in lists)
+    rules = {
+        "iqr": {"share": wide / n, "limit": IQR_MAX_SHARE, "ratio": IQR_RATIO},
+        "spike": {"share": spiky / n, "limit": SPIKE_MAX_SHARE, "ratio": SPIKE_RATIO},
+    }
+    failed = (
+        not lists
+        or len(lists) != len(found)
+        or any(r["share"] > r["limit"] for r in rules.values())
+    )
     return {
         "status": "failed" if failed else "passed",
         "sample_lists": len(lists),
         "invalid_lists": len(found) - len(lists),
         "suffixes": list(suffixes),
-        "over_ratio": len(spread),
+        "rules": rules,
+    }
+
+
+def reproducibility_check(raws, suffixes=DISPERSION_SUFFIXES):
+    """Rule 3 across runs of the same geometry: at most 5% of points may have a range of
+    their per-run medians above 10% of the median of those medians."""
+    if len(raws) < 2:
+        return {"status": "not_applicable", "runs": len(raws)}
+    per_run = [dict(sample_lists(raw, suffixes)) for raw in raws]
+    keys = set(per_run[0])
+    if any(set(run) != keys for run in per_run) or not keys:
+        return {"status": "failed", "runs": len(raws), "reason": "runs differ in geometry"}
+    spread = 0
+    for key in keys:
+        meds = [statistics.median(run[key]) for run in per_run]
+        spread += (max(meds) - min(meds)) / statistics.median(meds) > REPRO_RANGE
+    share = spread / len(keys)
+    return {
+        "status": "failed" if share > REPRO_MAX_SHARE else "passed",
+        "runs": len(raws),
+        "points": len(keys),
         "share": share,
-        "ratio": DISPERSION_RATIO,
-        "max_share": DISPERSION_MAX_SHARE,
+        "limit": REPRO_MAX_SHARE,
+        "range": REPRO_RANGE,
     }
 
 
@@ -171,6 +217,8 @@ def capture(args):
     )
     run_args = [str(args.binary), "--mode", args.mode, "--device", "0"]
     run_args += ["--samples", str(args.samples), "--warmup", str(WARMUP)]
+    if args.l2_gbps:
+        run_args += ["--l2-gbps", str(args.l2_gbps)]
     with tempfile.TemporaryFile(mode="w+t") as out, tempfile.TemporaryFile(mode="w+t") as err:
         started = utc()
         process = subprocess.Popen(run_args, stdout=out, stderr=err, text=True)
@@ -217,7 +265,30 @@ def capture(args):
     }
 
 
+def check_files(paths):
+    """Rules 1 to 3 on archived captures (the raw output under "raw", or the file itself)."""
+    raws = []
+    for path in paths:
+        record = json.loads(Path(path).read_text())
+        raws.append(record.get("raw", record))
+    return {
+        "runs": {str(p): dispersion_check(raw) for p, raw in zip(paths, raws)},
+        "reproducibility": reproducibility_check(raws),
+    }
+
+
+def main_check(argv):
+    """`capture_posthoc.py check RUN.json [RUN.json ...]`: exit 1 if any rule fails."""
+    result = check_files(argv)
+    print(json.dumps(result, indent=1))
+    statuses = [r["status"] for r in result["runs"].values()]
+    statuses.append(result["reproducibility"]["status"])
+    raise SystemExit(1 if "failed" in statuses else 0)
+
+
 def main():
+    if len(sys.argv) > 1 and sys.argv[1] == "check":
+        main_check(sys.argv[2:])
     ap = argparse.ArgumentParser()
     ap.add_argument("--binary", type=Path, required=True)
     ap.add_argument("--mode", choices=MODES, required=True)
@@ -225,6 +296,7 @@ def main():
     ap.add_argument("--output", type=Path, required=True)
     ap.add_argument("--samples", type=int, default=15)
     ap.add_argument("--warmup-seconds", type=float, default=60)
+    ap.add_argument("--l2-gbps", type=float, help="profile l2_bw_read_gbps, for wave-rescan-long")
     args = ap.parse_args()
     record = capture(args)
     write_json(args.output, record)

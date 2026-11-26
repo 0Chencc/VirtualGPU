@@ -1,0 +1,68 @@
+"""CPU-only tests for the capture rules of the post-hoc microbenchmarks."""
+
+import json
+import unittest
+from pathlib import Path
+
+from microbench import capture_posthoc as cap
+
+ROOT = Path(__file__).resolve().parents[2]
+CAPTURES = ROOT / "docs/results/analysis/v0.3-gb10-h3-h4"
+
+
+def raw(path):
+    return json.loads((CAPTURES / path).read_text())["raw"]
+
+
+class CaptureRuleTests(unittest.TestCase):
+    def test_rtx4070_attempt_shared_with_the_desktop_is_void(self):
+        for name in ("wave-rescan.json", "staged-mma.json"):
+            check = cap.dispersion_check(raw(f"captures-rtx4070-attempt1/{name}"))
+            self.assertEqual(check["status"], "failed", name)
+
+    def test_gb10_b_stream_passes(self):
+        self.assertEqual(cap.dispersion_check(raw("captures/b-stream.json"))["status"], "passed")
+
+    def test_gb10_wave_rescan_runs_fail_reproducibility(self):
+        runs = [
+            raw("captures/wave-rescan.json"),
+            raw("captures-gb10-wave-rescan-replication/wave-rescan.json"),
+        ]
+        self.assertEqual(cap.reproducibility_check(runs)["status"], "failed")
+
+    def test_wide_core_fails_rule_one(self):
+        steady = [100.0] * 15
+        wide = [80.0, 85.0, 90.0, 95.0, 100.0, 105.0, 110.0, 115.0, 120.0] * 2
+        lists = [{"t_ns_samples": steady} for _ in range(18)] + [{"t_ns_samples": wide}] * 2
+        check = cap.dispersion_check({"points": lists})
+        self.assertEqual(check["status"], "failed")
+        self.assertGreater(check["rules"]["iqr"]["share"], cap.IQR_MAX_SHARE)
+
+    def test_isolated_spikes_pass_until_rule_two(self):
+        spiked = [100.0] * 14 + [200.0]
+        few = [{"gbps_samples": spiked}] * 1 + [{"gbps_samples": [100.0] * 15}] * 9
+        self.assertEqual(cap.dispersion_check({"p": few})["status"], "passed")
+        many = [{"gbps_samples": spiked}] * 2 + [{"gbps_samples": [100.0] * 15}] * 8
+        self.assertEqual(cap.dispersion_check({"p": many})["status"], "failed")
+
+    def test_empty_or_invalid_lists_fail(self):
+        self.assertEqual(cap.dispersion_check({})["status"], "failed")
+        self.assertEqual(cap.dispersion_check({"a_ns_samples": [1.0]})["status"], "failed")
+        self.assertEqual(cap.dispersion_check({"a_ns_samples": [True, 2.0]})["status"], "failed")
+
+    def test_other_sample_fields_are_ignored(self):
+        data = {"a_ns_samples": [1.0, 1.01], "finish_spread_ns_offsets_samples": [1.0, 50.0]}
+        self.assertEqual(cap.dispersion_check(data)["status"], "passed")
+
+    def test_reproducibility_needs_matching_geometry(self):
+        a = {"p": [{"t_ns_samples": [1.0, 1.0]}]}
+        b = {"p": [{"t_ns_samples": [1.0, 1.0]}, {"t_ns_samples": [1.0, 1.0]}]}
+        self.assertEqual(cap.reproducibility_check([a])["status"], "not_applicable")
+        self.assertEqual(cap.reproducibility_check([a, b])["status"], "failed")
+        moved = {"p": [{"t_ns_samples": [1.2, 1.2]}]}
+        self.assertEqual(cap.reproducibility_check([a, moved])["status"], "failed")
+        self.assertEqual(cap.reproducibility_check([a, a])["status"], "passed")
+
+
+if __name__ == "__main__":
+    unittest.main()
