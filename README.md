@@ -126,6 +126,7 @@ Bundled profiles:
 | `l4` | NVIDIA L4 | `sm_89` | No |
 | `l40s` | NVIDIA L40S | `sm_89` | No |
 | `rtx3070` | NVIDIA GeForce RTX 3070 | `sm_86` | No |
+| `rtxpro6000` | NVIDIA RTX PRO 6000 Blackwell Server Edition | `sm_120` | No |
 
 Latest results (v0.2, fresh sealed holdouts, no kernel timings used by the model):
 
