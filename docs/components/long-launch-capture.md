@@ -54,7 +54,7 @@ The design generalizes it rather than writing one protocol per mode:
 - Before a capture, `long_launch.py check-schedule` compares the schedule file's SHA-256 with the freeze record, so the binary only runs the frozen file; the `steps` check on the output is the second check. After it, `verify` rejects a point whose CUDA event list is incomplete (not the requested sample count) or holds a NaN, an infinity or a value of zero or less.
 - The full-suite freeze grid includes the optional `cp.async` active-SM curve where the mode emits it.
 
-Lengthening keeps each field's definition; values shift where short launches carried a fixed cost or a start-up transient (rule 3). Each mode's commit compares long and short launches before its schedule is used (without the host gate: a mechanism check, not profile data). The standard comparison runs the scheduled path in one session at the legacy lengths (`x1`) and at the frozen lengths (`long`), alternating, two processes each, so that only the length differs; comparing against an earlier legacy capture mixes in process-to-process and point-history differences of up to a few percent. The `closed-loop` and `l2-merge` rows predate this and compare one scheduled process with one legacy process. Shift is the median over points of the ratio of per-point medians, long over short, minus one; F is the fixed cost per launch implied by the 1/steps model.
+Lengthening keeps each field's definition; values shift where short launches carried a fixed cost or a start-up transient (rule 3). Each mode's commit compares long and short launches before its schedule is used. These mechanism checks do not qualify profile data. The standard comparison runs the scheduled path in one session at the legacy lengths (`x1`) and at the frozen lengths (`long`), alternating, two processes each, so that only the length differs; comparing against an earlier legacy capture mixes in process-to-process and point-history differences of up to a few percent. The `closed-loop` and `l2-merge` rows predate this and compare one scheduled process with one legacy process. Shift is the median over points of the ratio of per-point medians, long over short, minus one; F is the fixed cost per launch implied by the 1/steps model.
 
 | Mode | Points, shortest launch | Rule 1 / rule 2 lists flagged, short to long | Shift | Explanation |
 |---|---|---|---|---|
@@ -67,6 +67,25 @@ Lengthening keeps each field's definition; values shift where short launches car
 | `closed-loop-mma` | 150, 1.24 ms | 4.0% / 2.7% and 2.7% / 3.3% to 2.0% / 0% and 2.7% / 0% | turnaround median +0.1% (-0.9% to +1.3%) | within 1%, the size of the repeat-to-repeat spread |
 | `spill-latency` | 60, 1.09 ms | 6.7% / 5.0% and 8.3% / 6.7% to 8.3% / 6.7% and 6.7% / 6.7% | `reload_count` 0: per-step time falls (4 KiB frames 46 to 16.6 ns, 2 KiB 24.7 to 15.5 ns, smaller frames 16 to 17 to 15 ns); by legacy launch, under 200 us -9.3%, 200 to 1000 us -1.0% to -0.5% | F grows with the frame (about 126 us at 4 KiB, 40 us at 2 KiB, 5 us for small frames): the local frame is initialized once per launch, and the legacy `reload_count` 0 values carry it. Not from the length: the `l1_boundary` serial points (1 KiB frames, at the L1 size) are unstable at any length (interquartile range up to 94% short and 122% long), and are most of the rule 1 and 2 lists; `l2_spill` 4 KiB points with reloads differed 13% to 20% between processes at identical lengths, with the same clock, which rule 3 judges in the capture |
 | `mma-chain` | 128, 1.26 ms | 0% / 0% both | stage time median -1.1% (-2.1% to -0.2%), largest for legacy launches under 200 us | F = 2.9 to 3.3 us; the SM clock was 0.3% to 0.4% lower during long launches (up to 1.1%), the droop the legacy 0.35 ms target avoided, which offsets part of the amortization |
+| `dram-bw/write_full` | 1, 1.977 ms | 0/1 lists flagged under either rule in all four processes | write bandwidth -0.02% | the 384 MiB one-pass write already exceeded the pilot minimum, so both schedules used 384 MiB; read-point lengths were held fixed |
+| `l2/read_curve_cp_async` | 8, 1.256 ms | rule 1: 0/8 and 1/8 to 0/8 both; rule 2: 0/8 all | bandwidth median -0.08% (-2.70% to +1.55%) | the 1-SM point had the largest shift; the full-GPU aggregate shifted -1.99% |
+| `l2/write_full` | 1, 1.293 ms | 0/1 lists flagged under either rule in all four processes | write bandwidth +1.08% | 64 to 216 passes over the same 6 MiB hot buffer; the old and new sample keys report the same timed launches |
+| `l2/capacity_sweep` | 12, 1.190 ms | rule 1: 2/12 and 1/12 to 0/12 both; rule 2: 0/12 all | bandwidth median +1.43% (-4.84% to +20.28%); derived capacity 24 MiB in all four runs | 36 MiB was outside the registered bistable band and its two long medians were 949 and 1319 GB/s; the cause and five-round reproducibility remain open |
+
+**DRAM and L2 mechanism check.** Spark 1 alternated x1 and long twice per mode
+with `--clock-probe` and 15 samples on 2026-11-27 from
+02:39:47 to 02:39:58 UTC, including the pilots. The thermal gate passed
+after 87.6 s and all ten traced processes passed the host check
+(6.03% peak CPU busy share). The shortest sizing trials for the
+frozen lengths were 1.267 ms for `dram-bw` and 1.262 ms for `l2`.
+This was a two-process mechanism check per schedule and did not
+qualify any profile data. Raw outputs, traces, legacy-shape checks,
+scripts, schedules and build metadata are in
+`results/v03-long-memory/gb10-35ce9e1/review.tar.gz` (SHA-256
+`c1038f0510a3b62109b3a93952a9110bb442838b062b37ff8103479c80960b5f`).
+The `35ce9e1` source snapshot was built with CUDA 13.0.88 for
+`sm_121a` (binary SHA-256
+`bf539743adc74aece74a3c377622a8726663eeddb80146a8df40cd02b91dfeea`).
 
 **`spill-latency` and its derived values.** The local frame is initialized once per launch, a fixed cost F that grows with the frame and enters every point's per-step time as F / steps. `extra_ns_vs_zero` subtracts the `reload_count` 0 point, which runs many more steps (4096 in the legacy capture) than the points with reloads (128 to 2105), so the subtraction does not cancel F: the legacy `extra_ns_vs_zero` (and `ns_per_reload`) are overestimated by (F / steps at that count - F / steps at count 0) over the extra. The schedule does not remove it where 128 steps already reach 1.25 ms, so the long-launch values keep most of it at 4 KiB frames. From the `spill-latency` comparison (Spark 1, x1 and long, two processes each, legacy GB10 profile for the extras):
 
@@ -86,7 +105,9 @@ Points known to make a `spill-latency` capture fail, not from the length and not
 
 | Mode | Length knob (now) | Now | Plan |
 |---|---|---|---|
-| `mlp`, `strided-mlp`, `dram-bw`, `l2` | bytes per launch | 0.04 to 2.6 ms | done (`long_mlp`) |
+| `mlp`, `strided-mlp` | read steps | 0.04 to 2.6 ms | schedule across the original grids |
+| `dram-bw` | cold one-pass span (MiB) | 0.6 to 4.0 ms on the legacy grids | schedule read and write spans; writes retain at least the legacy buffer span |
+| `l2` | read iterations and write or capacity passes | 0.2 to 3.6 ms on the legacy grids | schedule both active-SM read paths, the write point and each capacity point |
 | `closed-loop` | steps, clamp(5e5 / estimate, 256, 1024) | about 0.5 ms target | schedule over steps |
 | `closed-loop-mma` | 256 steps | 0.2 to 1.6 ms | schedule over steps |
 | `l2-merge` | 256 steps | 0.07 to 1.6 ms | schedule over steps; turnaround stays per step (clock64) |
