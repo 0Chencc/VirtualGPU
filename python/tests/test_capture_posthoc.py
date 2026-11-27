@@ -59,9 +59,38 @@ class CaptureRuleTests(unittest.TestCase):
         b = {"p": [{"t_ns_samples": [1.0, 1.0]}, {"t_ns_samples": [1.0, 1.0]}]}
         self.assertEqual(cap.reproducibility_check([a])["status"], "not_applicable")
         self.assertEqual(cap.reproducibility_check([a, b])["status"], "failed")
-        moved = {"p": [{"t_ns_samples": [1.2, 1.2]}]}
-        self.assertEqual(cap.reproducibility_check([a, moved])["status"], "failed")
         self.assertEqual(cap.reproducibility_check([a, a])["status"], "passed")
+        moved = {"p": [{"t_ns_samples": [1.2, 1.2]}, {"t_ns_samples": [1.2, 1.2]}]}
+        self.assertEqual(cap.reproducibility_check([b, moved])["status"], "failed")
+
+    def test_small_modes_tolerate_one_failing_list_or_point(self):
+        steady = [100.0] * 15
+        spiked = [100.0] * 14 + [200.0]
+        one = {"p": [{"t_ns_samples": spiked}] + [{"t_ns_samples": steady}] * 5}
+        self.assertEqual(cap.dispersion_check(one)["status"], "passed")
+        two = {"p": [{"t_ns_samples": spiked}] * 2 + [{"t_ns_samples": steady}] * 4}
+        self.assertEqual(cap.dispersion_check(two)["status"], "failed")
+        base = {"p": [{"t_ns_samples": [1.0, 1.0]} for _ in range(6)]}
+        moved_one = {"p": [{"t_ns_samples": [1.2, 1.2]}] + base["p"][1:]}
+        self.assertEqual(cap.reproducibility_check([base, moved_one])["status"], "passed")
+        moved_two = {"p": [{"t_ns_samples": [1.2, 1.2]}] * 2 + base["p"][2:]}
+        self.assertEqual(cap.reproducibility_check([base, moved_two])["status"], "failed")
+
+    def test_large_modes_keep_the_share_limits(self):
+        self.assertEqual(cap.allowed_failures(cap.IQR_MAX_SHARE, 100), 5)
+        self.assertEqual(cap.allowed_failures(cap.SPIKE_MAX_SHARE, 100), 15)
+        self.assertEqual(cap.allowed_failures(cap.REPRO_MAX_SHARE, 100), 5)
+        steady = [100.0] * 15
+        spiked = [100.0] * 14 + [200.0]
+        for bad, status in ((15, "passed"), (16, "failed")):
+            data = {
+                "p": [{"t_ns_samples": spiked}] * bad + [{"t_ns_samples": steady}] * (100 - bad)
+            }
+            self.assertEqual(cap.dispersion_check(data)["status"], status)
+        base = {"p": [{"t_ns_samples": [1.0, 1.0]} for _ in range(100)]}
+        for bad, status in ((5, "passed"), (6, "failed")):
+            moved = {"p": [{"t_ns_samples": [1.2, 1.2]}] * bad + base["p"][bad:]}
+            self.assertEqual(cap.reproducibility_check([base, moved])["status"], status)
 
 
 if __name__ == "__main__":

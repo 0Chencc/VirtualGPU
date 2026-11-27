@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import platform
 import statistics
@@ -162,13 +163,23 @@ def iqr_ratio(values):
     return (q3 - q1) / statistics.median(values)
 
 
+def allowed_failures(limit, n):
+    """Failures a rule tolerates among n lists or points: max(floor(limit * n), 1).
+
+    One failing list or point never voids a small mode; for larger modes this equals
+    the share limit (n >= 20 for rules 1 and 3, n >= 7 for rule 2). Exempted
+    points are removed from the raw data before the check, so they do not count in n.
+    """
+    return max(math.floor(limit * n), 1)
+
+
 def dispersion_check(raw, suffixes=DISPERSION_SUFFIXES):
     """Rules 1 and 2 on one run.
 
-    1) at most 5% of lists may have IQR over median above 10%;
-    2) at most 15% of lists may have max over min above 1.5.
-    A run with no checkable list, or with a list that is not at least two positive
-    numbers, fails as well.
+    1) lists with IQR over median above 10% may be at most 5% of lists;
+    2) lists with max over min above 1.5 may be at most 15% of lists;
+    each rule tolerating max(floor(limit * n), 1) failing lists. A run with no
+    checkable list, or with a list that is not at least two positive numbers, fails.
     """
     found = [v for _, v in sample_lists(raw, suffixes)]
     lists = [v for v in found if valid_samples(v)]
@@ -176,13 +187,22 @@ def dispersion_check(raw, suffixes=DISPERSION_SUFFIXES):
     wide = sum(iqr_ratio(v) > IQR_RATIO for v in lists)
     spiky = sum(max(v) / min(v) > SPIKE_RATIO for v in lists)
     rules = {
-        "iqr": {"share": wide / n, "limit": IQR_MAX_SHARE, "ratio": IQR_RATIO},
-        "spike": {"share": spiky / n, "limit": SPIKE_MAX_SHARE, "ratio": SPIKE_RATIO},
+        name: {
+            "failing": count,
+            "allowed": allowed_failures(limit, n),
+            "share": count / n,
+            "limit": limit,
+            "ratio": ratio,
+        }
+        for name, count, limit, ratio in (
+            ("iqr", wide, IQR_MAX_SHARE, IQR_RATIO),
+            ("spike", spiky, SPIKE_MAX_SHARE, SPIKE_RATIO),
+        )
     }
     failed = (
         not lists
         or len(lists) != len(found)
-        or any(r["share"] > r["limit"] for r in rules.values())
+        or any(r["failing"] > r["allowed"] for r in rules.values())
     )
     return {
         "status": "failed" if failed else "passed",
@@ -194,8 +214,9 @@ def dispersion_check(raw, suffixes=DISPERSION_SUFFIXES):
 
 
 def reproducibility_check(raws, suffixes=DISPERSION_SUFFIXES):
-    """Rule 3 across runs of the same geometry: at most 5% of points may have a range of
-    their per-run medians above 10% of the median of those medians."""
+    """Rule 3 across runs of the same geometry: points whose per-run medians span more
+    than 10% of their median may be at most 5% of points, tolerating
+    max(floor(0.05 * n), 1) of them."""
     if len(raws) < 2:
         return {"status": "not_applicable", "runs": len(raws)}
     per_run = [dict(sample_lists(raw, suffixes)) for raw in raws]
@@ -207,10 +228,13 @@ def reproducibility_check(raws, suffixes=DISPERSION_SUFFIXES):
         meds = [statistics.median(run[key]) for run in per_run]
         spread += (max(meds) - min(meds)) / statistics.median(meds) > REPRO_RANGE
     share = spread / len(keys)
+    allowed = allowed_failures(REPRO_MAX_SHARE, len(keys))
     return {
-        "status": "failed" if share > REPRO_MAX_SHARE else "passed",
+        "status": "failed" if spread > allowed else "passed",
         "runs": len(raws),
         "points": len(keys),
+        "failing": spread,
+        "allowed": allowed,
         "share": share,
         "limit": REPRO_MAX_SHARE,
         "range": REPRO_RANGE,
