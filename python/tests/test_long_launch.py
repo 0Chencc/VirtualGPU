@@ -324,3 +324,23 @@ class LongLaunchTests(unittest.TestCase):
         }
         with self.assertRaisesRegex(ValueError, "differs from the freeze"):
             long_launch.verify(record, swapped)
+
+    def test_sync_loop_reconcile_freezes_the_pilot_length_not_its_own_probe(self):
+        row = {
+            "mem_level": "dram",
+            "transfer_mode": "ld_st_sync",
+            "ctas_per_sm": 2,
+            "active_ctas": 96,
+            "num_warps": 8,
+            "stage_bytes": 24576,
+            "mma_chain_len": 32,
+            "solo_compute_ns": 300.0,
+            "steps": 1600,
+            "launch_ns_samples": [1.3e6] * 3,
+        }
+        schedule, record = long_launch.freeze(
+            "sync-loop-reconcile", {"samples": 3, "sync_stage_loop": [row]}
+        )
+        self.assertEqual(schedule, "1600\n")
+        self.assertNotIn("steps", record["points"][0]["point"])
+        self.assertEqual(record["points"][0]["point"]["stage_bytes"], 24576)

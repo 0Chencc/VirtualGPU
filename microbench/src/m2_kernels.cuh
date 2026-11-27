@@ -6019,12 +6019,15 @@ void sync_stage_loop_const_kernel(const uint4* __restrict__ src,
   }
 }
 
-static int run_sync_loop_reconcile(int device, int samples, int warmup) {
+static int run_sync_loop_reconcile(int device, int samples, int warmup, LaunchSchedule* schedule = nullptr) {
   cudaDeviceProp prop{};
   CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
   const int sm_count = prop.multiProcessorCount;
 
-  const size_t dram_bytes = 256ULL * 1024ULL * 1024ULL;
+  // Scheduled launches run longer, so the DRAM buffer is a power of two of at least
+  // max(256 MiB, 8 x L2); the legacy path keeps its v0.2 size.
+  size_t dram_bytes = 256ULL * LaunchSchedule::MiB;
+  while (schedule && dram_bytes < 8ULL * static_cast<size_t>(prop.l2CacheSize)) dram_bytes *= 2;
   const size_t l2_bytes = 4ULL * 1024ULL * 1024ULL;
   const size_t dram_mask = (dram_bytes / sizeof(uint4)) - 1ULL;
   const size_t l2_mask = (l2_bytes / sizeof(uint4)) - 1ULL;
@@ -6076,9 +6079,34 @@ static int run_sync_loop_reconcile(int device, int samples, int warmup) {
     for (int cps : cps_list) {
       if (cps > max_blocks) continue;
       const int active_ctas = sm_count * cps;
+      auto prepare = [&]() {
+        if (is_dram) l2_read_cg_kernel<<<sm_count * 4, 512>>>(d_flush, d_sink_u4, flush_vec4, 1);
+      };
+
+      // With a schedule the pilot sizes the steps instead of the 64-step probe below.
+      if (schedule) {
+        std::printf("%s\n    {\"mem_level\": \"%s\", \"transfer_mode\": \"%s\", \"ctas_per_sm\": %d, "
+                    "\"active_ctas\": %d, \"num_warps\": %d, \"stage_bytes\": %d, "
+                    "\"mma_chain_len\": %d, \"solo_compute_ns\": %.2f",
+                    first ? "" : ",", level_name, t_mode, cps, active_ctas, warps, sb, mma_chain_len, solo_tc_ns);
+        first = false;
+        auto timed = schedule->time_point(128, 1, 1 << 24, warmup, samples, ev_start, ev_stop, prepare,
+                                          [&](int length) { launch_fn(active_ctas, buf, mask, length); });
+        const double bytes = static_cast<double>(active_ctas) * sb * timed.length;
+        const double flops = static_cast<double>(cps) * flops_per_cta_iter * mma_iters * timed.length;
+        const auto& ns = timed.launch_ns;
+        std::printf(", \"bw_gbps_samples\": [");
+        for (size_t i = 0; i < ns.size(); ++i) std::printf("%s%.3f", i ? ", " : "", bytes / ns[i]);
+        std::printf("], \"turnaround_ns_samples\": [");
+        for (size_t i = 0; i < ns.size(); ++i) std::printf("%s%.2f", i ? ", " : "", ns[i] / timed.length);
+        std::printf("], \"mma_tflops_per_sm_samples\": [");
+        for (size_t i = 0; i < ns.size(); ++i) std::printf("%s%.4f", i ? ", " : "", flops / 1e3 / ns[i]);
+        std::printf("]}");
+        continue;
+      }
 
       // Probe 64 steps to adapt steps so each timed kernel runs ~1.0 ms (clamped to [128, 8192]).
-      if (is_dram) l2_read_cg_kernel<<<sm_count * 4, 512>>>(d_flush, d_sink_u4, flush_vec4, 1);
+      prepare();
       CUDA_CHECK(cudaEventRecord(ev_start));
       launch_fn(active_ctas, buf, mask, 64);
       CUDA_CHECK(cudaEventRecord(ev_stop));
@@ -6095,7 +6123,7 @@ static int run_sync_loop_reconcile(int device, int samples, int warmup) {
       const double total_flops_per_sm = static_cast<double>(cps) * flops_per_cta_iter * mma_iters * steps;
 
       for (int w = 0; w < warmup; ++w) {
-        if (is_dram) l2_read_cg_kernel<<<sm_count * 4, 512>>>(d_flush, d_sink_u4, flush_vec4, 1);
+        prepare();
         launch_fn(active_ctas, buf, mask, steps);
       }
       CUDA_CHECK(cudaDeviceSynchronize());
@@ -6103,7 +6131,7 @@ static int run_sync_loop_reconcile(int device, int samples, int warmup) {
       std::vector<double> bw_s, turn_s, tf_s;
       bw_s.reserve(samples); turn_s.reserve(samples); tf_s.reserve(samples);
       for (int s = 0; s < samples; ++s) {
-        if (is_dram) l2_read_cg_kernel<<<sm_count * 4, 512>>>(d_flush, d_sink_u4, flush_vec4, 1);
+        prepare();
         CUDA_CHECK(cudaEventRecord(ev_start));
         launch_fn(active_ctas, buf, mask, steps);
         CUDA_CHECK(cudaEventRecord(ev_stop));
