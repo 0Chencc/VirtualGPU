@@ -125,3 +125,4 @@ class RunTracedTests(unittest.TestCase):
         self.assertGreaterEqual(len(run["cpu_10ms"]), 1)
         self.assertLess(run["started_monotonic_ns"], run["finished_monotonic_ns"])
         self.assertIn(run["host_check"]["status"], ("passed", "failed"))
+        self.assertGreaterEqual(run["host_check"]["samples"], 1)

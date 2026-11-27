@@ -179,6 +179,8 @@ def run_traced(cmd):
     finally:
         done.set()
         thread.join()
+    # A closing snapshot, so a run shorter than a second still spans one interval.
+    slow.append({"realtime_ns": time.time_ns(), **sample()})
     finished = (time.time_ns(), time.monotonic_ns())
     roots = [os.getpid()]
     return {
