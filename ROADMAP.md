@@ -94,6 +94,9 @@ Fix what made v0.2 miss on the RTX 4070 and GB10, and fix the profiles we alread
 - [ ] GB10 decode shapes are predicted too compressed: find out why
 - [x] Microbenchmark for `non_mma_issue_rate_per_sm_gips` (the higher of pure FFMA and an FFMA and LOP3 mix)
 - [ ] Measure `non_mma_issue_rate_per_sm_gips` and the local memory rates that are still estimated, on every profile
+- [ ] Run the registered same-device check of the measured non-MMA issue rate on the qualified GB10 and RTX 4070 profiles ([v0.3-non-mma-same-device-check-registration.md](docs/results/analysis/v0.3-non-mma-same-device-check-registration.md))
+- [ ] The core charges a stage synchronization (`sync_ns`) on every pipeline step, also on a loop with no barrier: decide whether a barrier-free loop should pay it (no v0.2 kernel has such a loop)
+- [ ] The core charges one `sync_ns` per step whatever the number of barriers in the loop: find out whether the barrier count should enter it
 - [ ] Fix the measurement problems in the rtxpro6000, a100-80gb and rtx3070 profiles (issue #8)
 - [ ] Sealed v0.3 holdout decides the cross-wave L2 reuse change
 
