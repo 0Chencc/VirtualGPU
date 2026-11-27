@@ -4,16 +4,16 @@ This document fixes the holdout workload manifests, frozen model/profile revisio
 
 ## 1. Frozen Inputs
 
-- **Core and frontend revision:** Commit `4618e2c` (`feat/ascend-attention-cv-split`, PR #10) with zero modifications to `crates/vgpu-core/`, `python/virtualgpu/`, or `profiles/ascend910b3.json` during capture or scoring.
+- **Core and frontend revision:** `main` + HIVM frontend parser fixes (`hivm.py`: fractal NZ `(Cols1, Rows1, Rows0, Cols0)` tile-shape decoding and skipping non-AIV `hivm.hir.vbrc` `cbuf` helpers inside `AIC` functions), with zero modifications to `crates/vgpu-core/`, `python/virtualgpu/`, or `profiles/ascend910b3.json` during capture or scoring.
 - **Hardware profile:** `profiles/ascend910b3.json` (`0.3.1-ascend`, M1 + M2 microbenchmarks including isolated FFTS+ cross-core sync handoff latency, zero GEMM or Attention fitting).
 - **Simulation settings:** `draws = 32`, `seed = 17`, `pair_margin = 0.05` (matching `validation/v02_inputs.py`), evaluated independently for `warm` and `cold` L2 states.
 
 ## 2. Disjoint Holdout Cohorts
 
-All holdout workloads are strictly disjoint from the informal dev sanity checks (`2048^3` GEMM, `4096^3` GEMM, and `S=2048` Attention):
+All holdout workloads are strictly disjoint from both the informal dev sanity checks (`2048^3` GEMM, `4096^3` GEMM, `S=2048` Attention) and the initial diagnostic v1 run (which surfaced the fractal NZ / `AIC` `vbrc` parser bugs and warm `torch.npu.Event` host-dispatch floor):
 
-- **GEMM (`validation/ascend-910b3-gemm-holdout.json`):** 8 shapes x 16 configs = 128 variants using `dense_gemm` (FP16 inputs/output, FP32 accumulator). Every M, N, and K dimension is absent from `{2048, 4096}`. Covers small-M decode (`16x3584x3072`, `64x5120x3584`), a 20-AI-Core wave-boundary triplet (`19 / 20 / 21` CTAs at `128x128`: `128x2432x3072`, `128x2560x3072`, `128x2688x3072`), medium and large prefill (`1024x3584x3072`, `3072x3584x3072`), and unaligned odd dimensions (`1537x2945x2497`).
-- **Attention (`validation/ascend-910b3-attention-holdout.json`):** 8 shapes x 10 configs = 80 variants using `validation/attention.py:fused_attention` (FP16 Q/K/V/O, FP32 LSE/accumulator). Every `seq_len` (`1024, 1536, 1537, 1280, 1793, 2560`) is absent from `{2048}`. Covers all 8 strata across `{non-causal, causal} x {MHA, GQA} x {D=64, D=128}` including aligned and odd sequence lengths.
+- **GEMM (`validation/ascend-910b3-gemm-holdout.json`):** 8 unseen shapes x 16 configs = 128 variants using `validation/ascend_kernels.py:dense_gemm` (FP16 inputs/output, FP32 accumulator). Every shape is absent from both dev (`{2048, 4096}`) and v1 shapes. Covers small-M decode (`32x4608x2560`, `96x6144x2816`), a 20-AI-Core two-wave boundary triplet (`39 / 40 / 41` CTAs at `128x128`: `128x4992x2816`, `128x5120x2816`, `128x5248x2816`), medium and large prefill (`768x4608x2816`, `2304x4608x2816`), and unaligned odd dimensions (`1153x3329x2689`).
+- **Attention (`validation/ascend-910b3-attention-holdout.json`):** 8 unseen shapes x 10 configs = 80 variants using `validation/attention.py:fused_attention` (FP16 Q/K/V/O, FP32 LSE/accumulator). Every `seq_len` (`896, 1152, 1408, 1665, 1921, 2304`) is strictly disjoint from both dev (`2048`) and v1 (`1024, 1280, 1536, 1537, 1793, 2560`). Covers all 8 strata across `{non-causal, causal} x {MHA, GQA} x {D=64, D=128}` including aligned and odd sequence lengths.
 
 ## 3. Independent Baselines (Zero Ascend Labels)
 
@@ -26,7 +26,9 @@ All holdout workloads are strictly disjoint from the informal dev sanity checks 
 2. **Hardware capture on `npu:0`:**
    - Software stack: Driver `26.1.1`, CANN `9.2.1`, Triton `3.5.0`, Triton-Ascend `3.2.2`, `torch_npu 2.10.0.post4`.
    - 3 independent sessions per case (order seeds `101, 102, 103`), 10 randomized complete blocks per session (30 paired blocks per `(case, config, cache)`).
-   - Clean-cold L2 preparation: read-only 384 MiB (2x L2 capacity) reduction kernel (`read_flush`, no dirty writebacks into the timed window), verified in every session by a warm-vs-cold L2 read probe.
+   - Warm L2 preparation: one pre-warm launch of the timed kernel followed by a zero-L2-traffic register-only spacer kernel (`stream_spacer`, ~420 us) so `ev0 -> fn -> ev1` executes back-to-back on-device without `torch_npu` host-dispatch bubbles.
+   - Clean-cold L2 preparation: read-only 384 MiB (2x L2 capacity) reduction kernel (`read_flush`, no dirty writebacks into the timed window).
+   - Hard session L2 probe gate: every session measures a 64 MiB warm-vs-cold L2 read probe and aborts if `median(cold_ns) / median(warm_ns) <= 1.1`.
    - Numerical correctness check against PyTorch FP32 reference before timing each config.
    - `npu-smi` temperature, power, and clock telemetry recorded before and after every session.
    - Publish SHA-256 receipts in `validation/ascend-910b3-seal.json`.
