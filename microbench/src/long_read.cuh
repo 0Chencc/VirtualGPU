@@ -63,62 +63,21 @@ struct LaunchSchedule {
   }
 
   template <class Prepare, class Launch>
-  void measure(int initial, int minimum, int maximum, size_t bytes_per_step,
-               size_t buffer_bytes, int warmup, int samples, cudaEvent_t start,
-               cudaEvent_t stop, Prepare prepare, Launch launch) {
-    if (clock_probe) std::printf(", \"sm_mhz_before\": %.1f", clock_probe());
-    int length = std::min(initial, maximum);
-    if (!pilot) {
-      if (next == lengths.size()) fail("Missing point in launch schedule");
-      length = lengths[next++];
-    }
-    auto collect = [&](int count) {
-      if (length < minimum || length > maximum) fail("Launch length outside address bounds");
-      for (int w = 0; w < warmup; ++w) {
-        prepare();
-        launch(length);
-      }
-      CUDA_CHECK(cudaGetLastError());
-      CUDA_CHECK(cudaDeviceSynchronize());
-      std::vector<double> durations;
-      for (int sample = 0; sample < count; ++sample) {
-        prepare();
-        CUDA_CHECK(cudaEventRecord(start));
-        launch(length);
-        CUDA_CHECK(cudaEventRecord(stop));
-        CUDA_CHECK(cudaEventSynchronize(stop));
-        float ms = 0;
-        CUDA_CHECK(cudaEventElapsedTime(&ms, start, stop));
-        durations.push_back(static_cast<double>(ms) * 1e6);
-      }
-      return durations;
-    };
+  Timed measure(int initial, int minimum, int maximum, size_t bytes_per_step,
+                size_t buffer_bytes, int warmup, int samples, cudaEvent_t start,
+                cudaEvent_t stop, Prepare prepare, Launch launch) {
+    auto timed = time_point(initial, minimum, maximum, warmup, samples, start, stop,
+                            prepare, launch);
+    const size_t transferred = static_cast<size_t>(timed.length) * bytes_per_step;
+    std::printf(", \"transfer_bytes\": %zu, \"source_buffer_bytes\": %zu, \"gbps_samples\": ",
+                transferred, buffer_bytes);
+    print_bandwidth_samples(timed, bytes_per_step);
+    return timed;
+  }
 
-    std::vector<double> durations;
-    if (pilot) {
-      std::printf(", \"sizing_trials\": [");
-      for (int attempt = 0; ; ++attempt) {
-        durations = collect(3);
-        if (attempt) std::printf(", ");
-        std::printf("{\"steps\": %d, \"launch_ns_samples\": ", length);
-        print_list(durations, 1.0, false);
-        std::printf("}");
-        const double fastest = *std::min_element(durations.begin(), durations.end());
-        if (fastest >= pilot_min_ns || length == maximum || attempt == 7) break;
-        const double scaled = std::ceil(length * (pilot_min_ns + 50000.0) / std::max(fastest, 1.0));
-        length = static_cast<int>(std::min<double>(maximum, std::max(length + 1.0, scaled)));
-      }
-      std::printf("]");
-    } else {
-      durations = collect(samples);
-    }
-    const size_t transferred = static_cast<size_t>(length) * bytes_per_step;
-    std::printf(", \"steps\": %d, \"transfer_bytes\": %zu, \"source_buffer_bytes\": %zu, "
-                "\"launch_ns_samples\": ", length, transferred, buffer_bytes);
-    print_list(durations, 1.0, false);
-    std::printf(", \"gbps_samples\": ");
-    print_list(durations, static_cast<double>(transferred), true);
-    if (clock_probe) std::printf(", \"sm_mhz_after\": %.1f", clock_probe());
+  static void print_bandwidth_samples(const Timed& timed, size_t bytes_per_step) {
+    const double transferred = static_cast<double>(timed.length) * bytes_per_step;
+    print_list(timed.launch_ns, transferred, true);
   }
 
  private:

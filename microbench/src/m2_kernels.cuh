@@ -542,18 +542,31 @@ static int run_l2(int device, int samples, int warmup, LaunchSchedule* schedule 
       l2_write_cg_kernel<<<grid, threads>>>(d_buf, l2_vec4, 4, static_cast<uint32_t>(w));
     }
     CUDA_CHECK(cudaDeviceSynchronize());
-    std::printf("  \"write_full_gbps_samples\": [");
-    for (int s = 0; s < samples; ++s) {
-      CUDA_CHECK(cudaEventRecord(ev_start));
-      l2_write_cg_kernel<<<grid, threads>>>(d_buf, l2_vec4, passes, static_cast<uint32_t>(s + 10));
-      CUDA_CHECK(cudaEventRecord(ev_stop));
-      CUDA_CHECK(cudaEventSynchronize(ev_stop));
-      float ms = 0.0f;
-      CUDA_CHECK(cudaEventElapsedTime(&ms, ev_start, ev_stop));
-      if (s > 0) std::printf(", ");
-      std::printf("%.3f", (total_bytes / 1e9) / (static_cast<double>(ms) / 1e3));
+    if (schedule) {
+      auto launch = [&](int count) {
+        l2_write_cg_kernel<<<grid, threads>>>(d_buf, l2_vec4, count, 10u);
+      };
+      std::printf("  \"write_full\": {\"working_set_bytes\": %zu", l2_ws_bytes);
+      const auto timed = schedule->measure(passes, 1, std::numeric_limits<int>::max(),
+                                           l2_ws_bytes, l2_ws_bytes, 0, samples,
+                                           ev_start, ev_stop, [] {}, launch);
+      std::printf("},\n  \"write_full_gbps_samples\": ");
+      LaunchSchedule::print_bandwidth_samples(timed, l2_ws_bytes);
+      std::printf(",\n");
+    } else {
+      std::printf("  \"write_full_gbps_samples\": [");
+      for (int s = 0; s < samples; ++s) {
+        CUDA_CHECK(cudaEventRecord(ev_start));
+        l2_write_cg_kernel<<<grid, threads>>>(d_buf, l2_vec4, passes, static_cast<uint32_t>(s + 10));
+        CUDA_CHECK(cudaEventRecord(ev_stop));
+        CUDA_CHECK(cudaEventSynchronize(ev_stop));
+        float ms = 0.0f;
+        CUDA_CHECK(cudaEventElapsedTime(&ms, ev_start, ev_stop));
+        if (s > 0) std::printf(", ");
+        std::printf("%.3f", (total_bytes / 1e9) / (static_cast<double>(ms) / 1e3));
+      }
+      std::printf("],\n");
     }
-    std::printf("],\n");
   }
 
   // 3) Working-set sweep for effective L2 capacity.
