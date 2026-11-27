@@ -127,7 +127,10 @@ flock /tmp/virtualgpu-gpu.lock .venv/bin/python -m validation.v03_capture \
   results/v03-gb10-gemm-seal.json gb10 gemm
 ```
 
-Retry only an immutable, documented protocol failure. A separate
+A capture-entry defect after timing starts is a protocol failure when
+the attempt produces an immutable `protocol_failed` receipt. Keep
+any partial report sealed and all available failure evidence. The
+release lead can approve a retry for that case-session only. A separate
 origin/main approval at
 `validation/v03-approvals/retries/<device>/<case>-session-<n>-attempt-<k>.json`
 must carry `status: retry_approved`, `timestamp_utc`, `device`,
@@ -136,6 +139,13 @@ must carry `status: retry_approved`, `timestamp_utc`, `device`,
 attempt intact, and use the same seed and approved inputs. Only a
 failed predecessor may be retried. An invalid configuration inside
 an otherwise valid session is retained as recorded.
+
+If the defect prevents writing the failure receipt or requires changing
+the approved capture code, stop and return to review. Keep the original
+artifacts and do not restart the slot as attempt 1. The standard retry
+gate requires both a failure receipt and the approved capture code.
+Any recovery outside those conditions needs a reviewed amendment and
+new authorization before timing resumes.
 
 ## Freeze, scoring and opening
 
