@@ -8,85 +8,109 @@ Earlier release decisions remain frozen.
 
 ## Mechanism scope (draft)
 
-### On main
+This inventory compares `v0.2-final` (`e70824b`) with main at
+`7c205d5`. It covers changes to core execution, frontend IR and
+profile inputs. Verified refers to the named evidence and device.
+Provisional evidence has a qualification or coverage gap. A
+convention correction changes how a defined quantity is represented
+or charged. The lead will approve the exact release scope before
+freeze. Only the RTX 4070 and GB10 enter the four cohorts below.
 
-- **Cross-wave L2 reuse.** The core models reuse by K slice under LRU
-  (`a5c01c6`, `f48763f`). All seven GB10 runs passed capture rules 1 and
-  2 individually. Each of the three benchmark versions failed rule 3
-  across runs. At working sets of at least 1.5 times L2, forward re-read
-  hit fractions were about -0.01 to 0.09 in all seven runs, versus 0.5 to
-  0.9 predicted by the previous form. That subset passed all three rules
-  in a post-hoc check. Near the capacity boundary, the GB10 observations
-  are bistable. Reversed walks are provisional and no supported kernel
-  uses them. The form remains unvalidated on RTX 4070. Its standing is
-  decided by the sealed holdout. [Evidence and limits](../docs/design.md#93-cross-wave-l2-reuse-near-capacity)
-- **Frontend `ldmatrix` byte correction.** The extractor counts the
-  per-warp bytes of MMA shared-memory operands from PTX (`4c70e03`).
-  This is a unit correction. Its registered check compares the
-  absolute signed median latency error with and without the correction
-  per GPU and kernel family, and by `num_stages` in attention. Error
-  should not grow, with attention `num_stages = 2` reported separately
-  because growth is expected. Report ranking changes descriptively.
-  [Registered check](../docs/results/analysis/h7-ldmatrix-registration.md)
+### Prediction-path inventory
 
-### Spill changes under review
+| Change | Commits | Status and device evidence |
+| --- | --- | --- |
+| Cross-wave L2 reuse, form c | `a5c01c6`, `f48763f` | **Provisional.** K-slice LRU uses a shared end-event clock and counts hit slices by position. On GB10 all seven runs passed rules 1 and 2 individually, while each of three versions failed rule 3 across runs. Forward re-reads at or above 1.5 times L2 were about -0.01 to 0.09 hits versus 0.5 to 0.9 predicted by the old form. That subset passes in a post-hoc check. Near capacity the hardware is bistable. The RTX 4070 attempt was void and remains unvalidated. The sealed v0.3 holdout decides the standing of this change. [Evidence and limits](../docs/design.md#93-cross-wave-l2-reuse-near-capacity) |
+| NVIDIA `ldmatrix` shared-memory read bytes | `4c70e03`, registration `6914195` | **Convention correction.** Per-warp PTX operand traffic replaces the one-per-CTA TTGIR tile count where `ldmatrix` is present. GEMM IR cache version 5 invalidates old extractions. Offline recounts cover RTX 4070 and GB10 GEMM and attention. The registered check compares the absolute signed median latency error per GPU and kernel family and by attention stage count. Error should not grow, with attention `num_stages = 2` reported separately because growth is expected. Ranking changes are descriptive. The `ld.shared.v4` service-rate proxy for `ldmatrix` remains an assumption. [Registered check](../docs/results/analysis/h7-ldmatrix-registration.md) |
+| Spill L1 transition and fallback | `d050c15` | **Provisional.** The L1 miss curves are keyed by shared-memory carveout and replace linear overflow. Profiles without a curve use a hard threshold. Legacy carveout measurements are from RTX 4070 and GB10. Field and end-to-end rechecks await qualified profiles. [Spill model and evidence](../docs/design.md#64-mechanisms-in-the-core) |
+| Spill reload latency on the dependent chain | `b605efa` | **Provisional.** Batched reload curves mix the L1 and L2 costs and use static assembler load bytes divided by four as the reload count. Legacy points cover RTX 4070 and GB10. Both executed counts and qualified long launches remain open. The large-frame derivation retains some launch-time frame initialization cost. [Spill limits](../docs/design.md#92-v02-residuals-and-exclusions) [Long-launch evidence](../docs/components/long-launch-capture.md) |
+| Spill loop split and duplicate reload charge | `ae02278`, `c2e920c` (PR #16) | **Convention corrections.** The static causal attention total is divided equally between the main and diagonal loops. RTX 3070 post-hoc counters show those loops differ and the estimates still overcount by 1.4 and 4.1 times. The chain counts only stores on its local pipe when reload latency already charges the loads. The shared local pipe still carries all bytes, with the charge split covered by a deterministic core test. There is no executed-count validation on the RTX 4070 or GB10. [Counter evidence](../docs/results/analysis/spill-counters-rtx3070-posthoc.md) [Issue #15](https://github.com/VirtualGPU/VirtualGPU/issues/15) |
+| GB10 reference profile MLP refresh | `71fb55a`, `36f1259`, quality notes `1262553` and `7c3921f` | **Provisional profile inputs.** Updated contiguous DRAM and L2 MLP, strided DRAM MLP, and the DRAM and L2 read scalars. The partial refresh preserves the original global clock policy. All 10 short-launch repeats failed rule 1 under the adopted rule. GB10's first full long-launch attempt passed the MLP modes in isolation and failed suite qualification. The bundled RTX 4070 numeric profile is unchanged over this interval. [Capture audit](../docs/results/analysis/v0.3-mlp-repeat-plan.md) [Full capture](../docs/results/analysis/v0.3-gb10-first-full-capture.md) |
+| Optional cp.async active-SM L2 curve and read ceiling | `117db65` (PR #12) | **Convention correction in collection, provisional as a reference input.** The curve has a backward-compatible reader and shares the L2 perturbation group. The core still uses the original port-floor curve and does not select the new curve by instruction. In a re-collected profile the full-SM cp.async point can supply `l2_bw_read_gbps`, subject to the existing MLP peak comparison. Evidence includes the RTX PRO 6000 refresh and a GB10 same-session mechanism check. The matching RTX 4070 reference input awaits recapture. [Profile format](../docs/components/profiles.md) [GB10 mechanism check](../docs/components/long-launch-capture.md) |
+| Physical unified L1 size and DRAM buffer floor | `117db65` (PR #12) | **Convention correction in collection.** Use architecture-specific unified L1 capacity and a DRAM buffer of at least 16 times L2. Both can change measured or derived prediction inputs when profiles are rebuilt. This commit refreshes RTX PRO 6000 only. GB10's scheduled write kept the 384 MiB legacy minimum and moved -0.02% in a mechanism check. [Profile contributor guide](../docs/guides/contributing-a-profile.md) [GB10 mechanism check](../docs/components/long-launch-capture.md) |
+| 0.23.0 collection and profile construction | `75bdfec`, `663e618`, `de3d217`, `c0a46fa`, mode registration series `071fcc6`, `257f53f`, `33a03a9`, `ce38c5b`, `f983272`, `9c915a3`, `b4cc2f9` | **Provisional on both reference devices.** Use the median of five valid process medians from frozen lengths. Long-launch inputs and their uncertainties can change predictions. Launch records and per-cycle fields are provenance at this checkpoint. The core still uses the native rate. GB10 mode comparisons and a full failed attempt exist. There is no qualified RTX 4070 campaign. [Protocol](../docs/components/long-launch-capture.md) [First GB10 capture](../docs/results/analysis/v0.3-gb10-first-full-capture.md) |
+| Measured non-MMA issue rate | `7c205d5` (PR #20) | **Provisional on the reference devices.** The collector takes the greater of the pure FFMA rate and the peak FFMA/LOP3 mix. The core already reads that field. Only a re-collection changes it, and both bundled reference profiles still use the four-per-clock estimate. RTX 3070 had five repeats that passed the dispersion checks, without a full 0.23.0 gate report. The archived RTX 4070 and GB10 IR replay with the RTX 3070 value is post-hoc sensitivity. The registered same-device rate check rejects a miss above 10%. [RTX 3070 evidence](../docs/results/analysis/non-mma-issue-rtx3070-posthoc.md) |
+| Ascend occupancy, frontend and Cube/Vector execution | `737bcfb`, `0c3fec4`, `3ce23b1` | **Verified for Ascend attention holdout, provisional for the target overall.** Adds Ascend-only SRAM resource checks, GEMM and attention IR extraction, workspace residency and overlap, and HIVM fractal layout and AIC parser corrections. The Ascend 910B3 sealed result passed attention and failed the GEMM roofline ranking margin. The capability gates preserve the existing NVIDIA paths. The separate Ascend evaluation stays outside this freeze. [Model and limits](../docs/design.md#94-ascend-910b3-mapping-and-known-limits) [Sealed Ascend result](../docs/results/ascend910b3-holdout.md) |
+| Other bundled NVIDIA profiles and refreshes | `5d03053`, `1f499a7`, `df6bae8`, `36f321a`, `a3d603c`, `07de592`, `17fd096`, `6ff4a91`, `117db65` | **Provisional.** Device-specific calibration exists for RTX 3070, L40S, L4, RTX PRO 6000, A100 80GB, RTX PRO 5000 72GB, and RTX 4090. These commits add or refresh target inputs and do not supply evidence for either v0.3 reference cohort. The L40S commit also extends the `l2-merge` harness to GPUs above 128 SMs. [Profile evidence and provenance](../profiles/README.md) |
 
-The carveout-dependent L1 spill transition (`d050c15`) and critical-path
-reload latency (`b605efa`) went directly to main without preregistration.
-They remain under review in [issue #15](https://github.com/VirtualGPU/VirtualGPU/issues/15).
-The four findings and current status are:
+The mainline non-MMA change in `3736b0a` was reverted by `a239702` and
+landed in revised form as `7c205d5`. Mechanical reformats, test moves
+and profile-provenance-only changes do not introduce new prediction
+mechanisms. Post-hoc effects on opened workloads do not enter v0.3
+validation. No v0.3 labels may select model parameters.
 
-| Finding | Current status |
-| --- | --- |
-| Static `ptxas` spill load bytes divided by four stand in for executed reloads. Cold paths and wider loads can inflate the count. | Executed per-iteration counts are still missing for the model. |
-| Causal attention originally charged the combined static count in both loops. | `ae02278` splits the count between the main and diagonal loops. Post-hoc RTX 3070 counters still show overcounts of 1.4 and 4.1 times, and the loops have different spill code. |
-| The dependent chain originally charged local reload bandwidth alongside measured reload latency. | PR #16 (`c2e920c`) removes the reload bytes from the chain's local pipe charge when reload latency is charged. Both loads and stores still use the shared local pipe. |
-| Profiles without a carveout curve now use a hard threshold in place of linear overflow. | The behavior change remains and is documented in the changelog. |
+The spill step and reload lookup landed without preregistration and
+remain under issue #15 review. Its four findings are the static reload
+proxy, the initial duplicate causal loop charge, the initial duplicate
+chain bandwidth charge, and the fallback change for profiles without
+carveout curves. The table records their dispositions. Spill frames
+leaving L1 also change the working set used to split global traffic
+between L2 and DRAM. This coupling remains open. The zero-step
+frame-initialization control in PR #19 is pending at this snapshot.
 
-Reload latency is provisional pending executed counts and qualified
-long-launch recapture. The profile derivation still carries large-frame
-initialization bias. Spill frames leaving L1 can also change the working
-set used to split global traffic between L2 and DRAM. Impacts already
-reported on opened workloads are post-hoc. [Spill limitations](../docs/design.md#92-v02-residuals-and-exclusions)
+### Registered work outside the core
 
-### Registered candidates and rejected forms
+- **H7 F-dep** (`6d2aa19`) awaits a qualified RTX 4070 cross-device test
+  against F-max. On points where the forms differ by more than 2%,
+  F-dep must bring median error below half and be closer on at least
+  two thirds. Keep it outside the freeze if that test is unavailable
+  or fails. H7(a) is a separate MMA-chain confirmation test. It does
+  not authorize a new dependency-latency rule for the supported
+  workloads. [F-dep registration](../docs/results/analysis/h7-fdep-registration.md) [MMA-chain registration](../docs/results/analysis/h7-mma-ilp-registration.md)
+- **H5 narrow loads.** Keep both forms outside the core. DRAM
+  request/sector-limit captures failed qualification and leave that
+  form unjudged. The qualified GB10 register-staging form scored
+  15.7% MAPE against a 15% limit. [H5 evidence](../docs/design.md#95-narrow-register-staged-loads-h5)
+- **H1 merged-wait discount and lockstep bursts.** Leave both out.
+  Free-running groups did not support discounting by arrival offset.
+  The positive fixed-lead result was provisional. CTAs drifted out
+  of step, and the burst form did not win its registered test.
+  A slowest-copy partial-miss rule still needs its own registration
+  and test. [H1 evidence](../docs/results/analysis/v0.2-posthoc.md)
+- **H3 staged MMA and H4 closed-loop retuning.** The GB10 staged-MMA
+  negative control rejected the proposed multi-buffer penalty. The
+  b-stream study did not locate H4 in the closed-loop mechanism.
+  Keep DRAM reference normalization outside the predictor freeze
+  unless a later reviewed amendment establishes its scope on
+  qualifying data. [GB10 H3 and H4 evidence](../docs/results/analysis/v0.3-gb10-h3-h4-posthoc.md)
 
-- **H7 F-dep.** The dependent softmax chain is registered and has not
-  entered the core. Its decision awaits the RTX 4070 cross-device
-  microbenchmark against F-max. On points where the forms differ by
-  more than 2%, F-dep must bring median error below half and be closer on at
-  least two thirds. [Registered test](../docs/results/analysis/h7-fdep-registration.md)
-- **H5 narrow loads.** Neither the DRAM request/sector limit nor the
-  combined register-staging form enters the core. The DRAM captures
-  failed dispersion and leave that form unjudged. The qualified GB10
-  staging run had 15.7% MAPE against a 15% limit.
-  [Evidence](../docs/design.md#95-narrow-register-staged-loads-h5)
-- **H1 merged-wait discount and lockstep bursts.** Neither enters the
-  core. Free-running CTA groups did not support discounting the merged
-  wait by arrival offset. The fixed-lead result was provisional. CTAs
-  fell out of step, and the burst form did not win its registered test.
-  [Evidence](../docs/results/analysis/v0.2-posthoc.md)
+### Open core items and freeze recommendation
 
-### Profiles planned for the freeze
+| Item | Evidence | Draft recommendation |
+| --- | --- | --- |
+| Round-trip port floor with miss merging | Old-profile recheck traces the regression to `e51f8ef`, before `v0.2-final`. On the same benchmark inputs the RTX 4070 error rose from 4.8% to 12.2% and GB10 from 4.6% to 8.8%, most at sparse CTA counts. | Keep the existing coupling as an explicit known limit if it persists but no registered alternative wins on a qualified profile. Require the new-profile recheck before deciding. The current floor has separate evidence on `serial_stage_fill` and `sync_stage_loop`. |
+| Spill frame footprint at full occupancy | The one-CTA-per-SM benchmark is charged for up to eight resident CTA frames. The legacy end-to-end `l1_boundary` extra-time signed median errors are about +210% on GB10 and +71% on RTX 4070. The local pipe is also still estimated. | Treat actual resident CTA accounting as a freeze prerequisite if the release retains the spill model. Recheck under a qualified spill capture and require a deterministic sparse-grid and full-residency regression. This fixes the population being charged. Keep executed reload counts and local bandwidth as explicit residual limits until separate evidence qualifies them. |
 
-The planned RTX 4070 and GB10 revision is `0.23.0` under the long-launch
-protocol. Size timed points with a pilot, freeze their schedules, use at
-least 1 ms per timed window, and reduce five valid independent sweeps
-under the applicable thermal, host and desktop gates and the three
-capture rules. The protocol records per-point SM clocks and per-cycle
-rates for compute measurements. The final amendment will name the
-actual qualified profile revisions and digests.
+[Core recheck baseline](../docs/results/analysis/v0.3-mechanism-recheck-baseline.md)
+[Open core work](../ROADMAP.md#030-close-the-known-model-gaps)
 
-Two registered capture exceptions apply to GB10:
+### Profile and holdout freeze prerequisites
+
+Each reference device needs one complete, independently qualified
+`0.23.0` profile with a frozen schedule and binary, five valid
+independent process rounds, and the applicable thermal, host and
+desktop gates. The profile stores per-point SM clocks and per-cycle
+compute rates. Keep the min and max of the per-round medians for
+registered exception points and cover the observed spread. GB10 has
+the following capture exceptions:
 
 | Region | Points and handling |
 | --- | --- |
-| L2 bistability | In `l2-rescan` and the capacity sweep, working sets within 0.75 to 1.25 times physical L2 are excluded from the rule 3 decision and tagged `bistable_band`. |
-| Low-in-flight cold DRAM | Contiguous reads at or below 256 KiB, strided reads at or below 384 KiB, and the DRAM active-SM read curve at targets 1 and 2 are excluded from the rule 1 and 3 decisions and tagged `low_in_flight_unstable`. Rule 2 still examines every sample list. |
+| L2 bistability | In `l2-rescan` and the capacity sweep, working sets from 0.75 to 1.25 times physical L2 are excluded only from rule 3 and tagged `bistable_band`. |
+| Low-in-flight cold DRAM | Contiguous reads at or below 256 KiB, strided reads at or below 384 KiB and active-SM read targets 1 and 2 are excluded from rules 1 and 3 and tagged `low_in_flight_unstable`. Rule 2 examines every sample list and uncertainty covers both observed clusters. |
 
-Keep the min and max of the per-round medians and report uncertainty from
-the observed spread, covering both clusters for low-in-flight points.
-The exceptions are fixed before recapture.
+| Prerequisite | Status at the inventory checkpoint |
+| --- | --- |
+| GB10 profile | First full attempt at `42e039d` failed. `l2-merge`, `closed-loop-mma` and `spill-latency` had 3, 0 and 1 valid rounds after both supplements. `l2` failed offline rule 3 at 36 and 48 MiB, outside the exception. The fix to freeze `closed-loop-mma` iteration counts alongside launch lengths was pending at the inventory checkpoint. It has since landed on main and awaits a full recapture. Resolve the remaining capture failures and qualify one full new campaign including the final spill and SFU/shuffle binaries. The same-device non-MMA rate check also remains pending. No reference profile was produced. |
+| RTX 4070 profile | Pending a quiet Windows desktop slot for the full gated sweep. Capture and check the measured non-MMA issue rate. The same quiet slot dependency applies to the RTX 4070 F-dep microbenchmark and any attempt to qualify form c on this card. An executed-spill counter comparison also needs working profiling permissions. |
+| Four fresh holdout cohorts | The candidate manifests and their CPU AOT/resource audit are in main (`78c664e`). Measurement is pending manifest release and capture approval. Capture both GB10 cohorts on Spark after that approval. Both RTX 4070 cohorts also require a quiet desktop slot. Seal the reports with receipts and keep them unopened until the frozen predictions are archived and release is approved. |
+| Freeze evidence | Recheck the model mechanisms on the qualified profiles, resolve the core-item decisions above, and pin the source, toolchain, profile digests, scoring code and historical baseline fits. Publish all four prediction archives before any label release. |
+
+A pre-timing interruption can resume the same frozen capture. Modes
+from independent sessions or different binaries cannot be combined
+into one qualified profile. The lead records any scope change in
+the amendment and leaves the registered manifests and decision
+criteria in effect.
 [Long-launch protocol](../docs/components/long-launch-capture.md)
 [GB10 cold DRAM evidence](../docs/results/analysis/v0.3-gb10-mlp-wall-order-posthoc.md)
 
