@@ -123,6 +123,16 @@ class LongLaunchTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, message):
                 long_launch.verify(record, bad)
 
+    def test_verify_checks_in_kernel_windows(self):
+        _, record = long_launch.freeze("closed-loop", self.pilot())
+        row = point(16, 1100, [1.2e6] * 15)
+        row["window_ns_samples"] = [1.19e6] * 15
+        good = output([row], [point(32, 4000, [1.1e6] * 15)])
+        long_launch.verify(record, good)
+        row["window_ns_samples"][3] = 0.99e6
+        with self.assertRaisesRegex(ValueError, "in-kernel window"):
+            long_launch.verify(record, good)
+
     def test_verify_rejects_incomplete_or_invalid_samples(self):
         _, record = long_launch.freeze("closed-loop", self.pilot())
         for samples in ([1.2e6] * 14, [1.2e6] * 14 + [float("nan")], [1.2e6] * 14 + [0.0]):

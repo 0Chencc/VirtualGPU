@@ -24,6 +24,7 @@ struct LaunchSchedule {
   struct Timed {
     int length;
     std::vector<double> launch_ns;
+    std::vector<double> observed;
   };
 
   // Size (pilot) or look up (frozen schedule) one point's length and time it. Prints
@@ -32,17 +33,30 @@ struct LaunchSchedule {
   template <class Prepare, class Launch>
   Timed time_point(int initial, int minimum, int maximum, int warmup, int samples,
                    cudaEvent_t start, cudaEvent_t stop, Prepare prepare, Launch launch) {
+    return time_point(initial, minimum, maximum, warmup, samples, start, stop, prepare, launch,
+                      [] { return 0.0; });
+  }
+
+  // As above for probes timed inside the kernel: `observe` runs after each timed launch,
+  // outside the events, and returns the kernel's own timed window in ns. The capture
+  // samples' windows come back in `observed`; the pilot still sizes on the launch time.
+  template <class Prepare, class Launch, class Observe>
+  Timed time_point(int initial, int minimum, int maximum, int warmup, int samples,
+                   cudaEvent_t start, cudaEvent_t stop, Prepare prepare, Launch launch,
+                   Observe observe) {
     if (clock_probe) std::printf(", \"sm_mhz_before\": %.1f", clock_probe());
     int length = std::min(initial, maximum);
     if (!pilot) {
       if (next == lengths.size()) fail("Missing point in launch schedule");
       length = lengths[next++];
     }
-    std::vector<double> durations;
+    std::vector<double> durations, observed;
     if (pilot) {
       std::printf(", \"sizing_trials\": [");
       for (int attempt = 0; ; ++attempt) {
-        durations = collect(length, minimum, maximum, warmup, 3, start, stop, prepare, launch);
+        observed.clear();
+        durations = collect(length, minimum, maximum, warmup, 3, start, stop, prepare, launch,
+                            observe, observed);
         if (attempt) std::printf(", ");
         std::printf("{\"steps\": %d, \"launch_ns_samples\": ", length);
         print_list(durations, 1.0, false);
@@ -54,12 +68,13 @@ struct LaunchSchedule {
       }
       std::printf("]");
     } else {
-      durations = collect(length, minimum, maximum, warmup, samples, start, stop, prepare, launch);
+      durations = collect(length, minimum, maximum, warmup, samples, start, stop, prepare, launch,
+                          observe, observed);
     }
     std::printf(", \"steps\": %d, \"launch_ns_samples\": ", length);
     print_list(durations, 1.0, false);
     if (clock_probe) std::printf(", \"sm_mhz_after\": %.1f", clock_probe());
-    return {length, durations};
+    return {length, durations, observed};
   }
 
   template <class Prepare, class Launch>
@@ -81,10 +96,10 @@ struct LaunchSchedule {
   }
 
  private:
-  template <class Prepare, class Launch>
+  template <class Prepare, class Launch, class Observe>
   static std::vector<double> collect(int length, int minimum, int maximum, int warmup, int count,
                                      cudaEvent_t start, cudaEvent_t stop, Prepare prepare,
-                                     Launch launch) {
+                                     Launch launch, Observe observe, std::vector<double>& observed) {
     if (length < minimum || length > maximum) fail("Launch length outside bounds");
     for (int w = 0; w < warmup; ++w) {
       prepare();
@@ -102,6 +117,7 @@ struct LaunchSchedule {
       float ms = 0;
       CUDA_CHECK(cudaEventElapsedTime(&ms, start, stop));
       durations.push_back(static_cast<double>(ms) * 1e6);
+      observed.push_back(observe());
     }
     return durations;
   }

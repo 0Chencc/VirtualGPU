@@ -5,8 +5,9 @@ fastest launch reaches 1.25 ms and prints every trial; `freeze` turns that
 output into a schedule (one length per point, in emission order) plus a
 record of each point's identity; a capture run with the schedule file is
 checked by `verify`: same points in the same order, the frozen lengths, and
-every launch at least 1.0 ms. A point is any object in the output that has
-`launch_ns_samples`, in document order (see docs/components/long-launch-capture.md).
+every launch (and every in-kernel `window_ns_samples` value) at least 1.0 ms.
+A point is any object in the output that has `launch_ns_samples`, in document
+order (see docs/components/long-launch-capture.md).
 
     python microbench/long_launch.py freeze MODE PILOT.json SCHEDULE.txt FREEZE.json
     python microbench/long_launch.py check-schedule FREEZE.json SCHEDULE.txt   # before a capture
@@ -207,6 +208,10 @@ def verify(record, capture):
         fastest = min(point["launch_ns_samples"])
         if fastest < record["capture_min_ns"]:
             raise ValueError(f"{mode} {frozen['point']}: a launch took {fastest:.0f} ns")
+        # A probe timed inside the kernel also needs its own window at the floor.
+        window = min(point.get("window_ns_samples", [record["capture_min_ns"]]))
+        if window < record["capture_min_ns"]:
+            raise ValueError(f"{mode} {frozen['point']}: an in-kernel window took {window:.0f} ns")
         shortest = fastest if shortest is None else min(shortest, fastest)
     return {"mode": mode, "points": len(rows), "shortest_launch_ns": shortest}
 
