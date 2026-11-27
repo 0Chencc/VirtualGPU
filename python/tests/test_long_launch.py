@@ -123,6 +123,15 @@ class LongLaunchTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, message):
                 long_launch.verify(record, bad)
 
+    def test_freeze_sizes_in_kernel_probes_by_their_window(self):
+        row = point(16, 1100, [1.3e6] * 3)
+        row["window_ns_samples"] = [1.27e6, 0.8e6, 1.27e6]
+        pilot = output([row], [point(32, 4000, [1.3e6] * 3)], samples=3)
+        with self.assertRaisesRegex(ValueError, "pilot reached only 800000"):
+            long_launch.freeze("closed-loop", pilot)
+        row["window_ns_samples"][1] = 1.26e6
+        long_launch.freeze("closed-loop", pilot)
+
     def test_verify_checks_in_kernel_windows(self):
         _, record = long_launch.freeze("closed-loop", self.pilot())
         row = point(16, 1100, [1.2e6] * 15)

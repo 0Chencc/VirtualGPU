@@ -204,7 +204,8 @@ def freeze(mode, pilot):
     for path, point in rows:
         check_samples(mode, point, len(point["launch_ns_samples"]))
         check_diagnostics(mode, point)
-        fastest = min(point["launch_ns_samples"])
+        # A probe timed inside the kernel is sized by the shorter of its launch and window.
+        fastest = min(point["launch_ns_samples"] + point.get("window_ns_samples", []))
         if fastest < PILOT_MIN_NS:
             raise ValueError(
                 f"{mode} {identity(mode, path, point)}: pilot reached only {fastest:.0f} ns"
