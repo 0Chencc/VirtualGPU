@@ -3130,7 +3130,7 @@ static void dispatch_mma_chain(int ld_per_warp, int m_chain, int grid, int threa
   }
 }
 
-static int run_mma_chain(int device, int samples, int warmup) {
+static int run_mma_chain(int device, int samples, int warmup, LaunchSchedule* schedule = nullptr) {
   cudaDeviceProp prop{};
   CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
   const int sm_count = prop.multiProcessorCount;
@@ -3185,6 +3185,19 @@ static int run_mma_chain(int device, int samples, int warmup) {
             dispatch_mma_chain<false>(ld_per_warp, m, sm_count, threads, dyn_smem, d_init, d_sink, steps);
           }
         };
+        if (schedule) {
+          std::printf("%s\n    {\"variant\": \"%s\", \"num_warps\": %d, \"tile_bytes\": %d, "
+                      "\"ldmatrix_x4_per_warp\": %d, \"mma_chain_len\": %d",
+                      first ? "" : ",", cfg.variant, warps, cfg.tile_bytes, ld_per_warp, m);
+          first = false;
+          auto timed = schedule->time_point(steps, 1, 1 << 24, warmup, samples, ev_start, ev_stop, [] {},
+                                            [&](int length) { steps = length; launch_once(); });
+          std::printf(", \"stage_time_ns_samples\": [");
+          for (size_t i = 0; i < timed.launch_ns.size(); ++i)
+            std::printf("%s%.3f", i ? ", " : "", timed.launch_ns[i] / timed.length);
+          std::printf("]}");
+          continue;
+        }
 
         for (int w = 0; w < warmup; ++w) launch_once();
         CUDA_CHECK(cudaDeviceSynchronize());

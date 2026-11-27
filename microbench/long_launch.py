@@ -66,6 +66,15 @@ DESIGN_FIELDS = {
             "reload_count",
         )
     },
+    "mma-chain": {
+        "mma_chain_latency": (
+            "variant",
+            "num_warps",
+            "tile_bytes",
+            "ldmatrix_x4_per_warp",
+            "mma_chain_len",
+        )
+    },
 }
 
 
