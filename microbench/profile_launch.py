@@ -45,6 +45,7 @@ PROFILE_PATH = {
     ("spill-latency", "reload_latency_by_count"): ("memory", "spill_reload_latency_by_count"),
     ("mma-chain", "mma_chain_latency"): ("compute", "mma_chain_latency"),
     ("sync-loop-multicta", "sync_stage_loop"): ("pipeline", "sync_stage_loop"),
+    ("sync-loop-reconcile", "sync_stage_loop"): ("pipeline", "sync_stage_loop"),
 }
 # Raw sample lists whose profile value has another name than the list without "_samples".
 STAGE_LOOP = {
@@ -58,6 +59,7 @@ METRIC = {
     "sync-loop": STAGE_LOOP,
     "closed-loop-mma": STAGE_LOOP,
     "sync-loop-multicta": STAGE_LOOP,
+    "sync-loop-reconcile": STAGE_LOOP,
 }
 # Points that are one scalar profile value, and where their rate list sits: a top-level
 # list, or None for the point's own list.
@@ -74,7 +76,7 @@ NOT_IN_PROFILE = {("l2", "capacity_sweep")}
 NOT_A_VALUE = set()
 # Modes whose points build_profile merges into one profile field, later overriding earlier
 # on the same design fields; only the last source of each point is annotated.
-OVERRIDE_ORDER = ("sync-loop", "sync-loop-multicta")
+OVERRIDE_ORDER = ("sync-loop", "sync-loop-multicta", "sync-loop-reconcile")
 # Profile values that are compute rates and get a per-cycle value.
 COMPUTE = {"tflops_per_sm", "fp32_fma_tflops", "issue_rate_gwarp_inst_per_sm"}
 # Design fields the profile names differently.

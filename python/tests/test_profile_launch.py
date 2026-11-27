@@ -276,3 +276,22 @@ class ProfileLaunchTests(unittest.TestCase):
         )
         self.assertEqual(entry["delivered_bw_gbps"]["launch"]["length"], 640)
         self.assertIn("launch", entry["achieved_mma_tflops_per_sm"])
+
+    def test_sync_loop_reconcile_is_the_last_source_of_sync_stage_loop(self):
+        self.assertEqual(pl.OVERRIDE_ORDER[-1], "sync-loop-reconcile")
+        names = pl.long_launch.DESIGN_FIELDS["sync-loop-reconcile"]["sync_stage_loop"]
+        self.assertEqual(names, pl.long_launch.DESIGN_FIELDS["sync-loop"]["sync_stage_loop"])
+        entry = self.profile["measured"]["pipeline"]["sync_stage_loop"][0]
+        stale = timed(entry, names, STAGE_LISTS, 512)
+        stale["turnaround_ns_samples"] = [1.0] * 5
+        pl.attach_all(
+            self.profile,
+            {
+                "sync-loop": {"sync_stage_loop": [stale]},
+                "sync-loop-multicta": {"sync_stage_loop": [stale]},
+                "sync-loop-reconcile": {
+                    "sync_stage_loop": [timed(entry, names, STAGE_LISTS, 1500)]
+                },
+            },
+        )
+        self.assertEqual(entry["mean_stage_turnaround_ns"]["launch"]["length"], 1500)

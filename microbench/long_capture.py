@@ -58,6 +58,7 @@ MODES = (
     "spill-latency",
     "mma-chain",
     "sync-loop-multicta",
+    "sync-loop-reconcile",
 )
 ROUNDS = 5
 EXTRA_ROUNDS = 2
