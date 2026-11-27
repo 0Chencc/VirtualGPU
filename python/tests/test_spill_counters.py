@@ -111,6 +111,12 @@ class SpillCounterTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "changed dynamic local instruction counts"):
             spill.attention_row(case, config, measured, action(rows[1:]), ranges)
 
+    def test_target_follows_device_compute_capability(self):
+        self.assertEqual(spill.target_arch("8.6"), "sm_86")
+        self.assertEqual(spill.target_arch("12.1"), "sm_121")
+        with self.assertRaises(ValueError):
+            spill.target_arch("[N/A]")
+
     def test_atomic_publish_only_exposes_complete_json_and_keeps_existing_file(self):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "post-hoc" / "counters.json"

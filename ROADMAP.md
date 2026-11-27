@@ -79,6 +79,7 @@ Fix what made v0.2 miss on the RTX 4070 and GB10, and fix the profiles we alread
 - [ ] Dynamic count of local loads per iteration, so the two causal attention loops are not summed into one spill figure
 - [x] Split the static spill figure of causal attention between its two loops (`spill_loop_count`)
 - [ ] Capture `microbench.spill_counters` on the RTX 4070 and check the loop split with `scripts/posthoc_spill_split.py`
+- [ ] Capture `microbench.spill_counters` on the RTX 3070 as a first post-hoc look at static against dynamic local loads
 - [ ] Narrow register-staged loads on unaligned shapes (H5): redo both forms with launches over 1 ms and captures that pass the dispersion rule, then decide
 - [ ] Synchronous load GEMM (`num_stages = 1`, +9.1% warm): find the missing mechanism with a microbenchmark
 - [ ] GB10 decode shapes are predicted too compressed: find out why

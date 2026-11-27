@@ -37,7 +37,7 @@ def compare(row, resources, num_warps):
     }
 
 
-def frontend_resources(case, config):
+def frontend_resources(case, config, target):
     from virtualgpu.frontend import extract_attention_kernel_ir
 
     from validation import attention
@@ -59,7 +59,7 @@ def frontend_resources(case, config):
         seq,
         dim,
         knobs,
-        "sm_89",
+        target,
         H_kv=hk,
         causal=causal,
         call_args=(*_AOT_POINTERS, hq, hk, seq, dim),
@@ -75,11 +75,12 @@ def main():
     args = parser.parse_args()
     data = json.loads(args.counters.read_text())
     attention = data["causal_attention"]
+    target = data["provenance"]["target"]
     configs = {row["config_id"]: row for row in json.loads(MANIFEST.read_text())["configs"]}
     rows = []
     for row in attention["configs"]:
         config = configs[row["config_id"]]
-        resources = frontend_resources(attention["case"], config)
+        resources = frontend_resources(attention["case"], config, target)
         if resources["registers_per_thread"] != row["registers_per_thread"]:
             print(f"{row['config_id']}: registers differ from the capture, toolchain mismatch?")
         rows.append(compare(row, resources, config["num_warps"]))

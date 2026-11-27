@@ -1,5 +1,7 @@
 """Tests for scripts/posthoc_spill_split.py."""
 
+import json
+
 from scripts.posthoc_spill_split import compare
 
 
@@ -33,3 +35,25 @@ def test_compare_defaults_to_one_loop():
     r = compare(row, {"spill_loads_bytes": 8, "spill_scope": "inner_loop_confirmed"}, num_warps=2)
     assert r["spill_loop_count"] == 1
     assert r["static_split"] == r["static_unsplit"] == 2
+
+
+def test_main_compiles_for_the_captured_target(tmp_path, monkeypatch):
+    from scripts import posthoc_spill_split as split
+
+    row = {"config_id": "m64n32-w4-s2", "registers_per_thread": 1, "loops": {}}
+    capture = {
+        "provenance": {"commit": "abc", "target": "sm_86"},
+        "causal_attention": {"case": {}, "configs": [row]},
+    }
+    path = tmp_path / "capture.json"
+    path.write_text(json.dumps(capture))
+    targets = []
+
+    def resources(case, config, target):
+        targets.append(target)
+        return {"registers_per_thread": 1, "spill_loads_bytes": 0, "spill_scope": "none"}
+
+    monkeypatch.setattr(split, "frontend_resources", resources)
+    monkeypatch.setattr(split.sys, "argv", ["posthoc_spill_split", str(path)])
+    assert split.main() == 0
+    assert targets == ["sm_86"]

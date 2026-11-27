@@ -258,9 +258,10 @@ Fields sharing a `perturb_group` receive the same multiplicative draw per pertur
 
 ## Post-hoc spill counter capture
 
-After counter permission takes effect on the Bifrost RTX 4070, run this from
+Once GPU performance counters are allowed, run this on an NVIDIA GPU from
 a clean commit with Nsight Compute 2026.4 on PATH and CUDA nvcc, PyTorch and
-Triton in the project environment:
+Triton in the project environment. The target (`sm_89` on the RTX 4070) comes
+from the device's compute capability and is stored in the record:
 
 ```sh
 flock /tmp/virtualgpu-gpu.lock .venv/bin/python -m microbench.spill_counters
@@ -292,7 +293,7 @@ totals. Launch-level L1TEX sectors have no loop attribution. See the
 for metric definitions.
 
 `python scripts/posthoc_spill_split.py <capture.json>` recompiles the three
-attention configs offline and prints the static reloads per thread per
+attention configs offline for the capture's target and prints the static reloads per thread per
 iteration, with and without the loop split, next to the measured ones.
 
 ## Independent MLP repeat reduction

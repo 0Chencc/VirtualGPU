@@ -389,8 +389,7 @@ def measure(ncu, nvcc):
         env,
     )
     uuid, name, driver, capability = next(csv.reader(gpu.splitlines(), skipinitialspace=True))
-    if capability != "8.9" or "RTX 4070" not in name:
-        raise ValueError("This counter suite targets the Bifrost RTX 4070")
+    arch = target_arch(capability)
     env["CUDA_VISIBLE_DEVICES"] = uuid
     revision = run(["git", "rev-parse", "HEAD"], env).strip()
     if run(["git", "status", "--porcelain"], env):
@@ -405,7 +404,7 @@ def measure(ncu, nvcc):
 
     with tempfile.TemporaryDirectory(prefix="virtualgpu-spill-") as directory:
         scratch = Path(directory)
-        binary = build("sm_89", scratch / "vgpu_bench", nvcc)
+        binary = build(arch, scratch / "vgpu_bench", nvcc)
         probe, actions, _ = collect(
             ncu,
             api,
@@ -447,7 +446,7 @@ def measure(ncu, nvcc):
                 "ncu": version,
                 "nvcc": compiler,
                 "metrics": list(METRICS),
-                "target": "sm_89",
+                "target": arch,
                 "clock_control": "none",
                 "cache_control": "none",
                 "spill_binary_sha256": hashlib.sha256(binary.read_bytes()).hexdigest(),
@@ -458,6 +457,12 @@ def measure(ncu, nvcc):
             "spill_reload_latency_by_count": spill,
             "causal_attention": attention,
         }
+
+
+def target_arch(capability):
+    if not re.fullmatch(r"\d+\.\d+", capability):
+        raise ValueError(f"Unexpected compute capability {capability!r}")
+    return "sm_" + capability.replace(".", "")
 
 
 def utc():
