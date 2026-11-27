@@ -538,3 +538,21 @@ class LongLaunchTests(unittest.TestCase):
         short["dram_latency"]["window_ns_samples"] = [0.9e6] * 3
         with self.assertRaises(ValueError):
             long_launch.verify(record, short)
+
+    def test_latency_curve_levels_are_keyed_by_their_background(self):
+        def level(blocks, threads, steps):
+            row = {"bg_blocks": blocks, "bg_threads": threads, "steps": steps}
+            row.update({"launch_ns_samples": [1.4e6] * 3, "window_ns_samples": [1.3e6] * 3})
+            return row
+
+        pilot = {
+            "samples": 3,
+            "dram_latency_by_bw": [level(0, 0, 4096), level(1, 64, 4096)],
+            "l2_latency_by_bw": [level(0, 0, 9000), level(47, 256, 8192)],
+        }
+        schedule, record = long_launch.freeze("latency-curve", pilot)
+        self.assertEqual(schedule.split(), ["4096", "4096", "9000", "8192"])
+        self.assertEqual(
+            record["points"][3]["point"],
+            {"field": "l2_latency_by_bw", "bg_blocks": 47, "bg_threads": 256},
+        )

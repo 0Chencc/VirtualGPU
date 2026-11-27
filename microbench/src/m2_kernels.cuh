@@ -1365,7 +1365,8 @@ __global__ void pchase_bw_curve_kernel(const uint64_t* __restrict__ chain,
   }
 }
 
-static int run_latency_curve(int device, int samples) {
+static int run_latency_curve(int device, int samples, int warmup = 1,
+                             LaunchSchedule* schedule = nullptr) {
   cudaDeviceProp prop{};
   CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
   const int sm_count = prop.multiProcessorCount;
@@ -1443,6 +1444,68 @@ static int run_latency_curve(int device, int samples) {
       int bg_t = levels[li].bg_threads;
       int grid = 1 + bg_b;
       int threads = (bg_b == 0) ? 32 : bg_t;
+
+      // Background bandwidth of the last launch: total bytes over the wall span of the CTAs.
+      auto background_gbps = [&]() {
+        if (bg_b == 0) return 0.0;
+        CUDA_CHECK(cudaMemcpy(h_bg_stats.data(), d_bg_stats, static_cast<size_t>(bg_b) * sizeof(BgCtaStats),
+                              cudaMemcpyDeviceToHost));
+        uint64_t total_bytes = 0, min_t0 = UINT64_MAX, max_t1 = 0;
+        for (int b = 0; b < bg_b; ++b) {
+          total_bytes += h_bg_stats[b].bytes;
+          if (h_bg_stats[b].t_start_ns > 0 && h_bg_stats[b].t_start_ns < min_t0) min_t0 = h_bg_stats[b].t_start_ns;
+          if (h_bg_stats[b].t_end_ns > max_t1) max_t1 = h_bg_stats[b].t_end_ns;
+        }
+        return max_t1 > min_t0 ? static_cast<double>(total_bytes) / static_cast<double>(max_t1 - min_t0) : 0.0;
+      };
+      if (schedule) {
+        // Length = chase steps; window = the per-step latency the kernel writes times the steps.
+        cudaEvent_t ev_start, ev_stop;
+        CUDA_CHECK(cudaEventCreate(&ev_start));
+        CUDA_CHECK(cudaEventCreate(&ev_stop));
+        int current = 0;
+        std::vector<double> bw_all;
+        std::printf("%s\n    {\"bg_blocks\": %d, \"bg_threads\": %d", li ? "," : "", bg_b, bg_t);
+        auto timed = schedule->time_point(
+            steps, 1, 1 << 24, std::max(warmup, 1), samples, ev_start, ev_stop,
+            [&] {
+              if (is_dram) {
+                l2_read_cg_kernel<<<sm_count * 4, 512>>>(d_bg_buf, d_sink_vec, bg_dram_bytes / sizeof(uint4), 1);
+              }
+              CUDA_CHECK(cudaMemset(d_start, 0, sizeof(int)));
+              CUDA_CHECK(cudaMemset(d_done, 0, sizeof(int)));
+              CUDA_CHECK(cudaMemset(d_chunk_counter, 0, sizeof(unsigned long long)));
+              if (bg_b > 0) CUDA_CHECK(cudaMemset(d_bg_stats, 0, static_cast<size_t>(bg_b) * sizeof(BgCtaStats)));
+            },
+            [&](int length) {
+              current = length;
+              pchase_bw_curve_kernel<<<grid, threads>>>(chain, d_sink, d_lat_ns, d_bg_stats, length,
+                                                        (bg_b > 0) ? d_bg_buf : nullptr, bg_vec4, bg_t, d_start,
+                                                        d_done, d_chunk_counter);
+            },
+            [&]() {
+              double lat = 0.0;
+              CUDA_CHECK(cudaMemcpy(&lat, d_lat_ns, sizeof(double), cudaMemcpyDeviceToHost));
+              bw_all.push_back(background_gbps());
+              return lat * current;
+            });
+        const size_t n = timed.observed.size();
+        std::printf(", \"window_ns_samples\": [");
+        for (size_t k = 0; k < n; ++k) std::printf("%s%.1f", k ? ", " : "", timed.observed[k]);
+        // The unloaded level has no background, so no bandwidth list (zero is not a sample).
+        if (bg_b > 0) {
+          std::printf("], \"achieved_bw_gbps_samples\": [");
+          for (size_t k = bw_all.size() - n; k < bw_all.size(); ++k) {
+            std::printf("%s%.3f", k + n > bw_all.size() ? ", " : "", bw_all[k]);
+          }
+        }
+        std::printf("], \"latency_ns_samples\": [");
+        for (size_t k = 0; k < n; ++k) std::printf("%s%.2f", k ? ", " : "", timed.observed[k] / timed.length);
+        std::printf("]}");
+        CUDA_CHECK(cudaEventDestroy(ev_start));
+        CUDA_CHECK(cudaEventDestroy(ev_stop));
+        continue;
+      }
 
       std::vector<double> bw_samples;
       std::vector<double> lat_samples;

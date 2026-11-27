@@ -113,6 +113,10 @@ DESIGN_FIELDS = {
             "dram_latency_loaded",
         )
     },
+    "latency-curve": {
+        "dram_latency_by_bw": ("bg_blocks", "bg_threads"),
+        "l2_latency_by_bw": ("bg_blocks", "bg_threads"),
+    },
     "mma-chain": {
         "mma_chain_latency": (
             "variant",

@@ -571,9 +571,10 @@ int main(int argc, char** argv) {
       mode != "sfu-shfl" &&
       mode != "cp-async" &&
       mode != "launch" &&
-      mode != "latency") {
+      mode != "latency" &&
+      mode != "latency-curve") {
     std::fprintf(stderr, "Launch schedules apply only to mlp, strided-mlp, dram-bw, l2, closed-loop, l2-merge, mma, "
-                         "gmem-issue, gmem-issue-controlled, sync-loop, closed-loop-mma, spill-latency, mma-chain, sync-loop-multicta, sync-loop-ablation, sync-loop-reconcile, mma-softmax-chain, serial-fill, stage-overhead, sfu-shfl, cp-async, launch and latency\n");
+                         "gmem-issue, gmem-issue-controlled, sync-loop, closed-loop-mma, spill-latency, mma-chain, sync-loop-multicta, sync-loop-ablation, sync-loop-reconcile, mma-softmax-chain, serial-fill, stage-overhead, sfu-shfl, cp-async, launch, latency and latency-curve\n");
     return 2;
   }
 
@@ -612,6 +613,7 @@ int main(int argc, char** argv) {
     else if (mode == "cp-async") result = run_cp_async(device, samples, warmup, schedule.get());
     else if (mode == "launch") result = run_launch(device, samples, warmup, schedule.get());
     else if (mode == "latency") result = run_latency(device, samples, warmup, schedule.get());
+    else if (mode == "latency-curve") result = run_latency_curve(device, samples, warmup, schedule.get());
     else result = run_l2(device, samples, warmup, schedule.get());
     schedule->finish();
     return result;
