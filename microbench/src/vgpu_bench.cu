@@ -545,8 +545,10 @@ int main(int argc, char** argv) {
   }
 
   if (schedule && mode != "mlp" && mode != "strided-mlp" && mode != "dram-bw" && mode != "l2" &&
-      mode != "closed-loop" && mode != "l2-merge" && mode != "mma") {
-    std::fprintf(stderr, "Launch schedules apply only to mlp, strided-mlp, dram-bw, l2, closed-loop, l2-merge and mma\n");
+      mode != "closed-loop" && mode != "l2-merge" && mode != "mma" && mode != "gmem-issue" &&
+      mode != "gmem-issue-controlled") {
+    std::fprintf(stderr, "Launch schedules apply only to mlp, strided-mlp, dram-bw, l2, closed-loop, l2-merge, mma, "
+                         "gmem-issue and gmem-issue-controlled\n");
     return 2;
   }
 
@@ -559,6 +561,8 @@ int main(int argc, char** argv) {
     else if (mode == "closed-loop") result = run_closed_loop(device, samples, warmup, schedule.get());
     else if (mode == "l2-merge") result = run_l2_merge(device, samples, warmup, schedule.get());
     else if (mode == "mma") result = run_mma(device, samples, warmup, schedule.get());
+    else if (mode == "gmem-issue") result = run_gmem_issue(device, samples, warmup, schedule.get());
+    else if (mode == "gmem-issue-controlled") result = run_gmem_issue_controlled(device, samples, warmup, schedule.get());
     else result = run_l2(device, samples, warmup, schedule.get());
     schedule->finish();
     return result;

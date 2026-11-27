@@ -124,6 +124,27 @@ class LongLaunchTests(unittest.TestCase):
             ],
         )
 
+    def test_gmem_issue_points_are_keyed_by_grid_width_and_warps(self):
+        row = {
+            "active_sms": 1,
+            "load_width_bytes": 4,
+            "num_warps": 8,
+            "steps": 9000,
+            "launch_ns_samples": [1.3e6] * 3,
+        }
+        _, record = long_launch.freeze(
+            "gmem-issue", {"samples": 3, "gmem_load_issue_per_sm": [row]}
+        )
+        self.assertEqual(
+            record["points"][0]["point"],
+            {
+                "field": "gmem_load_issue_per_sm",
+                "active_sms": 1,
+                "load_width_bytes": 4,
+                "num_warps": 8,
+            },
+        )
+
     def test_unregistered_field_is_refused(self):
         pilot = {"samples": 3, "other": [{"steps": 1, "launch_ns_samples": [1.3e6] * 3}]}
         with self.assertRaisesRegex(ValueError, "other: no design fields"):

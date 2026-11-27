@@ -33,6 +33,10 @@ DESIGN_FIELDS = {
         "l2_merge_by_sharing": ("active_ctas", "sharing", "bytes_per_cta", "stagger_stages")
     },
     "mma": {"mma": ("mma_warps_per_sm",), "fp32_fma": ("warps_per_sm",)},
+    "gmem-issue": {"gmem_load_issue_per_sm": ("active_sms", "load_width_bytes", "num_warps")},
+    "gmem-issue-controlled": {
+        "gmem_load_issue_controlled": ("load_width_bytes", "batch_loads_per_thread", "num_warps")
+    },
 }
 
 

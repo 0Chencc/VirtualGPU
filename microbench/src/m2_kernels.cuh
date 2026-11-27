@@ -3730,7 +3730,7 @@ __global__ void gmem_load_issue_kernel(const uint8_t* __restrict__ src,
   }
 }
 
-static int run_gmem_issue(int device, int samples, int warmup) {
+static int run_gmem_issue(int device, int samples, int warmup, LaunchSchedule* schedule = nullptr) {
   cudaDeviceProp prop{};
   CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
   const int sm_count = prop.multiProcessorCount;
@@ -3759,16 +3759,30 @@ static int run_gmem_issue(int device, int samples, int warmup) {
       const size_t elem_mask = (l2_bytes / static_cast<size_t>(width)) - 1ULL;
       for (int warps : warp_list) {
         const int threads = warps * 32;
-        const int iters = (active_sms == 1) ? 4096 : 2048;
-        const double warp_insts_per_sm = static_cast<double>(warps) * static_cast<double>(iters) * 8.0;
-        const double bytes_per_sm = warp_insts_per_sm * 32.0 * static_cast<double>(width);
-
+        int iters = (active_sms == 1) ? 4096 : 2048;
         auto launch_once = [&]() {
           if (width == 2) gmem_load_issue_kernel<2><<<active_sms, threads>>>(d_l2, d_sink, elem_mask, iters);
           else if (width == 4) gmem_load_issue_kernel<4><<<active_sms, threads>>>(d_l2, d_sink, elem_mask, iters);
           else if (width == 8) gmem_load_issue_kernel<8><<<active_sms, threads>>>(d_l2, d_sink, elem_mask, iters);
           else gmem_load_issue_kernel<16><<<active_sms, threads>>>(d_l2, d_sink, elem_mask, iters);
         };
+        if (schedule) {
+          std::printf("%s\n    {\"active_sms\": %d, \"load_width_bytes\": %d, \"num_warps\": %d",
+                      first ? "" : ",", active_sms, width, warps);
+          first = false;
+          auto timed = schedule->time_point(iters, 1, 1 << 28, warmup, samples, ev_start, ev_stop, [] {},
+                                            [&](int length) { iters = length; launch_once(); });
+          const double insts = static_cast<double>(warps) * timed.length * 8.0;
+          std::printf(", \"issue_rate_gwarp_inst_per_sm_samples\": [");
+          for (size_t i = 0; i < timed.launch_ns.size(); ++i) std::printf("%s%.4f", i ? ", " : "", insts / timed.launch_ns[i]);
+          std::printf("], \"delivered_bw_per_sm_gbps_samples\": [");
+          for (size_t i = 0; i < timed.launch_ns.size(); ++i)
+            std::printf("%s%.3f", i ? ", " : "", insts * 32.0 * width / timed.launch_ns[i]);
+          std::printf("]}");
+          continue;
+        }
+        const double warp_insts_per_sm = static_cast<double>(warps) * static_cast<double>(iters) * 8.0;
+        const double bytes_per_sm = warp_insts_per_sm * 32.0 * static_cast<double>(width);
 
         for (int w = 0; w < warmup; ++w) launch_once();
         CUDA_CHECK(cudaDeviceSynchronize());
@@ -4873,7 +4887,7 @@ static void dispatch_gmem_ctrl_n(int batch_n, int threads, const uint8_t* d_l2,
   else gmem_issue_controlled_kernel<WIDTH_BYTES, 32><<<1, threads>>>(d_l2, d_sink, elem_mask, batches);
 }
 
-static int run_gmem_issue_controlled(int device, int samples, int warmup) {
+static int run_gmem_issue_controlled(int device, int samples, int warmup, LaunchSchedule* schedule = nullptr) {
   const size_t l2_bytes = 4ULL * 1024ULL * 1024ULL;
   uint8_t* d_l2 = nullptr;
   uint32_t* d_sink = nullptr;
@@ -4899,14 +4913,29 @@ static int run_gmem_issue_controlled(int device, int samples, int warmup) {
         int threads = warps * 32;
         size_t bif = static_cast<size_t>(threads) * static_cast<size_t>(bn) * static_cast<size_t>(width);
         int batches = std::max(256, 32768 / (bn * (warps / 4)));
-        double warp_insts = static_cast<double>(warps) * static_cast<double>(bn) * static_cast<double>(batches);
-        double total_bytes = static_cast<double>(bif) * static_cast<double>(batches);
-
         auto launch_once = [&]() {
           if (width == 2) dispatch_gmem_ctrl_n<2>(bn, threads, d_l2, d_sink, elem_mask, batches);
           else if (width == 4) dispatch_gmem_ctrl_n<4>(bn, threads, d_l2, d_sink, elem_mask, batches);
           else dispatch_gmem_ctrl_n<16>(bn, threads, d_l2, d_sink, elem_mask, batches);
         };
+        if (schedule) {
+          std::printf("%s\n    {\"load_width_bytes\": %d, \"batch_loads_per_thread\": %d, \"num_warps\": %d, "
+                      "\"bytes_in_flight\": %zu",
+                      first ? "" : ",", width, bn, warps, bif);
+          first = false;
+          auto timed = schedule->time_point(batches, 1, 1 << 28, warmup, samples, ev_start, ev_stop, [] {},
+                                            [&](int length) { batches = length; launch_once(); });
+          const double insts = static_cast<double>(warps) * bn * timed.length;
+          std::printf(", \"issue_rate_gwarp_inst_per_sm_samples\": [");
+          for (size_t i = 0; i < timed.launch_ns.size(); ++i) std::printf("%s%.4f", i ? ", " : "", insts / timed.launch_ns[i]);
+          std::printf("], \"delivered_bw_per_sm_gbps_samples\": [");
+          for (size_t i = 0; i < timed.launch_ns.size(); ++i)
+            std::printf("%s%.3f", i ? ", " : "", static_cast<double>(bif) * timed.length / timed.launch_ns[i]);
+          std::printf("]}");
+          continue;
+        }
+        double warp_insts = static_cast<double>(warps) * static_cast<double>(bn) * static_cast<double>(batches);
+        double total_bytes = static_cast<double>(bif) * static_cast<double>(batches);
 
         for (int w = 0; w < warmup; ++w) launch_once();
         CUDA_CHECK(cudaDeviceSynchronize());
