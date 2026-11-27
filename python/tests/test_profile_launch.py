@@ -80,6 +80,27 @@ class ProfileLaunchTests(unittest.TestCase):
             fp32 / 2510.0,
         )
 
+    def test_write_points_are_scalars_and_capacity_sweep_has_no_value(self):
+        write = self.profile["measured"]["memory"]["dram_bw_write_gbps"]["value"]
+        point = {
+            "target_sms": 48,
+            "steps": 256,
+            "launch_ns_samples": [1.3e6] * 5,
+            "gbps_samples": [write] * 5,
+            "launch": launch(256),
+        }
+        pl.attach(self.profile, "dram-bw", {"write_full": [point]})
+        self.assertEqual(
+            self.profile["measured"]["memory"]["dram_bw_write_gbps"]["launch"]["length"], 256
+        )
+        sweep = {
+            "working_set_bytes": 1 << 24,
+            "steps": 9,
+            "launch_ns_samples": [1.3e6] * 5,
+            "launch": launch(9),
+        }
+        pl.attach(self.profile, "l2", {"capacity_sweep": [sweep]})
+
     def test_exception_flags_the_entry_and_covers_the_rounds(self):
         entry = self.profile["measured"]["memory"]["dram_bw_by_active_sms"][0]
         bw = entry["bw_gbps"]["value"]

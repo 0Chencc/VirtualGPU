@@ -26,7 +26,10 @@ PROFILE_PATH = {
         "dram_bw_by_bytes_in_flight_strided",
     ),
     ("dram-bw", "read_curve"): ("memory", "dram_bw_by_active_sms"),
+    ("dram-bw", "write_full"): ("memory", "dram_bw_write_gbps"),
     ("l2", "read_curve"): ("memory", "l2_bw_by_active_sms"),
+    ("l2", "read_curve_cp_async"): ("memory", "l2_bw_by_active_sms_cp_async"),
+    ("l2", "write_full"): ("memory", "l2_bw_write_gbps"),
     ("closed-loop", "dram_closed_loop"): ("memory", "dram_closed_loop"),
     ("closed-loop", "l2_closed_loop"): ("memory", "l2_closed_loop"),
     ("l2-merge", "l2_merge_by_sharing"): ("memory", "l2_merge_by_sharing"),
@@ -54,8 +57,15 @@ METRIC = {
     "sync-loop": STAGE_LOOP,
     "closed-loop-mma": STAGE_LOOP,
 }
-# A point whose rate list sits outside it: (mode, raw field) -> top-level list.
-OUTSIDE = {("mma", "fp32_fma"): "fp32_fma_tflops_samples"}
+# Points that are one scalar profile value, and where their rate list sits: a top-level
+# list, or None for the point's own list.
+SCALARS = {
+    ("mma", "fp32_fma"): "fp32_fma_tflops_samples",
+    ("dram-bw", "write_full"): None,
+    ("l2", "write_full"): None,
+}
+# Timed points with no profile value of their own (their result is derived).
+NOT_IN_PROFILE = {("l2", "capacity_sweep")}
 # Profile values that are compute rates and get a per-cycle value.
 COMPUTE = {"tflops_per_sm", "fp32_fma_tflops", "issue_rate_gwarp_inst_per_sm"}
 # Design fields the profile names differently.
@@ -73,7 +83,7 @@ def entry_for(profile, mode, path, point):
     """The profile entry (or, for a scalar, its container and key) of a merged point."""
     section, field = PROFILE_PATH[(mode, path[0])]
     target = profile["measured"][section][field]
-    if (mode, path[0]) in OUTSIDE:
+    if (mode, path[0]) in SCALARS:
         return profile["measured"][section], field
     for key in path[1:]:
         target = target[key]
@@ -120,18 +130,21 @@ def cover(value):
 def attach(profile, mode, merged):
     """Annotate `profile` in place from one mode's merged raw."""
     for path, point in long_launch.points(merged):
+        if (mode, path[0]) in NOT_IN_PROFILE:
+            continue
         entry, scalar = entry_for(profile, mode, path, point)
+        lists = {
+            metric(mode, k): v
+            for k, v in point.items()
+            if k.endswith("_samples") and k != "launch_ns_samples"
+        }
         if scalar is not None:
-            lists = {OUTSIDE[(mode, path[0])]: merged[OUTSIDE[(mode, path[0])]]}
-            values = {scalar: lists[OUTSIDE[(mode, path[0])]]}
-            targets = {scalar: entry[scalar]}
+            outside = SCALARS[(mode, path[0])]
+            (rounds,) = [merged[outside]] if outside else lists.values()
+            values = {scalar: rounds}
         else:
-            values = {
-                metric(mode, k): v
-                for k, v in point.items()
-                if k.endswith("_samples") and k != "launch_ns_samples"
-            }
-            targets = {name: entry[name] for name in values}
+            values = lists
+        targets = {name: entry[name] for name in values}
         for name, rounds in values.items():
             annotate(targets[name], rounds, point["launch"], name in COMPUTE)
         for name in point.get("exceptions", ()):
