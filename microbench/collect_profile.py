@@ -204,6 +204,9 @@ def make_measured(
     }
 
 
+FFMA_ISSUE_METHOD = "cuda_fp32_fma_unrolled"
+
+
 def make_estimated(
     value: float,
     unit: str,
@@ -223,10 +226,34 @@ def make_estimated(
     }
 
 
+def peak_point(points: list[dict[str, Any]]) -> dict[str, Any]:
+    """The warp count with the highest median rate."""
+    return max(points, key=lambda p: statistics.median(p["rate_gwarp_inst_per_sm_samples"]))
+
+
 def peak_rate_samples(points: list[dict[str, Any]]) -> list[float]:
     """Samples of the warp count with the highest median rate."""
-    peak = max(points, key=lambda p: statistics.median(p["rate_gwarp_inst_per_sm_samples"]))
-    return [float(x) for x in peak["rate_gwarp_inst_per_sm_samples"]]
+    return [float(x) for x in peak_point(points)["rate_gwarp_inst_per_sm_samples"]]
+
+
+def ffma_issue_samples(fp32_fma_tflops_samples: list[float], sm_count: int) -> list[float]:
+    """Pure FFMA rates as warp instructions per SM, 64 FLOP per warp instruction."""
+    return [float(x) * 1e3 / (sm_count * 64.0) for x in fp32_fma_tflops_samples]
+
+
+def per_mhz(samples: list[float], point: dict[str, Any] | None) -> float | None:
+    """Median over rounds of each round's rate over its mean SM clock, the per-cycle value
+    profile_launch.py attaches; None without a clock probe around every round."""
+    launch = (point or {}).get("launch")
+    if not launch:
+        return None
+    clocks = [
+        None if b is None or a is None else (b + a) / 2
+        for b, a in zip(launch["sm_mhz_before"], launch["sm_mhz_after"], strict=True)
+    ]
+    if None in clocks or len(clocks) != len(samples):
+        return None
+    return statistics.median(r / c for r, c in zip(samples, clocks, strict=True))
 
 
 def non_mma_issue_rate(
@@ -236,22 +263,31 @@ def non_mma_issue_rate(
     sm_clock_ghz: float,
     clock_range: list[float] | None,
     throttle_events: int,
+    fp32_fma_point: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Highest non-MMA rate measured on the card, a lower bound on the issue ceiling.
 
     The larger of the FFMA and LOP3 mix peak and the pure FFMA rate (64 FLOP per warp
-    instruction). Falls back to 4 per clock when the binary predates the mix curve.
+    instruction). The two come from different processes, at different SM clocks on an
+    unlocked card, so with clock probes around every round (a long-launch capture) they
+    are compared per MHz; without them, as measured. The winner's own samples are stored,
+    at its own clock, like every other measured rate. Falls back to 4 per clock when the
+    binary predates the mix curve.
     """
     points = sfu_shfl_raw.get("alu_issue_rate_per_sm_gips")
     if not points:
         return make_estimated(4.0 * sm_clock_ghz, "Ginst/s", "m2_estimated", None)
-    mix = peak_rate_samples(points)
-    ffma = [float(x) * 1e3 / (sm_count * 64.0) for x in fp32_fma_tflops_samples]
-    use_ffma = bool(ffma) and statistics.median(ffma) > statistics.median(mix)
+    mix_point = peak_point(points)
+    mix = [float(x) for x in mix_point["rate_gwarp_inst_per_sm_samples"]]
+    ffma = ffma_issue_samples(fp32_fma_tflops_samples, sm_count)
+    ffma_c, mix_c = per_mhz(ffma, fp32_fma_point), per_mhz(mix, mix_point)
+    if ffma_c is None or mix_c is None:
+        ffma_c, mix_c = statistics.median(ffma or [0.0]), statistics.median(mix)
+    use_ffma = bool(ffma) and ffma_c > mix_c
     return make_measured(
         ffma if use_ffma else mix,
         unit="Ginst/s",
-        method="cuda_fp32_fma_unrolled" if use_ffma else "cuda_ptx_ffma_lop3_mix",
+        method=FFMA_ISSUE_METHOD if use_ffma else "cuda_ptx_ffma_lop3_mix",
         perturb_group=None,
         clock_range=clock_range,
         locked=False,
@@ -1581,6 +1617,7 @@ def build_profile(
                     sm_clock_ghz,
                     sm_range,
                     throttle_events,
+                    mma_raw.get("fp32_fma"),
                 ),
                 "fp32_fma_tflops": fp32_fma_mv,
                 "sfu_tflops": sfu_tflops_mv,

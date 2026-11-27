@@ -41,3 +41,19 @@ def test_non_mma_issue_rate_estimated_without_alu_curve() -> None:
     mv = non_mma_issue_rate({}, _tflops(7.17), 46, 1.9, None, 0)
     assert mv["source"] == "estimated"
     assert mv["value"] == 7.6
+
+
+def _timed(point: dict, mhz: float) -> dict:
+    return point | {"launch": {"sm_mhz_before": [mhz] * 3, "sm_mhz_after": [mhz] * 3}}
+
+
+def test_non_mma_issue_rate_compares_per_mhz_with_clock_probes() -> None:
+    # Pure FFMA is higher as measured, but its process ran 10% faster: per MHz the mix wins.
+    curve = [_timed(p, 1770.0) for p in _curve({8: 6.9, 16: 7.0})]
+    raw = {"alu_issue_rate_per_sm_gips": curve}
+    ffma_point = _timed({"warps_per_sm": 16}, 1950.0)
+    mv = non_mma_issue_rate(raw, _tflops(7.3), 46, 1.9, None, 0, ffma_point)
+    assert mv["method"] == "cuda_ptx_ffma_lop3_mix"
+    assert abs(mv["value"] - 7.0) < 1e-9
+    no_probe = non_mma_issue_rate(raw, _tflops(7.3), 46, 1.9, None, 0, {"warps_per_sm": 16})
+    assert no_probe["method"] == "cuda_fp32_fma_unrolled"
