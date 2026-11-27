@@ -63,6 +63,13 @@ MODES = (
     "serial-fill",
     "mma-softmax-chain",
     "stage-overhead",
+    "sfu-shfl",
+    "cp-async",
+    "launch",
+    "latency",
+    "latency-curve",
+    "l1-carveout",
+    "l2-rescan",
 )
 ROUNDS = 5
 EXTRA_ROUNDS = 2

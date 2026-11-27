@@ -52,6 +52,35 @@ PROFILE_PATH = {
     ("stage-overhead", "stage_sync_overhead_ns"): ("pipeline", "stage_sync_overhead_ns"),
     ("stage-overhead", "fixed_sync_ns"): ("pipeline", "fixed_sync_ns"),
     ("stage-overhead", "min_async_roundtrip"): ("pipeline", "min_async_roundtrip_ns"),
+    **{
+        ("sfu-shfl", key): ("compute", key)
+        for key in (
+            "sfu_issue_rate_per_sm_gips",
+            "sfu_rcp_issue_rate_per_sm_gips",
+            "shfl_issue_rate_per_sm_gips",
+            "shfl_idx_issue_rate_per_sm_gips",
+        )
+    },
+    ("sfu-shfl", "shfl_latency"): ("compute", "shfl_latency_ns"),
+    ("cp-async", "cp_async"): ("async_pipeline", "cp_async_bw_per_sm_gbps"),
+    ("cp-async", "smem"): ("memory", "smem_bw_per_sm_gbps"),
+    ("launch", "graph_launch"): ("overhead", "launch_overhead_us"),
+    ("launch", "per_cta"): ("overhead", "per_cta_launch_latency_ns"),
+    ("launch", "stream_launch"): ("overhead", "host_launch_overhead_us"),
+    **{
+        ("latency", key): ("memory", f"{key}_ns")
+        for key in (
+            "smem_latency",
+            "l2_latency",
+            "l2_latency_loaded",
+            "dram_latency",
+            "dram_latency_loaded",
+        )
+    },
+    ("latency-curve", "dram_latency_by_bw"): ("memory", "dram_latency_by_bw"),
+    ("latency-curve", "l2_latency_by_bw"): ("memory", "l2_latency_by_bw"),
+    ("l1-carveout", "l1_carveout_sweep"): ("memory", "l1_to_l2_spill_threshold_by_carveout"),
+    ("l2-rescan", "points"): ("memory", "l2_rescan_hit_rate_by_working_set"),
 }
 # Raw sample lists whose profile value has another name than the list without "_samples".
 STAGE_LOOP = {
@@ -68,6 +97,7 @@ METRIC = {
     "sync-loop-reconcile": STAGE_LOOP,
     "sync-loop-ablation": STAGE_LOOP,
     "serial-fill": {"effective_bytes_per_ns_samples": "effective_bytes_per_ns_per_cta"},
+    "sfu-shfl": {"rate_gwarp_inst_per_sm_samples": "rate"},
 }
 # Points that are one scalar profile value, and where their rate list sits: a top-level
 # list, or None for the point's own list.
@@ -76,22 +106,52 @@ SCALARS = {
     ("dram-bw", "write_full"): None,
     ("l2", "write_full"): None,
     ("stage-overhead", "min_async_roundtrip"): "min_async_roundtrip_ns_samples",
+    ("sfu-shfl", "shfl_latency"): "shfl_latency_ns_samples",
+    ("cp-async", "cp_async"): "cp_async_bw_per_sm_gbps_samples",
+    ("cp-async", "smem"): "smem_bw_per_sm_gbps_samples",
+    ("launch", "graph_launch"): "device_launch_overhead_us_samples",
+    ("launch", "per_cta"): "per_cta_launch_latency_ns_samples",
+    ("launch", "stream_launch"): "host_launch_overhead_us_samples",
+    **{
+        ("latency", key): f"{key}_ns_samples"
+        for key in (
+            "smem_latency",
+            "l2_latency",
+            "l2_latency_loaded",
+            "dram_latency",
+            "dram_latency_loaded",
+        )
+    },
 }
 # Top-level compatibility lists that must equal a point's own list: (mode, raw field) -> list.
 VIEWS = {("l2", "write_full"): "write_full_gbps_samples"}
 # Timed points with no profile value of their own (their result is derived).
 # The mma-softmax-chain calibrations are timed points whose medians become every point's
-# solo_mma_ns and solo_softmax_ns, plain numbers in the profile.
-NOT_IN_PROFILE = {("l2", "capacity_sweep"), ("mma-softmax-chain", "solo_calibration")}
+# solo_mma_ns and solo_softmax_ns, plain numbers in the profile. l1-carveout's profile
+# values (miss rates and the threshold per carveout) are derived from every point of a
+# carveout together.
+NOT_IN_PROFILE = {
+    ("l2", "capacity_sweep"),
+    ("mma-softmax-chain", "solo_calibration"),
+    ("l1-carveout", "l1_carveout_sweep"),
+}
 # Sample lists of a point that are not profile values: (mode, list name).
 # stage-overhead's in-kernel windows are checked by long_launch.verify; the per-step
 # overhead_ns is the profile value.
-NOT_A_VALUE = {("stage-overhead", "window_ns_samples")}
+NOT_A_VALUE = {
+    ("stage-overhead", "window_ns_samples"),
+    ("latency-curve", "window_ns_samples"),
+    # The profile stores the median background bandwidth as a plain number.
+    ("latency-curve", "achieved_bw_gbps_samples"),
+    ("l2-rescan", "window_ns_samples"),
+    # Pass 1 enters the derived hit rate; the profile stores pass 2.
+    ("l2-rescan", "pass1_bw_gbps_samples"),
+}
 # Modes whose points build_profile merges into one profile field, later overriding earlier
 # on the same design fields; only the last source of each point is annotated.
 OVERRIDE_ORDER = ("sync-loop", "sync-loop-multicta", "sync-loop-reconcile")
 # Profile values that are compute rates and get a per-cycle value.
-COMPUTE = {"tflops_per_sm", "fp32_fma_tflops", "issue_rate_gwarp_inst_per_sm"}
+COMPUTE = {"tflops_per_sm", "fp32_fma_tflops", "issue_rate_gwarp_inst_per_sm", "rate"}
 # Design fields the profile names differently.
 ALIAS = {"target_sms": "active_sms"}
 FLAG = {"low_in_flight_unstable": "low_in_flight_unstable", "bistable_band": "bistable_band"}

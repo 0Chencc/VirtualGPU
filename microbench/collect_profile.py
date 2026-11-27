@@ -613,7 +613,8 @@ def build_profile(
     ) -> list[dict[str, Any]]:
         pts: list[dict[str, Any]] = []
         for pt in raw_points:
-            bw_med = float(statistics.median(pt["achieved_bw_gbps_samples"]))
+            # Scheduled captures print no bandwidth list for the unloaded level (it is 0).
+            bw_med = float(statistics.median(pt.get("achieved_bw_gbps_samples", [0.0])))
             lat_mv = make_measured(
                 pt["latency_ns_samples"],
                 unit="ns",
@@ -623,7 +624,9 @@ def build_profile(
                 locked=False,
                 throttle_events=throttle_events,
             )
-            pts.append({"achieved_bw_gbps": round(bw_med, 3), "latency_ns": lat_mv})
+            entry = {"achieved_bw_gbps": round(bw_med, 3), "latency_ns": lat_mv}
+            entry.update({k: int(pt[k]) for k in ("bg_blocks", "bg_threads") if k in pt})
+            pts.append(entry)
         pts.sort(key=lambda x: x["achieved_bw_gbps"])
         return pts
 

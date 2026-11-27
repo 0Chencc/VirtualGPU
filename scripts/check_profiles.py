@@ -40,6 +40,10 @@ UNTIMED_LEAVES = {
     "serial_stage_overhead_ns",
     "extra_ns_vs_zero",
     "ns_per_reload",
+    "sfu_tflops",
+    "threshold_bytes_per_sm",
+    "estimated_miss_rate",
+    "l1_to_l2_spill_threshold_bytes_per_sm",
 }
 
 DRAM_WRITE_TO_READ_MAX_RATIO = 1.15

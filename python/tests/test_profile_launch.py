@@ -364,3 +364,131 @@ class ProfileLaunchTests(unittest.TestCase):
         self.assertEqual(stage["overhead_ns"]["launch"]["length"], 9000)
         self.assertEqual(fixed["overhead_ns"]["launch"]["length"], 40000)
         self.assertEqual(pipeline["min_async_roundtrip_ns"]["launch"]["length"], 8000)
+
+
+class LongModeRegistrationTests(unittest.TestCase):
+    """The profile entries of the modes registered on s7/v03-long-modes."""
+
+    def setUp(self):
+        self.profile = json.loads((ROOT / "profiles/gb10.json").read_text())
+        self.m = self.profile["measured"]
+
+    @staticmethod
+    def timed(steps=2000, **fields):
+        return {**fields, "steps": steps, "launch_ns_samples": [1.3e6] * 5, "launch": launch(steps)}
+
+    def test_sfu_rates_get_per_cycle_and_shfl_latency_is_a_scalar(self):
+        entry = self.m["compute"]["sfu_issue_rate_per_sm_gips"][0]
+        rate = entry["rate"]["value"]
+        point = self.timed(
+            warps_per_sm=entry["warps_per_sm"], rate_gwarp_inst_per_sm_samples=[rate] * 5
+        )
+        lat = self.m["compute"]["shfl_latency_ns"]["value"]
+        merged = {
+            "sfu_issue_rate_per_sm_gips": [point],
+            "shfl_latency": self.timed(4096, warps=1),
+            "shfl_latency_ns_samples": [lat] * 5,
+        }
+        pl.attach(self.profile, "sfu-shfl", merged)
+        self.assertAlmostEqual(entry["rate"]["per_cycle"]["value"], rate / 2510.0)
+        self.assertEqual(self.m["compute"]["shfl_latency_ns"]["launch"]["length"], 4096)
+        self.assertNotIn("per_cycle", self.m["compute"]["shfl_latency_ns"])
+
+    def test_cp_async_launch_and_latency_scalars(self):
+        def scalar(section, field):
+            return [self.m[section][field]["value"]] * 5
+
+        pl.attach(
+            self.profile,
+            "cp-async",
+            {
+                "cp_async": self.timed(16384, threads_per_sm=256),
+                "cp_async_bw_per_sm_gbps_samples": scalar(
+                    "async_pipeline", "cp_async_bw_per_sm_gbps"
+                ),
+                "smem": self.timed(16384, threads_per_sm=512),
+                "smem_bw_per_sm_gbps_samples": scalar("memory", "smem_bw_per_sm_gbps"),
+            },
+        )
+        pl.attach(
+            self.profile,
+            "launch",
+            {
+                "graph_launch": self.timed(3134, ctas=1),
+                "device_launch_overhead_us_samples": scalar("overhead", "launch_overhead_us"),
+                "per_cta": self.timed(
+                    3144, ctas=1, large_ctas=4096, large_graph_ns_samples=[2e6] * 5
+                ),
+                "per_cta_launch_latency_ns_samples": scalar(
+                    "overhead", "per_cta_launch_latency_ns"
+                ),
+                "stream_launch": self.timed(697, ctas=1),
+                "host_launch_overhead_us_samples": scalar("overhead", "host_launch_overhead_us"),
+            },
+        )
+        keys = (
+            "smem_latency",
+            "l2_latency",
+            "l2_latency_loaded",
+            "dram_latency",
+            "dram_latency_loaded",
+        )
+        merged = {}
+        for k in keys:
+            merged[k] = self.timed(8192, probe=k, window_ns_samples=[1.3e6] * 5)
+            merged[f"{k}_ns_samples"] = scalar("memory", f"{k}_ns")
+        pl.attach(self.profile, "latency", merged)
+        self.assertEqual(self.m["overhead"]["per_cta_launch_latency_ns"]["launch"]["length"], 3144)
+        self.assertEqual(self.m["memory"]["dram_latency_ns"]["launch"]["length"], 8192)
+        self.assertEqual(self.m["memory"]["smem_bw_per_sm_gbps"]["launch"]["length"], 16384)
+
+    def test_latency_curve_matches_entries_by_background_and_skips_the_bandwidth_list(self):
+        # A profile built from a scheduled capture carries each level's background.
+        for i, e in enumerate(self.m["memory"]["dram_latency_by_bw"]):
+            e |= {"bg_blocks": i, "bg_threads": 64}
+        entry = self.m["memory"]["dram_latency_by_bw"][2]
+        entry |= {"bg_blocks": 1, "bg_threads": 256}
+        lat = entry["latency_ns"]["value"]
+        point = self.timed(
+            4096,
+            bg_blocks=1,
+            bg_threads=256,
+            window_ns_samples=[2e6] * 5,
+            achieved_bw_gbps_samples=[48.0] * 5,
+            latency_ns_samples=[lat] * 5,
+        )
+        pl.attach(self.profile, "latency-curve", {"dram_latency_by_bw": [point]})
+        self.assertEqual(entry["latency_ns"]["launch"]["length"], 4096)
+        self.assertIsInstance(entry["achieved_bw_gbps"], float)
+
+    def test_l2_rescan_annotates_pass_2_and_l1_carveout_has_no_direct_value(self):
+        entry = self.m["memory"]["l2_rescan_hit_rate_by_working_set"][0]
+        p2 = entry["pass2_bw_gbps"]["value"]
+        point = self.timed(
+            40,
+            working_set_bytes=entry["working_set_bytes"],
+            ratio_to_l2=entry["working_set_ratio_to_l2"],
+            window_ns_samples=[1.3e6] * 5,
+            pass1_bw_gbps_samples=[200.0] * 5,
+            pass2_bw_gbps_samples=[p2] * 5,
+        )
+        pl.attach(self.profile, "l2-rescan", {"points": [point]})
+        self.assertEqual(entry["pass2_bw_gbps"]["launch"]["length"], 40)
+        self.assertNotIn("launch", entry["estimated_hit_rate"])
+        sweep = {
+            "l1_carveout_sweep": [
+                {
+                    "smem_carveout_bytes": 0,
+                    "points": [
+                        self.timed(
+                            50000,
+                            smem_carveout_bytes=0,
+                            ws_bytes=8192,
+                            window_ns_samples=[1.3e6] * 5,
+                            latency_ns_samples=[30.0] * 5,
+                        )
+                    ],
+                }
+            ]
+        }
+        pl.attach(self.profile, "l1-carveout", sweep)
