@@ -74,6 +74,29 @@ cargo fmt                                    # format Rust
 - Use short commit messages that start with `feat:`, `fix:`, `docs:`, `ci:` or `chore:`, and link related issues.
 - Security problems go through a private report, not a pull request. See [SECURITY.md](https://github.com/VirtualGPU/.github/blob/main/SECURITY.md).
 
+## Changes to model mechanisms
+
+Any change to prediction logic in `crates/vgpu-core/`, to frontend IR extraction or to how profile fields are derived goes through a pull request, maintainers included. Profile data, docs and tooling that leave predictions unchanged follow the usual process.
+
+Such a pull request includes three things:
+
+- The prediction diff. Replay the archived Kernel IRs on the base and the candidate, and record both revisions, the IR and profile digests, cache state, draws and seed. Report what stays bit-identical, how many predictions change, by how much, and any status changes. For a change to IR extraction or profile derivation, regenerate that input from the same source and keep the other one fixed.
+- The microbenchmark evidence. Link it with the raw captures, and say whether each [capture rule](docs/components/long-launch-capture.md#2-rules) and [gate](docs/components/long-launch-capture.md#6-capture-gates-in-collect_profilepy) passed. `python -m microbench.capture_posthoc check RUN.json [RUN.json ...]` checks the dispersion rules.
+- Validation. For a mechanism that is meant to be validated, register the decision rule and freeze the predictions before the validation capture. Effects on already opened data are post-hoc only and do not validate the change.
+
+To get the prediction diff on a CPU, run this in both checkouts with their own built environments, with the same absolute `IR_DIR` and `PROFILE` and a different `OUT`. Repeat for both cache states and every affected case:
+
+```sh
+CUDA_VISIBLE_DEVICES="" python -m virtualgpu.cli predict --ir-dir "$IR_DIR" \
+  --case "$CASE" --profile "$PROFILE" --cache cold --draws 32 --seed 17 --out "$OUT"
+```
+
+Then compare the two files:
+
+```sh
+python scripts/prediction_diff.py /tmp/vgpu-base.json /tmp/vgpu-candidate.json
+```
+
 ## Contributing a GPU profile
 
 If you have a GPU we don't have a profile for, measuring it is the most useful thing you can do. See [contributing a profile](docs/guides/contributing-a-profile.md).
