@@ -94,6 +94,16 @@ DESIGN_FIELDS = {
             "mma_chain_len",
         )
     },
+    "sync-loop-multicta": {
+        "sync_stage_loop": (
+            "mem_level",
+            "transfer_mode",
+            "ctas_per_sm",
+            "num_warps",
+            "stage_bytes",
+            "mma_chain_len",
+        )
+    },
 }
 
 

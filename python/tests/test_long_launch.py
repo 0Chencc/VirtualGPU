@@ -255,3 +255,43 @@ class LongLaunchTests(unittest.TestCase):
         swapped = {"samples": 3, "l2_merge_by_sharing": [merge(16, 2000), merge(0, 2100)]}
         with self.assertRaisesRegex(ValueError, "differs from the freeze"):
             long_launch.verify(record, swapped)
+
+    def test_sync_loop_multicta_is_keyed_by_level_mode_ctas_bytes_and_chain(self):
+        def stage(level, cps, steps):
+            return {
+                "mem_level": level,
+                "transfer_mode": "cp_async_s1",
+                "ctas_per_sm": cps,
+                "active_ctas": 48 * cps,
+                "num_warps": 4,
+                "stage_bytes": 4096,
+                "mma_chain_len": 8,
+                "solo_compute_ns": 120.0,
+                "steps": steps,
+                "launch_ns_samples": [1.3e6] * 3,
+            }
+
+        occupancy = {
+            "transfer_mode": "cp_async_s1",
+            "stage_bytes": 4096,
+            "max_active_ctas_per_sm": 8,
+        }
+        pilot = {
+            "samples": 3,
+            "occupancy_check": [occupancy],
+            "sync_stage_loop": [stage("dram", 1, 900), stage("l2", 6, 5000)],
+        }
+        schedule, record = long_launch.freeze("sync-loop-multicta", pilot)
+        self.assertEqual(schedule, "900\n5000\n")
+        self.assertEqual(
+            record["points"][1]["point"],
+            {
+                "field": "sync_stage_loop",
+                "mem_level": "l2",
+                "transfer_mode": "cp_async_s1",
+                "ctas_per_sm": 6,
+                "num_warps": 4,
+                "stage_bytes": 4096,
+                "mma_chain_len": 8,
+            },
+        )

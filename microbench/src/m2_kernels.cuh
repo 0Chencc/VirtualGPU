@@ -5516,12 +5516,15 @@ static void query_multicta_occ(int& max_blocks, int& num_regs, size_t& local_byt
   local_bytes = attr.localSizeBytes;
 }
 
-static int run_sync_loop_multicta(int device, int samples, int warmup) {
+static int run_sync_loop_multicta(int device, int samples, int warmup, LaunchSchedule* schedule = nullptr) {
   cudaDeviceProp prop{};
   CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
   const int sm_count = prop.multiProcessorCount;
 
-  const size_t dram_bytes = 256ULL * 1024ULL * 1024ULL;
+  // Scheduled launches run longer, so the DRAM buffer is a power of two of at least
+  // max(256 MiB, 8 x L2); the legacy path keeps its v0.2 size.
+  size_t dram_bytes = 256ULL * LaunchSchedule::MiB;
+  while (schedule && dram_bytes < 8ULL * static_cast<size_t>(prop.l2CacheSize)) dram_bytes *= 2;
   const size_t l2_bytes = 4ULL * 1024ULL * 1024ULL;
   const size_t dram_mask = (dram_bytes / sizeof(uint4)) - 1ULL;
   const size_t l2_mask = (l2_bytes / sizeof(uint4)) - 1ULL;
@@ -5587,7 +5590,7 @@ static int run_sync_loop_multicta(int device, int samples, int warmup) {
     const char* level_name = is_dram ? "dram" : "l2";
     const uint4* buf = is_dram ? d_dram : d_l2;
     const size_t mask = is_dram ? dram_mask : l2_mask;
-    const int steps = is_dram ? 128 : 512;
+    const int legacy_steps = is_dram ? 128 : 512;
     for (bool use_cp : {false, true}) {
       const char* t_mode = use_cp ? "cp_async_s1" : "ld_st_sync";
       for (int sb : bytes_list) {
@@ -5596,16 +5599,40 @@ static int run_sync_loop_multicta(int device, int samples, int warmup) {
           for (int mma_iters : mma_iters_list) {
             const int mma_chain_len = mma_iters * 4;
             const double solo_tc_ns = static_cast<double>(mma_iters) * ns_per_iter_4w;
-            const double total_bytes = static_cast<double>(active_ctas) * static_cast<double>(sb) * steps;
-            const double total_flops_per_sm = static_cast<double>(cps) * flops_per_cta_iter * mma_iters * steps;
+            int steps = legacy_steps;
 
             auto launch_once = [&]() {
               if (use_cp) dispatch_sync_loop_multicta<true>(sb, active_ctas, buf, d_sink_f, mask, steps, mma_iters);
               else dispatch_sync_loop_multicta<false>(sb, active_ctas, buf, d_sink_f, mask, steps, mma_iters);
             };
+            auto prepare = [&]() {
+              if (is_dram) l2_read_cg_kernel<<<sm_count * 4, 512>>>(d_flush, d_sink_u4, flush_vec4, 1);
+            };
+            if (schedule) {
+              std::printf("%s\n    {\"mem_level\": \"%s\", \"transfer_mode\": \"%s\", \"ctas_per_sm\": %d, "
+                          "\"active_ctas\": %d, \"num_warps\": 4, \"stage_bytes\": %d, "
+                          "\"mma_chain_len\": %d, \"solo_compute_ns\": %.2f",
+                          first ? "" : ",", level_name, t_mode, cps, active_ctas, sb, mma_chain_len, solo_tc_ns);
+              first = false;
+              auto timed = schedule->time_point(steps, 1, 1 << 24, warmup, samples, ev_start, ev_stop, prepare,
+                                                [&](int length) { steps = length; launch_once(); });
+              const double bytes = static_cast<double>(active_ctas) * sb * timed.length;
+              const double flops = static_cast<double>(cps) * flops_per_cta_iter * mma_iters * timed.length;
+              const auto& ns = timed.launch_ns;
+              std::printf(", \"bw_gbps_samples\": [");
+              for (size_t i = 0; i < ns.size(); ++i) std::printf("%s%.3f", i ? ", " : "", bytes / ns[i]);
+              std::printf("], \"turnaround_ns_samples\": [");
+              for (size_t i = 0; i < ns.size(); ++i) std::printf("%s%.2f", i ? ", " : "", ns[i] / timed.length);
+              std::printf("], \"mma_tflops_per_sm_samples\": [");
+              for (size_t i = 0; i < ns.size(); ++i) std::printf("%s%.4f", i ? ", " : "", flops / 1e3 / ns[i]);
+              std::printf("]}");
+              continue;
+            }
+            const double total_bytes = static_cast<double>(active_ctas) * static_cast<double>(sb) * steps;
+            const double total_flops_per_sm = static_cast<double>(cps) * flops_per_cta_iter * mma_iters * steps;
 
             for (int w = 0; w < warmup; ++w) {
-              if (is_dram) l2_read_cg_kernel<<<sm_count * 4, 512>>>(d_flush, d_sink_u4, flush_vec4, 1);
+              prepare();
               launch_once();
             }
             CUDA_CHECK(cudaDeviceSynchronize());
@@ -5615,7 +5642,7 @@ static int run_sync_loop_multicta(int device, int samples, int warmup) {
             turn_s.reserve(samples);
             tf_s.reserve(samples);
             for (int s = 0; s < samples; ++s) {
-              if (is_dram) l2_read_cg_kernel<<<sm_count * 4, 512>>>(d_flush, d_sink_u4, flush_vec4, 1);
+              prepare();
               CUDA_CHECK(cudaEventRecord(ev_start));
               launch_once();
               CUDA_CHECK(cudaEventRecord(ev_stop));
