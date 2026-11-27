@@ -235,10 +235,11 @@ def repair_gemm(inventory, configs):
                 excluded = historical[axis] | {shape[axis] for shape in shapes[other]}
                 bm, bn, _ = next(cfg["tile"] for cfg in configs if cfg["config_id"] == REFERENCE)
 
-                def preserves_wave(replacements):
-                    if index not in wave or axis == 2:
+                tile = (bm, bn)[axis] if index in wave and axis != 2 else None
+
+                def preserves_wave(replacements, tile=tile, original=original):
+                    if tile is None:
                         return True
-                    tile = (bm, bn)[axis]
                     return all(
                         math.ceil(before / tile) == math.ceil(after / tile)
                         for before, after in zip(original, replacements, strict=True)
@@ -315,7 +316,7 @@ def create_manifests(inventory, profiles):
             if seq in historical_lengths:
                 offset = nearest_offset(
                     [seq], seq_stride, historical_lengths | reserved_lengths | used_lengths,
-                    lambda values: attention_configs(attn_configs, values[0], dim, causal) == ids,
+                    lambda values, d=dim, c=causal, keys=ids: attention_configs(attn_configs, values[0], d, c) == keys,
                 )
                 seq += offset
             if seq in used_lengths or seq in historical_lengths:
