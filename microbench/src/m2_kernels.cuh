@@ -897,7 +897,7 @@ static std::vector<uint64_t> build_random_chain(size_t bytes, size_t stride_byte
   return buf;
 }
 
-static int run_latency(int device, int samples) {
+static int run_latency(int device, int samples, int warmup = 1, LaunchSchedule* schedule = nullptr) {
   cudaDeviceProp prop{};
   CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
   const int sm_count = prop.multiProcessorCount;
@@ -937,6 +937,78 @@ static int run_latency(int device, int samples) {
     }
     std::printf("]%s\n", comma ? "," : "");
   };
+
+  if (schedule) {
+    // Each probe times its chase inside the kernel; the length is the chase steps and the
+    // window is the per-step latency the kernel writes times the steps.
+    cudaEvent_t ev_start, ev_stop;
+    CUDA_CHECK(cudaEventCreate(&ev_start));
+    CUDA_CHECK(cudaEventCreate(&ev_stop));
+    int current = 0;
+    auto read_window = [&]() {
+      double v = 0.0;
+      CUDA_CHECK(cudaMemcpy(&v, d_out_ns, sizeof(double), cudaMemcpyDeviceToHost));
+      return v * current;
+    };
+    uint32_t seed = 0;
+    auto probe = [&](const char* name, const char* key, int legacy, auto prepare, auto launch, bool comma) {
+      std::printf("  \"%s\": {\"probe\": \"%s\"", key, name);
+      auto timed = schedule->time_point(
+          legacy, 1, 1 << 24, std::max(warmup, 1), samples, ev_start, ev_stop, prepare,
+          [&](int length) {
+            current = length;
+            launch(length);
+          },
+          read_window);
+      std::printf(", \"window_ns_samples\": [");
+      for (size_t k = 0; k < timed.observed.size(); ++k) std::printf("%s%.1f", k ? ", " : "", timed.observed[k]);
+      std::printf("]},\n  \"%s_ns_samples\": [", key);
+      for (size_t k = 0; k < timed.observed.size(); ++k) {
+        std::printf("%s%.2f", k ? ", " : "", timed.observed[k] / timed.length);
+      }
+      std::printf("]%s\n", comma ? "," : "");
+    };
+    auto none = [] {};
+    std::printf("{\n  \"samples\": %d,\n", samples);
+    probe("smem", "smem_latency", 50000, none,
+          [&](int n) { smem_latency_kernel<<<1, 32>>>(d_out_ns, n); }, true);
+    pchase_latency_kernel<<<1, 32>>>(d_l2_chain, d_sink, d_out_ns, 16384, nullptr, 0, nullptr);
+    CUDA_CHECK(cudaDeviceSynchronize());
+    probe("l2", "l2_latency", 16384, none,
+          [&](int n) { pchase_latency_kernel<<<1, 32>>>(d_l2_chain, d_sink, d_out_ns, n, nullptr, 0, nullptr); },
+          true);
+    probe("l2_loaded", "l2_latency_loaded", 8192,
+          [&] { CUDA_CHECK(cudaMemset(d_done, 0, sizeof(int))); },
+          [&](int n) {
+            pchase_latency_kernel<<<sm_count, 256>>>(d_l2_chain, d_sink, d_out_ns, n, d_bg_dram,
+                                                     bg_l2_bytes / sizeof(uint4), d_done);
+          },
+          true);
+    probe("dram", "dram_latency", 8192,
+          [&] { l2_flush_kernel<<<sm_count * 4, 256>>>(d_bg_dram, bg_dram_bytes / sizeof(uint4), seed++); },
+          [&](int n) { pchase_latency_kernel<<<1, 32>>>(d_dram_chain, d_sink, d_out_ns, n, nullptr, 0, nullptr); },
+          true);
+    probe("dram_loaded", "dram_latency_loaded", 4096,
+          [&] {
+            l2_flush_kernel<<<sm_count * 4, 256>>>(d_bg_dram, bg_dram_bytes / sizeof(uint4), seed++);
+            CUDA_CHECK(cudaMemset(d_done, 0, sizeof(int)));
+          },
+          [&](int n) {
+            pchase_latency_kernel<<<sm_count, 256>>>(d_dram_chain, d_sink, d_out_ns, n, d_bg_dram,
+                                                     bg_dram_bytes / sizeof(uint4), d_done);
+          },
+          false);
+    std::printf("}\n");
+    CUDA_CHECK(cudaEventDestroy(ev_start));
+    CUDA_CHECK(cudaEventDestroy(ev_stop));
+    CUDA_CHECK(cudaFree(d_l2_chain));
+    CUDA_CHECK(cudaFree(d_dram_chain));
+    CUDA_CHECK(cudaFree(d_bg_dram));
+    CUDA_CHECK(cudaFree(d_sink));
+    CUDA_CHECK(cudaFree(d_out_ns));
+    CUDA_CHECK(cudaFree(d_done));
+    return 0;
+  }
 
   // 1) Shared memory latency.
   std::vector<double> smem_ns;

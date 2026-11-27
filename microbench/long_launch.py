@@ -103,6 +103,16 @@ DESIGN_FIELDS = {
         "per_cta": ("ctas", "large_ctas"),
         "stream_launch": ("ctas",),
     },
+    "latency": {
+        key: ("probe",)
+        for key in (
+            "smem_latency",
+            "l2_latency",
+            "l2_latency_loaded",
+            "dram_latency",
+            "dram_latency_loaded",
+        )
+    },
     "mma-chain": {
         "mma_chain_latency": (
             "variant",

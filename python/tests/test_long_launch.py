@@ -511,3 +511,30 @@ class LongLaunchTests(unittest.TestCase):
         self.assertEqual(
             record["points"][1]["point"], {"field": "per_cta", "ctas": 1, "large_ctas": 4096}
         )
+
+    def test_latency_probes_freeze_chase_steps_and_check_their_windows(self):
+        def probe(name, steps, window):
+            return {
+                "probe": name,
+                "steps": steps,
+                "launch_ns_samples": [1.4e6] * 3,
+                "window_ns_samples": [window] * 3,
+            }
+
+        keys = (
+            "smem_latency",
+            "l2_latency",
+            "l2_latency_loaded",
+            "dram_latency",
+            "dram_latency_loaded",
+        )
+        pilot = {"samples": 3, **{k: probe(k, 8192, 1.3e6) for k in keys}}
+        schedule, record = long_launch.freeze("latency", pilot)
+        self.assertEqual(schedule.split(), ["8192"] * 5)
+        self.assertEqual(
+            record["points"][3]["point"], {"field": "dram_latency", "probe": "dram_latency"}
+        )
+        short = {"samples": 3, **{k: probe(k, 8192, 1.3e6) for k in keys}}
+        short["dram_latency"]["window_ns_samples"] = [0.9e6] * 3
+        with self.assertRaises(ValueError):
+            long_launch.verify(record, short)
