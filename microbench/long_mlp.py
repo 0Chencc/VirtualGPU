@@ -6,6 +6,7 @@ import math
 from argparse import Namespace
 from pathlib import Path
 
+from microbench import host_quiet
 from microbench import repeat_mlp as mlp
 
 PILOT_MIN_NS = 1_250_000
@@ -82,6 +83,21 @@ def identity(args):
     }
 
 
+def host_qualified(record):
+    if not record.get("device_query", {}).get("integrated"):
+        return True
+    before = record.get("host_quiet_gate") or {}
+    check = record.get("host_quiet_check") or {}
+    samples = record.get("host_samples")
+    roots = record.get("host_quiet_roots")
+    return (
+        before.get("check", {}).get("status") == "passed"
+        and check.get("status") == "passed"
+        and bool(samples and roots)
+        and host_quiet.check(samples, roots) == check
+    )
+
+
 def collect(args, frozen):
     args.binary = args.binary.resolve(strict=True)
     profile = read(args.profile)
@@ -132,6 +148,8 @@ def collect(args, frozen):
         if short_points:
             record["below_minimum"] = short_points
             raise ValueError(f"{len(short_points)} points below {minimum_ns} ns")
+        if not host_qualified(record):
+            raise ValueError("Integrated GPU capture failed the host CPU quiet check")
         record["status"] = "complete"
     except ValueError as exc:
         record.update(status="protocol_failed", reason=str(exc))
@@ -159,6 +177,7 @@ def freeze_schedule(args):
             or record["status"] != "complete"
             or record["mode"] != mode
             or record["freeze_sha256"] != ref_digest
+            or not host_qualified(record)
             or any(record[key] != value for key, value in expected.items())
         ):
             raise ValueError(f"{path}: inconsistent pilot receipt")
@@ -236,7 +255,8 @@ def audit(args):
             if minimum_ns < CAPTURE_MIN_NS or points != freeze["modes"][mode]["points"]:
                 result["status"] = "failed"
             checks = mlp.dispersion_for_points(mapped)
-            if record["status"] != "complete" or checks["status"] != "passed":
+            quiet = host_qualified(record)
+            if record["status"] != "complete" or checks["status"] != "passed" or not quiet:
                 result["status"] = "failed"
             repeats.append(
                 {
@@ -244,6 +264,7 @@ def audit(args):
                     "sha256": mlp.digest(path),
                     "status": record["status"],
                     "minimum_launch_ns": minimum_ns,
+                    "host_quiet_qualified": quiet,
                     "checks": checks,
                 }
             )
