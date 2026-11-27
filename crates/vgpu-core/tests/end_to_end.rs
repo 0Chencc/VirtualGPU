@@ -60,6 +60,56 @@ fn causal_attention_example_runs_with_per_tile_iterations() {
     assert!(r.time_ns.is_finite() && r.time_ns > 0.0);
 }
 
+fn causal_ir_with_spills(loads: u64, stores: u64, loops: Option<u32>) -> KernelIR {
+    let mut v: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../schemas/examples/flash_attention_causal_gqa_sm89.json"
+    ))
+    .unwrap();
+    let r = &mut v["resources"];
+    r["stack_frame_bytes"] = 512.into();
+    r["spill_loads_bytes"] = loads.into();
+    r["spill_stores_bytes"] = stores.into();
+    r["spill_scope"] = "inner_loop_confirmed".into();
+    if let Some(n) = loops {
+        r["spill_loop_count"] = n.into();
+    }
+    let ir = KernelIR::from_json_str(&v.to_string()).unwrap();
+    ir.validate().unwrap();
+    ir
+}
+
+#[test]
+fn spill_loop_count_splits_per_iteration_spills() {
+    assert_eq!(
+        causal_ir_with_spills(0, 0, None).resources.spill_loop_count,
+        None
+    );
+    let split = causal_ir_with_spills(512, 256, Some(2));
+    let halved = causal_ir_with_spills(256, 128, None);
+    let (ks, kh) = (
+        kernel_from_ir(&split).unwrap(),
+        kernel_from_ir(&halved).unwrap(),
+    );
+    assert_eq!(ks.spill, kh.spill);
+    let p = Profile::from_json(PROFILES[0]).unwrap();
+    let m = Machine::nominal(&p, &ks.mma_key).unwrap();
+    let time = |ir: &KernelIR, k| {
+        let mut l2 = IrL2::new(ir, &p, L2InitState::Cold, L2Options::default());
+        simulate(k, &p, &m, &mut l2).unwrap().time_ns
+    };
+    assert_eq!(time(&split, &ks), time(&halved, &kh));
+    let full = causal_ir_with_spills(512, 256, None);
+    assert!(time(&full, &kernel_from_ir(&full).unwrap()) > time(&split, &ks));
+}
+
+#[test]
+fn spill_loop_count_leaves_once_scope_whole() {
+    let mut ir = causal_ir_with_spills(512, 256, Some(2));
+    ir.resources.spill_scope = vgpu_core::ir::SpillScope::PrologueEpilogue;
+    let k = kernel_from_ir(&ir).unwrap();
+    assert_eq!(k.spill.bytes_per_thread, 768.0);
+}
+
 #[test]
 fn ascend910b3_profile_simulates_cube_gemm_and_enforces_sram_limits() {
     use vgpu_core::occupancy::{occupancy, OccupancyError};

@@ -161,6 +161,11 @@
             "inner_loop_assumed"
           ]
         },
+        "spill_loop_count": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Sequential top-level loops that share the assembler's spill figure. Each pipeline iteration runs one of them, so per-iteration spill traffic and reloads are divided by this count. Omitted means 1."
+        },
         "barriers": {
           "type": "integer",
           "minimum": 0

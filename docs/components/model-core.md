@@ -163,6 +163,7 @@ The assembler reports static spill bytes, not dynamic counts. The core uses:
 - `inner_loop_confirmed`: spill bytes are added as local memory traffic to every iteration, and `account_spill` decides how much of it reaches L2 and DRAM from the L1 miss curve of the chosen carveout.
 - `inner_loop_assumed`: the same at draw 0. In draws 1 to `N` the per-iteration spill traffic is scaled by a factor sampled uniformly in `[0, 1]`, covering everything from a one-time cost to a per-iteration cost. A ranking that depends on where the spill code sits then becomes indistinguishable.
 - `prologue_epilogue`: added once to the prologue or epilogue.
+- With either loop scope, `spill_loop_count` (default 1) divides the per-iteration spill bytes and reloads. Causal attention has two sequential loops that share one assembler figure, and each iteration runs one of them, so each pays half. The frame is not divided.
 - `none`: no spill cost.
 
 Reloads also add latency to the CTA's dependent chain, from the measured reload curves at the spill load bytes over 4 B (design.md 6.4). Both overestimate dynamic traffic when spill code is on a cold path. That is acceptable for ranking: a spilling config should rank below an otherwise similar non-spilling one, and the sign matters more than the magnitude. Every spilling variant carries the spill flag, and the validation must check spilling configs separately.

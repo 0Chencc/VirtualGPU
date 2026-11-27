@@ -94,6 +94,9 @@ pub struct ResourceUsage {
     pub spill_stores_bytes: u64,
     pub spill_loads_bytes: u64,
     pub spill_scope: SpillScope,
+    /// Sequential top-level loops that share the spill figure, when more than one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub spill_loop_count: Option<u32>,
     pub barriers: u32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub vendor_extensions: Option<ResourceVendorExtensions>,

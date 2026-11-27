@@ -114,16 +114,22 @@ pub fn kernel_from_ir(ir: &KernelIR) -> Result<Kernel, ModelError> {
         epilogue: work(&ir.body.epilogue.ops, &mut mma_key)?,
     };
     let r = &ir.resources;
+    let scope = match r.spill_scope {
+        ir::SpillScope::None => SpillScope::None,
+        ir::SpillScope::PrologueEpilogue => SpillScope::Once,
+        ir::SpillScope::InnerLoopConfirmed => SpillScope::PerIteration { assumed: false },
+        ir::SpillScope::InnerLoopAssumed => SpillScope::PerIteration { assumed: true },
+    };
+    // Each iteration runs only one of the loops that share the spill code.
+    let loops = match (scope, r.spill_loop_count) {
+        (SpillScope::PerIteration { .. }, Some(n)) if n > 1 => f64::from(n),
+        _ => 1.0,
+    };
     let spill = Spill {
-        bytes_per_thread: (r.spill_loads_bytes + r.spill_stores_bytes) as f64,
-        load_bytes_per_thread: r.spill_loads_bytes as f64,
+        bytes_per_thread: (r.spill_loads_bytes + r.spill_stores_bytes) as f64 / loops,
+        load_bytes_per_thread: r.spill_loads_bytes as f64 / loops,
         stack_frame_bytes: r.stack_frame_bytes,
-        scope: match r.spill_scope {
-            ir::SpillScope::None => SpillScope::None,
-            ir::SpillScope::PrologueEpilogue => SpillScope::Once,
-            ir::SpillScope::InnerLoopConfirmed => SpillScope::PerIteration { assumed: false },
-            ir::SpillScope::InnerLoopAssumed => SpillScope::PerIteration { assumed: true },
-        },
+        scope,
     };
     let ascend_res = ir
         .resources

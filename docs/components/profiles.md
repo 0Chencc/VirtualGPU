@@ -291,6 +291,10 @@ totals. Launch-level L1TEX sectors have no loop attribution. See the
 [Nsight Compute Profiling Guide](https://docs.nvidia.com/nsight-compute/ProfilingGuide/)
 for metric definitions.
 
+`python scripts/posthoc_spill_split.py <capture.json>` recompiles the three
+attention configs offline and prints the static reloads per thread per
+iteration, with and without the loop split, next to the measured ones.
+
 ## Independent MLP repeat reduction
 
 The MLP refresh captures five separate processes for each of `mlp`

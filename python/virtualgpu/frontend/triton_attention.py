@@ -604,16 +604,7 @@ def _assemble_attention_kernel_ir(
             "warp_groups": [{"id": 0, "role": "unified", "num_warps": summary.num_warps}],
             "dynamic_smem_bytes": 0,
         },
-        "resources": {
-            "source": "assembler_report",
-            "registers_per_thread": artifacts.ptxas.registers_per_thread,
-            "static_smem_bytes": artifacts.static_smem_bytes,
-            "stack_frame_bytes": artifacts.ptxas.stack_frame_bytes,
-            "spill_stores_bytes": artifacts.ptxas.spill_stores_bytes,
-            "spill_loads_bytes": artifacts.ptxas.spill_loads_bytes,
-            "spill_scope": artifacts.ptxas.spill_scope,
-            "barriers": artifacts.ptxas.barriers,
-        },
+        "resources": _resources(artifacts, summary.num_top_level_loops),
         "tensors": [
             {
                 "id": "Q",
@@ -797,3 +788,21 @@ def extract_attention_kernel_ir(
         strides_v=sv,
         strides_o=so,
     )
+
+
+def _resources(artifacts: Any, num_loops: int) -> dict[str, Any]:
+    """Resource block from the assembler report. Sequential loops share one spill figure."""
+    ptxas = artifacts.ptxas
+    resources = {
+        "source": "assembler_report",
+        "registers_per_thread": ptxas.registers_per_thread,
+        "static_smem_bytes": artifacts.static_smem_bytes,
+        "stack_frame_bytes": ptxas.stack_frame_bytes,
+        "spill_stores_bytes": ptxas.spill_stores_bytes,
+        "spill_loads_bytes": ptxas.spill_loads_bytes,
+        "spill_scope": ptxas.spill_scope,
+        "barriers": ptxas.barriers,
+    }
+    if num_loops > 1 and ptxas.spill_scope in ("inner_loop_confirmed", "inner_loop_assumed"):
+        resources["spill_loop_count"] = num_loops
+    return resources

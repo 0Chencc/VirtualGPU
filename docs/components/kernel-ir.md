@@ -54,6 +54,9 @@ Terminology note: `cta` refers to a thread block (NVIDIA), workgroup (AMD), or b
     "spill_stores_bytes": 0,             // per-thread spill stores from assembler report
     "spill_loads_bytes": 0,              // per-thread spill loads from assembler report
     "spill_scope": "none",               // "none" | "prologue_epilogue" | "inner_loop_confirmed" | "inner_loop_assumed"
+    // Optional, default 1: sequential top-level loops sharing the spill figure (2 for causal
+    // attention). The core divides per-iteration spill traffic and reloads by it.
+    "spill_loop_count": 2,
     "barriers": 1,
     // Optional target-specific resource footprints outside the vendor-neutral resource set.
     "vendor_extensions": {

@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import jsonschema
 import pytest
 import triton
 import triton.language as tl
-from virtualgpu.frontend.triton_attention import extract_attention_kernel_ir
+from virtualgpu.frontend.triton_attention import _resources, extract_attention_kernel_ir
 from virtualgpu.frontend.ttgir import parse_ttgir_summary
 
 SCHEMA_PATH = Path(__file__).resolve().parents[3] / "schemas" / "kernel_ir.schema.json"
@@ -319,6 +320,41 @@ def test_two_loop_causal_attention_sums_per_cta_trip_counts() -> None:
     assert pl["prefetch_distance"] == 1
     # 4 Q-blocks (BM=128, BN=64 => 2 KV blocks per Q-block) x 2 heads => [2, 4, 6, 8] x 2
     assert pl["trip_counts"] == [2, 4, 6, 8, 2, 4, 6, 8]
+    res = ir["resources"]
+    if res["spill_scope"] in ("inner_loop_confirmed", "inner_loop_assumed"):
+        assert res["spill_loop_count"] == 2
+    else:
+        assert "spill_loop_count" not in res
+
+
+def _artifacts(scope: str) -> SimpleNamespace:
+    ptxas = SimpleNamespace(
+        registers_per_thread=255,
+        stack_frame_bytes=64,
+        spill_stores_bytes=32,
+        spill_loads_bytes=48,
+        spill_scope=scope,
+        barriers=1,
+    )
+    return SimpleNamespace(ptxas=ptxas, static_smem_bytes=0)
+
+
+@pytest.mark.parametrize(
+    ("scope", "loops", "expected"),
+    [
+        ("inner_loop_confirmed", 2, 2),
+        ("inner_loop_assumed", 2, 2),
+        ("inner_loop_confirmed", 1, None),
+        ("prologue_epilogue", 2, None),
+        ("none", 2, None),
+    ],
+)
+def test_spill_loop_count_only_for_loop_spills_in_several_loops(
+    scope: str, loops: int, expected: int | None
+) -> None:
+    res = _resources(_artifacts(scope), loops)
+    assert res.get("spill_loop_count") == expected
+    assert res["spill_loads_bytes"] == 48
 
 
 def test_split_async_wait_flagged_unsupported() -> None:

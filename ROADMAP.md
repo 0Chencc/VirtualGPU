@@ -77,6 +77,8 @@ Fix what made v0.2 miss on the RTX 4070 and GB10, and fix the profiles we alread
 - [x] Spill reloads cost latency on the critical path, using `spill_reload_latency_by_count`
 - [x] Spill traffic moves from L1 to L2 as a step at the L1 capacity for the chosen carveout (`l1_to_l2_spill_threshold_by_carveout`)
 - [ ] Dynamic count of local loads per iteration, so the two causal attention loops are not summed into one spill figure
+- [x] Split the static spill figure of causal attention between its two loops (`spill_loop_count`)
+- [ ] Capture `microbench.spill_counters` on the RTX 4070 and check the loop split with `scripts/posthoc_spill_split.py`
 - [ ] Narrow register-staged loads on unaligned shapes (H5): redo both forms with launches over 1 ms and captures that pass the dispersion rule, then decide
 - [ ] Synchronous load GEMM (`num_stages = 1`, +9.1% warm): find the missing mechanism with a microbenchmark
 - [ ] GB10 decode shapes are predicted too compressed: find out why
