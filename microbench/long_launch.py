@@ -60,6 +60,8 @@ def check_diagnostics(mode, point):
 def check_samples(mode, point, count):
     """A complete list of finite, positive CUDA event times."""
     samples = point["launch_ns_samples"]
+    if not samples:
+        raise ValueError(f"{mode}: no CUDA event samples")
     if not isinstance(samples, list) or len(samples) != count:
         raise ValueError(f"{mode}: expected {count} CUDA event samples")
     if not all(

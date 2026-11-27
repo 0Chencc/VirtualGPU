@@ -75,6 +75,11 @@ class LongLaunchTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "CUDA event samples"):
                 long_launch.verify(record, bad)
 
+    def test_freeze_rejects_an_empty_sample_list(self):
+        pilot = output([point(16, 1100, [])], [point(32, 4000, [1.3e6] * 3)], samples=3)
+        with self.assertRaisesRegex(ValueError, "no CUDA event samples"):
+            long_launch.freeze("closed-loop", pilot)
+
     def test_identity_ignores_diagnostics_but_checks_them(self):
         _, record = long_launch.freeze("closed-loop", self.pilot())
         row = point(16, 1100, [1.2e6] * 15)
