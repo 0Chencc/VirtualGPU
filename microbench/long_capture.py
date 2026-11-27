@@ -20,7 +20,9 @@ Rule 3 is judged across each mode's 5 valid rounds. Device exceptions
 `reduce` writes, per mode, a raw of the usual shape whose sample lists are the 5
 round medians in round order, every other field kept, and each timed point's
 `launch` (frozen length, shortest launch over all valid rounds, median of round
-medians, and each round's SM clock before and after). It writes no profile.
+medians, and each round's SM clock before and after); points a device exception
+covers also carry the exceptions' names and the range of their round medians. It
+writes no profile.
 """
 
 from __future__ import annotations
@@ -38,7 +40,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import host_quiet  # noqa: E402
 import long_launch  # noqa: E402
-from capture_exceptions import exempt  # noqa: E402
+from capture_exceptions import exceptions_for, exempt  # noqa: E402
 from capture_posthoc import dispersion_check, reproducibility_check  # noqa: E402
 
 MODES = (
@@ -289,12 +291,27 @@ def merge(raws):
     return walk(raws)
 
 
+def mark_exceptions(mode, merged, device, l2_bytes=0):
+    """Name, on each merged timed point a device exception covers, the exceptions and
+    the range of its round medians, which its uncertainty must cover."""
+    for path, point in long_launch.points(merged):
+        field = PROFILE_FIELD.get((mode, path[0]), path[0])
+        names = [e["name"] for e in exceptions_for(device, field, point, l2_bytes)]
+        if names:
+            medians = point["launch_ns_samples"]
+            point["exceptions"] = names
+            point["round_median_range_ns"] = [min(medians), max(medians)]
+    return merged
+
+
 def reduce(run_dir):
     state = json.loads((run_dir / "capture-state.json").read_text())
+    manifest = json.loads((run_dir / "freeze-manifest.json").read_text())
     if "rule_three" not in state:
         raise ValueError("the capture has not finished its rounds")
+    device, l2_bytes = manifest["device"]["name"], manifest["device"]["l2_size_bytes"]
     for mode in state["modes"]:
-        raw = merge(load_valid(run_dir, state, mode))
+        raw = mark_exceptions(mode, merge(load_valid(run_dir, state, mode)), device, l2_bytes)
         write_new(run_dir / f"merged-{mode}.json", raw)
 
 

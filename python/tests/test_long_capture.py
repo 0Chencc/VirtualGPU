@@ -1,5 +1,6 @@
 """CPU-only checks of the five-round long-launch capture."""
 
+import copy
 import json
 import tempfile
 import unittest
@@ -186,3 +187,24 @@ class LongCaptureTests(unittest.TestCase):
         rounds[1]["mma_chain_latency"][0]["variant"] = "other"
         with self.assertRaisesRegex(ValueError, "variant differs"):
             lc.merge(rounds)
+
+    def test_merged_points_name_their_exceptions(self):
+        curve = {
+            "samples": 5,
+            "read_curve": [
+                {
+                    "target_sms": sms,
+                    "steps": 81,
+                    "launch_ns_samples": [1.3e6, 1.9e6, 1.4e6, 1.3e6, 1.35e6],
+                }
+                for sms in (1, 4)
+            ],
+        }
+        marked = lc.mark_exceptions("dram-bw", copy.deepcopy(curve), "NVIDIA GB10")
+        first, second = marked["read_curve"]
+        self.assertEqual(first["exceptions"], ["low_in_flight_unstable"])
+        self.assertEqual(first["round_median_range_ns"], [1.3e6, 1.9e6])
+        self.assertNotIn("exceptions", second)
+        self.assertNotIn(
+            "exceptions", lc.mark_exceptions("l2", curve, "NVIDIA GB10")["read_curve"][0]
+        )

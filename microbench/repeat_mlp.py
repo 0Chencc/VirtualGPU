@@ -19,10 +19,8 @@ from pathlib import Path
 
 try:
     import host_quiet
-    from capture_exceptions import exempt
 except ImportError:  # imported as microbench.repeat_mlp
     from microbench import host_quiet
-    from microbench.capture_exceptions import exempt
 
 CONTIGUOUS = ("dram_bw_by_bytes_in_flight", "l2_bw_by_bytes_in_flight")
 STRIDED = "dram_bw_by_bytes_in_flight_strided"
@@ -113,18 +111,11 @@ def require_quiet(snapshot, own_pid=None):
         )
 
 
-def key_names(field):
-    """The fields a point key holds, in order."""
-    if field in ACTIVE_FIELDS:
-        return ("target_sms",)
-    layout = ("segment_bytes", "stride_bytes") if field == STRIDED else ("issue_mode",)
-    return (*layout, "bytes_in_flight", "active_ctas", "bytes_per_cta")
-
-
 def point_key(field, row):
     if field in ACTIVE_FIELDS:
         return (row["active_sms"] if "active_sms" in row else row["target_sms"],)
-    return tuple(row[key] for key in key_names(field))
+    layout = ("segment_bytes", "stride_bytes") if field == STRIDED else ("issue_mode",)
+    return tuple(row[key] for key in (*layout, "bytes_in_flight", "active_ctas", "bytes_per_cta"))
 
 
 def point_maps(profile, mode, raw, sample_count=SAMPLES):
@@ -241,47 +232,18 @@ def points_raw(points):
     }
 
 
-def judged_points(points, device, rule):
-    """The points `rule` judges: all but those the device's exceptions exempt from it."""
-    return {
-        field: {
-            key: samples
-            for key, samples in keys.items()
-            if not exempt(device, field, dict(zip(key_names(field), key)), rule)
-        }
-        for field, keys in points.items()
-    }
-
-
-def dispersion_for_points(points, device=""):
-    """Capture rules 1 and 2 on one run (microbench/capture_posthoc.py); exempted points
-    leave rule 1 and its count, rule 2 judges every list."""
+def dispersion_for_points(points):
+    """Capture rules 1 and 2 on one run (microbench/capture_posthoc.py)."""
     from microbench.capture_posthoc import dispersion_check
 
-    every = dispersion_check(points_raw(points), suffixes=("gbps_samples",))
-    judged = judged_points(points, device, 1)
-    rule1 = dispersion_check(points_raw(judged), suffixes=("gbps_samples",))["rules"]["iqr"]
-    rules = {"iqr": rule1, "spike": every["rules"]["spike"]}
-    failed = (
-        every["sample_lists"] == 0
-        or every["invalid_lists"] > 0
-        or any(r["failing"] > r["allowed"] for r in rules.values())
-    )
-    return {
-        **every,
-        "status": "failed" if failed else "passed",
-        "exempt_lists": every["sample_lists"] - sum(len(k) for k in judged.values()),
-        "rules": rules,
-    }
+    return dispersion_check(points_raw(points), suffixes=("gbps_samples",))
 
 
-def reproducibility_for_runs(point_runs, device=""):
-    """Capture rule 3 across the repeats of one benchmark, without exempted points."""
+def reproducibility_for_runs(point_runs):
+    """Capture rule 3 across the repeats of one benchmark."""
     from microbench.capture_posthoc import reproducibility_check
 
-    return reproducibility_check(
-        [points_raw(judged_points(p, device, 3)) for p in point_runs], suffixes=("gbps_samples",)
-    )
+    return reproducibility_check([points_raw(p) for p in point_runs], suffixes=("gbps_samples",))
 
 
 def capture(args):
@@ -382,9 +344,7 @@ def capture(args):
     if gate_host:
         host_samples.append(host_quiet.sample())
     # Rules 1 and 2 apply to every sweep, long-launch ones included; a pilot has 3 samples.
-    dispersion = dispersion_for_points(
-        point_maps(profile, args.mode, raw, sample_count), query["name"]
-    )
+    dispersion = dispersion_for_points(point_maps(profile, args.mode, raw, sample_count))
     if not snaps:
         raise ValueError("No telemetry was recorded during the sweep")
     return {
@@ -468,10 +428,7 @@ def reduce_runs(base, paths, revision):
         raise ValueError("Windows repeats require a passing desktop quiet gate")
     if any(
         item.get("dispersion_check", {}).get("status") != "passed"
-        or dispersion_for_points(
-            point_maps(profile, item["mode"], item["raw"]),
-            item.get("device_query", {}).get("name", ""),
-        )
+        or dispersion_for_points(point_maps(profile, item["mode"], item["raw"]))
         != item["dispersion_check"]
         for _, item in records
     ):
@@ -493,10 +450,7 @@ def reduce_runs(base, paths, revision):
         runs = [
             point_maps(profile, mode, item["raw"]) for _, item in records if item["mode"] == mode
         ]
-        devices = {item.get("device_query", {}).get("name", "") for _, item in records}
-        if len(devices) != 1:
-            raise ValueError("Repeats come from more than one device")
-        reproducibility[mode] = reproducibility_for_runs(runs, devices.pop())
+        reproducibility[mode] = reproducibility_for_runs(runs)
         if reproducibility[mode]["status"] != "passed":
             raise ValueError(f"{mode}: repeats fail capture rule 3: {reproducibility[mode]}")
     if include_active and (
