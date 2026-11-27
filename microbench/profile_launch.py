@@ -47,6 +47,7 @@ PROFILE_PATH = {
     ("sync-loop-multicta", "sync_stage_loop"): ("pipeline", "sync_stage_loop"),
     ("sync-loop-reconcile", "sync_stage_loop"): ("pipeline", "sync_stage_loop"),
     ("sync-loop-ablation", "sync_stage_loop_ablation"): ("pipeline", "sync_stage_loop_ablation"),
+    ("serial-fill", "serial_stage_fill"): ("pipeline", "serial_stage_fill"),
 }
 # Raw sample lists whose profile value has another name than the list without "_samples".
 STAGE_LOOP = {
@@ -62,6 +63,7 @@ METRIC = {
     "sync-loop-multicta": STAGE_LOOP,
     "sync-loop-reconcile": STAGE_LOOP,
     "sync-loop-ablation": STAGE_LOOP,
+    "serial-fill": {"effective_bytes_per_ns_samples": "effective_bytes_per_ns_per_cta"},
 }
 # Points that are one scalar profile value, and where their rate list sits: a top-level
 # list, or None for the point's own list.

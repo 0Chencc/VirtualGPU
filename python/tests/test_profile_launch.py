@@ -304,3 +304,16 @@ class ProfileLaunchTests(unittest.TestCase):
         pl.attach(self.profile, "sync-loop-ablation", {"sync_stage_loop_ablation": [point]})
         self.assertEqual(entry["delivered_bw_gbps"]["launch"]["length"], 700)
         self.assertIn("launch", entry["mean_stage_turnaround_ns"])
+
+    def test_serial_fill_bandwidth_is_named_per_cta(self):
+        names = pl.long_launch.DESIGN_FIELDS["serial-fill"]["serial_stage_fill"]
+        entry = self.profile["measured"]["pipeline"]["serial_stage_fill"][9]
+        lists = {
+            "stage_time_ns_samples": "stage_time_ns",
+            "effective_bytes_per_ns_samples": "effective_bytes_per_ns_per_cta",
+        }
+        pl.attach(
+            self.profile, "serial-fill", {"serial_stage_fill": [timed(entry, names, lists, 9000)]}
+        )
+        self.assertEqual(entry["effective_bytes_per_ns_per_cta"]["launch"]["length"], 9000)
+        self.assertIn("launch", entry["stage_time_ns"])

@@ -60,6 +60,7 @@ MODES = (
     "sync-loop-multicta",
     "sync-loop-reconcile",
     "sync-loop-ablation",
+    "serial-fill",
 )
 ROUNDS = 5
 EXTRA_ROUNDS = 2
