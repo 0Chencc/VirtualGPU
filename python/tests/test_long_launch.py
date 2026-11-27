@@ -31,6 +31,16 @@ def output(*rows_per_field, samples=15):
 
 
 class LongLaunchTests(unittest.TestCase):
+    def test_dram_write_has_its_own_frozen_point(self):
+        row = {"target_sms": 48, "steps": 384, "launch_ns_samples": [1.3e6] * 3}
+        raw = {"samples": 3, "read_curve": [row], "write_full": [dict(row, steps=512)]}
+        schedule, freeze = long_launch.freeze("dram-bw", raw)
+        self.assertEqual(schedule, "384\n512\n")
+        self.assertEqual(freeze["points"][1]["point"], {"field": "write_full", "target_sms": 48})
+        long_launch.verify(freeze, raw)
+        with self.assertRaisesRegex(ValueError, "points captured"):
+            long_launch.verify(freeze, {"samples": 3, "read_curve": [row]})
+
     def pilot(self):
         trials = [{"steps": 256, "launch_ns_samples": [300e3] * 3}]
         return output(

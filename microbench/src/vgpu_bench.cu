@@ -228,8 +228,11 @@ static int run_dram_bw(int device, int samples, int warmup, size_t buffer_mb,
                                   : (32ULL * 1024ULL * 1024ULL);
   // Scale streaming buffer to >= 16x physical L2 so large-L2 GPUs (e.g. 96-128 MiB L2)
   // amortize trailing L2 write-allocate residency below 7%.
-  const size_t bytes = std::max<size_t>((schedule ? 1024 : buffer_mb) * LaunchSchedule::MiB,
-                                        raw_l2_bytes * 16ULL);
+  const size_t legacy_bytes = std::max<size_t>(buffer_mb * LaunchSchedule::MiB,
+                                               raw_l2_bytes * 16ULL);
+  const size_t write_mib = (legacy_bytes + LaunchSchedule::MiB - 1) / LaunchSchedule::MiB;
+  const size_t bytes = schedule ? std::max<size_t>(1024, write_mib) * LaunchSchedule::MiB
+                                : legacy_bytes;
   const size_t n_vec4 = bytes / sizeof(float4);
 
   const size_t l2_bytes = std::max<size_t>(raw_l2_bytes, 32ULL * 1024ULL * 1024ULL);
@@ -286,11 +289,17 @@ static int run_dram_bw(int device, int samples, int warmup, size_t buffer_mb,
         };
         auto launch = [&](int mib) {
           const size_t vectors = static_cast<size_t>(mib) * LaunchSchedule::MiB / sizeof(float4);
-          dram_read_kernel<<<grid, threads>>>(d_buf, d_sink, vectors, d_sm_seen);
+          if (is_write) {
+            dram_write_kernel<<<grid, threads>>>(d_buf, vectors, 2.0f, d_sm_seen);
+          } else {
+            dram_read_kernel<<<grid, threads>>>(d_buf, d_sink, vectors, d_sm_seen);
+          }
         };
         std::printf("%s\n    {\"target_sms\": %d, \"grid\": %d", ti ? "," : "", target_sms, grid);
         const int max_mib = static_cast<int>(bytes / LaunchSchedule::MiB);
-        schedule->measure(16, 1, max_mib, LaunchSchedule::MiB, bytes, warmup, samples,
+        const int minimum = is_write ? static_cast<int>(write_mib) : 1;
+        const int initial = is_write ? minimum : 16;
+        schedule->measure(initial, minimum, max_mib, LaunchSchedule::MiB, bytes, warmup, samples,
                           ev_start, ev_stop, prepare, launch);
         CUDA_CHECK(cudaMemcpy(h_sm_seen.data(), d_sm_seen,
                               static_cast<size_t>(sm_count) * sizeof(uint32_t), cudaMemcpyDeviceToHost));
@@ -360,10 +369,8 @@ static int run_dram_bw(int device, int samples, int warmup, size_t buffer_mb,
   std::printf("  \"samples\": %d,\n", samples);
   std::printf("  \"read_curve\": ");
   measure_curve(false, targets);
-  if (!schedule) {
-    std::printf(",\n  \"write_full\": ");
-    measure_curve(true, std::vector<int>{sm_count});
-  }
+  std::printf(",\n  \"write_full\": ");
+  measure_curve(true, std::vector<int>{sm_count});
   std::printf("\n}\n");
 
   CUDA_CHECK(cudaEventDestroy(ev_start));
