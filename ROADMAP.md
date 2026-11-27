@@ -83,7 +83,8 @@ Fix what made v0.2 miss on the RTX 4070 and GB10, and fix the profiles we alread
 - [x] Take the per-launch frame cost out of `extra_ns_vs_zero` in `spill-latency` (#15)
 - [ ] Recollect `spill_reload_latency_by_count` on every profile with the launch cost taken out
 - [ ] Register a decision rule and freeze predictions for the spill mechanisms before `spill-latency` is recaptured with long launches (#15)
-- [ ] Size the spill frames' L1 footprint by the CTAs an SM actually holds, not full residency (`simulate` in `sim.rs`), which overcharges grids under one wave such as the one-CTA-per-SM `spill-latency` kernel; with the spill re-check on the new profile ([v0.3-mechanism-recheck-baseline.md](docs/results/analysis/v0.3-mechanism-recheck-baseline.md))
+- [x] Size the spill frames' L1 footprint by the CTAs an SM actually holds, not full residency (`simulate` in `sim.rs`), which overcharges grids under one wave such as the one-CTA-per-SM `spill-latency` kernel
+- [ ] Re-check the spill frame footprint on the qualified 0.23.0 profiles with `scripts/recheck_mechanisms.py` ([v0.3-mechanism-recheck-baseline.md](docs/results/analysis/v0.3-mechanism-recheck-baseline.md))
 - [ ] Re-run miss merging under the round-trip port floor: since `e51f8ef` the `l2_merge_by_sharing` error grew from 4.8% to 12.2% (RTX 4070) and 4.6% to 8.8% (GB10), most at fewer CTAs than SMs; confirm on the 0.23.0 GB10 profile with `scripts/recheck_mechanisms.py` before registering a fix ([v0.3-mechanism-recheck-baseline.md](docs/results/analysis/v0.3-mechanism-recheck-baseline.md))
 - [x] Capture `microbench.spill_counters` on the RTX 3070 as a first post-hoc look at static against dynamic local loads
 - [ ] Narrow register-staged loads on unaligned shapes (H5): redo both forms with launches over 1 ms and captures that pass the dispersion rule, then decide
