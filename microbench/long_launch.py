@@ -37,6 +37,16 @@ DESIGN_FIELDS = {
     "gmem-issue-controlled": {
         "gmem_load_issue_controlled": ("load_width_bytes", "batch_loads_per_thread", "num_warps")
     },
+    "sync-loop": {
+        "sync_stage_loop": (
+            "mem_level",
+            "transfer_mode",
+            "ctas_per_sm",
+            "num_warps",
+            "stage_bytes",
+            "mma_chain_len",
+        )
+    },
 }
 
 
