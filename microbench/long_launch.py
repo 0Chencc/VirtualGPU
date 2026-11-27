@@ -104,6 +104,15 @@ DESIGN_FIELDS = {
             "mma_chain_len",
         )
     },
+    "sync-loop-ablation": {
+        "sync_stage_loop_ablation": (
+            "variant",
+            "ctas_per_sm",
+            "num_warps",
+            "stage_bytes",
+            "mma_chain_len",
+        )
+    },
 }
 
 

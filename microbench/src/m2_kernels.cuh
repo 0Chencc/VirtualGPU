@@ -4999,12 +4999,15 @@ static void dispatch_sync_ablation_v(int variant, int grid, const uint4* d_dram,
   else sync_loop_ablation_kernel<STAGE_BYTES, NUM_WARPS, 3><<<grid, threads, smem>>>(d_dram, d_sink, mask, steps, mma_iters);
 }
 
-static int run_sync_loop_ablation(int device, int samples, int warmup) {
+static int run_sync_loop_ablation(int device, int samples, int warmup, LaunchSchedule* schedule = nullptr) {
   cudaDeviceProp prop{};
   CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
   const int sm_count = prop.multiProcessorCount;
 
-  const size_t dram_bytes = 256ULL * 1024ULL * 1024ULL;
+  // Scheduled launches run longer, so the DRAM buffer is a power of two of at least
+  // max(256 MiB, 8 x L2); the legacy path keeps its v0.2 size.
+  size_t dram_bytes = 256ULL * LaunchSchedule::MiB;
+  while (schedule && dram_bytes < 8ULL * static_cast<size_t>(prop.l2CacheSize)) dram_bytes *= 2;
   const size_t dram_mask = (dram_bytes / sizeof(uint4)) - 1ULL;
   const size_t flush_vec4 = dram_bytes / sizeof(uint4);
 
@@ -5024,7 +5027,6 @@ static int run_sync_loop_ablation(int device, int samples, int warmup) {
   CUDA_CHECK(cudaEventCreate(&ev_stop));
 
   const char* v_names[4] = {"cp_async_s1", "ld_st_sync", "ld_discard_sync", "ld_st_sync_cross_dep"};
-  const int steps = 128;
   const std::vector<int> warp_list = {4, 8};
   const std::vector<int> bytes_list = {8192, 16384};
   const std::vector<int> mma_iters_list = {0, 2, 8, 16};
@@ -5036,7 +5038,7 @@ static int run_sync_loop_ablation(int device, int samples, int warmup) {
       for (int sb : bytes_list) {
         for (int mma_iters : mma_iters_list) {
           int mma_chain_len = mma_iters * 4;
-          double total_bytes = static_cast<double>(sm_count) * static_cast<double>(sb) * steps;
+          int steps = 128;
           auto launch_once = [&]() {
             if (warps == 4 && sb == 8192) dispatch_sync_ablation_v<8192, 4>(v, sm_count, d_dram, d_sink_f, dram_mask, steps, mma_iters);
             else if (warps == 4 && sb == 16384) dispatch_sync_ablation_v<16384, 4>(v, sm_count, d_dram, d_sink_f, dram_mask, steps, mma_iters);
@@ -5044,8 +5046,27 @@ static int run_sync_loop_ablation(int device, int samples, int warmup) {
             else dispatch_sync_ablation_v<16384, 8>(v, sm_count, d_dram, d_sink_f, dram_mask, steps, mma_iters);
           };
 
+          auto prepare = [&]() { l2_read_cg_kernel<<<sm_count * 4, 512>>>(d_flush, d_sink_u4, flush_vec4, 1); };
+          if (schedule) {
+            std::printf("%s\n    {\"variant\": \"%s\", \"ctas_per_sm\": 1, \"active_ctas\": %d, \"num_warps\": %d, "
+                        "\"stage_bytes\": %d, \"mma_chain_len\": %d",
+                        first ? "" : ",", v_names[v], sm_count, warps, sb, mma_chain_len);
+            first = false;
+            auto timed = schedule->time_point(steps, 1, 1 << 24, warmup, samples, ev_start, ev_stop, prepare,
+                                              [&](int length) { steps = length; launch_once(); });
+            const double bytes = static_cast<double>(sm_count) * sb * timed.length;
+            const auto& ns = timed.launch_ns;
+            std::printf(", \"bw_gbps_samples\": [");
+            for (size_t i = 0; i < ns.size(); ++i) std::printf("%s%.3f", i ? ", " : "", bytes / ns[i]);
+            std::printf("], \"turnaround_ns_samples\": [");
+            for (size_t i = 0; i < ns.size(); ++i) std::printf("%s%.2f", i ? ", " : "", ns[i] / timed.length);
+            std::printf("]}");
+            continue;
+          }
+          double total_bytes = static_cast<double>(sm_count) * static_cast<double>(sb) * steps;
+
           for (int w = 0; w < warmup; ++w) {
-            l2_read_cg_kernel<<<sm_count * 4, 512>>>(d_flush, d_sink_u4, flush_vec4, 1);
+            prepare();
             launch_once();
           }
           CUDA_CHECK(cudaDeviceSynchronize());
@@ -5054,7 +5075,7 @@ static int run_sync_loop_ablation(int device, int samples, int warmup) {
           bw_s.reserve(samples);
           turn_s.reserve(samples);
           for (int s = 0; s < samples; ++s) {
-            l2_read_cg_kernel<<<sm_count * 4, 512>>>(d_flush, d_sink_u4, flush_vec4, 1);
+            prepare();
             CUDA_CHECK(cudaEventRecord(ev_start));
             launch_once();
             CUDA_CHECK(cudaEventRecord(ev_stop));

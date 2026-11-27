@@ -295,3 +295,32 @@ class LongLaunchTests(unittest.TestCase):
                 "mma_chain_len": 8,
             },
         )
+
+    def test_sync_loop_ablation_is_keyed_by_variant(self):
+        def stage(variant, steps):
+            return {
+                "variant": variant,
+                "ctas_per_sm": 1,
+                "active_ctas": 48,
+                "num_warps": 8,
+                "stage_bytes": 16384,
+                "mma_chain_len": 64,
+                "steps": steps,
+                "launch_ns_samples": [1.3e6] * 3,
+            }
+
+        pilot = {
+            "samples": 3,
+            "sync_stage_loop_ablation": [stage("cp_async_s1", 700), stage("ld_st_sync", 760)],
+        }
+        schedule, record = long_launch.freeze("sync-loop-ablation", pilot)
+        self.assertEqual(schedule, "700\n760\n")
+        self.assertEqual(
+            [p["point"]["variant"] for p in record["points"]], ["cp_async_s1", "ld_st_sync"]
+        )
+        swapped = {
+            "samples": 3,
+            "sync_stage_loop_ablation": [stage("ld_st_sync", 700), stage("cp_async_s1", 760)],
+        }
+        with self.assertRaisesRegex(ValueError, "differs from the freeze"):
+            long_launch.verify(record, swapped)
