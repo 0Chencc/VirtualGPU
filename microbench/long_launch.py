@@ -136,6 +136,11 @@ DESIGN_FIELDS = {
             "active_ctas",
         )
     },
+    "stage-overhead": {
+        "stage_sync_overhead_ns": ("issue_mode", "num_warps", "tokens"),
+        "fixed_sync_ns": ("num_warps", "tokens"),
+        "min_async_roundtrip": ("num_warps",),
+    },
 }
 
 

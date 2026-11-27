@@ -2520,7 +2520,7 @@ __global__ void min_async_roundtrip_kernel(const uint4* __restrict__ hot_src,
   }
 }
 
-static int run_stage_overhead(int device, int samples, int warmup) {
+static int run_stage_overhead(int device, int samples, int warmup, LaunchSchedule* schedule = nullptr) {
   cudaDeviceProp prop{};
   CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
 
@@ -2543,6 +2543,27 @@ static int run_stage_overhead(int device, int samples, int warmup) {
   const std::vector<int> token_list = {0, 1, 2, 3, 4};
   const int steps = 4096;
 
+  // With a schedule each probe is a timed point: the pilot raises its loop steps until a
+  // launch takes 1.25 ms, and the point prints the in-kernel window (cycles over the steps
+  // times the steps) next to the per-step value, which stays the window over the steps.
+  auto scheduled = [&](int initial, auto launch) {
+    int length = initial;
+    auto timed = schedule->time_point(initial, 1, 1 << 24, warmup, samples, ev_start, ev_stop, [] {},
+                                      [&](int n) { length = n; launch(n); },
+                                      [&] {
+                                        double cyc = 0.0;
+                                        CUDA_CHECK(cudaMemcpy(&cyc, d_out, sizeof(double), cudaMemcpyDeviceToHost));
+                                        return cyc * length / cycles_per_ns;
+                                      });
+    std::printf(", \"window_ns_samples\": [");
+    for (size_t i = 0; i < timed.observed.size(); ++i) std::printf("%s%.1f", i ? ", " : "", timed.observed[i]);
+    std::printf("], \"overhead_ns_samples\": [");
+    for (size_t i = 0; i < timed.observed.size(); ++i)
+      std::printf("%s%.2f", i ? ", " : "", timed.observed[i] / timed.length);
+    std::printf("]}");
+    return timed;
+  };
+
   std::printf("{\n  \"samples\": %d,\n  \"cycles_per_ns\": %.4f,\n  \"stage_sync_overhead_ns\": [",
               samples, cycles_per_ns);
   bool first = true;
@@ -2553,19 +2574,27 @@ static int run_stage_overhead(int device, int samples, int warmup) {
       const char* mode_name = (tokens == 0) ? "ld_global_v4" : "cp_async";
       size_t dyn_smem = static_cast<size_t>(std::max(1, tokens)) * static_cast<size_t>(threads) * sizeof(uint4);
 
-      auto launch_once = [&]() {
+      auto launch_n = [&](int n) {
         if (tokens == 0) {
-          stage_overhead_ld_v4_kernel<<<grid, threads>>>(d_hot, d_sink, d_out, steps);
+          stage_overhead_ld_v4_kernel<<<grid, threads>>>(d_hot, d_sink, d_out, n);
         } else if (tokens == 1) {
-          stage_overhead_cp_async_kernel<1><<<grid, threads, dyn_smem>>>(d_hot, d_sink, d_out, steps);
+          stage_overhead_cp_async_kernel<1><<<grid, threads, dyn_smem>>>(d_hot, d_sink, d_out, n);
         } else if (tokens == 2) {
-          stage_overhead_cp_async_kernel<2><<<grid, threads, dyn_smem>>>(d_hot, d_sink, d_out, steps);
+          stage_overhead_cp_async_kernel<2><<<grid, threads, dyn_smem>>>(d_hot, d_sink, d_out, n);
         } else if (tokens == 3) {
-          stage_overhead_cp_async_kernel<3><<<grid, threads, dyn_smem>>>(d_hot, d_sink, d_out, steps);
+          stage_overhead_cp_async_kernel<3><<<grid, threads, dyn_smem>>>(d_hot, d_sink, d_out, n);
         } else {
-          stage_overhead_cp_async_kernel<4><<<grid, threads, dyn_smem>>>(d_hot, d_sink, d_out, steps);
+          stage_overhead_cp_async_kernel<4><<<grid, threads, dyn_smem>>>(d_hot, d_sink, d_out, n);
         }
       };
+      auto launch_once = [&]() { launch_n(steps); };
+      if (schedule) {
+        std::printf("%s\n    {\"issue_mode\": \"%s\", \"num_warps\": %d, \"tokens\": %d", first ? "" : ",",
+                    mode_name, warps, tokens);
+        first = false;
+        scheduled(steps, launch_n);
+        continue;
+      }
 
       for (int w = 0; w < warmup; ++w) launch_once();
       CUDA_CHECK(cudaDeviceSynchronize());
@@ -2596,12 +2625,19 @@ static int run_stage_overhead(int device, int samples, int warmup) {
   for (int warps : warp_list) {
     int threads = warps * 32;
     for (int tokens : {1, 2, 3, 4}) {
-      auto launch_fs = [&]() {
-        if (tokens == 1) fixed_sync_empty_kernel<1><<<grid, threads>>>(d_out, steps);
-        else if (tokens == 2) fixed_sync_empty_kernel<2><<<grid, threads>>>(d_out, steps);
-        else if (tokens == 3) fixed_sync_empty_kernel<3><<<grid, threads>>>(d_out, steps);
-        else fixed_sync_empty_kernel<4><<<grid, threads>>>(d_out, steps);
+      auto launch_fs_n = [&](int n) {
+        if (tokens == 1) fixed_sync_empty_kernel<1><<<grid, threads>>>(d_out, n);
+        else if (tokens == 2) fixed_sync_empty_kernel<2><<<grid, threads>>>(d_out, n);
+        else if (tokens == 3) fixed_sync_empty_kernel<3><<<grid, threads>>>(d_out, n);
+        else fixed_sync_empty_kernel<4><<<grid, threads>>>(d_out, n);
       };
+      auto launch_fs = [&]() { launch_fs_n(steps); };
+      if (schedule) {
+        std::printf("%s\n    {\"num_warps\": %d, \"tokens\": %d", first_fs ? "" : ",", warps, tokens);
+        first_fs = false;
+        scheduled(steps, launch_fs_n);
+        continue;
+      }
       for (int w = 0; w < warmup; ++w) launch_fs();
       CUDA_CHECK(cudaDeviceSynchronize());
       std::vector<double> fs_samples;
@@ -2624,18 +2660,27 @@ static int run_stage_overhead(int device, int samples, int warmup) {
     }
   }
 
-  for (int w = 0; w < warmup; ++w) min_async_roundtrip_kernel<<<1, 128>>>(d_hot, d_sink, d_out, steps);
-  CUDA_CHECK(cudaDeviceSynchronize());
-  std::printf("\n  ],\n  \"min_async_roundtrip_ns_samples\": [");
-  for (int s = 0; s < samples; ++s) {
-    min_async_roundtrip_kernel<<<1, 128>>>(d_hot, d_sink, d_out, steps);
+  if (schedule) {
+    std::printf("\n  ],\n  \"min_async_roundtrip\": {\"num_warps\": 4");
+    auto timed = scheduled(steps, [&](int n) { min_async_roundtrip_kernel<<<1, 128>>>(d_hot, d_sink, d_out, n); });
+    std::printf(",\n  \"min_async_roundtrip_ns_samples\": [");
+    for (size_t i = 0; i < timed.observed.size(); ++i)
+      std::printf("%s%.2f", i ? ", " : "", timed.observed[i] / timed.length);
+    std::printf("]\n}\n");
+  } else {
+    for (int w = 0; w < warmup; ++w) min_async_roundtrip_kernel<<<1, 128>>>(d_hot, d_sink, d_out, steps);
     CUDA_CHECK(cudaDeviceSynchronize());
-    double cyc = 0.0;
-    CUDA_CHECK(cudaMemcpy(&cyc, d_out, sizeof(double), cudaMemcpyDeviceToHost));
-    if (s > 0) std::printf(", ");
-    std::printf("%.2f", cyc / cycles_per_ns);
+    std::printf("\n  ],\n  \"min_async_roundtrip_ns_samples\": [");
+    for (int s = 0; s < samples; ++s) {
+      min_async_roundtrip_kernel<<<1, 128>>>(d_hot, d_sink, d_out, steps);
+      CUDA_CHECK(cudaDeviceSynchronize());
+      double cyc = 0.0;
+      CUDA_CHECK(cudaMemcpy(&cyc, d_out, sizeof(double), cudaMemcpyDeviceToHost));
+      if (s > 0) std::printf(", ");
+      std::printf("%.2f", cyc / cycles_per_ns);
+    }
+    std::printf("]\n}\n");
   }
-  std::printf("]\n}\n");
 
   CUDA_CHECK(cudaEventDestroy(ev_start));
   CUDA_CHECK(cudaEventDestroy(ev_stop));

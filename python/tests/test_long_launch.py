@@ -413,3 +413,35 @@ class LongLaunchTests(unittest.TestCase):
                 "active_ctas": 48,
             },
         )
+
+    def test_stage_overhead_points_carry_in_kernel_windows(self):
+        def probe(steps, window, **fields):
+            return {
+                **fields,
+                "steps": steps,
+                "launch_ns_samples": [1.3e6] * 3,
+                "window_ns_samples": [window] * 3,
+                "overhead_ns_samples": [window / steps] * 3,
+            }
+
+        def output(window):
+            return {
+                "samples": 3,
+                "cycles_per_ns": 2.4,
+                "stage_sync_overhead_ns": [
+                    probe(6000, window, issue_mode="cp_async", num_warps=4, tokens=2)
+                ],
+                "fixed_sync_ns": [probe(30000, window, num_warps=8, tokens=1)],
+                "min_async_roundtrip": probe(2000, window, num_warps=4),
+                "min_async_roundtrip_ns_samples": [window / 2000] * 3,
+            }
+
+        schedule, record = long_launch.freeze("stage-overhead", output(1.29e6))
+        self.assertEqual(schedule, "6000\n30000\n2000\n")
+        self.assertEqual(
+            [p["point"]["field"] for p in record["points"]],
+            ["stage_sync_overhead_ns", "fixed_sync_ns", "min_async_roundtrip"],
+        )
+        long_launch.verify(record, output(1.2e6))
+        with self.assertRaisesRegex(ValueError, "in-kernel window"):
+            long_launch.verify(record, output(0.98e6))

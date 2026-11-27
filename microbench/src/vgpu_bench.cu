@@ -566,9 +566,10 @@ int main(int argc, char** argv) {
       mode != "sync-loop-ablation" &&
       mode != "sync-loop-reconcile" &&
       mode != "mma-softmax-chain" &&
-      mode != "serial-fill") {
+      mode != "serial-fill" &&
+      mode != "stage-overhead") {
     std::fprintf(stderr, "Launch schedules apply only to mlp, strided-mlp, dram-bw, l2, closed-loop, l2-merge, mma, "
-                         "gmem-issue, gmem-issue-controlled, sync-loop, closed-loop-mma, spill-latency, mma-chain, sync-loop-multicta, sync-loop-ablation, sync-loop-reconcile, mma-softmax-chain and serial-fill\n");
+                         "gmem-issue, gmem-issue-controlled, sync-loop, closed-loop-mma, spill-latency, mma-chain, sync-loop-multicta, sync-loop-ablation, sync-loop-reconcile, mma-softmax-chain, serial-fill and stage-overhead\n");
     return 2;
   }
 
@@ -602,6 +603,7 @@ int main(int argc, char** argv) {
     else if (mode == "sync-loop-reconcile") result = run_sync_loop_reconcile(device, samples, warmup, schedule.get());
     else if (mode == "mma-softmax-chain") result = run_mma_softmax_chain(device, samples, warmup, schedule.get());
     else if (mode == "serial-fill") result = run_serial_fill(device, samples, warmup, schedule.get());
+    else if (mode == "stage-overhead") result = run_stage_overhead(device, samples, warmup, schedule.get());
     else result = run_l2(device, samples, warmup, schedule.get());
     schedule->finish();
     return result;
