@@ -85,6 +85,14 @@ def run_session(device, family, case, configs, manifest, manifest_sha, profile, 
     require_imports_from_checkout(virtualgpu.frontend)
     if triton.__version__ != "3.9.0" or triton.knobs.nvidia.disable_ptxas_opt:
         raise ValueError("Expected Triton 3.9.0 with assembler optimization enabled")
+    arch = int(DEVICES[device].removeprefix("sm_"))
+    assembler = Path(runner.get_ptxas(arch).path)
+    registered_assemblers = {
+        (row["metadata"]["toolchain"]["assembler"], row["metadata"]["toolchain"]["assembler_version"])
+        for row in aot["configs"].values() if row["status"] == "ok"
+    }
+    if registered_assemblers != {(assembler.name, runner.get_ptxas_version(str(assembler)))}:
+        raise ValueError("Assembler differs from the published AOT toolchain")
     specs = profile["specs"]
     provenance = profile["provenance"]
     driver = provenance["driver_version"]
@@ -103,7 +111,6 @@ def run_session(device, family, case, configs, manifest, manifest_sha, profile, 
     }
     gb10 = device == "gb10"
     environment = SparkSession(policy, trace) if gb10 else Rtx4070Session(policy)
-    arch = int(DEVICES[device].removeprefix("sm_"))
 
     def verify(artifacts):
         for key, row in aot["configs"].items():

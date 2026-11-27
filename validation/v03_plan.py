@@ -78,6 +78,8 @@ def load_plan(main):
 
 
 def require_capture(main, device, release_sha, case_id=None, session=None, attempt=1, failed_sha=None):
+    if attempt > 1 and not failed_sha:
+        raise ValueError("A retry requires the preceding failure receipt digest")
     plan_commit = introduction(main, PLAN)
     path = f"{APPROVALS}/{device}.json"
     record, digest = read_published(main, path, "capture_approved")
