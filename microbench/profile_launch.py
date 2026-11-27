@@ -46,6 +46,7 @@ PROFILE_PATH = {
     ("mma-chain", "mma_chain_latency"): ("compute", "mma_chain_latency"),
     ("sync-loop-multicta", "sync_stage_loop"): ("pipeline", "sync_stage_loop"),
     ("sync-loop-reconcile", "sync_stage_loop"): ("pipeline", "sync_stage_loop"),
+    ("sync-loop-ablation", "sync_stage_loop_ablation"): ("pipeline", "sync_stage_loop_ablation"),
 }
 # Raw sample lists whose profile value has another name than the list without "_samples".
 STAGE_LOOP = {
@@ -60,6 +61,7 @@ METRIC = {
     "closed-loop-mma": STAGE_LOOP,
     "sync-loop-multicta": STAGE_LOOP,
     "sync-loop-reconcile": STAGE_LOOP,
+    "sync-loop-ablation": STAGE_LOOP,
 }
 # Points that are one scalar profile value, and where their rate list sits: a top-level
 # list, or None for the point's own list.

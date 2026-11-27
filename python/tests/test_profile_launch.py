@@ -295,3 +295,12 @@ class ProfileLaunchTests(unittest.TestCase):
             },
         )
         self.assertEqual(entry["mean_stage_turnaround_ns"]["launch"]["length"], 1500)
+
+    def test_sync_loop_ablation_values_use_the_stage_loop_names(self):
+        names = pl.long_launch.DESIGN_FIELDS["sync-loop-ablation"]["sync_stage_loop_ablation"]
+        entry = self.profile["measured"]["pipeline"]["sync_stage_loop_ablation"][5]
+        lists = {k: v for k, v in STAGE_LISTS.items() if v in entry}
+        point = timed(entry, names, lists, 700)
+        pl.attach(self.profile, "sync-loop-ablation", {"sync_stage_loop_ablation": [point]})
+        self.assertEqual(entry["delivered_bw_gbps"]["launch"]["length"], 700)
+        self.assertIn("launch", entry["mean_stage_turnaround_ns"])

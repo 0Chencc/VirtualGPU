@@ -59,6 +59,7 @@ MODES = (
     "mma-chain",
     "sync-loop-multicta",
     "sync-loop-reconcile",
+    "sync-loop-ablation",
 )
 ROUNDS = 5
 EXTRA_ROUNDS = 2
