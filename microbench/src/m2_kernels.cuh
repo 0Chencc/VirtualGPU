@@ -4775,7 +4775,7 @@ static void dispatch_mma_softmax(int m_half, int k_sf, int grid, int threads, fl
   }
 }
 
-static int run_mma_softmax_chain(int device, int samples, int warmup) {
+static int run_mma_softmax_chain(int device, int samples, int warmup, LaunchSchedule* schedule = nullptr) {
   cudaDeviceProp prop{};
   CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
   const int sm_count = prop.multiProcessorCount;
@@ -4791,6 +4791,24 @@ static int run_mma_softmax_chain(int device, int samples, int warmup) {
   const std::vector<int> warp_list = {4, 8};
   const std::vector<int> m_list = {4, 8, 16, 32};
   const std::vector<int> k_list = {16, 64, 256};
+
+  // With a schedule every point, the solo calibrations included, is a timed point whose
+  // steps the pilot sizes; it prints its design fields and returns its per-step times.
+  auto timed_one = [&](int cps, int warps, int m_half, int k_sf) -> std::vector<double> {
+    int threads = warps * 32;
+    int grid = sm_count * cps;
+    std::printf("{\"ctas_per_sm\": %d, \"num_warps\": %d, \"mma_per_half\": %d, \"softmax_ops\": %d", cps,
+                warps, m_half, k_sf);
+    int steps = 128;
+    auto timed = schedule->time_point(steps, 1, 1 << 24, warmup, samples, ev_start, ev_stop, [] {},
+                                      [&](int length) {
+                                        steps = length;
+                                        dispatch_mma_softmax(m_half, k_sf, grid, threads, d_sink, steps);
+                                      });
+    std::vector<double> out;
+    for (double ns : timed.launch_ns) out.push_back(ns / timed.length);
+    return out;
+  };
 
   auto measure_one = [&](int cps, int warps, int m_half, int k_sf) -> std::vector<double> {
     int threads = warps * 32;
@@ -4818,19 +4836,36 @@ static int run_mma_softmax_chain(int device, int samples, int warmup) {
     return v[v.size() / 2];
   };
 
+  auto print_ns = [](const std::vector<double>& ns) {
+    std::printf(", \"iter_time_ns_samples\": [");
+    for (size_t i = 0; i < ns.size(); ++i) std::printf("%s%.2f", i ? ", " : "", ns[i]);
+    std::printf("]}");
+  };
+
   // Calibrate solo MMA (k=0) and solo softmax (m=0) at ctas_per_sm=1.
   double solo_mma[2][4] = {};
   double solo_sf[2][3] = {};
+  if (schedule) std::printf("{\n  \"samples\": %d,\n  \"solo_calibration\": [", samples);
+  bool first_cal = true;
+  auto calibrate = [&](int warps, int m_half, int k_sf) {
+    if (!schedule) return vec_median(measure_one(1, warps, m_half, k_sf));
+    std::printf("%s\n    ", first_cal ? "" : ",");
+    first_cal = false;
+    auto ns = timed_one(1, warps, m_half, k_sf);
+    print_ns(ns);
+    return vec_median(ns);
+  };
   for (size_t wi = 0; wi < warp_list.size(); ++wi) {
     for (size_t mi = 0; mi < m_list.size(); ++mi) {
-      solo_mma[wi][mi] = vec_median(measure_one(1, warp_list[wi], m_list[mi], 0));
+      solo_mma[wi][mi] = calibrate(warp_list[wi], m_list[mi], 0);
     }
     for (size_t ki = 0; ki < k_list.size(); ++ki) {
-      solo_sf[wi][ki] = vec_median(measure_one(1, warp_list[wi], 0, k_list[ki]));
+      solo_sf[wi][ki] = calibrate(warp_list[wi], 0, k_list[ki]);
     }
   }
 
-  std::printf("{\n  \"samples\": %d,\n  \"mma_softmax_chain\": [", samples);
+  if (schedule) std::printf("\n  ],\n  \"mma_softmax_chain\": [");
+  else std::printf("{\n  \"samples\": %d,\n  \"mma_softmax_chain\": [", samples);
   bool first = true;
   for (int cps : cps_list) {
     for (size_t wi = 0; wi < warp_list.size(); ++wi) {
@@ -4839,6 +4874,14 @@ static int run_mma_softmax_chain(int device, int samples, int warmup) {
         int m_half = m_list[mi];
         for (size_t ki = 0; ki < k_list.size(); ++ki) {
           int k_sf = k_list[ki];
+          if (schedule) {
+            std::printf("%s\n    ", first ? "" : ",");
+            first = false;
+            auto ns = timed_one(cps, warps, m_half, k_sf);
+            std::printf(", \"solo_mma_ns\": %.2f, \"solo_softmax_ns\": %.2f", solo_mma[wi][mi], solo_sf[wi][ki]);
+            print_ns(ns);
+            continue;
+          }
           auto ns_s = measure_one(cps, warps, m_half, k_sf);
           if (!first) std::printf(",");
           first = false;

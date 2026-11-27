@@ -564,9 +564,10 @@ int main(int argc, char** argv) {
       mode != "spill-latency" && mode != "mma-chain" &&
       mode != "sync-loop-multicta" &&
       mode != "sync-loop-ablation" &&
-      mode != "sync-loop-reconcile") {
+      mode != "sync-loop-reconcile" &&
+      mode != "mma-softmax-chain") {
     std::fprintf(stderr, "Launch schedules apply only to mlp, strided-mlp, dram-bw, l2, closed-loop, l2-merge, mma, "
-                         "gmem-issue, gmem-issue-controlled, sync-loop, closed-loop-mma, spill-latency, mma-chain, sync-loop-multicta, sync-loop-ablation and sync-loop-reconcile\n");
+                         "gmem-issue, gmem-issue-controlled, sync-loop, closed-loop-mma, spill-latency, mma-chain, sync-loop-multicta, sync-loop-ablation, sync-loop-reconcile and mma-softmax-chain\n");
     return 2;
   }
 
@@ -598,6 +599,7 @@ int main(int argc, char** argv) {
     else if (mode == "sync-loop-multicta") result = run_sync_loop_multicta(device, samples, warmup, schedule.get());
     else if (mode == "sync-loop-ablation") result = run_sync_loop_ablation(device, samples, warmup, schedule.get());
     else if (mode == "sync-loop-reconcile") result = run_sync_loop_reconcile(device, samples, warmup, schedule.get());
+    else if (mode == "mma-softmax-chain") result = run_mma_softmax_chain(device, samples, warmup, schedule.get());
     else result = run_l2(device, samples, warmup, schedule.get());
     schedule->finish();
     return result;

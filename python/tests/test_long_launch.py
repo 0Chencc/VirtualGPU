@@ -344,3 +344,45 @@ class LongLaunchTests(unittest.TestCase):
         self.assertEqual(schedule, "1600\n")
         self.assertNotIn("steps", record["points"][0]["point"])
         self.assertEqual(record["points"][0]["point"]["stage_bytes"], 24576)
+
+    def test_mma_softmax_chain_freezes_calibrations_before_the_chain(self):
+        def chain(cps, m_half, k_sf, steps):
+            return {
+                "ctas_per_sm": cps,
+                "num_warps": 4,
+                "mma_per_half": m_half,
+                "softmax_ops": k_sf,
+                "steps": steps,
+                "launch_ns_samples": [1.3e6] * 3,
+                "iter_time_ns_samples": [300.0] * 3,
+            }
+
+        solo = chain(1, 8, 0, 4000)
+        pilot = {
+            "samples": 3,
+            "solo_calibration": [solo],
+            "mma_softmax_chain": [
+                chain(2, 8, 64, 2500) | {"solo_mma_ns": 200.0, "solo_softmax_ns": 90.0}
+            ],
+        }
+        schedule, record = long_launch.freeze("mma-softmax-chain", pilot)
+        self.assertEqual(schedule, "4000\n2500\n")
+        self.assertEqual(
+            [p["point"] for p in record["points"]],
+            [
+                {
+                    "field": "solo_calibration",
+                    "ctas_per_sm": 1,
+                    "num_warps": 4,
+                    "mma_per_half": 8,
+                    "softmax_ops": 0,
+                },
+                {
+                    "field": "mma_softmax_chain",
+                    "ctas_per_sm": 2,
+                    "num_warps": 4,
+                    "mma_per_half": 8,
+                    "softmax_ops": 64,
+                },
+            ],
+        )

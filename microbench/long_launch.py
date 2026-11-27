@@ -123,6 +123,10 @@ DESIGN_FIELDS = {
             "mma_chain_len",
         )
     },
+    "mma-softmax-chain": {
+        key: ("ctas_per_sm", "num_warps", "mma_per_half", "softmax_ops")
+        for key in ("solo_calibration", "mma_softmax_chain")
+    },
 }
 
 
