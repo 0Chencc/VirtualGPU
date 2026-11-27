@@ -2700,12 +2700,15 @@ static void dispatch_closed_loop_mma_8w(int tokens, int active_ctas, size_t dyn_
   else closed_loop_mma_8w_kernel<4, LD_PASSES><<<active_ctas, 256, dyn_smem>>>(d_dram, d_sink_f, dram_mask, steps, mma_iters);
 }
 
-static int run_closed_loop_mma(int device, int samples, int warmup) {
+static int run_closed_loop_mma(int device, int samples, int warmup, LaunchSchedule* schedule = nullptr) {
   cudaDeviceProp prop{};
   CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
   const int sm_count = prop.multiProcessorCount;
 
-  const size_t dram_bytes = 256ULL * 1024ULL * 1024ULL;
+  // Scheduled launches run longer, so the DRAM buffer is a power of two of at least
+  // max(256 MiB, 8 x L2); the legacy path keeps its v0.2 size.
+  size_t dram_bytes = 256ULL * LaunchSchedule::MiB;
+  while (schedule && dram_bytes < 8ULL * static_cast<size_t>(prop.l2CacheSize)) dram_bytes *= 2;
   const size_t dram_mask = (dram_bytes / sizeof(uint4)) - 1ULL;
   const size_t flush_vec4 = dram_bytes / sizeof(uint4);
 
@@ -2742,8 +2745,26 @@ static int run_closed_loop_mma(int device, int samples, int warmup) {
   const double peak_tflops_per_sm = (flops_per_cta_iter / 1e12) / (ns_per_mma_iter / 1e9);
 
   const int stage_bytes = 8192;
-  const int steps = 256;
   const std::vector<int> ctas_per_sm_list = {1, 2, 3};
+  auto flush = [&]() { l2_read_cg_kernel<<<sm_count * 4, 512>>>(d_flush, d_sink_u4, flush_vec4, 1); };
+  // With a schedule: size and time one point, then print its rates (the caller has
+  // printed the point's fields).
+  auto scheduled = [&](int& steps, auto launch, int active_ctas, double flops_per_step_per_sm, double peak) {
+    auto timed = schedule->time_point(steps, 1, 1 << 24, warmup, samples, ev_start, ev_stop, flush,
+                                      [&](int length) { steps = length; launch(); });
+    const double bytes = static_cast<double>(active_ctas) * stage_bytes * timed.length;
+    const double flops = flops_per_step_per_sm * timed.length;
+    const auto& ns = timed.launch_ns;
+    std::printf(", \"bw_gbps_samples\": [");
+    for (size_t i = 0; i < ns.size(); ++i) std::printf("%s%.3f", i ? ", " : "", bytes / ns[i]);
+    std::printf("], \"turnaround_ns_samples\": [");
+    for (size_t i = 0; i < ns.size(); ++i) std::printf("%s%.2f", i ? ", " : "", ns[i] / timed.length);
+    std::printf("], \"mma_tflops_per_sm_samples\": [");
+    for (size_t i = 0; i < ns.size(); ++i) std::printf("%s%.4f", i ? ", " : "", flops / 1e3 / ns[i]);
+    std::printf("], \"tensor_util_samples\": [");
+    for (size_t i = 0; i < ns.size(); ++i) std::printf("%s%.4f", i ? ", " : "", peak > 0.0 ? flops / 1e3 / ns[i] / peak : 0.0);
+    std::printf("]}");
+  };
   const std::vector<int> token_list = {1, 2, 3, 4};
   const std::vector<double> target_tc_ns_list = {0.0, 250.0, 500.0, 1000.0, 2000.0};
 
@@ -2758,8 +2779,7 @@ static int run_closed_loop_mma(int device, int samples, int warmup) {
       for (double target_tc : target_tc_ns_list) {
         int mma_iters = (target_tc <= 0.0) ? 0 : std::max(1, static_cast<int>(target_tc / ns_per_mma_iter + 0.5));
         double solo_tc_ns = static_cast<double>(mma_iters) * ns_per_mma_iter;
-        double total_bytes = static_cast<double>(active_ctas) * static_cast<double>(stage_bytes) * steps;
-        double total_flops_per_sm = static_cast<double>(cps) * flops_per_cta_iter * mma_iters * steps;
+        int steps = 256;
 
         auto launch_once = [&]() {
           if (tokens == 1) closed_loop_mma_kernel<1><<<active_ctas, 128, dyn_smem>>>(d_dram, d_sink_f, dram_mask, steps, mma_iters);
@@ -2767,6 +2787,17 @@ static int run_closed_loop_mma(int device, int samples, int warmup) {
           else if (tokens == 3) closed_loop_mma_kernel<3><<<active_ctas, 128, dyn_smem>>>(d_dram, d_sink_f, dram_mask, steps, mma_iters);
           else closed_loop_mma_kernel<4><<<active_ctas, 128, dyn_smem>>>(d_dram, d_sink_f, dram_mask, steps, mma_iters);
         };
+        if (schedule) {
+          std::printf("%s\n    {\"ctas_per_sm\": %d, \"active_ctas\": %d, \"tokens\": %d, \"num_warps\": 4, "
+                      "\"stage_bytes\": %d, \"ldmatrix_bytes_per_stage\": 0, \"mma_iters_per_stage\": %d, "
+                      "\"solo_compute_ns\": %.2f",
+                      first ? "" : ",", cps, active_ctas, tokens, stage_bytes, mma_iters, solo_tc_ns);
+          first = false;
+          scheduled(steps, launch_once, active_ctas, cps * flops_per_cta_iter * mma_iters, peak_tflops_per_sm);
+          continue;
+        }
+        double total_bytes = static_cast<double>(active_ctas) * static_cast<double>(stage_bytes) * steps;
+        double total_flops_per_sm = static_cast<double>(cps) * flops_per_cta_iter * mma_iters * steps;
 
         for (int w = 0; w < warmup; ++w) {
           l2_read_cg_kernel<<<sm_count * 4, 512>>>(d_flush, d_sink_u4, flush_vec4, 1);
@@ -2841,14 +2872,24 @@ static int run_closed_loop_mma(int device, int samples, int warmup) {
         for (double target_tc : target_tc_ns_list) {
           int mma_iters = (target_tc <= 0.0) ? 0 : std::max(1, static_cast<int>(target_tc / ns_per_mma_iter_8w + 0.5));
           double solo_tc_ns = static_cast<double>(mma_iters) * ns_per_mma_iter_8w;
-          double total_bytes = static_cast<double>(active_ctas) * static_cast<double>(stage_bytes) * steps;
-          double total_flops_per_sm = static_cast<double>(cps) * flops_per_cta_iter_8w * mma_iters * steps;
+          int steps = 256;
 
           auto launch_8w = [&]() {
             if (ld_passes == 0) dispatch_closed_loop_mma_8w<0>(tokens, active_ctas, dyn_smem, d_dram, d_sink_f, dram_mask, steps, mma_iters);
             else if (ld_passes == 4) dispatch_closed_loop_mma_8w<4>(tokens, active_ctas, dyn_smem, d_dram, d_sink_f, dram_mask, steps, mma_iters);
             else dispatch_closed_loop_mma_8w<8>(tokens, active_ctas, dyn_smem, d_dram, d_sink_f, dram_mask, steps, mma_iters);
           };
+          if (schedule) {
+            std::printf("%s\n    {\"ctas_per_sm\": %d, \"active_ctas\": %d, \"tokens\": %d, \"num_warps\": 8, "
+                        "\"stage_bytes\": %d, \"ldmatrix_bytes_per_stage\": %d, \"mma_iters_per_stage\": %d, "
+                        "\"solo_compute_ns\": %.2f",
+                        first ? "" : ",", cps, active_ctas, tokens, stage_bytes, ldm_bytes, mma_iters, solo_tc_ns);
+            first = false;
+            scheduled(steps, launch_8w, active_ctas, cps * flops_per_cta_iter_8w * mma_iters, peak_tflops_per_sm_8w);
+            continue;
+          }
+          double total_bytes = static_cast<double>(active_ctas) * static_cast<double>(stage_bytes) * steps;
+          double total_flops_per_sm = static_cast<double>(cps) * flops_per_cta_iter_8w * mma_iters * steps;
 
           for (int w = 0; w < warmup; ++w) {
             l2_read_cg_kernel<<<sm_count * 4, 512>>>(d_flush, d_sink_u4, flush_vec4, 1);

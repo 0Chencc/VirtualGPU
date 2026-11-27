@@ -47,6 +47,16 @@ DESIGN_FIELDS = {
             "mma_chain_len",
         )
     },
+    "closed-loop-mma": {
+        "dram_closed_loop_mma": (
+            "ctas_per_sm",
+            "tokens",
+            "num_warps",
+            "stage_bytes",
+            "ldmatrix_bytes_per_stage",
+            "mma_iters_per_stage",
+        )
+    },
 }
 
 
