@@ -1,19 +1,19 @@
-// Optional long-launch protocol for existing read sweeps. A schedule lists point
+// Optional long-launch protocol for any timed mode. A schedule lists point
 // lengths in emission order, one per line. Pilot output carries all sizing trials.
-struct LongReadSchedule {
+struct LaunchSchedule {
   static constexpr size_t MiB = 1024ULL * 1024ULL;
   static constexpr double pilot_min_ns = 1250000.0;
 
-  explicit LongReadSchedule(const std::string& path) : pilot(path == "pilot") {
+  explicit LaunchSchedule(const std::string& path) : pilot(path == "pilot") {
     if (pilot) return;
     std::ifstream input(path);
     int length;
     while (input >> length) lengths.push_back(length);
-    if (!input.eof() || lengths.empty()) fail("Invalid long-read schedule");
+    if (!input.eof() || lengths.empty()) fail("Invalid launch schedule");
   }
 
   void finish() const {
-    if (!pilot && next != lengths.size()) fail("Unused lengths in long-read schedule");
+    if (!pilot && next != lengths.size()) fail("Unused lengths in launch schedule");
   }
 
   struct Timed {
@@ -61,11 +61,11 @@ struct LongReadSchedule {
                cudaEvent_t stop, Prepare prepare, Launch launch) {
     int length = std::min(initial, maximum);
     if (!pilot) {
-      if (next == lengths.size()) fail("Missing point in long-read schedule");
+      if (next == lengths.size()) fail("Missing point in launch schedule");
       length = lengths[next++];
     }
     auto collect = [&](int count) {
-      if (length < minimum || length > maximum) fail("Long-read length outside address bounds");
+      if (length < minimum || length > maximum) fail("Launch length outside address bounds");
       for (int w = 0; w < warmup; ++w) {
         prepare();
         launch(length);
@@ -158,3 +158,6 @@ struct LongReadSchedule {
     std::printf("]");
   }
 };
+
+// The name used by the read sweeps' protocol (microbench/long_mlp.py).
+using LongReadSchedule = LaunchSchedule;

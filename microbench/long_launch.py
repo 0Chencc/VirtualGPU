@@ -1,6 +1,6 @@
 """Pilot, freeze and verify launch schedules for any `vgpu_bench` mode.
 
-A mode run with `--long-read-schedule pilot` sizes each point until its
+A mode run with `--launch-schedule pilot` sizes each point until its
 fastest launch reaches 1.25 ms and prints every trial; `freeze` turns that
 output into a schedule (one length per point, in emission order) plus a
 record of each point's identity; a capture run with the schedule file is

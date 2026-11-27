@@ -323,7 +323,7 @@ __global__ void l2_read_cp_async_kernel(const uint4* __restrict__ src,
   }
 }
 
-static int run_l2(int device, int samples, int warmup, LongReadSchedule* schedule = nullptr) {
+static int run_l2(int device, int samples, int warmup, LaunchSchedule* schedule = nullptr) {
   cudaDeviceProp prop{};
   CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
   const int sm_count = prop.multiProcessorCount;
@@ -1453,15 +1453,15 @@ __global__ void mlp_ld_v4_kernel(const uint4* __restrict__ src,
   }
 }
 
-static int run_mlp(int device, int samples, int warmup, LongReadSchedule* schedule = nullptr) {
+static int run_mlp(int device, int samples, int warmup, LaunchSchedule* schedule = nullptr) {
   cudaDeviceProp prop{};
   CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
   const int sm_count = prop.multiProcessorCount;
 
   // Power-of-two buffers for cheap bitmask wrap:
   // DRAM = 256 MiB (> 7x L2 on RTX 4070), L2 = 8 MiB (< 0.25x L2).
-  const size_t dram_bytes = (schedule ? 1024ULL : 256ULL) * LongReadSchedule::MiB;
-  const size_t flush_bytes = 256ULL * LongReadSchedule::MiB;
+  const size_t dram_bytes = (schedule ? 1024ULL : 256ULL) * LaunchSchedule::MiB;
+  const size_t flush_bytes = 256ULL * LaunchSchedule::MiB;
   const size_t l2_bytes = 8ULL * 1024ULL * 1024ULL;
   const size_t dram_mask = (dram_bytes / sizeof(uint4)) - 1ULL;
   const size_t l2_mask = (l2_bytes / sizeof(uint4)) - 1ULL;
@@ -1584,7 +1584,7 @@ static int run_mlp(int device, int samples, int warmup, LongReadSchedule* schedu
                       first_out ? "" : ",", mode_name, bif, ctas, bytes_per_cta);
           first_out = false;
           const int minimum = is_cp ? cp_stages * 4 : 4;
-          const size_t pilot_bytes = is_dram ? 16ULL * LongReadSchedule::MiB : 64ULL * LongReadSchedule::MiB;
+          const size_t pilot_bytes = is_dram ? 16ULL * LaunchSchedule::MiB : 64ULL * LaunchSchedule::MiB;
           const int initial = std::max(minimum, static_cast<int>(pilot_bytes / bytes_per_step));
           schedule->measure(initial, minimum, max_steps, bytes_per_step, is_dram ? dram_bytes : l2_bytes,
                             warmup, samples, ev_start, ev_stop, prepare, launch);
@@ -1772,14 +1772,14 @@ __global__ void closed_loop_ld_v4_kernel(const uint4* __restrict__ src,
   }
 }
 
-static int run_closed_loop(int device, int samples, int warmup, LongReadSchedule* schedule = nullptr) {
+static int run_closed_loop(int device, int samples, int warmup, LaunchSchedule* schedule = nullptr) {
   cudaDeviceProp prop{};
   CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
   const int sm_count = prop.multiProcessorCount;
 
   // Scheduled launches run longer, so the DRAM buffer is a power of two of at least
   // max(256 MiB, 8 x L2); the legacy path keeps its v0.2 size.
-  size_t dram_bytes = 256ULL * LongReadSchedule::MiB;
+  size_t dram_bytes = 256ULL * LaunchSchedule::MiB;
   while (schedule && dram_bytes < 8ULL * static_cast<size_t>(prop.l2CacheSize)) dram_bytes *= 2;
   const size_t l2_bytes = 8ULL * 1024ULL * 1024ULL;
   const size_t dram_mask = (dram_bytes / sizeof(uint4)) - 1ULL;
@@ -3967,13 +3967,13 @@ static void dispatch_strided_mlp(int mult, int ctas, size_t dyn_smem,
   else strided_mlp_cp_async_kernel<4, 2, SEG_U4, STRIDE_U4><<<ctas, 256, dyn_smem>>>(d_dram, d_sink, dram_mask, steps);
 }
 
-static int run_strided_mlp(int device, int samples, int warmup, LongReadSchedule* schedule = nullptr) {
+static int run_strided_mlp(int device, int samples, int warmup, LaunchSchedule* schedule = nullptr) {
   cudaDeviceProp prop{};
   CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
   const int sm_count = prop.multiProcessorCount;
 
-  const size_t dram_bytes = (schedule ? 2048ULL : 256ULL) * LongReadSchedule::MiB;
-  const size_t flush_bytes = 256ULL * LongReadSchedule::MiB;
+  const size_t dram_bytes = (schedule ? 2048ULL : 256ULL) * LaunchSchedule::MiB;
+  const size_t flush_bytes = 256ULL * LaunchSchedule::MiB;
   const size_t dram_mask = (dram_bytes / sizeof(uint4)) - 1ULL;
   const size_t flush_vec4 = flush_bytes / sizeof(uint4);
 
@@ -4052,7 +4052,7 @@ static int run_strided_mlp(int device, int samples, int warmup, LongReadSchedule
         // Keep the existing half-buffer transfer cap, including the prologue.
         const int max_steps = static_cast<int>((dram_bytes / 2ULL) / bytes_per_step);
         const int minimum = cp_stages * 4;
-        const int initial = std::max(minimum, static_cast<int>(16ULL * LongReadSchedule::MiB / bytes_per_step));
+        const int initial = std::max(minimum, static_cast<int>(16ULL * LaunchSchedule::MiB / bytes_per_step));
         std::printf("%s\n    {\"segment_bytes\": %d, \"stride_bytes\": %d, \"bytes_in_flight\": %zu, \"active_ctas\": %d, \"bytes_per_cta\": %zu",
                     first ? "" : ",", cfg.seg_bytes, cfg.stride_bytes, bif, ctas, bytes_per_cta);
         first = false;
