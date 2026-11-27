@@ -576,3 +576,16 @@ class LongLaunchTests(unittest.TestCase):
             record["points"][1]["point"],
             {"field": "l1_carveout_sweep/points", "smem_carveout_bytes": 16384, "ws_bytes": 8192},
         )
+
+    def test_l2_rescan_freezes_groups_per_working_set(self):
+        def point(ws, groups):
+            row = {"working_set_bytes": ws, "ratio_to_l2": ws / 2**24, "steps": groups}
+            row.update({"launch_ns_samples": [9e6] * 3, "window_ns_samples": [1.3e6] * 3})
+            return row
+
+        pilot = {"samples": 3, "points": [point(2**23, 40), point(2**25, 6)]}
+        schedule, record = long_launch.freeze("l2-rescan", pilot)
+        self.assertEqual(schedule, "40\n6\n")
+        self.assertEqual(
+            record["points"][1]["point"], {"field": "points", "working_set_bytes": 2**25}
+        )

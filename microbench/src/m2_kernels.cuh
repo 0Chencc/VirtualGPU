@@ -1596,7 +1596,7 @@ static int run_latency_curve(int device, int samples, int warmup = 1,
 // 7. L2 rescan hit rate vs working-set size (0.25x to 4.0x L2)
 // ---------------------------------------------------------------------------
 
-static int run_l2_rescan(int device, int samples) {
+static int run_l2_rescan(int device, int samples, int warmup = 1, LaunchSchedule* schedule = nullptr) {
   cudaDeviceProp prop{};
   CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
   const int sm_count = prop.multiProcessorCount;
@@ -1640,6 +1640,71 @@ static int run_l2_rescan(int device, int samples) {
   for (size_t wi = 0; wi < ws_list.size(); ++wi) {
     size_t ws = ws_list[wi];
     size_t ws_vec4 = ws / sizeof(uint4);
+    if (schedule) {
+      // One sample is a group of K repeats of flush, pass 1, pass 2, each pass one launch and
+      // the flush outside the pass timing. The length is K; the window is the summed pass-2
+      // time of the group; the pass bandwidths are the medians over the group.
+      std::vector<cudaEvent_t> marks;
+      std::vector<double> p1_all, p2_all;
+      int current = 0;
+      auto ensure = [&](int k) {
+        while (static_cast<int>(marks.size()) < 3 * k) {
+          cudaEvent_t e;
+          CUDA_CHECK(cudaEventCreate(&e));
+          marks.push_back(e);
+        }
+      };
+      auto group = [&](int k) {
+        current = k;
+        ensure(k);
+        for (int g = 0; g < k; ++g) {
+          l2_read_cg_kernel<<<grid, threads>>>(d_flush, d_sink, flush_vec4, 1);
+          CUDA_CHECK(cudaEventRecord(marks[3 * g]));
+          l2_read_cg_kernel<<<grid, threads>>>(d_buf, d_sink, ws_vec4, 1);
+          CUDA_CHECK(cudaEventRecord(marks[3 * g + 1]));
+          l2_read_cg_kernel<<<grid, threads>>>(d_buf, d_sink, ws_vec4, 1);
+          CUDA_CHECK(cudaEventRecord(marks[3 * g + 2]));
+        }
+      };
+      auto observe = [&]() {
+        std::vector<double> p1, p2;
+        double pass2_ns = 0.0;
+        for (int g = 0; g < current; ++g) {
+          float a = 0.0f, b = 0.0f;
+          CUDA_CHECK(cudaEventElapsedTime(&a, marks[3 * g], marks[3 * g + 1]));
+          CUDA_CHECK(cudaEventElapsedTime(&b, marks[3 * g + 1], marks[3 * g + 2]));
+          p1.push_back(static_cast<double>(ws) / (a * 1e6));
+          p2.push_back(static_cast<double>(ws) / (b * 1e6));
+          pass2_ns += b * 1e6;
+        }
+        std::sort(p1.begin(), p1.end());
+        std::sort(p2.begin(), p2.end());
+        auto mid = [](const std::vector<double>& v) {
+          return v.size() % 2 ? v[v.size() / 2] : 0.5 * (v[v.size() / 2 - 1] + v[v.size() / 2]);
+        };
+        p1_all.push_back(mid(p1));
+        p2_all.push_back(mid(p2));
+        return pass2_ns;
+      };
+      std::printf("%s\n    {\"working_set_bytes\": %zu, \"ratio_to_l2\": %.4f", wi ? "," : "", ws,
+                  static_cast<double>(ws) / static_cast<double>(l2_bytes));
+      auto timed = schedule->time_point(1, 1, 1 << 16, std::max(warmup, 1), samples, ev0, ev1, [] {}, group,
+                                        observe);
+      const size_t n = timed.observed.size();
+      auto tail = [&](const char* key, const std::vector<double>& v) {
+        std::printf(", \"%s\": [", key);
+        for (size_t k = v.size() - n; k < v.size(); ++k) std::printf("%s%.3f", k + n > v.size() ? ", " : "", v[k]);
+        std::printf("]");
+      };
+      std::printf(", \"window_ns_samples\": [");
+      for (size_t k = 0; k < n; ++k) std::printf("%s%.1f", k ? ", " : "", timed.observed[k]);
+      std::printf("]");
+      tail("pass1_bw_gbps_samples", p1_all);
+      tail("pass2_bw_gbps_samples", p2_all);
+      std::printf("}");
+      for (cudaEvent_t e : marks) CUDA_CHECK(cudaEventDestroy(e));
+      continue;
+    }
 
     // Warmup (read-only flush leaves L2 clean with disjoint data, avoiding dirty write-backs).
     l2_read_cg_kernel<<<grid, threads>>>(d_flush, d_sink, flush_vec4, 1);
