@@ -9,6 +9,7 @@ every launch at least 1.0 ms. A point is any object in the output that has
 `launch_ns_samples`, in document order (see docs/components/long-launch-capture.md).
 
     python microbench/long_launch.py freeze MODE PILOT.json SCHEDULE.txt FREEZE.json
+    python microbench/long_launch.py check-schedule FREEZE.json SCHEDULE.txt   # before a capture
     python microbench/long_launch.py verify FREEZE.json CAPTURE.json
 """
 
@@ -17,12 +18,16 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 from pathlib import Path
 
 PILOT_MIN_NS = 1_250_000
 CAPTURE_MIN_NS = 1_000_000
-# Fields that come from timing, not from the point's geometry.
-TIMED_FIELDS = {"sizing_trials", "steps", "launch_ns_samples", "transfer_bytes"}
+# The fields that define a point of each mode. Everything else in a point (timing
+# results, run-time diagnostics such as observed_sms) stays out of the freeze.
+DESIGN_FIELDS = {
+    "closed-loop": ("issue_mode", "tokens", "active_ctas", "stage_bytes", "compute_ns"),
+}
 
 
 def points(node, path=()):
@@ -38,12 +43,30 @@ def points(node, path=()):
             yield from points(value, path)
 
 
-def identity(path, point):
-    """A point's geometry: where it sits and every field that is not a timing result."""
-    fields = {
-        k: v for k, v in point.items() if k not in TIMED_FIELDS and not k.endswith("_samples")
-    }
-    return {"field": "/".join(path), **fields}
+def identity(mode, path, point):
+    """A point's geometry: where it sits and the mode's design fields."""
+    if mode not in DESIGN_FIELDS:
+        raise ValueError(f"{mode}: no design fields registered for launch schedules")
+    return {"field": "/".join(path), **{k: point[k] for k in DESIGN_FIELDS[mode]}}
+
+
+def check_diagnostics(mode, point):
+    """Run-time diagnostics that must agree with the design, checked apart from the freeze."""
+    if "observed_sms" in point and "target_sms" in point:
+        if point["observed_sms"] != point["target_sms"]:
+            raise ValueError(f"{mode}: {point['observed_sms']} SMs ran for {point['target_sms']}")
+
+
+def check_samples(mode, point, count):
+    """A complete list of finite, positive CUDA event times."""
+    samples = point["launch_ns_samples"]
+    if not isinstance(samples, list) or len(samples) != count:
+        raise ValueError(f"{mode}: expected {count} CUDA event samples")
+    if not all(
+        isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(x) and x > 0
+        for x in samples
+    ):
+        raise ValueError(f"{mode}: CUDA event samples must be finite and positive")
 
 
 def freeze(mode, pilot):
@@ -52,11 +75,15 @@ def freeze(mode, pilot):
         raise ValueError(f"{mode}: no timed points in the pilot output")
     frozen = []
     for path, point in rows:
+        check_samples(mode, point, len(point["launch_ns_samples"]))
+        check_diagnostics(mode, point)
         fastest = min(point["launch_ns_samples"])
         if fastest < PILOT_MIN_NS:
-            raise ValueError(f"{mode} {identity(path, point)}: pilot reached only {fastest:.0f} ns")
+            raise ValueError(
+                f"{mode} {identity(mode, path, point)}: pilot reached only {fastest:.0f} ns"
+            )
         frozen.append(
-            {"point": identity(path, point), "steps": point["steps"], "pilot_min_ns": fastest}
+            {"point": identity(mode, path, point), "steps": point["steps"], "pilot_min_ns": fastest}
         )
     schedule = "".join(f"{row['steps']}\n" for row in frozen)
     record = {
@@ -69,27 +96,33 @@ def freeze(mode, pilot):
     return schedule, record
 
 
+def check_schedule(record, schedule_bytes):
+    """Before a capture: the schedule file handed to the binary is the frozen one."""
+    if hashlib.sha256(schedule_bytes).hexdigest() != record["schedule_sha256"]:
+        raise ValueError(f"{record['mode']}: schedule file differs from the freeze")
+
+
 def verify(record, capture):
+    """After a capture: same points in order, frozen lengths, complete samples, launches of 1 ms."""
+    mode = record["mode"]
     rows = list(points(capture))
     if len(rows) != len(record["points"]):
-        raise ValueError(
-            f"{record['mode']}: {len(rows)} points captured, {len(record['points'])} frozen"
-        )
+        raise ValueError(f"{mode}: {len(rows)} points captured, {len(record['points'])} frozen")
     shortest = None
     for (path, point), frozen in zip(rows, record["points"], strict=True):
-        if identity(path, point) != frozen["point"]:
-            raise ValueError(
-                f"{record['mode']}: point {identity(path, point)} differs from the freeze"
-            )
+        if identity(mode, path, point) != frozen["point"]:
+            raise ValueError(f"{mode}: point {identity(mode, path, point)} differs from the freeze")
+        check_samples(mode, point, capture["samples"])
+        check_diagnostics(mode, point)
         if point["steps"] != frozen["steps"]:
             raise ValueError(
-                f"{record['mode']} {frozen['point']}: ran {point['steps']} steps, froze {frozen['steps']}"
+                f"{mode} {frozen['point']}: ran {point['steps']} steps, froze {frozen['steps']}"
             )
         fastest = min(point["launch_ns_samples"])
         if fastest < record["capture_min_ns"]:
-            raise ValueError(f"{record['mode']} {frozen['point']}: a launch took {fastest:.0f} ns")
+            raise ValueError(f"{mode} {frozen['point']}: a launch took {fastest:.0f} ns")
         shortest = fastest if shortest is None else min(shortest, fastest)
-    return {"mode": record["mode"], "points": len(rows), "shortest_launch_ns": shortest}
+    return {"mode": mode, "points": len(rows), "shortest_launch_ns": shortest}
 
 
 def main():
@@ -103,6 +136,9 @@ def main():
     v = sub.add_parser("verify")
     v.add_argument("record", type=Path)
     v.add_argument("capture", type=Path)
+    c = sub.add_parser("check-schedule")
+    c.add_argument("record", type=Path)
+    c.add_argument("schedule", type=Path)
     args = parser.parse_args()
     if args.action == "freeze":
         for path in (args.schedule, args.record):
@@ -111,6 +147,8 @@ def main():
         schedule, record = freeze(args.mode, json.loads(args.pilot.read_text()))
         args.schedule.write_text(schedule)
         args.record.write_text(json.dumps(record, indent=1) + "\n")
+    elif args.action == "check-schedule":
+        check_schedule(json.loads(args.record.read_text()), args.schedule.read_bytes())
     else:
         print(
             json.dumps(

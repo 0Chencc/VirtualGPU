@@ -22,9 +22,9 @@ def point(ctas, steps, ns, trials=None):
     return row
 
 
-def output(*rows_per_field):
+def output(*rows_per_field, samples=15):
     return {
-        "samples": 3,
+        "samples": samples,
         "dram_closed_loop": list(rows_per_field[0]),
         "l2_closed_loop": list(rows_per_field[1]),
     }
@@ -34,7 +34,9 @@ class LongLaunchTests(unittest.TestCase):
     def pilot(self):
         trials = [{"steps": 256, "launch_ns_samples": [300e3] * 3}]
         return output(
-            [point(16, 1100, [1.3e6] * 3, trials)], [point(32, 4000, [1.26e6] * 3, trials)]
+            [point(16, 1100, [1.3e6] * 3, trials)],
+            [point(32, 4000, [1.26e6] * 3, trials)],
+            samples=3,
         )
 
     def test_freeze_writes_one_length_per_point_in_order(self):
@@ -65,3 +67,30 @@ class LongLaunchTests(unittest.TestCase):
         ):
             with self.assertRaisesRegex(ValueError, message):
                 long_launch.verify(record, bad)
+
+    def test_verify_rejects_incomplete_or_invalid_samples(self):
+        _, record = long_launch.freeze("closed-loop", self.pilot())
+        for samples in ([1.2e6] * 14, [1.2e6] * 14 + [float("nan")], [1.2e6] * 14 + [0.0]):
+            bad = output([point(16, 1100, samples)], [point(32, 4000, [1.1e6] * 15)])
+            with self.assertRaisesRegex(ValueError, "CUDA event samples"):
+                long_launch.verify(record, bad)
+
+    def test_identity_ignores_diagnostics_but_checks_them(self):
+        _, record = long_launch.freeze("closed-loop", self.pilot())
+        row = point(16, 1100, [1.2e6] * 15)
+        row["observed_sms"], row["target_sms"] = 16, 16
+        good = output([row], [point(32, 4000, [1.1e6] * 15)])
+        long_launch.verify(record, good)
+        row["observed_sms"] = 15
+        with self.assertRaisesRegex(ValueError, "SMs ran"):
+            long_launch.verify(record, good)
+
+    def test_schedule_file_must_match_the_freeze(self):
+        schedule, record = long_launch.freeze("closed-loop", self.pilot())
+        long_launch.check_schedule(record, schedule.encode())
+        with self.assertRaisesRegex(ValueError, "differs from the freeze"):
+            long_launch.check_schedule(record, b"1100\n4001\n")
+
+    def test_unregistered_mode_is_refused(self):
+        with self.assertRaisesRegex(ValueError, "no design fields"):
+            long_launch.freeze("l2-merge", self.pilot())
