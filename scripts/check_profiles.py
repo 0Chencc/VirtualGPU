@@ -219,7 +219,9 @@ def check(path: Path | str, *, skip_sanity: bool = False) -> tuple[list[str], st
 
     if "capture_protocol" in prov:
         launch = launch_errors(profile)
-        errors.extend(launch[:20] + ([f"{len(launch) - 20} more launch errors"] if len(launch) > 20 else []))
+        errors.extend(
+            launch[:20] + ([f"{len(launch) - 20} more launch errors"] if len(launch) > 20 else [])
+        )
 
     if not skip_sanity:
         errors.extend(sanity_errors(profile))
