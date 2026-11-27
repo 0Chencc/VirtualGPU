@@ -9,6 +9,11 @@ error, MAPE, signed median error and the worst point.
 
     python scripts/recheck_mechanisms.py --profile old=profiles/gb10.json \\
         --profile new=NEW.json --out OUT.json [--markdown OUT.md]
+    python scripts/recheck_mechanisms.py --check BASELINE.json   # after a core change
+
+`--check` re-runs on the baseline's profiles (about 1.5 s for the two reference profiles) and
+fails on a changed point set or a median absolute error or MAPE that grew by more than the
+tolerance; a deliberate change updates the baseline in the same change.
 
 What the IR cannot express is left out and listed in NOT_EXPRESSED; it is the same for every
 profile, so a column-to-column change comes from the profile alone.
@@ -531,12 +536,8 @@ def markdown(result):
     return "\n".join(lines) + "\n"
 
 
-def main():
-    ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--profile", action="append", required=True, metavar="NAME=PATH")
-    ap.add_argument("--out", type=Path, required=True)
-    ap.add_argument("--markdown", type=Path)
-    args = ap.parse_args()
+def run(profiles):
+    """The re-check of every mechanism on each (name, path) profile."""
     result = {
         "core": _core.build_info(),
         "lengths": LENGTHS,
@@ -544,17 +545,76 @@ def main():
         "expected_shift": EXPECTED,
         "profiles": {},
     }
-    for spec in args.profile:
-        name, path = spec.split("=", 1)
+    for name, path in profiles:
         text = Path(path).read_text()
         profile = json.loads(text)
         result["profiles"][name] = {
-            "path": path,
+            "path": str(path),
             "revision": profile["provenance"].get("profile_revision"),
             "mechanisms": {
                 m["name"]: r for m in MECHANISMS if (r := check(m, profile, text)) is not None
             },
         }
+    return result
+
+
+def compare(baseline, result, tolerance):
+    """Per profile and mechanism, the change from the baseline; failures are a changed point
+    set or a median absolute error or MAPE that grew by more than `tolerance`."""
+    lines, failures = [], []
+    for name, base in baseline["profiles"].items():
+        now = result["profiles"][name]["mechanisms"]
+        for mech, b in base["mechanisms"].items():
+            r = now.get(mech)
+            if r is None or r["points"] != b["points"]:
+                failures.append(f"{name} {mech}: points {b['points']} -> {r and r['points']}")
+                continue
+            delta = {k: r[k] - b[k] for k in ("median_abs_error", "mape", "signed_median")}
+            lines.append(
+                f"{name:10} {mech:24} median {b['median_abs_error'] * 100:5.1f}% -> "
+                f"{r['median_abs_error'] * 100:5.1f}%, MAPE {b['mape'] * 100:5.1f}% -> "
+                f"{r['mape'] * 100:5.1f}%, signed {b['signed_median'] * 100:+5.1f}% -> "
+                f"{r['signed_median'] * 100:+5.1f}%"
+            )
+            for k in ("median_abs_error", "mape"):
+                if delta[k] > tolerance:
+                    failures.append(f"{name} {mech}: {k} +{delta[k] * 100:.2f} points")
+        for mech in set(now) - set(base["mechanisms"]):
+            failures.append(f"{name} {mech}: not in the baseline")
+    return lines, failures
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--profile", action="append", metavar="NAME=PATH")
+    ap.add_argument("--out", type=Path)
+    ap.add_argument("--markdown", type=Path)
+    ap.add_argument(
+        "--check",
+        type=Path,
+        metavar="BASELINE",
+        help="re-run on the baseline's profiles and fail if a mechanism got worse",
+    )
+    ap.add_argument(
+        "--tolerance",
+        type=float,
+        default=0.005,
+        help="allowed growth of the median absolute error and the MAPE (fraction, 0.005 = "
+        "half a percentage point)",
+    )
+    args = ap.parse_args()
+    if args.check:
+        baseline = json.loads(args.check.read_text())
+        root = Path(__file__).resolve().parents[1]
+        profiles = [(n, root / b["path"]) for n, b in baseline["profiles"].items()]
+        lines, failures = compare(baseline, run(profiles), args.tolerance)
+        print("\n".join(lines))
+        for f in failures:
+            print(f"FAIL {f}")
+        raise SystemExit(1 if failures else 0)
+    if not args.profile or not args.out:
+        ap.error("--profile and --out are required without --check")
+    result = run([spec.split("=", 1) for spec in args.profile])
     args.out.write_text(json.dumps(result, indent=1) + "\n")
     table = markdown(result)
     if args.markdown:

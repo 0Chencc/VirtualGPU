@@ -48,3 +48,19 @@ def test_every_mechanism_runs_on_both_reference_profiles():
             assert r["points"] == len(r["rows"]) > 0
             assert all(row["predicted"] > 0 for row in r["rows"]), mech["name"]
             assert mech["name"] in recheck.EXPECTED
+
+
+def test_check_passes_on_the_baseline_and_fails_on_a_regression():
+    baseline = json.loads(
+        (ROOT / "docs/results/analysis/v0.3-mechanism-recheck-baseline.json").read_text()
+    )
+    profiles = [(n, ROOT / b["path"]) for n, b in baseline["profiles"].items()]
+    result = recheck.run(profiles)
+    lines, failures = recheck.compare(baseline, result, 0.005)
+    assert lines and not failures
+    worse = json.loads(json.dumps(result))
+    worse["profiles"]["gb10"]["mechanisms"]["miss_merging"]["mape"] += 0.01
+    del worse["profiles"]["rtx4070"]["mechanisms"]["lsu_pipe"]
+    _, failures = recheck.compare(baseline, worse, 0.005)
+    assert any("gb10 miss_merging: mape" in f for f in failures)
+    assert any("rtx4070 lsu_pipe: points" in f for f in failures)
