@@ -519,6 +519,7 @@ int main(int argc, char** argv) {
   size_t buffer_mb = 256;
   double l2_gbps = 0.0;
   std::unique_ptr<LaunchSchedule> schedule;
+  bool clock_probe = false;
 
   for (int i = 1; i < argc; ++i) {
     std::string arg = argv[i];
@@ -536,6 +537,8 @@ int main(int argc, char** argv) {
       buffer_mb = static_cast<size_t>(std::atoll(argv[++i]));
     } else if (arg == "--l2-gbps" && i + 1 < argc) {
       l2_gbps = std::atof(argv[++i]);
+    } else if (arg == "--clock-probe") {
+      clock_probe = true;
     } else if ((arg == "--launch-schedule" || arg == "--long-read-schedule") && i + 1 < argc) {
       schedule = std::make_unique<LaunchSchedule>(argv[++i]);
     } else {
@@ -552,7 +555,17 @@ int main(int argc, char** argv) {
     return 2;
   }
 
+  if (clock_probe && !schedule) {
+    std::fprintf(stderr, "--clock-probe needs a launch schedule\n");
+    return 2;
+  }
   CUDA_CHECK(cudaSetDevice(device));
+  cudaEvent_t probe_start = nullptr, probe_stop = nullptr;
+  if (clock_probe) {
+    CUDA_CHECK(cudaEventCreate(&probe_start));
+    CUDA_CHECK(cudaEventCreate(&probe_stop));
+    schedule->clock_probe = [&]() { return 1e3 * measure_cycles_per_ns(probe_start, probe_stop); };
+  }
   if (schedule) {
     int result;
     if (mode == "mlp") result = run_mlp(device, samples, warmup, schedule.get());
