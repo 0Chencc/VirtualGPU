@@ -4,6 +4,7 @@ import copy
 import json
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from microbench import profile_launch as pl
 
@@ -100,6 +101,58 @@ class ProfileLaunchTests(unittest.TestCase):
             "launch": launch(9),
         }
         pl.attach(self.profile, "l2", {"capacity_sweep": [sweep]})
+
+    @patch.dict(
+        pl.long_launch.DESIGN_FIELDS["l2"], {"read_curve_cp_async": ("target_sms",)}
+    )  # registered with the l2 schedule on its own branch
+    def test_l2_read_scalar_follows_whichever_curve_supplied_it(self):
+        memory = self.profile["measured"]["memory"]
+        memory.setdefault(
+            "l2_bw_by_active_sms_cp_async", copy.deepcopy(memory["l2_bw_by_active_sms"])
+        )
+        mlp = next(e for e in memory["l2_bw_by_bytes_in_flight"])
+        sources = (
+            ("l2", "read_curve", memory["l2_bw_by_active_sms"][-1], "target_sms"),
+            ("l2", "read_curve_cp_async", memory["l2_bw_by_active_sms_cp_async"][-1], "target_sms"),
+            ("mlp", "l2_bw_by_bytes_in_flight", mlp, None),
+        )
+        for mode, field, entry, sms_key in sources:
+            memory["l2_bw_read_gbps"] = entry["bw_gbps"]
+            entry["bw_gbps"].pop("launch", None)
+            ident = (
+                {sms_key: entry["active_sms"]}
+                if sms_key
+                else {
+                    k: entry[k]
+                    for k in ("issue_mode", "bytes_in_flight", "active_ctas", "bytes_per_cta")
+                }
+            )
+            point = ident | {
+                "steps": 77,
+                "launch_ns_samples": [1.3e6] * 5,
+                "gbps_samples": [entry["bw_gbps"]["value"]] * 5,
+                "launch": launch(77),
+            }
+            pl.attach(self.profile, mode, {field: [point]})
+            self.assertEqual(memory["l2_bw_read_gbps"]["launch"]["length"], 77, field)
+
+    def test_l2_write_view_must_equal_the_point(self):
+        write = self.profile["measured"]["memory"]["l2_bw_write_gbps"]["value"]
+        point = {
+            "working_set_bytes": 1 << 23,
+            "steps": 64,
+            "launch_ns_samples": [1.3e6] * 5,
+            "gbps_samples": [write] * 5,
+            "launch": launch(64),
+        }
+        pl.attach(self.profile, "l2", {"write_full": point, "write_full_gbps_samples": [write] * 5})
+        self.assertIn("launch", self.profile["measured"]["memory"]["l2_bw_write_gbps"])
+        with self.assertRaisesRegex(ValueError, "differs"):
+            pl.attach(
+                self.profile,
+                "l2",
+                {"write_full": point, "write_full_gbps_samples": [write] * 4 + [1.0]},
+            )
 
     def test_exception_flags_the_entry_and_covers_the_rounds(self):
         entry = self.profile["measured"]["memory"]["dram_bw_by_active_sms"][0]

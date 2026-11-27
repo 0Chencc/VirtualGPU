@@ -64,6 +64,8 @@ SCALARS = {
     ("dram-bw", "write_full"): None,
     ("l2", "write_full"): None,
 }
+# Top-level compatibility lists that must equal a point's own list: (mode, raw field) -> list.
+VIEWS = {("l2", "write_full"): "write_full_gbps_samples"}
 # Timed points with no profile value of their own (their result is derived).
 NOT_IN_PROFILE = {("l2", "capacity_sweep")}
 # Profile values that are compute rates and get a per-cycle value.
@@ -138,6 +140,9 @@ def attach(profile, mode, merged):
             for k, v in point.items()
             if k.endswith("_samples") and k != "launch_ns_samples"
         }
+        view = VIEWS.get((mode, path[0]))
+        if view and [merged[view]] != list(lists.values()):
+            raise ValueError(f"{mode}: {view} differs from {path[0]}'s own samples")
         if scalar is not None:
             outside = SCALARS[(mode, path[0])]
             (rounds,) = [merged[outside]] if outside else lists.values()
