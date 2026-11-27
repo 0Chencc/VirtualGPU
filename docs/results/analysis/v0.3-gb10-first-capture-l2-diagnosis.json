@@ -1,0 +1,636 @@
+{
+ "source": "docs/results/analysis/v0.3-gb10-first-capture-l2-diagnosis.md",
+ "archive_branch": "archive/s4-v03-gb10-capture-diagnosis",
+ "buffer_experiment": {
+  "measurement_commit": "94138c7",
+  "registration": [
+   "93eefba",
+   "120e309",
+   "15ec340"
+  ],
+  "raw_sha256": "f33b91ad816a48f3aec5bd43db3a04777996f4a9ba8d0467a74c562572ce8f36",
+  "readings": {
+   "control_36mib_gbps": [
+    790.292,
+    941.302,
+    774.863,
+    954.354,
+    1093.397
+   ],
+   "control_span": 0.33839724126794574,
+   "control_iqr_36mib": [
+    0.1349861823224833,
+    0.0969412579597196,
+    0.11242826151203514,
+    0.07540388576985059,
+    0.13265767145876559
+   ],
+   "levels_36mib_gbps": [
+    [
+     765.431,
+     871.1965,
+     1284.2559999999999,
+     1224.5655000000002,
+     1435.388,
+     1417.3885
+    ],
+    [
+     1075.1975,
+     1390.719,
+     1012.3824999999999,
+     1279.3105,
+     1031.7675,
+     1236.2730000000001
+    ],
+    [
+     758.4300000000001,
+     1091.058,
+     1233.7265,
+     1133.3105,
+     1387.584,
+     904.6355
+    ],
+    [
+     1126.745,
+     1252.2055,
+     928.7915,
+     1420.929,
+     1007.886,
+     796.8240000000001
+    ],
+    [
+     1021.8675,
+     977.337,
+     921.365,
+     1296.7289999999998,
+     1275.022,
+     1170.4915
+    ]
+   ],
+   "within_process_span": [
+    0.5340810416364814,
+    0.3273556811562164,
+    0.5656922402920199,
+    0.5847427494494365,
+    0.3424293192857555
+   ],
+   "process_medians_gbps": [
+    1254.41075,
+    1155.7352500000002,
+    1112.18425,
+    1067.3155,
+    1096.1795
+   ],
+   "between_process_span": 0.1682232507788166,
+   "buffers_keeping_level": 8,
+   "unsteady_share": {
+    "constant": 0.5166666666666667,
+    "random": 0.48333333333333334
+   },
+   "hit_36mib": {
+    "constant": {
+     "median": 0.868970108010384,
+     "max": 0.9413248899961816
+    },
+    "random": {
+     "median": 0.8709219450444432,
+     "max": 0.940617330089731
+    }
+   },
+   "reading": "neither supported",
+   "compression": false,
+   "one_pass": [
+    {
+     "fill": "constant",
+     "buffer": 1,
+     "pass1_gbps_samples": 239.668,
+     "pass2_gbps_samples": 265.209
+    },
+    {
+     "fill": "constant",
+     "buffer": 2,
+     "pass1_gbps_samples": 242.826,
+     "pass2_gbps_samples": 243.83
+    },
+    {
+     "fill": "constant",
+     "buffer": 3,
+     "pass1_gbps_samples": 242.976,
+     "pass2_gbps_samples": 244.132
+    },
+    {
+     "fill": "constant",
+     "buffer": 4,
+     "pass1_gbps_samples": 244.385,
+     "pass2_gbps_samples": 244.132
+    },
+    {
+     "fill": "constant",
+     "buffer": 5,
+     "pass1_gbps_samples": 249.397,
+     "pass2_gbps_samples": 249.081
+    },
+    {
+     "fill": "constant",
+     "buffer": 6,
+     "pass1_gbps_samples": 246.068,
+     "pass2_gbps_samples": 247.409
+    },
+    {
+     "fill": "random",
+     "buffer": 1,
+     "pass1_gbps_samples": 238.12,
+     "pass2_gbps_samples": 265.209
+    },
+    {
+     "fill": "random",
+     "buffer": 2,
+     "pass1_gbps_samples": 235.083,
+     "pass2_gbps_samples": 236.877
+    },
+    {
+     "fill": "random",
+     "buffer": 3,
+     "pass1_gbps_samples": 244.436,
+     "pass2_gbps_samples": 245.76
+    },
+    {
+     "fill": "random",
+     "buffer": 4,
+     "pass1_gbps_samples": 242.826,
+     "pass2_gbps_samples": 244.132
+    },
+    {
+     "fill": "random",
+     "buffer": 5,
+     "pass1_gbps_samples": 247.721,
+     "pass2_gbps_samples": 249.081
+    },
+    {
+     "fill": "random",
+     "buffer": 6,
+     "pass1_gbps_samples": 244.284,
+     "pass2_gbps_samples": 242.576
+    },
+    {
+     "fill": "constant",
+     "buffer": 1,
+     "pass1_gbps_samples": 242.776,
+     "pass2_gbps_samples": 242.526
+    },
+    {
+     "fill": "constant",
+     "buffer": 2,
+     "pass1_gbps_samples": 242.776,
+     "pass2_gbps_samples": 242.626
+    },
+    {
+     "fill": "constant",
+     "buffer": 3,
+     "pass1_gbps_samples": 242.776,
+     "pass2_gbps_samples": 245.76
+    },
+    {
+     "fill": "constant",
+     "buffer": 4,
+     "pass1_gbps_samples": 241.237,
+     "pass2_gbps_samples": 242.526
+    },
+    {
+     "fill": "constant",
+     "buffer": 5,
+     "pass1_gbps_samples": 247.929,
+     "pass2_gbps_samples": 249.081
+    },
+    {
+     "fill": "constant",
+     "buffer": 6,
+     "pass1_gbps_samples": 246.016,
+     "pass2_gbps_samples": 245.76
+    },
+    {
+     "fill": "random",
+     "buffer": 1,
+     "pass1_gbps_samples": 235.271,
+     "pass2_gbps_samples": 234.943
+    },
+    {
+     "fill": "random",
+     "buffer": 2,
+     "pass1_gbps_samples": 241.187,
+     "pass2_gbps_samples": 242.526
+    },
+    {
+     "fill": "random",
+     "buffer": 3,
+     "pass1_gbps_samples": 241.187,
+     "pass2_gbps_samples": 244.132
+    },
+    {
+     "fill": "random",
+     "buffer": 4,
+     "pass1_gbps_samples": 242.776,
+     "pass2_gbps_samples": 243.981
+    },
+    {
+     "fill": "random",
+     "buffer": 5,
+     "pass1_gbps_samples": 247.565,
+     "pass2_gbps_samples": 248.871
+    },
+    {
+     "fill": "random",
+     "buffer": 6,
+     "pass1_gbps_samples": 240.352,
+     "pass2_gbps_samples": 240.941
+    },
+    {
+     "fill": "constant",
+     "buffer": 1,
+     "pass1_gbps_samples": 241.187,
+     "pass2_gbps_samples": 267.13
+    },
+    {
+     "fill": "constant",
+     "buffer": 2,
+     "pass1_gbps_samples": 241.237,
+     "pass2_gbps_samples": 242.526
+    },
+    {
+     "fill": "constant",
+     "buffer": 3,
+     "pass1_gbps_samples": 244.385,
+     "pass2_gbps_samples": 245.76
+    },
+    {
+     "fill": "constant",
+     "buffer": 4,
+     "pass1_gbps_samples": 244.385,
+     "pass2_gbps_samples": 244.132
+    },
+    {
+     "fill": "constant",
+     "buffer": 5,
+     "pass1_gbps_samples": 247.721,
+     "pass2_gbps_samples": 248.818
+    },
+    {
+     "fill": "constant",
+     "buffer": 6,
+     "pass1_gbps_samples": 247.669,
+     "pass2_gbps_samples": 247.409
+    },
+    {
+     "fill": "random",
+     "buffer": 1,
+     "pass1_gbps_samples": 242.526,
+     "pass2_gbps_samples": 267.13
+    },
+    {
+     "fill": "random",
+     "buffer": 2,
+     "pass1_gbps_samples": 234.943,
+     "pass2_gbps_samples": 238.168
+    },
+    {
+     "fill": "random",
+     "buffer": 3,
+     "pass1_gbps_samples": 244.385,
+     "pass2_gbps_samples": 244.132
+    },
+    {
+     "fill": "random",
+     "buffer": 4,
+     "pass1_gbps_samples": 242.826,
+     "pass2_gbps_samples": 244.132
+    },
+    {
+     "fill": "random",
+     "buffer": 5,
+     "pass1_gbps_samples": 247.669,
+     "pass2_gbps_samples": 249.081
+    },
+    {
+     "fill": "random",
+     "buffer": 6,
+     "pass1_gbps_samples": 246.016,
+     "pass2_gbps_samples": 247.409
+    },
+    {
+     "fill": "constant",
+     "buffer": 1,
+     "pass1_gbps_samples": 239.912,
+     "pass2_gbps_samples": 269.08
+    },
+    {
+     "fill": "constant",
+     "buffer": 2,
+     "pass1_gbps_samples": 247.929,
+     "pass2_gbps_samples": 249.081
+    },
+    {
+     "fill": "constant",
+     "buffer": 3,
+     "pass1_gbps_samples": 243.026,
+     "pass2_gbps_samples": 242.776
+    },
+    {
+     "fill": "constant",
+     "buffer": 4,
+     "pass1_gbps_samples": 247.669,
+     "pass2_gbps_samples": 247.409
+    },
+    {
+     "fill": "constant",
+     "buffer": 5,
+     "pass1_gbps_samples": 247.669,
+     "pass2_gbps_samples": 247.461
+    },
+    {
+     "fill": "constant",
+     "buffer": 6,
+     "pass1_gbps_samples": 246.016,
+     "pass2_gbps_samples": 247.409
+    },
+    {
+     "fill": "random",
+     "buffer": 1,
+     "pass1_gbps_samples": 241.187,
+     "pass2_gbps_samples": 271.059
+    },
+    {
+     "fill": "random",
+     "buffer": 2,
+     "pass1_gbps_samples": 247.721,
+     "pass2_gbps_samples": 247.409
+    },
+    {
+     "fill": "random",
+     "buffer": 3,
+     "pass1_gbps_samples": 242.826,
+     "pass2_gbps_samples": 244.132
+    },
+    {
+     "fill": "random",
+     "buffer": 4,
+     "pass1_gbps_samples": 244.234,
+     "pass2_gbps_samples": 247.409
+    },
+    {
+     "fill": "random",
+     "buffer": 5,
+     "pass1_gbps_samples": 243.628,
+     "pass2_gbps_samples": 244.335
+    },
+    {
+     "fill": "random",
+     "buffer": 6,
+     "pass1_gbps_samples": 243.026,
+     "pass2_gbps_samples": 242.427
+    },
+    {
+     "fill": "constant",
+     "buffer": 1,
+     "pass1_gbps_samples": 239.668,
+     "pass2_gbps_samples": 239.474
+    },
+    {
+     "fill": "constant",
+     "buffer": 2,
+     "pass1_gbps_samples": 242.826,
+     "pass2_gbps_samples": 244.082
+    },
+    {
+     "fill": "constant",
+     "buffer": 3,
+     "pass1_gbps_samples": 242.826,
+     "pass2_gbps_samples": 242.526
+    },
+    {
+     "fill": "constant",
+     "buffer": 4,
+     "pass1_gbps_samples": 242.826,
+     "pass2_gbps_samples": 244.132
+    },
+    {
+     "fill": "constant",
+     "buffer": 5,
+     "pass1_gbps_samples": 247.721,
+     "pass2_gbps_samples": 249.081
+    },
+    {
+     "fill": "constant",
+     "buffer": 6,
+     "pass1_gbps_samples": 244.436,
+     "pass2_gbps_samples": 245.76
+    },
+    {
+     "fill": "random",
+     "buffer": 1,
+     "pass1_gbps_samples": 239.377,
+     "pass2_gbps_samples": 239.377
+    },
+    {
+     "fill": "random",
+     "buffer": 2,
+     "pass1_gbps_samples": 242.826,
+     "pass2_gbps_samples": 242.526
+    },
+    {
+     "fill": "random",
+     "buffer": 3,
+     "pass1_gbps_samples": 240.99,
+     "pass2_gbps_samples": 242.626
+    },
+    {
+     "fill": "random",
+     "buffer": 4,
+     "pass1_gbps_samples": 239.668,
+     "pass2_gbps_samples": 242.676
+    },
+    {
+     "fill": "random",
+     "buffer": 5,
+     "pass1_gbps_samples": 249.029,
+     "pass2_gbps_samples": 247.409
+    },
+    {
+     "fill": "random",
+     "buffer": 6,
+     "pass1_gbps_samples": 242.826,
+     "pass2_gbps_samples": 244.132
+    }
+   ]
+  }
+ },
+ "episode_timing": {
+  "measurement_commit": "a87ac60",
+  "registration": "6fc8dce",
+  "raw_sha256": "ccdf52dfcd5ce221871a456003e936ff1965b2130d338bf5d54eb230f65dd0b9",
+  "readings": {
+   "1464": {
+    "gaps": 49,
+    "G_s": 10,
+    "G_t_ms": 24.837599999999995,
+    "T_ms": 2.409599999999955,
+    "slow_share": 0.10500000000000001,
+    "episode_lengths": [
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     3,
+     3,
+     3,
+     3,
+     3,
+     3,
+     3,
+     5,
+     5,
+     5,
+     6,
+     6,
+     7
+    ]
+   },
+   "732": {
+    "gaps": 42,
+    "G_s": 8.5,
+    "G_t_ms": 15.870900000000006,
+    "T_ms": 1.7610999999999422,
+    "slow_share": 0.09166666666666667,
+    "episode_lengths": [
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     3,
+     3,
+     3,
+     3,
+     3,
+     3,
+     4,
+     4,
+     5,
+     5,
+     9,
+     9,
+     11
+    ]
+   },
+   "reading": "neither"
+  }
+ },
+ "void_buffer_run": {
+  "measurement_commit": "a87ac60",
+  "gates_only": [
+   {
+    "process": 1,
+    "rule1_failing": 30,
+    "rule1_allowed": 13,
+    "rule2_failing": 5,
+    "lists": 264
+   },
+   {
+    "process": 2,
+    "rule1_failing": 36,
+    "rule1_allowed": 13,
+    "rule2_failing": 10,
+    "lists": 264
+   },
+   {
+    "process": 3,
+    "rule1_failing": 14,
+    "rule1_allowed": 13,
+    "rule2_failing": 7,
+    "lists": 264
+   },
+   {
+    "process": 4,
+    "rule1_failing": 38,
+    "rule1_allowed": 13,
+    "rule2_failing": 13,
+    "lists": 264
+   },
+   {
+    "process": 5,
+    "rule1_failing": 43,
+    "rule1_allowed": 13,
+    "rule2_failing": 25,
+    "lists": 264
+   }
+  ],
+  "note": "void; data not read for any reading"
+ }
+}
