@@ -208,3 +208,19 @@ class LongCaptureTests(unittest.TestCase):
         self.assertNotIn(
             "exceptions", lc.mark_exceptions("l2", curve, "NVIDIA GB10")["read_curve"][0]
         )
+
+    def test_capacity_sweep_band_leaves_rule_three_only(self):
+        l2 = 24 << 20
+
+        def sweep(values):
+            return {
+                "capacity_sweep": [
+                    {"working_set_bytes": ws, "steps": 9, "launch_ns_samples": [v] * 15}
+                    for ws, v in zip((12 << 20, 24 << 20, 48 << 20), values)
+                ]
+            }
+
+        base, moved = sweep([1.3e6] * 3), sweep([1.3e6, 1.6e6, 1.3e6])
+        self.assertEqual(lc.rule_three("l2", [base, moved], "test", l2)["points"], 3)
+        judged = lc.rule_three("l2", [base, moved], "NVIDIA GB10", l2)
+        self.assertEqual((judged["points"], judged["failing"]), (2, 0))

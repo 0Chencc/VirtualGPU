@@ -69,6 +69,8 @@ TIMING = ("launch_ns_samples",)
 PROFILE_FIELD = {
     ("dram-bw", "read_curve"): "dram_bw_by_active_sms",
     ("l2", "read_curve"): "l2_bw_by_active_sms",
+    ("l2", "capacity_sweep"): "l2_capacity_sweep",
+    ("l2-rescan", "points"): "l2_rescan_hit_rate_by_working_set",
     ("spill-latency", "reload_latency_by_count"): "spill_reload_latency_by_count",
     ("mma", "mma"): "mma_tflops_per_sm_by_warps",
     ("mma", "fp32_fma"): "fp32_fma_tflops",
