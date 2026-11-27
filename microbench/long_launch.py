@@ -23,11 +23,16 @@ from pathlib import Path
 
 PILOT_MIN_NS = 1_250_000
 CAPTURE_MIN_NS = 1_000_000
-# The fields that define a point of each mode. Everything else in a point (timing
-# results, run-time diagnostics such as observed_sms) stays out of the freeze.
+# The fields that define a point, per mode and per top-level output field. Everything
+# else in a point (timing results, run-time diagnostics such as observed_sms) stays
+# out of the freeze.
+CLOSED_LOOP = ("issue_mode", "tokens", "active_ctas", "stage_bytes", "compute_ns")
 DESIGN_FIELDS = {
-    "closed-loop": ("issue_mode", "tokens", "active_ctas", "stage_bytes", "compute_ns"),
-    "l2-merge": ("active_ctas", "sharing", "bytes_per_cta", "stagger_stages"),
+    "closed-loop": {"dram_closed_loop": CLOSED_LOOP, "l2_closed_loop": CLOSED_LOOP},
+    "l2-merge": {
+        "l2_merge_by_sharing": ("active_ctas", "sharing", "bytes_per_cta", "stagger_stages")
+    },
+    "mma": {"mma": ("mma_warps_per_sm",), "fp32_fma": ("warps_per_sm",)},
 }
 
 
@@ -46,9 +51,12 @@ def points(node, path=()):
 
 def identity(mode, path, point):
     """A point's geometry: where it sits and the mode's design fields."""
-    if mode not in DESIGN_FIELDS:
-        raise ValueError(f"{mode}: no design fields registered for launch schedules")
-    return {"field": "/".join(path), **{k: point[k] for k in DESIGN_FIELDS[mode]}}
+    fields = DESIGN_FIELDS.get(mode, {}).get(path[0] if path else None)
+    if fields is None:
+        raise ValueError(
+            f"{mode} {'/'.join(path)}: no design fields registered for launch schedules"
+        )
+    return {"field": "/".join(path), **{k: point[k] for k in fields}}
 
 
 def check_diagnostics(mode, point):

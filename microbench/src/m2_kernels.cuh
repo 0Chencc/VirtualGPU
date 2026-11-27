@@ -102,7 +102,7 @@ __global__ void fp32_fma_kernel(float* __restrict__ sink, int iters) {
   }
 }
 
-static int run_mma(int device, int samples, int warmup) {
+static int run_mma(int device, int samples, int warmup, LaunchSchedule* schedule = nullptr) {
   cudaDeviceProp prop{};
   CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
 
@@ -131,6 +131,24 @@ static int run_mma(int device, int samples, int warmup) {
       int threads = warps * 32;
       // Scale iterations so each launch takes ~1-3 ms regardless of warp count.
       int iters = std::max(4000, 32000 / std::min(warps, 8));
+      auto launch = [&](int length) {
+        if (!is_bf16) {
+          mma_m16n8k16_kernel<false><<<sm_count, threads>>>(d_sink, length);
+        } else {
+          mma_m16n8k16_kernel<true><<<sm_count, threads>>>(d_sink, length);
+        }
+      };
+      if (schedule) {
+        std::printf("%s\n      {\"mma_warps_per_sm\": %d", wi ? "," : "", warps);
+        auto timed = schedule->time_point(iters, 1, 1 << 28, warmup, samples, ev_start, ev_stop, [] {}, launch);
+        const double flops = static_cast<double>(warps) * timed.length * 4.0 * 4096.0;
+        std::printf(", \"tflops_per_sm_samples\": [");
+        for (size_t k = 0; k < timed.launch_ns.size(); ++k) {
+          std::printf("%s%.4f", k ? ", " : "", flops / 1e3 / timed.launch_ns[k]);
+        }
+        std::printf("]}");
+        continue;
+      }
       double flops_per_sm = static_cast<double>(warps) * iters * 4.0 * 4096.0;
 
       for (int w = 0; w < warmup; ++w) {
@@ -174,6 +192,26 @@ static int run_mma(int device, int samples, int warmup) {
   int fma_warps = std::min(16, max_warps_per_block);
   int fma_threads = fma_warps * 32;
   int fma_iters = 40000;
+  if (schedule) {
+    // Emission order: both MMA tables, then FP32 FMA.
+    std::printf("{\n  \"sm_count\": %d,\n  \"samples\": %d,\n  \"mma\": {\n", sm_count, samples);
+    measure_mma_variant("mma.sync:f16:f16:f32:16x8x16", false);
+    std::printf(",\n");
+    measure_mma_variant("mma.sync:bf16:bf16:f32:16x8x16", true);
+    std::printf("\n  },\n  \"fp32_fma\": {\"warps_per_sm\": %d", fma_warps);
+    auto timed = schedule->time_point(fma_iters, 1, 1 << 28, warmup, samples, ev_start, ev_stop, [] {},
+                                      [&](int length) { fp32_fma_kernel<<<sm_count, fma_threads>>>(d_sink, length); });
+    const double flops = static_cast<double>(sm_count) * fma_threads * timed.length * 16.0;
+    std::printf("},\n  \"fp32_fma_tflops_samples\": [");
+    for (size_t k = 0; k < timed.launch_ns.size(); ++k) {
+      std::printf("%s%.4f", k ? ", " : "", flops / 1e3 / timed.launch_ns[k]);
+    }
+    std::printf("]\n}\n");
+    CUDA_CHECK(cudaEventDestroy(ev_start));
+    CUDA_CHECK(cudaEventDestroy(ev_stop));
+    CUDA_CHECK(cudaFree(d_sink));
+    return 0;
+  }
   double fma_total_flops = static_cast<double>(sm_count) * fma_threads * fma_iters * 16.0;
   for (int w = 0; w < warmup; ++w) {
     fp32_fma_kernel<<<sm_count, fma_threads>>>(d_sink, fma_iters);

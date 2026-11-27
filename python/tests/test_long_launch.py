@@ -100,6 +100,35 @@ class LongLaunchTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "no design fields"):
             long_launch.freeze("sync-loop", self.pilot())
 
+    def test_mma_tables_and_fp32_fma_are_keyed_by_their_own_fields(self):
+        def timed(steps):
+            return {"steps": steps, "launch_ns_samples": [1.3e6] * 3}
+
+        pilot = {
+            "samples": 3,
+            "mma": {
+                "f16": [{"mma_warps_per_sm": 1, **timed(9000)}],
+                "bf16": [{"mma_warps_per_sm": 1, **timed(9100)}],
+            },
+            "fp32_fma": {"warps_per_sm": 16, **timed(52000)},
+            "fp32_fma_tflops_samples": [30.0] * 3,
+        }
+        schedule, record = long_launch.freeze("mma", pilot)
+        self.assertEqual(schedule, "9000\n9100\n52000\n")
+        self.assertEqual(
+            [p["point"] for p in record["points"]],
+            [
+                {"field": "mma/f16", "mma_warps_per_sm": 1},
+                {"field": "mma/bf16", "mma_warps_per_sm": 1},
+                {"field": "fp32_fma", "warps_per_sm": 16},
+            ],
+        )
+
+    def test_unregistered_field_is_refused(self):
+        pilot = {"samples": 3, "other": [{"steps": 1, "launch_ns_samples": [1.3e6] * 3}]}
+        with self.assertRaisesRegex(ValueError, "other: no design fields"):
+            long_launch.freeze("closed-loop", pilot)
+
     def test_l2_merge_points_are_keyed_by_sharing_and_stagger(self):
         def merge(stagger, steps):
             return {
