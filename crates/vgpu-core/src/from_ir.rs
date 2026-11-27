@@ -6,7 +6,7 @@ use crate::kernel::{Access, CvWorkspace, Kernel, Spill, SpillScope, Tile, TripCo
 use crate::l2::SpillTraffic;
 use crate::l2::{L2InitState, L2Model, L2Options, L2Profile};
 use crate::profile::Profile;
-use crate::sim::{ModelError, Traffic, L2};
+use crate::sim::{ModelError, SpillSplit, Traffic, L2};
 use std::collections::HashMap;
 
 fn unsupported(what: impl Into<String>) -> ModelError {
@@ -235,20 +235,32 @@ impl L2 for IrL2<'_> {
         }
     }
 
-    fn spill(&mut self, sm: u32, active_threads_in_sm: u32, s: &Spill) -> (f64, f64, f64) {
+    fn spill(
+        &mut self,
+        sm: u32,
+        active_threads_in_sm: u32,
+        carveout_bytes: u64,
+        s: &Spill,
+    ) -> SpillSplit {
         let bytes = s.bytes_per_thread.round() as u64;
         let SpillTraffic {
             l1_bytes_per_iter,
             l2_bytes_per_iter,
             dram_bytes_per_iter,
-            ..
-        } = self
-            .model
-            .account_spill(sm, active_threads_in_sm, s.stack_frame_bytes, bytes, 0);
-        (
-            l1_bytes_per_iter as f64,
-            l2_bytes_per_iter as f64,
-            dram_bytes_per_iter as f64,
-        )
+            overflow_ratio,
+        } = self.model.account_spill(
+            sm,
+            active_threads_in_sm,
+            carveout_bytes,
+            s.stack_frame_bytes,
+            bytes,
+            0,
+        );
+        SpillSplit {
+            l1: l1_bytes_per_iter as f64,
+            l2: l2_bytes_per_iter as f64,
+            dram: dram_bytes_per_iter as f64,
+            miss: overflow_ratio,
+        }
     }
 }

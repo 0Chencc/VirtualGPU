@@ -25,6 +25,10 @@
 - NVIDIA L40S (`sm_89`) profile
 - NVIDIA GeForce RTX 3070 (`sm_86`) profile
 
+### Changed
+
+- Spill traffic leaves L1 as a step at the L1 size left by the kernel's shared memory carveout, from the measured L1 miss curves, instead of a linear overflow past one threshold
+
 ### Fixed
 
 - The KernelIR's shared memory reads count the MMA operands' `ldmatrix` bytes per warp from the PTX, instead of each operand tile once per CTA (2 to 6 times fewer bytes on the v0.2 holdout configs)

@@ -1,7 +1,7 @@
 use vgpu_core::kernel::{Access, Kernel, Spill, SpillScope, Tile, TripCounts, Work};
 use vgpu_core::occupancy::{occupancy, Limiter, OccupancyError};
 use vgpu_core::profile::Profile;
-use vgpu_core::sim::{simulate, ConstantHitRatio, Machine, Prediction, Traffic, L2};
+use vgpu_core::sim::{simulate, ConstantHitRatio, Machine, Prediction, SpillSplit, Traffic, L2};
 
 const MMA: &str = "mma.sync:f16:f16:f32:16x8x16";
 
@@ -357,8 +357,12 @@ impl L2 for SpillToL2 {
             dram: 0.0,
         }
     }
-    fn spill(&mut self, _: u32, threads: u32, s: &Spill) -> (f64, f64, f64) {
-        (0.0, s.bytes_per_thread * f64::from(threads), 0.0)
+    fn spill(&mut self, _: u32, threads: u32, _: u64, s: &Spill) -> SpillSplit {
+        SpillSplit {
+            l2: s.bytes_per_thread * f64::from(threads),
+            miss: 1.0,
+            ..SpillSplit::default()
+        }
     }
 }
 

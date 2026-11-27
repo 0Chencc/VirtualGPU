@@ -75,7 +75,7 @@ The core uses the online API in [kernel-ir.md](kernel-ir.md):
 
 - `begin_tile` / `end_tile` when a tile (one outer iteration of a CTA) starts and ends, so the L2 model always knows the resident set.
 - `split(sm_id, cta_id, outer_idx, op_id, k_begin, k_end, is_write, cache_policy, t_ns)` once per (CTA, op, phase segment). The segment covers the half-open inner-step range `[k_begin, k_end)` between two changes of the resident set; prologue and epilogue pass `[0, 1)`. The result is the aggregate over the range. Calls stay per segment, never per pipeline iteration, which keeps a 4096-tile GEMM at a few calls per tile and operand.
-- `account_spill` once per CTA at dispatch, because resident threads per SM are known only then.
+- `account_spill` once per run at full residency, with the resident threads per SM and the shared memory carveout from occupancy. The share that leaves L1 is the measured L1 miss rate of the frames at that carveout (design.md 6.4).
 
 Other points:
 
@@ -160,7 +160,7 @@ Neither test GPU (sm_89, sm_121) is known to us to exercise Triton's warp specia
 
 The assembler reports static spill bytes, not dynamic counts. The core uses:
 
-- `inner_loop_confirmed`: spill bytes are added as local memory traffic to every iteration, and `account_spill` decides how much of it reaches L2 and DRAM.
+- `inner_loop_confirmed`: spill bytes are added as local memory traffic to every iteration, and `account_spill` decides how much of it reaches L2 and DRAM from the L1 miss curve of the chosen carveout.
 - `inner_loop_assumed`: the same at draw 0. In draws 1 to `N` the per-iteration spill traffic is scaled by a factor sampled uniformly in `[0, 1]`, covering everything from a one-time cost to a per-iteration cost. A ranking that depends on where the spill code sits then becomes indistinguishable.
 - `prologue_epilogue`: added once to the prologue or epilogue.
 - `none`: no spill cost.

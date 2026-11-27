@@ -168,6 +168,39 @@ pub struct Memory {
     pub dram_latency_loaded_ns: Option<MeasuredValue>,
     #[serde(default)]
     pub l2_latency_loaded_ns: Option<MeasuredValue>,
+    #[serde(default)]
+    pub spill_reload_latency_by_count: Vec<SpillReloadPoint>,
+    #[serde(default)]
+    pub l1_to_l2_spill_threshold_by_carveout: Vec<L1CarveoutPoint>,
+}
+
+/// Extra time per loop iteration from `reload_count` local memory reloads.
+#[derive(Debug, Clone, Deserialize)]
+pub struct SpillReloadPoint {
+    /// `l1_hit`, `l1_boundary` or `l2_spill`.
+    pub regime: String,
+    /// `serial_chain` or `batch_before_dep`.
+    pub dependency_mode: String,
+    #[serde(default)]
+    pub resident_threads_per_sm: Option<u64>,
+    #[serde(default)]
+    pub frame_bytes_per_thread: Option<u64>,
+    pub reload_count: u32,
+    pub extra_ns_vs_zero: MeasuredValue,
+}
+
+/// L1 miss rate of local memory by working set at one shared memory carveout.
+#[derive(Debug, Clone, Deserialize)]
+pub struct L1CarveoutPoint {
+    pub smem_carveout_bytes: u64,
+    #[serde(default)]
+    pub miss_rate_by_working_set: Vec<L1MissPoint>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct L1MissPoint {
+    pub working_set_bytes: u64,
+    pub estimated_miss_rate: MeasuredValue,
 }
 
 #[derive(Debug, Clone, Deserialize)]

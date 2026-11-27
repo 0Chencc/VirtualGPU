@@ -43,6 +43,10 @@ pub struct L2Profile {
     pub l2_sector_bytes: u64,
     pub l1_size_bytes: u64,
     pub l1_to_l2_spill_threshold_bytes_per_sm: u64,
+    /// `(shared memory carveout, (working set, L1 miss rate))` for local
+    /// memory, sorted by carveout, each curve non-decreasing. Empty falls back
+    /// to a step at `l1_to_l2_spill_threshold_bytes_per_sm`.
+    pub spill_miss_by_carveout: Vec<(u64, Vec<(f64, f64)>)>,
     /// Monotone non-increasing `(working_set_bytes, hit_rate)` curve derived from
     /// `measured.memory.l2_rescan_hit_rate_by_working_set`. Empty falls back to a step at 1.0x.
     pub rescan_hit_curve: Vec<(f64, f64)>,
@@ -62,6 +66,20 @@ fn build_monotone_rescan_curve(points: &[(f64, f64)]) -> Vec<(f64, f64)> {
         if curve[i - 1].1 < curve[i].1 {
             curve[i - 1].1 = curve[i].1;
         }
+    }
+    curve
+}
+
+/// Sorted, clamped and non-decreasing `(working_set_bytes, miss_rate)` curve.
+fn build_monotone_miss_curve(points: &[(f64, f64)]) -> Vec<(f64, f64)> {
+    let mut curve: Vec<(f64, f64)> = points
+        .iter()
+        .filter(|&&(b, m)| b.is_finite() && b > 0.0 && m.is_finite())
+        .map(|&(b, m)| (b, m.clamp(0.0, 1.0)))
+        .collect();
+    curve.sort_by(|a, b| a.0.total_cmp(&b.0));
+    for i in 1..curve.len() {
+        curve[i].1 = curve[i].1.max(curve[i - 1].1);
     }
     curve
 }
@@ -89,6 +107,22 @@ impl From<&Profile> for L2Profile {
             .iter()
             .map(|pt| (pt.working_set_bytes as f64, pt.estimated_hit_rate.value))
             .collect();
+        let mut spill_miss_by_carveout: Vec<(u64, Vec<(f64, f64)>)> = p
+            .measured
+            .memory
+            .l1_to_l2_spill_threshold_by_carveout
+            .iter()
+            .map(|c| {
+                let raw: Vec<(f64, f64)> = c
+                    .miss_rate_by_working_set
+                    .iter()
+                    .map(|q| (q.working_set_bytes as f64, q.estimated_miss_rate.value))
+                    .collect();
+                (c.smem_carveout_bytes, build_monotone_miss_curve(&raw))
+            })
+            .filter(|(_, curve)| !curve.is_empty())
+            .collect();
+        spill_miss_by_carveout.sort_by_key(|c| c.0);
         Self {
             l2_size_bytes: s.l2_size_bytes,
             l2_effective_capacity_bytes: eff_cap,
@@ -97,6 +131,7 @@ impl From<&Profile> for L2Profile {
             l2_sector_bytes: s.l2_sector_bytes,
             l1_size_bytes: s.l1_size_bytes,
             l1_to_l2_spill_threshold_bytes_per_sm: spill_threshold,
+            spill_miss_by_carveout,
             rescan_hit_curve: build_monotone_rescan_curve(&raw_curve),
         }
     }
@@ -525,10 +560,35 @@ impl<'a> L2Model<'a> {
         }
     }
 
+    /// L1 miss rate of a local memory footprint per SM at a shared memory
+    /// carveout: the measured curve of the smallest measured carveout at or
+    /// above it (the largest if none is), else a step at the threshold.
+    pub fn spill_miss_rate(&self, footprint_bytes: u64, carveout_bytes: u64) -> f64 {
+        let table = &self.profile.spill_miss_by_carveout;
+        if let Some((_, curve)) = table
+            .iter()
+            .find(|c| c.0 >= carveout_bytes)
+            .or_else(|| table.last())
+        {
+            return interpolate(curve, footprint_bytes as f64);
+        }
+        let thresh = if self.profile.l1_to_l2_spill_threshold_bytes_per_sm > 0 {
+            self.profile.l1_to_l2_spill_threshold_bytes_per_sm
+        } else {
+            self.profile.l1_size_bytes.max(1)
+        };
+        if footprint_bytes <= thresh {
+            0.0
+        } else {
+            1.0
+        }
+    }
+
     pub fn account_spill(
         &mut self,
         _sm_id: u32,
         active_threads_in_sm: u32,
+        carveout_bytes: u64,
         stack_frame_bytes: u64,
         spill_loads_bytes: u64,
         spill_stores_bytes: u64,
@@ -545,17 +605,7 @@ impl<'a> L2Model<'a> {
         }
 
         let total_local_footprint = stack_frame_bytes.saturating_mul(active_threads_in_sm as u64);
-        let thresh = if self.profile.l1_to_l2_spill_threshold_bytes_per_sm > 0 {
-            self.profile.l1_to_l2_spill_threshold_bytes_per_sm
-        } else {
-            self.profile.l1_size_bytes.max(1)
-        };
-
-        let overflow_ratio = if total_local_footprint <= thresh {
-            0.0
-        } else {
-            ((total_local_footprint - thresh) as f64 / total_local_footprint as f64).clamp(0.0, 1.0)
-        };
+        let overflow_ratio = self.spill_miss_rate(total_local_footprint, carveout_bytes);
 
         let overflow_footprint = (total_local_footprint as f64 * overflow_ratio) as u64;
         self.spill_l2_pressure_bytes = self.spill_l2_pressure_bytes.max(overflow_footprint);
@@ -726,6 +776,7 @@ mod tests {
             l2_sector_bytes: 32,
             l1_size_bytes: 128 * 1024,
             l1_to_l2_spill_threshold_bytes_per_sm: 64 * 1024,
+            spill_miss_by_carveout: Vec::new(),
             rescan_hit_curve: vec![
                 (18.0 * mib, 1.0),
                 (36.0 * mib, 1.0),
@@ -937,7 +988,7 @@ mod tests {
     }
 
     #[test]
-    fn spill_overflow_transitions_from_l1_to_l2_dram() {
+    fn spill_overflow_is_a_step_at_the_threshold_without_carveout_curves() {
         let json = include_str!("../../../../schemas/examples/gemm_sm89.json");
         let ir = KernelIR::from_json_str(json).unwrap();
         let mut l2 = L2Model::new(
@@ -947,16 +998,44 @@ mod tests {
             L2Options::default(),
         );
 
-        // 256 active threads * 128B stack = 32KB <= 64KB threshold -> fits in L1.
-        let small = l2.account_spill(0, 256, 128, 32, 32);
+        // 256 threads * 128 B = 32 KiB, under the 64 KiB threshold: all in L1.
+        let small = l2.account_spill(0, 256, 0, 128, 32, 32);
         assert_eq!(small.overflow_ratio, 0.0);
         assert_eq!(small.l2_bytes_per_iter, 0);
         assert_eq!(small.dram_bytes_per_iter, 0);
 
-        // 256 active threads * 512B stack = 128KB > 64KB -> 50% overflows to L2.
-        let large = l2.account_spill(0, 256, 512, 64, 64);
-        assert!((large.overflow_ratio - 0.5).abs() < 1e-6);
+        // 256 threads * 512 B = 128 KiB, over it: all of it leaves L1.
+        let large = l2.account_spill(0, 256, 0, 512, 64, 64);
+        assert_eq!(large.overflow_ratio, 1.0);
+        assert_eq!(large.l1_bytes_per_iter, 0);
         assert!(large.l2_bytes_per_iter > 0);
+    }
+
+    #[test]
+    fn spill_miss_follows_the_curve_of_the_chosen_carveout() {
+        let json = include_str!("../../../../schemas/examples/gemm_sm89.json");
+        let ir = KernelIR::from_json_str(json).unwrap();
+        let kib = 1024.0;
+        let mut prof = synthetic_l2_profile();
+        prof.spill_miss_by_carveout = vec![
+            (0, vec![(96.0 * kib, 0.0), (128.0 * kib, 1.0)]),
+            (64 * 1024, vec![(16.0 * kib, 0.0), (48.0 * kib, 1.0)]),
+        ];
+        let l2 = L2Model::new(&ir, prof, L2InitState::Cold, L2Options::default());
+        let fp = 32 * 1024;
+        assert_eq!(l2.spill_miss_rate(fp, 0), 0.0);
+        assert_eq!(l2.spill_miss_rate(fp, 32 * 1024), 0.5);
+        assert_eq!(l2.spill_miss_rate(fp, 64 * 1024), 0.5);
+        // Past the largest measured carveout the largest curve applies.
+        assert_eq!(l2.spill_miss_rate(fp, 100 * 1024), 0.5);
+        assert_eq!(l2.spill_miss_rate(112 * 1024, 0), 0.5);
+        assert_eq!(l2.spill_miss_rate(1 << 20, 0), 1.0);
+    }
+
+    #[test]
+    fn miss_curves_are_clamped_and_non_decreasing() {
+        let c = build_monotone_miss_curve(&[(3.0, 0.7), (1.0, -0.1), (2.0, 0.8), (4.0, 1.2)]);
+        assert_eq!(c, vec![(1.0, 0.0), (2.0, 0.8), (3.0, 0.8), (4.0, 1.0)]);
     }
 
     #[test]
@@ -979,6 +1058,11 @@ mod tests {
             prof.l1_to_l2_spill_threshold_bytes_per_sm,
             measured("/measured/spill/l1_to_l2_spill_threshold_bytes_per_sm/value")
         );
+        assert_eq!(prof.spill_miss_by_carveout.len(), 6);
+        assert!(prof
+            .spill_miss_by_carveout
+            .windows(2)
+            .all(|w| w[0].0 < w[1].0));
         assert!(!prof.rescan_hit_curve.is_empty());
         for w in prof.rescan_hit_curve.windows(2) {
             assert!(w[0].0 <= w[1].0, "rescan curve x-axis must be sorted");
@@ -1026,6 +1110,7 @@ mod tests {
             l2_sector_bytes: 32,
             l1_size_bytes: 128 * 1024,
             l1_to_l2_spill_threshold_bytes_per_sm: 64 * 1024,
+            spill_miss_by_carveout: Vec::new(),
             rescan_hit_curve: vec![(36.0 * mib, 1.0), (39.0 * mib, 0.326), (45.0 * mib, 0.0)],
         };
 

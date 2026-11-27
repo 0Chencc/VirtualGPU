@@ -45,6 +45,16 @@ impl std::ops::Add for Traffic {
     }
 }
 
+/// Spill traffic of all resident threads of one SM per execution of the spill
+/// scope, by the level that serves it, and the L1 miss rate of the frames.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct SpillSplit {
+    pub l1: f64,
+    pub l2: f64,
+    pub dram: f64,
+    pub miss: f64,
+}
+
 /// The core's view of the L2 model.
 pub trait L2 {
     fn begin_tile(&mut self, _sm: u32, _program: u32, _tile: u32, _t_ns: f64) {}
@@ -64,13 +74,18 @@ pub trait L2 {
     ) -> Traffic;
 
     /// Spill traffic of all resident threads of one SM per execution of the
-    /// spill scope, as `(L1 bytes, L2 bytes, DRAM bytes)`.
-    fn spill(&mut self, _sm: u32, active_threads_in_sm: u32, s: &Spill) -> (f64, f64, f64) {
-        (
-            s.bytes_per_thread * f64::from(active_threads_in_sm),
-            0.0,
-            0.0,
-        )
+    /// spill scope, at the SM's shared memory carveout.
+    fn spill(
+        &mut self,
+        _sm: u32,
+        active_threads_in_sm: u32,
+        _carveout_bytes: u64,
+        s: &Spill,
+    ) -> SpillSplit {
+        SpillSplit {
+            l1: s.bytes_per_thread * f64::from(active_threads_in_sm),
+            ..SpillSplit::default()
+        }
     }
 }
 
@@ -1154,12 +1169,12 @@ pub fn simulate<L: L2>(
     let slots = occ.ctas_per_sm * n_sm;
     // Spill traffic at full residency, computed once for the steady state.
     let threads_in_sm = occ.ctas_per_sm * k.num_warps * p.specs.warp_size;
-    let (l1, l2b, dram) = match k.spill.scope {
-        SpillScope::None => (0.0, 0.0, 0.0),
-        _ => l2.spill(0, threads_in_sm, &k.spill),
+    let split = match k.spill.scope {
+        SpillScope::None => SpillSplit::default(),
+        _ => l2.spill(0, threads_in_sm, occ.carveout_bytes, &k.spill),
     };
     let per_cta = f64::from(occ.ctas_per_sm);
-    let spill = (l1 / per_cta, l2b / per_cta, dram / per_cta);
+    let spill = (split.l1 / per_cta, split.l2 / per_cta, split.dram / per_cta);
     let mut sim = Sim {
         k,
         m,

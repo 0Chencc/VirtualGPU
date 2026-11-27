@@ -75,7 +75,7 @@ Required means the profile ships at 1.0 and has a sealed holdout. Profile only m
 Fix what made v0.2 miss on the RTX 4070 and GB10, and fix the profiles we already have.
 
 - [ ] Spill reloads cost latency on the critical path, using `spill_reload_latency_by_count`
-- [ ] Spill traffic moves from L1 to L2 as a step at the L1 capacity for the chosen carveout (`l1_to_l2_spill_threshold_by_carveout`)
+- [x] Spill traffic moves from L1 to L2 as a step at the L1 capacity for the chosen carveout (`l1_to_l2_spill_threshold_by_carveout`)
 - [ ] Dynamic count of local loads per iteration, so the two causal attention loops are not summed into one spill figure
 - [ ] Narrow register-staged loads on unaligned shapes (H5): redo both forms with launches over 1 ms and captures that pass the dispersion rule, then decide
 - [ ] Synchronous load GEMM (`num_stages = 1`, +9.1% warm): find the missing mechanism with a microbenchmark
