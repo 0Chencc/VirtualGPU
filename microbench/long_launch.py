@@ -97,6 +97,7 @@ DESIGN_FIELDS = {
         },
         "shfl_latency": ("warps",),
     },
+    "cp-async": {"cp_async": ("threads_per_sm",), "smem": ("threads_per_sm",)},
     "mma-chain": {
         "mma_chain_latency": (
             "variant",

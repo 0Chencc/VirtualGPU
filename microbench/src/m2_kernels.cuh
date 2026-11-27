@@ -704,7 +704,7 @@ __global__ void smem_bw_kernel(uint4* __restrict__ sink, int iters, uint32_t see
   }
 }
 
-static int run_cp_async(int device, int samples, int warmup) {
+static int run_cp_async(int device, int samples, int warmup, LaunchSchedule* schedule = nullptr) {
   cudaDeviceProp prop{};
   CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
   const int sm_count = prop.multiProcessorCount;
@@ -725,6 +725,36 @@ static int run_cp_async(int device, int samples, int warmup) {
   // 1) cp.async per-SM BW (1 CTA/SM, 256 threads, 16 B/thread/iter).
   const int cp_iters = 16384;
   const double cp_bytes_per_sm = static_cast<double>(256) * 16.0 * cp_iters;
+  if (schedule) {
+    // Legacy launches already take about 1.5 ms; the schedule only records lengths.
+    auto rates = [&](const LaunchSchedule::Timed& timed, double bytes_per_iter) {
+      for (size_t k = 0; k < timed.launch_ns.size(); ++k) {
+        std::printf("%s%.3f", k ? ", " : "", bytes_per_iter * timed.length / timed.launch_ns[k]);
+      }
+    };
+    std::printf("{\n  \"sm_count\": %d,\n  \"samples\": %d,\n  \"cp_async\": {\"threads_per_sm\": 256",
+                sm_count, samples);
+    auto cp = schedule->time_point(
+        cp_iters, 1, 1 << 28, warmup, samples, ev_start, ev_stop, [] {}, [&](int length) {
+          cp_async_bw_kernel<<<sm_count, 256>>>(d_src, d_sink, n_vec4_mask, length);
+        });
+    std::printf("},\n  \"cp_async_bw_per_sm_gbps_samples\": [");
+    rates(cp, 256.0 * 16.0);
+    uint32_t seed = 1;
+    std::printf("],\n  \"smem\": {\"threads_per_sm\": 512");
+    auto sm = schedule->time_point(16384, 1, 1 << 28, warmup, samples, ev_start, ev_stop, [] {},
+                                   [&](int length) {
+                                     smem_bw_kernel<<<sm_count, 512>>>(d_sink, length, seed++);
+                                   });
+    std::printf("},\n  \"smem_bw_per_sm_gbps_samples\": [");
+    rates(sm, 512.0 * 64.0);
+    std::printf("]\n}\n");
+    CUDA_CHECK(cudaEventDestroy(ev_start));
+    CUDA_CHECK(cudaEventDestroy(ev_stop));
+    CUDA_CHECK(cudaFree(d_src));
+    CUDA_CHECK(cudaFree(d_sink));
+    return 0;
+  }
   for (int w = 0; w < warmup; ++w) {
     cp_async_bw_kernel<<<sm_count, 256>>>(d_src, d_sink, n_vec4_mask, 1024);
   }

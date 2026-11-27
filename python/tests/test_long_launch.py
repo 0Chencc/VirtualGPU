@@ -474,3 +474,16 @@ class LongLaunchTests(unittest.TestCase):
         self.assertEqual(record["points"][-1]["point"], {"field": "shfl_latency", "warps": 1})
         first = record["points"][0]["point"]
         self.assertEqual(first, {"field": "sfu_issue_rate_per_sm_gips", "warps_per_sm": 1})
+
+    def test_cp_async_and_smem_points_record_their_lengths(self):
+        pilot = {
+            "samples": 3,
+            "sm_count": 48,
+            "cp_async": {"threads_per_sm": 256, "steps": 16384, "launch_ns_samples": [1.5e6] * 3},
+            "cp_async_bw_per_sm_gbps_samples": [44.0] * 3,
+            "smem": {"threads_per_sm": 512, "steps": 16384, "launch_ns_samples": [1.9e6] * 3},
+            "smem_bw_per_sm_gbps_samples": [300.0] * 3,
+        }
+        schedule, record = long_launch.freeze("cp-async", pilot)
+        self.assertEqual(schedule, "16384\n16384\n")
+        self.assertEqual([p["point"]["field"] for p in record["points"]], ["cp_async", "smem"])
