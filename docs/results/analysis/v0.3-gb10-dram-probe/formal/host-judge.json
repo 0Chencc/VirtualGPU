@@ -1,0 +1,655 @@
+{
+ "rule": "microbench/host_trace.py judge over each block from state_before.utc to state_after.utc",
+ "sessions": {
+  "session-1": [
+   {
+    "block": 0,
+    "status": "no_trace",
+    "samples": null,
+    "max_busy_share": 0,
+    "sustained_other_processes": null,
+    "block_cpu_busy_share": 0.0502
+   },
+   {
+    "block": 1,
+    "status": "no_trace",
+    "samples": null,
+    "max_busy_share": 0,
+    "sustained_other_processes": null,
+    "block_cpu_busy_share": 0.0485
+   },
+   {
+    "block": 2,
+    "status": "no_trace",
+    "samples": null,
+    "max_busy_share": 0,
+    "sustained_other_processes": null,
+    "block_cpu_busy_share": 0.0492
+   },
+   {
+    "block": 3,
+    "status": "no_trace",
+    "samples": null,
+    "max_busy_share": 0,
+    "sustained_other_processes": null,
+    "block_cpu_busy_share": 0.0496
+   },
+   {
+    "block": 4,
+    "status": "no_trace",
+    "samples": null,
+    "max_busy_share": 0,
+    "sustained_other_processes": null,
+    "block_cpu_busy_share": 0.0491
+   },
+   {
+    "block": 5,
+    "status": "no_trace",
+    "samples": null,
+    "max_busy_share": 0,
+    "sustained_other_processes": null,
+    "block_cpu_busy_share": 0.0485
+   },
+   {
+    "block": 6,
+    "status": "no_trace",
+    "samples": null,
+    "max_busy_share": 0,
+    "sustained_other_processes": null,
+    "block_cpu_busy_share": 0.0507
+   },
+   {
+    "block": 7,
+    "status": "no_trace",
+    "samples": null,
+    "max_busy_share": 0,
+    "sustained_other_processes": null,
+    "block_cpu_busy_share": 0.0524
+   },
+   {
+    "block": 8,
+    "status": "no_trace",
+    "samples": null,
+    "max_busy_share": 0,
+    "sustained_other_processes": null,
+    "block_cpu_busy_share": 0.0486
+   },
+   {
+    "block": 9,
+    "status": "no_trace",
+    "samples": null,
+    "max_busy_share": 0,
+    "sustained_other_processes": null,
+    "block_cpu_busy_share": 0.0516
+   },
+   {
+    "block": 10,
+    "status": "no_trace",
+    "samples": null,
+    "max_busy_share": 0,
+    "sustained_other_processes": null,
+    "block_cpu_busy_share": 0.0497
+   },
+   {
+    "block": 11,
+    "status": "no_trace",
+    "samples": null,
+    "max_busy_share": 0,
+    "sustained_other_processes": null,
+    "block_cpu_busy_share": 0.054
+   },
+   {
+    "block": 12,
+    "status": "no_trace",
+    "samples": null,
+    "max_busy_share": 0,
+    "sustained_other_processes": null,
+    "block_cpu_busy_share": 0.0506
+   },
+   {
+    "block": 13,
+    "status": "no_trace",
+    "samples": null,
+    "max_busy_share": 0,
+    "sustained_other_processes": null,
+    "block_cpu_busy_share": 0.0488
+   },
+   {
+    "block": 14,
+    "status": "no_trace",
+    "samples": null,
+    "max_busy_share": 0,
+    "sustained_other_processes": null,
+    "block_cpu_busy_share": 0.0496
+   },
+   {
+    "block": 15,
+    "status": "no_trace",
+    "samples": null,
+    "max_busy_share": 0,
+    "sustained_other_processes": null,
+    "block_cpu_busy_share": 0.0506
+   },
+   {
+    "block": 16,
+    "status": "no_trace",
+    "samples": null,
+    "max_busy_share": 0,
+    "sustained_other_processes": null,
+    "block_cpu_busy_share": 0.0485
+   },
+   {
+    "block": 17,
+    "status": "no_trace",
+    "samples": null,
+    "max_busy_share": 0,
+    "sustained_other_processes": null,
+    "block_cpu_busy_share": 0.0484
+   },
+   {
+    "block": 18,
+    "status": "no_trace",
+    "samples": null,
+    "max_busy_share": 0,
+    "sustained_other_processes": null,
+    "block_cpu_busy_share": 0.0515
+   },
+   {
+    "block": 19,
+    "status": "no_trace",
+    "samples": null,
+    "max_busy_share": 0,
+    "sustained_other_processes": null,
+    "block_cpu_busy_share": 0.0993
+   }
+  ],
+  "session-2": [
+   {
+    "block": 0,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.051,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0494
+   },
+   {
+    "block": 1,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.053,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0504
+   },
+   {
+    "block": 2,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.051,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0499
+   },
+   {
+    "block": 3,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.052,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0523
+   },
+   {
+    "block": 4,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.05,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.05
+   },
+   {
+    "block": 5,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.051,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0498
+   },
+   {
+    "block": 6,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.049,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.05
+   },
+   {
+    "block": 7,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.049,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0496
+   },
+   {
+    "block": 8,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.051,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0494
+   },
+   {
+    "block": 9,
+    "status": "passed",
+    "samples": 1,
+    "max_busy_share": 0.049,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.051
+   },
+   {
+    "block": 10,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.051,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0517
+   },
+   {
+    "block": 11,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.051,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0499
+   },
+   {
+    "block": 12,
+    "status": "passed",
+    "samples": 1,
+    "max_busy_share": 0.049,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.051
+   },
+   {
+    "block": 13,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.049,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0506
+   },
+   {
+    "block": 14,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.05,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.05
+   },
+   {
+    "block": 15,
+    "status": "passed",
+    "samples": 1,
+    "max_busy_share": 0.05,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0508
+   },
+   {
+    "block": 16,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.053,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0514
+   },
+   {
+    "block": 17,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.05,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0513
+   },
+   {
+    "block": 18,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.049,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0501
+   },
+   {
+    "block": 19,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.05,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0505
+   }
+  ],
+  "session-3": [
+   {
+    "block": 0,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.054,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0517
+   },
+   {
+    "block": 1,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.052,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0505
+   },
+   {
+    "block": 2,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.052,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0512
+   },
+   {
+    "block": 3,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.05,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0492
+   },
+   {
+    "block": 4,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.051,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0526
+   },
+   {
+    "block": 5,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.049,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0503
+   },
+   {
+    "block": 6,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.049,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0496
+   },
+   {
+    "block": 7,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.05,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0501
+   },
+   {
+    "block": 8,
+    "status": "passed",
+    "samples": 1,
+    "max_busy_share": 0.049,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0489
+   },
+   {
+    "block": 9,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.052,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0504
+   },
+   {
+    "block": 10,
+    "status": "failed",
+    "samples": 2,
+    "max_busy_share": 0.1,
+    "sustained_other_processes": {
+     "1853545:cc1plus": 2
+    },
+    "block_cpu_busy_share": 0.0996
+   },
+   {
+    "block": 11,
+    "status": "passed",
+    "samples": 1,
+    "max_busy_share": 0.048,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0514
+   },
+   {
+    "block": 12,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.051,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.05
+   },
+   {
+    "block": 13,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.05,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0489
+   },
+   {
+    "block": 14,
+    "status": "passed",
+    "samples": 1,
+    "max_busy_share": 0.048,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0507
+   },
+   {
+    "block": 15,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.05,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0489
+   },
+   {
+    "block": 16,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.053,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0509
+   },
+   {
+    "block": 17,
+    "status": "passed",
+    "samples": 1,
+    "max_busy_share": 0.047,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0514
+   },
+   {
+    "block": 18,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.051,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0524
+   },
+   {
+    "block": 19,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.049,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0494
+   }
+  ],
+  "session-4": [
+   {
+    "block": 0,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.053,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0513
+   },
+   {
+    "block": 1,
+    "status": "passed",
+    "samples": 1,
+    "max_busy_share": 0.049,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0498
+   },
+   {
+    "block": 2,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.049,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0496
+   },
+   {
+    "block": 3,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.052,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0508
+   },
+   {
+    "block": 4,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.052,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0509
+   },
+   {
+    "block": 5,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.052,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0509
+   },
+   {
+    "block": 6,
+    "status": "passed",
+    "samples": 1,
+    "max_busy_share": 0.043,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0513
+   },
+   {
+    "block": 7,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.051,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0508
+   },
+   {
+    "block": 8,
+    "status": "passed",
+    "samples": 1,
+    "max_busy_share": 0.047,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0489
+   },
+   {
+    "block": 9,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.053,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0518
+   },
+   {
+    "block": 10,
+    "status": "passed",
+    "samples": 1,
+    "max_busy_share": 0.051,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0551
+   },
+   {
+    "block": 11,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.05,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0495
+   },
+   {
+    "block": 12,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.053,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0507
+   },
+   {
+    "block": 13,
+    "status": "passed",
+    "samples": 1,
+    "max_busy_share": 0.047,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0503
+   },
+   {
+    "block": 14,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.052,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0511
+   },
+   {
+    "block": 15,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.051,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.051
+   },
+   {
+    "block": 16,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.05,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0509
+   },
+   {
+    "block": 17,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.05,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0492
+   },
+   {
+    "block": 18,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.054,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0513
+   },
+   {
+    "block": 19,
+    "status": "passed",
+    "samples": 2,
+    "max_busy_share": 0.049,
+    "sustained_other_processes": {},
+    "block_cpu_busy_share": 0.0502
+   }
+  ]
+ }
+}
