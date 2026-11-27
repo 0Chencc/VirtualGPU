@@ -278,7 +278,7 @@ def check_cache_control(control, label):
     return {"samples_ns": control, "median_ns": medians}
 
 
-def report_timings(name, case_id, entry, snapshots, sessions_seen, device_uuids):
+def report_timings(name, case_id, entry, snapshots, sessions_seen, device_uuids, *, legacy=None):
     case = entry["case"]
     device, family = name.split("-")
     shape = case["shape"] if family == "gemm" else [case[key] for key in ATTENTION_SHAPE]
@@ -287,7 +287,8 @@ def report_timings(name, case_id, entry, snapshots, sessions_seen, device_uuids)
     timings = {cache: {} for cache in CACHES}
     statuses = {key: {} for key in case["config_ids"]}
     probes = {}
-    legacy = name == "rtx4070-attention"
+    if legacy is None:
+        legacy = name == "rtx4070-attention"
     if set(snapshots) != {1, 2, 3}:
         raise ValueError(f"{case_id}: expected all three case-sessions")
     for order, raw in sorted(snapshots.items()):
