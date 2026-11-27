@@ -1,0 +1,15 @@
+{
+  "status": "released",
+  "timestamp_utc": "2026-11-27T07:53:59.793831+00:00",
+  "code_commit": "4ecde308dc086a073f8242c6f35fbb91d96a1161",
+  "inputs": {
+    "history": "c7fdec43f70289ab7c17432c312d30ef8bbb54ce3d69f33c1234ecf5dcc83e1f",
+    "aot": "31a9dcdb889f17d8545524125445748a2a399eebf1594c8cb4336c75dc244bb7",
+    "gemm": "fa03257073857afb940eb477171db6bb8b91a93af4385c77445d41e21982608b",
+    "attention": "aea8e303eb9a01943b7e762fc853d174c87721f70d104c33d530d247b942bb5d"
+  },
+  "capture_profiles": {
+    "gb10": "10625fa4832c864fcba4d81c9b99480e58f69c81644a9950083b702488442471",
+    "rtx4070": "3bb13b7307eabb803465a05cbcd939b78a6252bb2c54f3dc761c069ac2a8ed91"
+  }
+}
