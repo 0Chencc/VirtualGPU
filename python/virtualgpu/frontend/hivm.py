@@ -278,8 +278,11 @@ def parse_hivm_summary(
             if lhs_m and space in ("cbuf", "cc"):
                 dims = [int(x) for x in shape_str.split("x") if x.isdigit()]
                 if len(dims) == 4:
-                    # Fractal NZ layout: (M1, N1, M0, N0) or (K1, N1, N0, K0)
-                    ptr_tile_shapes[lhs_m.group(1)] = (dims[0] * dims[2], dims[1] * dims[3])
+                    # Ascend fractal NZ layout for logical (Rows, Cols) is (Cols1, Rows1, Rows0, Cols0):
+                    #   cc (C): (N1, M1, M0, N0) -> (M, N)
+                    #   cbuf A: (K1, M1, M0, K0) -> (M, K)
+                    #   cbuf B: (N1, K1, K0, N0) -> (K, N)
+                    ptr_tile_shapes[lhs_m.group(1)] = (dims[1] * dims[2], dims[0] * dims[3])
                 elif len(dims) == 2:
                     ptr_tile_shapes[lhs_m.group(1)] = (dims[0], dims[1])
 
@@ -390,25 +393,28 @@ def parse_hivm_summary(
                         )
                     )
 
-            for line in reg.splitlines():
-                if _RE_VEC_SFU.search(line):
-                    loop_sfu_ops += 1
-                    om = _RE_OUTS_SHAPE.search(line)
-                    numel = _shape_numel(om.group(1)) if om else None
-                    loop_sfu_insts += max(1.0, (numel or 32) / 32.0)
-                    if _core_type == "AIV" and om:
-                        dims = [int(x) for x in om.group(1).split("x") if x.isdigit()]
-                        if len(dims) >= 2:
-                            aiv_loop_max_rows = max(aiv_loop_max_rows, dims[0])
-                elif _RE_VEC_ALU.search(line):
-                    loop_vec_ops += 1
-                    om = _RE_OUTS_SHAPE.search(line)
-                    numel = _shape_numel(om.group(1)) if om else None
-                    loop_vec_insts += max(1.0, (numel or 32) / 32.0)
-                    if _core_type == "AIV" and om:
-                        dims = [int(x) for x in om.group(1).split("x") if x.isdigit()]
-                        if len(dims) >= 2:
-                            aiv_loop_max_rows = max(aiv_loop_max_rows, dims[0])
+            # AIC-only functions do not execute on the Vector unit; any hivm.hir.vbrc inside an
+            # AIC function is an L1 (cbuf) zero-padding helper rather than AIV vector ALU work.
+            if _core_type != "AIC":
+                for line in reg.splitlines():
+                    if _RE_VEC_SFU.search(line):
+                        loop_sfu_ops += 1
+                        om = _RE_OUTS_SHAPE.search(line)
+                        numel = _shape_numel(om.group(1)) if om else None
+                        loop_sfu_insts += max(1.0, (numel or 32) / 32.0)
+                        if _core_type == "AIV" and om:
+                            dims = [int(x) for x in om.group(1).split("x") if x.isdigit()]
+                            if len(dims) >= 2:
+                                aiv_loop_max_rows = max(aiv_loop_max_rows, dims[0])
+                    elif _RE_VEC_ALU.search(line):
+                        loop_vec_ops += 1
+                        om = _RE_OUTS_SHAPE.search(line)
+                        numel = _shape_numel(om.group(1)) if om else None
+                        loop_vec_insts += max(1.0, (numel or 32) / 32.0)
+                        if _core_type == "AIV" and om:
+                            dims = [int(x) for x in om.group(1).split("x") if x.isdigit()]
+                            if len(dims) >= 2:
+                                aiv_loop_max_rows = max(aiv_loop_max_rows, dims[0])
 
             sb_cnt = len(_RE_SYNC_BLOCK.findall(reg))
             loop_sync_blocks += sb_cnt

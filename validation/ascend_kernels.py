@@ -56,3 +56,15 @@ def read_flush(Data, Sink, BLOCK: tl.constexpr):
     total = tl.sum(vals)
     if total == -1234567:
         tl.store(Sink + pid, total)
+
+
+@triton.jit
+def stream_spacer(Sink, ITERS: tl.constexpr):
+    """Zero-L2-traffic register compute loop keeping the NPU stream busy before warm timing."""
+    pid = tl.program_id(0)
+    x = tl.full((64,), 1.0001, tl.float32) + pid * 0.0001
+    for _ in range(ITERS):
+        x = x * 0.99999 + 0.00001
+    total = tl.sum(x)
+    if total == -123456.0:
+        tl.store(Sink + pid, total)

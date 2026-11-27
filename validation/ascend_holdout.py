@@ -373,16 +373,22 @@ def cmd_capture(args: argparse.Namespace) -> None:
     l2_bytes = int(profile["specs"]["l2_size_bytes"])
     evict_bytes = 2 * l2_bytes  # 384 MiB > 192 MiB L2
 
-    # Clean read-only L2 eviction kernel (no dirty writes into the timed window).
-    from validation.ascend_kernels import read_flush
+    # Clean read-only L2 eviction kernel (no dirty writes into the timed window)
+    # plus a zero-L2 register spacer so warm timings avoid torch_npu host dispatch bubbles.
+    from validation.ascend_kernels import read_flush, stream_spacer
 
-    flush_block = 4096
+    flush_block = 16384
     flush_blocks = triton.cdiv(evict_bytes // 4, flush_block)
     flush_buf = torch.ones((flush_blocks * flush_block,), dtype=torch.int32, device="npu:0")
     flush_sink = torch.empty((flush_blocks,), dtype=torch.int32, device="npu:0")
+    spacer_sink = torch.empty((1,), dtype=torch.float32, device="npu:0")
+    spacer_iters = 15000  # ~420 us register-only loop, zero L2 traffic
 
     def evict_l2() -> None:
         read_flush[(flush_blocks,)](flush_buf, flush_sink, flush_block)
+
+    def pad_warm_stream() -> None:
+        stream_spacer[(1,)](spacer_sink, spacer_iters)
 
     # Warm-vs-cold read probe (64 MiB buffer <= 192 MiB L2)
     probe_bytes = 64 * 1024 * 1024
@@ -397,10 +403,12 @@ def cmd_capture(args: argparse.Namespace) -> None:
             read_flush[(probe_blocks,)](probe_buf, probe_sink, flush_block)
 
         do_read()
+        pad_warm_stream()
         torch.npu.synchronize()
         warm_ns, cold_ns = [], []
         for _ in range(6):
             do_read()
+            pad_warm_stream()
             ev0.record()
             do_read()
             ev1.record()
@@ -575,6 +583,13 @@ def cmd_capture(args: argparse.Namespace) -> None:
                 rng = random.Random(order_seed)
                 tel_before = _npu_smi_telemetry()
                 probe = run_cache_probe()
+                probe_ratio = statistics.median(probe["cold_ns"]) / statistics.median(
+                    probe["warm_ns"]
+                )
+                if probe_ratio <= 1.1:
+                    raise RuntimeError(
+                        f"Warm/cold L2 probe failed ({cid} s{session}): ratio={probe_ratio:.3f}"
+                    )
                 samples = []
                 for block in range(BLOCKS_PER_SESSION):
                     # Interleave (cache, config) in randomized order per block
@@ -584,6 +599,7 @@ def cmd_capture(args: argparse.Namespace) -> None:
                         fn = runnables[key]
                         if cache == "warm":
                             fn()
+                            pad_warm_stream()
                         else:
                             evict_l2()
                         ev0.record()
@@ -613,6 +629,7 @@ def cmd_capture(args: argparse.Namespace) -> None:
                     "protocol": {
                         "timer": "torch.npu.Event",
                         "cache_states": list(CACHES),
+                        "warm_stream_padding": "zero_l2_register_spacer",
                         "cold_flush": "read_only_triton_sum",
                         "l2_bytes": l2_bytes,
                         "eviction_bytes": evict_bytes,

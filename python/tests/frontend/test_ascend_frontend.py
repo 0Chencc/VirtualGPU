@@ -308,3 +308,46 @@ def test_assemble_and_predict_ascend_attention_causal_gqa() -> None:
     assert p_causal["time_ns"] < p_full["time_ns"]
     assert "unvalidated_feature" in p_causal["flags"]
     assert "unvalidated_target_ascend" in p_causal["diagnostics"]
+
+
+# Captured pattern from dense_gemm with tl.constexpr M, N, K (m128n64k32):
+# - fractal NZ cc is (N1=4, M1=8, M0=16, N0=16) -> logical (M=128, N=64)
+# - fractal NZ cbuf A is (K1=2, M1=8, M0=16, K0=16) -> logical (M=128, K=32)
+# - AIC-only masked load emits hivm.hir.vbrc into cbuf (not AIV vector ALU)
+SAMPLE_HIVM_GEMM_CONSTEXPR_RECT = """\
+func.func @dense_gemm(%arg0: i64) attributes {hivm.func_core_type = #hivm.func_core_type<AIC>} {
+  %c0_i64 = arith.constant 0 : i64
+  %c8192_i64 = arith.constant 8192 : i64
+  %c16384_i64 = arith.constant 16384 : i64
+  %c24576_i64 = arith.constant 24576 : i64
+  %c0_i32 = arith.constant 0 : i32
+  %c1_i32 = arith.constant 1 : i32
+  %c20_i32 = arith.constant 20 : i32
+  scf.for %arg15 = %3 to %1 step %c20_i32 : i32 {
+    %29 = hivm.hir.pointer_cast(%c0_i64) : memref<4x8x16x16xf32, #hivm.address_space<cc>>
+    %cast = memref.cast %29 : memref<4x8x16x16xf32, #hivm.address_space<cc>> to memref<?x?x?x?xf32, #hivm.address_space<cc>>
+    scf.for %arg16 = %c0_i32 to %11 step %c1_i32 : i32 {
+      %56 = hivm.hir.pointer_cast(%c8192_i64, %c24576_i64) : memref<4x2x16x16xf16, #hivm.address_space<cbuf>>
+      %57 = hivm.hir.pointer_cast(%c0_i64, %c16384_i64) : memref<2x8x16x16xf16, #hivm.address_space<cbuf>>
+      %cast_5 = memref.cast %57 : memref<2x8x16x16xf16, #hivm.address_space<cbuf>> to memref<?x?x?x?xf16, #hivm.address_space<cbuf>>
+      %cast_10 = memref.cast %56 : memref<4x2x16x16xf16, #hivm.address_space<cbuf>> to memref<?x?x?x?xf16, #hivm.address_space<cbuf>>
+      hivm.hir.vbrc ins(%cst : f16) outs(%collapse_shape : memref<4096xf16, #hivm.address_space<cbuf>>)
+      hivm.hir.mmadL1 ins(%cast_5, %cast_10, %72, %21, %64, %27 : memref<?x?x?x?xf16, #hivm.address_space<cbuf>>, memref<?x?x?x?xf16, #hivm.address_space<cbuf>>, i1, index, index, index) outs(%cast : memref<?x?x?x?xf32, #hivm.address_space<cc>>)
+    }
+  } {autoblockify.subloop}
+  return
+}
+"""
+
+
+def test_parse_hivm_constexpr_fractal_nz_and_aic_vbrc() -> None:
+    s = parse_hivm_summary(
+        SAMPLE_HIVM_GEMM_CONSTEXPR_RECT, requested_multibuffer=True, requested_num_stages=2
+    )
+    assert s.mix_mode == "aic"
+    assert s.ub_bytes == 0
+    assert s.loop_vec_ops == 0
+    assert s.loop_sfu_ops == 0
+    assert len(s.mma_ops) == 1
+    assert s.mma_ops[0].tile_mnk == (128, 64, 32)
+    assert s.mma_ops[0].count == (128 // 16) * (64 // 16) * (32 // 16)
