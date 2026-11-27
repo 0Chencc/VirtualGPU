@@ -26,9 +26,11 @@ ATTENTION_MANIFEST = ROOT / "validation/attention-suite.json"
 ATTENTION_CASE = "b2-q32-kv4-s768-d128-causal"
 ATTENTION_CONFIGS = ("m64n32-w4-s2", "m128n64-w4-s2", "m128n128-w8-s2")
 SECTORS = tuple(f"l1tex__t_sectors_pipe_lsu_mem_local_op_{op}.sum" for op in ("ld", "st"))
-WARP_METRICS = ("sass__inst_executed_local_loads", "sass__inst_executed_local_stores")
+# Per-PC counters, split into LDL and STL from the SASS opcode. NCU 2026.4 lists
+# sass__inst_executed_local_loads but does not store it in the report.
+WARP_METRIC = "inst_executed"
 SOURCE_METRIC = "thread_inst_executed_true"
-METRICS = (*SECTORS, *WARP_METRICS, SOURCE_METRIC)
+METRICS = (*SECTORS, WARP_METRIC, SOURCE_METRIC)
 LAUNCH = re.compile(r"^SPILL_COUNTER_LAUNCH (\d+) ([01]) (\d+) (\d+) (\d+)$", re.MULTILINE)
 LOCAL_OP = re.compile(r"^(?:@!?U?P\w+\s+)?(LDL|STL)(?:\.|\s|$)")
 
@@ -47,7 +49,7 @@ def run(args, env):
 
 
 def verify_metrics(ncu, env):
-    groups = {"profiling": SECTORS, "source": (*WARP_METRICS, SOURCE_METRIC)}
+    groups = {"profiling": SECTORS, "source": (WARP_METRIC, SOURCE_METRIC)}
     for collection, names in groups.items():
         table = run(
             [ncu, "--query-metrics-collection", collection, "--query-metrics-mode", "all"], env
@@ -105,11 +107,18 @@ def require_metric(action, name):
 
 
 def counters(action):
-    return {metric: count(require_metric(action, metric)) for metric in (*SECTORS, *WARP_METRICS)}
+    warps = local_counts(action, WARP_METRIC, lambda pc: "all").get("all", {})
+    return {metric: count(require_metric(action, metric)) for metric in SECTORS} | {
+        f"warp_local_{op}": warps.get(op, 0) for op in ("load", "store")
+    }
 
 
 def lane_counts(action, scope_for_pc):
-    metric = require_metric(action, SOURCE_METRIC)
+    return local_counts(action, SOURCE_METRIC, scope_for_pc)
+
+
+def local_counts(action, name, scope_for_pc):
+    metric = require_metric(action, name)
     if not metric.has_correlation_ids() or not metric.num_instances():
         raise ValueError(f"{action.name()}: NCU supplied no instruction-level counters")
     ids = metric.correlation_ids()

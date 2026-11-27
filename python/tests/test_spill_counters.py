@@ -35,10 +35,10 @@ def action(rows, local_sectors=(0, 0)):
         spill.SOURCE_METRIC: Metric(
             spill.SOURCE_METRIC, [value for _, value, _ in rows], range(len(rows))
         ),
-        **{
-            key: Metric(key, value)
-            for key, value in zip((*spill.SECTORS, *spill.WARP_METRICS), (*local_sectors, 0, 0))
-        },
+        spill.WARP_METRIC: Metric(
+            spill.WARP_METRIC, [value // 32 for _, value, _ in rows], range(len(rows))
+        ),
+        **{key: Metric(key, value) for key, value in zip(spill.SECTORS, local_sectors)},
         "launch__grid_size": Metric("launch__grid_size", 2),
         "launch__block_size": Metric("launch__block_size", 128),
     }
@@ -85,6 +85,8 @@ class SpillCounterTests(unittest.TestCase):
         )
         self.assertEqual(row["per_cta_iteration"][spill.SECTORS[0]], 32)
         self.assertEqual(row["per_cta_iteration"][spill.SECTORS[1]], 0)
+        self.assertEqual(row["per_cta_iteration"]["warp_local_load"], 8)
+        self.assertEqual(row["per_cta_iteration"]["warp_local_store"], 0)
 
     def test_attention_uses_distinct_source_ranges_and_counts_odd_tail(self):
         helper = "def _attention_tiles():\n    pass\n"
