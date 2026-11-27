@@ -31,6 +31,22 @@ def output(*rows_per_field, samples=15):
 
 
 class LongLaunchTests(unittest.TestCase):
+    def test_l2_read_instructions_are_separate_frozen_curves(self):
+        row = {"target_sms": 48, "steps": 2048, "launch_ns_samples": [1.3e6] * 3}
+        raw = {"samples": 3, "read_curve": [row], "read_curve_cp_async": [dict(row)]}
+        _, freeze = long_launch.freeze("l2", raw)
+        self.assertEqual(
+            [entry["point"] for entry in freeze["points"]],
+            [
+                {"field": "read_curve", "target_sms": 48},
+                {"field": "read_curve_cp_async", "target_sms": 48},
+            ],
+        )
+        long_launch.verify(freeze, raw)
+        raw["read_curve_cp_async"][0]["target_sms"] = 24
+        with self.assertRaisesRegex(ValueError, "differs from the freeze"):
+            long_launch.verify(freeze, raw)
+
     def test_dram_write_has_its_own_frozen_point(self):
         row = {"target_sms": 48, "steps": 384, "launch_ns_samples": [1.3e6] * 3}
         raw = {"samples": 3, "read_curve": [row], "write_full": [dict(row, steps=512)]}

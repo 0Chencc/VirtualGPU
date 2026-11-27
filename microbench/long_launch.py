@@ -40,7 +40,7 @@ DESIGN_FIELDS = {
         )
     },
     "dram-bw": {"read_curve": ("target_sms",), "write_full": ("target_sms",)},
-    "l2": {"read_curve": ("target_sms",)},
+    "l2": {"read_curve": ("target_sms",), "read_curve_cp_async": ("target_sms",)},
     "closed-loop": {"dram_closed_loop": CLOSED_LOOP, "l2_closed_loop": CLOSED_LOOP},
     "l2-merge": {
         "l2_merge_by_sharing": ("active_ctas", "sharing", "bytes_per_cta", "stagger_stages")

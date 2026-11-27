@@ -469,14 +469,6 @@ static int run_l2(int device, int samples, int warmup, LaunchSchedule* schedule 
     }
     std::printf("]}");
   }
-  if (schedule) {
-    std::printf("\n  ]\n}\n");
-    CUDA_CHECK(cudaEventDestroy(ev_start));
-    CUDA_CHECK(cudaEventDestroy(ev_stop));
-    CUDA_CHECK(cudaFree(d_buf));
-    CUDA_CHECK(cudaFree(d_sink));
-    return 0;
-  }
   std::printf("\n  ],\n");
 
   // 1b) L2 read BW vs active SMs via cp.async.cg (bypasses SM register scoreboard limits).
@@ -495,16 +487,24 @@ static int run_l2(int device, int samples, int warmup, LaunchSchedule* schedule 
       int steps = std::max(64, static_cast<int>(target_total / step_bytes));
       double total_bytes = static_cast<double>(step_bytes) * static_cast<double>(steps);
 
-      auto launch_cp = [&]() {
+      auto launch_cp = [&](int count) {
         if (full_gpu) {
-          l2_read_cp_async_kernel<4, 1><<<grid, 256, dyn_smem>>>(d_buf, d_sink, cp_mask, steps);
+          l2_read_cp_async_kernel<4, 1><<<grid, 256, dyn_smem>>>(d_buf, d_sink, cp_mask, count);
         } else {
-          l2_read_cp_async_kernel<4, 2><<<grid, 256, dyn_smem>>>(d_buf, d_sink, cp_mask, steps);
+          l2_read_cp_async_kernel<4, 2><<<grid, 256, dyn_smem>>>(d_buf, d_sink, cp_mask, count);
         }
       };
 
+      if (schedule) {
+        std::printf("%s\n    {\"target_sms\": %d", ti ? "," : "", target_sms);
+        schedule->measure(steps, 1, std::numeric_limits<int>::max(), step_bytes, cp_ws_bytes,
+                          warmup, samples, ev_start, ev_stop, [] {}, launch_cp);
+        std::printf("}");
+        continue;
+      }
+
       for (int w = 0; w < warmup; ++w) {
-        launch_cp();
+        launch_cp(steps);
       }
       CUDA_CHECK(cudaGetLastError());
       CUDA_CHECK(cudaDeviceSynchronize());
@@ -513,7 +513,7 @@ static int run_l2(int device, int samples, int warmup, LaunchSchedule* schedule 
       gbps.reserve(samples);
       for (int s = 0; s < samples; ++s) {
         CUDA_CHECK(cudaEventRecord(ev_start));
-        launch_cp();
+        launch_cp(steps);
         CUDA_CHECK(cudaGetLastError());
         CUDA_CHECK(cudaEventRecord(ev_stop));
         CUDA_CHECK(cudaEventSynchronize(ev_stop));
