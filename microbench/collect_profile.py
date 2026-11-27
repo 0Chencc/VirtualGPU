@@ -223,6 +223,42 @@ def make_estimated(
     }
 
 
+def peak_rate_samples(points: list[dict[str, Any]]) -> list[float]:
+    """Samples of the warp count with the highest median rate."""
+    peak = max(points, key=lambda p: statistics.median(p["rate_gwarp_inst_per_sm_samples"]))
+    return [float(x) for x in peak["rate_gwarp_inst_per_sm_samples"]]
+
+
+def non_mma_issue_rate(
+    sfu_shfl_raw: dict[str, Any],
+    fp32_fma_tflops_samples: list[float],
+    sm_count: int,
+    sm_clock_ghz: float,
+    clock_range: list[float] | None,
+    throttle_events: int,
+) -> dict[str, Any]:
+    """Highest non-MMA rate measured on the card, a lower bound on the issue ceiling.
+
+    The larger of the FFMA and LOP3 mix peak and the pure FFMA rate (64 FLOP per warp
+    instruction). Falls back to 4 per clock when the binary predates the mix curve.
+    """
+    points = sfu_shfl_raw.get("alu_issue_rate_per_sm_gips")
+    if not points:
+        return make_estimated(4.0 * sm_clock_ghz, "Ginst/s", "m2_estimated", None)
+    mix = peak_rate_samples(points)
+    ffma = [float(x) * 1e3 / (sm_count * 64.0) for x in fp32_fma_tflops_samples]
+    use_ffma = bool(ffma) and statistics.median(ffma) > statistics.median(mix)
+    return make_measured(
+        ffma if use_ffma else mix,
+        unit="Ginst/s",
+        method="cuda_fp32_fma_unrolled" if use_ffma else "cuda_ptx_ffma_lop3_mix",
+        perturb_group=None,
+        clock_range=clock_range,
+        locked=False,
+        throttle_events=throttle_events,
+    )
+
+
 def classify_dispatch(dispatch_raw: dict[str, Any]) -> dict[str, Any]:
     sm_count = dispatch_raw["sm_count"]
     probes = dispatch_raw["probes"]
@@ -1238,14 +1274,10 @@ def build_profile(
         locked=False,
         throttle_events=throttle_events,
     )
-    peak_sfu_pt = max(
-        sfu_shfl_raw["sfu_issue_rate_per_sm_gips"],
-        key=lambda p: statistics.median(p["rate_gwarp_inst_per_sm_samples"]),
-    )
     sfu_tflops_mv = make_measured(
         [
-            float(x) * sm_count * 32.0 / 1000.0
-            for x in peak_sfu_pt["rate_gwarp_inst_per_sm_samples"]
+            x * sm_count * 32.0 / 1000.0
+            for x in peak_rate_samples(sfu_shfl_raw["sfu_issue_rate_per_sm_gips"])
         ],
         unit="TFLOP/s",
         method="cuda_ptx_ex2_approx_f32",
@@ -1542,8 +1574,13 @@ def build_profile(
             "memory": memory_measured,
             "compute": {
                 "mma_tflops_per_sm_by_warps": mma_curves,
-                "non_mma_issue_rate_per_sm_gips": make_estimated(
-                    4.0 * sm_clock_ghz, "Ginst/s", "m2_estimated", None
+                "non_mma_issue_rate_per_sm_gips": non_mma_issue_rate(
+                    sfu_shfl_raw,
+                    mma_raw["fp32_fma_tflops_samples"],
+                    sm_count,
+                    sm_clock_ghz,
+                    sm_range,
+                    throttle_events,
                 ),
                 "fp32_fma_tflops": fp32_fma_mv,
                 "sfu_tflops": sfu_tflops_mv,
