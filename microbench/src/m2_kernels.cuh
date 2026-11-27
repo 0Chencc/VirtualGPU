@@ -4605,7 +4605,7 @@ __global__ void shfl_latency_chain_kernel(uint32_t* __restrict__ sink, int iters
   }
 }
 
-static int run_sfu_shfl(int device, int samples, int warmup) {
+static int run_sfu_shfl(int device, int samples, int warmup, LaunchSchedule* schedule = nullptr) {
   cudaDeviceProp prop{};
   CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
   const int sm_count = prop.multiProcessorCount;
@@ -4629,12 +4629,26 @@ static int run_sfu_shfl(int device, int samples, int warmup) {
       int iters = (warps <= 4) ? 16384 : ((warps <= 16) ? 8192 : 4096);
       double warp_insts_per_sm = static_cast<double>(warps) * static_cast<double>(iters) * 16.0;
 
-      auto launch = [&]() {
-        if (kind == 0) sfu_issue_kernel<false><<<sm_count, threads>>>(d_sink_f, iters);
-        else if (kind == 1) sfu_issue_kernel<true><<<sm_count, threads>>>(d_sink_f, iters);
-        else if (kind == 2) shfl_issue_kernel<false><<<sm_count, threads>>>(d_sink_u, iters);
-        else shfl_issue_kernel<true><<<sm_count, threads>>>(d_sink_u, iters);
+      auto launch_length = [&](int length) {
+        if (kind == 0) sfu_issue_kernel<false><<<sm_count, threads>>>(d_sink_f, length);
+        else if (kind == 1) sfu_issue_kernel<true><<<sm_count, threads>>>(d_sink_f, length);
+        else if (kind == 2) shfl_issue_kernel<false><<<sm_count, threads>>>(d_sink_u, length);
+        else shfl_issue_kernel<true><<<sm_count, threads>>>(d_sink_u, length);
       };
+      if (schedule) {
+        std::printf("%s\n    {\"warps_per_sm\": %d", first ? "" : ",", warps);
+        first = false;
+        auto timed = schedule->time_point(iters, 1, 1 << 28, warmup, samples, ev_start, ev_stop,
+                                          [] {}, launch_length);
+        const double insts = static_cast<double>(warps) * timed.length * 16.0;
+        std::printf(", \"rate_gwarp_inst_per_sm_samples\": [");
+        for (size_t k = 0; k < timed.launch_ns.size(); ++k) {
+          std::printf("%s%.4f", k ? ", " : "", insts / timed.launch_ns[k]);
+        }
+        std::printf("]}");
+        continue;
+      }
+      auto launch = [&]() { launch_length(iters); };
 
       for (int w = 0; w < warmup; ++w) launch();
       CUDA_CHECK(cudaDeviceSynchronize());
@@ -4669,6 +4683,22 @@ static int run_sfu_shfl(int device, int samples, int warmup) {
   // Measure single-warp dependent shfl.sync.bfly chain latency.
   const int lat_iters = 4096;
   const double total_shfls = static_cast<double>(lat_iters) * 64.0;
+  if (schedule) {
+    std::printf("  \"shfl_latency\": {\"warps\": 1");
+    auto timed = schedule->time_point(
+        lat_iters, 1, 1 << 28, warmup, samples, ev_start, ev_stop, [] {},
+        [&](int length) { shfl_latency_chain_kernel<<<1, 32>>>(d_sink_u, length); });
+    std::printf("},\n  \"shfl_latency_ns_samples\": [");
+    for (size_t k = 0; k < timed.launch_ns.size(); ++k) {
+      std::printf("%s%.3f", k ? ", " : "", timed.launch_ns[k] / (timed.length * 64.0));
+    }
+    std::printf("]\n}\n");
+    CUDA_CHECK(cudaEventDestroy(ev_start));
+    CUDA_CHECK(cudaEventDestroy(ev_stop));
+    CUDA_CHECK(cudaFree(d_sink_f));
+    CUDA_CHECK(cudaFree(d_sink_u));
+    return 0;
+  }
   for (int w = 0; w < warmup; ++w) shfl_latency_chain_kernel<<<1, 32>>>(d_sink_u, lat_iters);
   CUDA_CHECK(cudaDeviceSynchronize());
   std::printf("  \"shfl_latency_ns_samples\": [");

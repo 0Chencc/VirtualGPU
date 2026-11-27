@@ -454,3 +454,23 @@ class LongLaunchTests(unittest.TestCase):
         long_launch.verify(record, output(1.2e6))
         with self.assertRaisesRegex(ValueError, "in-kernel window"):
             long_launch.verify(record, output(0.98e6))
+
+    def test_sfu_shfl_curves_and_latency_are_keyed_by_their_own_fields(self):
+        def timed(steps):
+            return {"steps": steps, "launch_ns_samples": [1.3e6] * 3}
+
+        curve = [{"warps_per_sm": w, **timed(10000 * w)} for w in (1, 2)]
+        pilot = {
+            "samples": 3,
+            "sfu_issue_rate_per_sm_gips": curve,
+            "sfu_rcp_issue_rate_per_sm_gips": curve,
+            "shfl_issue_rate_per_sm_gips": curve,
+            "shfl_idx_issue_rate_per_sm_gips": curve,
+            "shfl_latency": {"warps": 1, **timed(70000)},
+            "shfl_latency_ns_samples": [20.0] * 3,
+        }
+        schedule, record = long_launch.freeze("sfu-shfl", pilot)
+        self.assertEqual(schedule.split(), ["10000", "20000"] * 4 + ["70000"])
+        self.assertEqual(record["points"][-1]["point"], {"field": "shfl_latency", "warps": 1})
+        first = record["points"][0]["point"]
+        self.assertEqual(first, {"field": "sfu_issue_rate_per_sm_gips", "warps_per_sm": 1})

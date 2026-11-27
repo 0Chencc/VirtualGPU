@@ -85,6 +85,18 @@ DESIGN_FIELDS = {
             "reload_count",
         )
     },
+    "sfu-shfl": {
+        **{
+            key: ("warps_per_sm",)
+            for key in (
+                "sfu_issue_rate_per_sm_gips",
+                "sfu_rcp_issue_rate_per_sm_gips",
+                "shfl_issue_rate_per_sm_gips",
+                "shfl_idx_issue_rate_per_sm_gips",
+            )
+        },
+        "shfl_latency": ("warps",),
+    },
     "mma-chain": {
         "mma_chain_latency": (
             "variant",
