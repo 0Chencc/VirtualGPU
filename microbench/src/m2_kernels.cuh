@@ -5682,7 +5682,10 @@ static void run_l1_carveout_one(int smem_req,
                                 std::vector<uint32_t>& h_ring,
                                 uint32_t* d_ring,
                                 uint32_t* d_sink,
-                                double* d_out) {
+                                double* d_out,
+                                LaunchSchedule* schedule = nullptr,
+                                cudaEvent_t ev_start = nullptr,
+                                cudaEvent_t ev_stop = nullptr) {
   if (smem_req > 49152) {
     CUDA_CHECK(cudaFuncSetAttribute(
         l1_carveout_pchase_kernel<Tag>, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_req));
@@ -5700,6 +5703,33 @@ static void run_l1_carveout_one(int smem_req,
 
     int w_steps = lines * 3;
     int t_steps = std::max(lines * 4, 2048);
+    if (schedule) {
+      // Length = timed chase steps; window = cycles per step times the steps.
+      int current = 0;
+      std::printf("%s\n      {\"smem_carveout_bytes\": %d, \"ws_bytes\": %d", first_w ? "" : ",", smem_req,
+                  ws_kb * 1024);
+      first_w = false;
+      auto timed = schedule->time_point(
+          t_steps, 1, 1 << 26, std::max(warmup, 1), samples, ev_start, ev_stop, [] {},
+          [&](int length) {
+            current = length;
+            l1_carveout_pchase_kernel<Tag><<<1, 1024, static_cast<size_t>(smem_req)>>>(
+                d_ring, d_sink, smem_req, w_steps, length, d_out);
+          },
+          [&]() {
+            double cyc = 0.0;
+            CUDA_CHECK(cudaMemcpy(&cyc, d_out, sizeof(double), cudaMemcpyDeviceToHost));
+            return cyc * current / cycles_per_ns;
+          });
+      std::printf(", \"window_ns_samples\": [");
+      for (size_t k = 0; k < timed.observed.size(); ++k) std::printf("%s%.1f", k ? ", " : "", timed.observed[k]);
+      std::printf("], \"latency_ns_samples\": [");
+      for (size_t k = 0; k < timed.observed.size(); ++k) {
+        std::printf("%s%.2f", k ? ", " : "", timed.observed[k] / timed.length);
+      }
+      std::printf("]}");
+      continue;
+    }
     // Use 1024 threads (1 CTA/SM max) so the driver selects the SM carveout
     // matching this single CTA's smem request rather than scaling for multi-CTA occupancy.
     for (int w = 0; w < warmup; ++w) {
@@ -5728,7 +5758,7 @@ static void run_l1_carveout_one(int smem_req,
   std::printf("\n    ]}");
 }
 
-static int run_l1_carveout(int device, int samples, int warmup) {
+static int run_l1_carveout(int device, int samples, int warmup, LaunchSchedule* schedule = nullptr) {
   cudaDeviceProp prop{};
   CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
   const int max_optin = static_cast<int>(prop.sharedMemPerBlockOptin);
@@ -5753,17 +5783,23 @@ static int run_l1_carveout(int device, int samples, int warmup) {
 
   std::printf("{\n  \"samples\": %d,\n  \"cycles_per_ns\": %.4f,\n  \"l1_carveout_sweep\": [",
               samples, cycles_per_ns);
-  run_l1_carveout_one<0>(0, samples, warmup, cycles_per_ns, ws_kb_list, h_ring, d_ring, d_sink, d_out);
+  run_l1_carveout_one<0>(0, samples, warmup, cycles_per_ns, ws_kb_list, h_ring, d_ring, d_sink, d_out,
+                         schedule, ev_start, ev_stop);
   std::printf(",");
-  run_l1_carveout_one<1>(16384, samples, warmup, cycles_per_ns, ws_kb_list, h_ring, d_ring, d_sink, d_out);
+  run_l1_carveout_one<1>(16384, samples, warmup, cycles_per_ns, ws_kb_list, h_ring, d_ring, d_sink, d_out,
+                         schedule, ev_start, ev_stop);
   std::printf(",");
-  run_l1_carveout_one<2>(32768, samples, warmup, cycles_per_ns, ws_kb_list, h_ring, d_ring, d_sink, d_out);
+  run_l1_carveout_one<2>(32768, samples, warmup, cycles_per_ns, ws_kb_list, h_ring, d_ring, d_sink, d_out,
+                         schedule, ev_start, ev_stop);
   std::printf(",");
-  run_l1_carveout_one<3>(49152, samples, warmup, cycles_per_ns, ws_kb_list, h_ring, d_ring, d_sink, d_out);
+  run_l1_carveout_one<3>(49152, samples, warmup, cycles_per_ns, ws_kb_list, h_ring, d_ring, d_sink, d_out,
+                         schedule, ev_start, ev_stop);
   std::printf(",");
-  run_l1_carveout_one<4>(65536, samples, warmup, cycles_per_ns, ws_kb_list, h_ring, d_ring, d_sink, d_out);
+  run_l1_carveout_one<4>(65536, samples, warmup, cycles_per_ns, ws_kb_list, h_ring, d_ring, d_sink, d_out,
+                         schedule, ev_start, ev_stop);
   std::printf(",");
-  run_l1_carveout_one<5>(std::min(102400, max_optin), samples, warmup, cycles_per_ns, ws_kb_list, h_ring, d_ring, d_sink, d_out);
+  run_l1_carveout_one<5>(std::min(102400, max_optin), samples, warmup, cycles_per_ns, ws_kb_list, h_ring, d_ring, d_sink, d_out,
+                         schedule, ev_start, ev_stop);
   std::printf("\n  ]\n}\n");
 
   CUDA_CHECK(cudaEventDestroy(ev_start));

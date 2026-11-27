@@ -117,6 +117,7 @@ DESIGN_FIELDS = {
         "dram_latency_by_bw": ("bg_blocks", "bg_threads"),
         "l2_latency_by_bw": ("bg_blocks", "bg_threads"),
     },
+    "l1-carveout": {"l1_carveout_sweep": ("smem_carveout_bytes", "ws_bytes")},
     "mma-chain": {
         "mma_chain_latency": (
             "variant",

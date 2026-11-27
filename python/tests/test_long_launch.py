@@ -556,3 +556,23 @@ class LongLaunchTests(unittest.TestCase):
             record["points"][3]["point"],
             {"field": "l2_latency_by_bw", "bg_blocks": 47, "bg_threads": 256},
         )
+
+    def test_l1_carveout_points_carry_their_carveout(self):
+        def point(carveout, ws, steps):
+            row = {"smem_carveout_bytes": carveout, "ws_bytes": ws, "steps": steps}
+            row.update({"launch_ns_samples": [1.4e6] * 3, "window_ns_samples": [1.3e6] * 3})
+            return row
+
+        pilot = {
+            "samples": 3,
+            "l1_carveout_sweep": [
+                {"smem_carveout_bytes": 0, "points": [point(0, 8192, 50000)]},
+                {"smem_carveout_bytes": 16384, "points": [point(16384, 8192, 51000)]},
+            ],
+        }
+        schedule, record = long_launch.freeze("l1-carveout", pilot)
+        self.assertEqual(schedule, "50000\n51000\n")
+        self.assertEqual(
+            record["points"][1]["point"],
+            {"field": "l1_carveout_sweep/points", "smem_carveout_bytes": 16384, "ws_bytes": 8192},
+        )
