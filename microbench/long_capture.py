@@ -178,9 +178,10 @@ def judge_output(mode, receipt, raw, host_check, device, l2_bytes=0):
     return {"status": "valid", "rules_one_two": rules}
 
 
-def capture(run_dir, manifest, state, run, gates):
+def capture(run_dir, manifest, state, run, gates, telemetry=dict):
     """Advance `state` until done or failed; `run(cmd)` runs one process
-    (host_quiet.run_traced), `gates()` passes the round gates or raises."""
+    (host_quiet.run_traced), `gates()` passes the round gates or raises, `telemetry()`
+    reads the GPU's driver, power limit, clocks and throttle state after each process."""
     device, l2_bytes = manifest["device"]["name"], manifest["device"]["l2_size_bytes"]
     resumed = True
     while True:
@@ -216,6 +217,7 @@ def capture(run_dir, manifest, state, run, gates):
         current["results"][mode] = {
             "raw": f"{stem}.json",
             "host_check": out["host_check"],
+            "gpu": telemetry(),
             **judge_output(mode, receipt, raw, out["host_check"], device, l2_bytes),
         }
         save(run_dir, state)
@@ -414,12 +416,15 @@ def main():
             if path.exists()
             else {"modes": list(manifest["modes"]), "rounds": []}
         )
+        from collect_profile import sample_nvidia_smi
+
         state = capture(
             args.run_dir,
             manifest,
             state,
             host_quiet.run_traced,
             round_gates(args.binary, args.run_dir, manifest, args.warmup_seconds),
+            lambda: sample_nvidia_smi(0),
         )
         print(json.dumps({"status": state["status"], "rounds": len(state["rounds"])}))
         if state["status"] != "passed":
