@@ -132,7 +132,8 @@ VIEWS = {("l2", "write_full"): "write_full_gbps_samples"}
 # carveout together.
 NOT_IN_PROFILE = {
     ("l2", "capacity_sweep"),
-    # Only its peak enters the profile, as non_mma_issue_rate_per_sm_gips.
+    # Only its peak may enter the profile, as non_mma_issue_rate_per_sm_gips (see
+    # attach_non_mma).
     ("sfu-shfl", "alu_issue_rate_per_sm_gips"),
     ("mma-softmax-chain", "solo_calibration"),
     ("l1-carveout", "l1_carveout_sweep"),
@@ -234,7 +235,29 @@ def attach_all(profile, merged_by_mode):
     skip = overridden(merged_by_mode)
     for mode, merged in merged_by_mode.items():
         attach(profile, mode, merged, skip.get(mode, set()))
+    attach_non_mma(profile, merged_by_mode)
     return profile
+
+
+def attach_non_mma(profile, merged_by_mode):
+    """Annotate non_mma_issue_rate_per_sm_gips from the source collect_profile chose: the
+    `mma` FP32 FMA point, or the peak of the `sfu-shfl` ALU curve."""
+    try:
+        import collect_profile as cp
+    except ImportError:  # imported as microbench.profile_launch
+        from microbench import collect_profile as cp
+
+    value = profile["measured"]["compute"]["non_mma_issue_rate_per_sm_gips"]
+    if value["source"] != "measured":
+        return
+    if value["method"] == cp.FFMA_ISSUE_METHOD:
+        mma = merged_by_mode["mma"]
+        point = mma["fp32_fma"]
+        rounds = cp.ffma_issue_samples(mma["fp32_fma_tflops_samples"], profile["specs"]["sm_count"])
+    else:
+        point = cp.peak_point(merged_by_mode["sfu-shfl"]["alu_issue_rate_per_sm_gips"])
+        rounds = point["rate_gwarp_inst_per_sm_samples"]
+    annotate(value, rounds, point["launch"], True)
 
 
 def attach(profile, mode, merged, skip=frozenset()):

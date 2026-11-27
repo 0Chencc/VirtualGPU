@@ -492,3 +492,58 @@ class LongModeRegistrationTests(unittest.TestCase):
             ]
         }
         pl.attach(self.profile, "l1-carveout", sweep)
+
+
+class NonMmaIssueRateTests(unittest.TestCase):
+    """non_mma_issue_rate_per_sm_gips takes the records of the source that won."""
+
+    def setUp(self):
+        self.profile = json.loads((ROOT / "profiles/gb10.json").read_text())
+        self.value = self.profile["measured"]["compute"]["non_mma_issue_rate_per_sm_gips"]
+
+    def merged(self, mix_peak, ffma_rate):
+        def point(steps, **fields):
+            return {
+                **fields,
+                "steps": steps,
+                "launch_ns_samples": [1.3e6] * 5,
+                "launch": launch(steps),
+            }
+
+        curve = [
+            point(1000 * w, warps_per_sm=w, rate_gwarp_inst_per_sm_samples=[r] * 5)
+            for w, r in ((8, mix_peak - 0.1), (16, mix_peak), (32, mix_peak - 0.05))
+        ]
+        tflops = ffma_rate * self.profile["specs"]["sm_count"] * 64.0 / 1e3
+        return {
+            "sfu-shfl": {"alu_issue_rate_per_sm_gips": curve},
+            "mma": {
+                "fp32_fma": point(90000, warps_per_sm=16),
+                "fp32_fma_tflops_samples": [tflops] * 5,
+            },
+        }
+
+    def measured(self, rate, method):
+        self.value.update(source="measured", value=rate, method=method)
+
+    def test_mix_peak_gets_its_point_launch_and_per_cycle(self):
+        self.measured(12.0, "cuda_ptx_ffma_lop3_mix")
+        pl.attach_non_mma(self.profile, self.merged(12.0, 11.0))
+        self.assertEqual(self.value["launch"]["length"], 16000)
+        self.assertAlmostEqual(self.value["per_cycle"]["value"], 12.0 / 2510.0)
+        self.assertEqual(self.value["per_cycle"]["unit"], "Ginst/s per MHz")
+
+    def test_pure_ffma_gets_the_fp32_fma_launch(self):
+        self.measured(12.5, "cuda_fp32_fma_unrolled")
+        pl.attach_non_mma(self.profile, self.merged(12.0, 12.5))
+        self.assertEqual(self.value["launch"]["length"], 90000)
+        self.assertAlmostEqual(self.value["per_cycle"]["value"], 12.5 / 2510.0)
+
+    def test_a_value_from_another_source_is_an_error(self):
+        self.measured(12.5, "cuda_ptx_ffma_lop3_mix")
+        with self.assertRaisesRegex(ValueError, "not the median"):
+            pl.attach_non_mma(self.profile, self.merged(12.0, 12.5))
+
+    def test_the_estimate_gets_nothing(self):
+        pl.attach_non_mma(self.profile, self.merged(12.0, 12.5))
+        self.assertNotIn("launch", self.value)
