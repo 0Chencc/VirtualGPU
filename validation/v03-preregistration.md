@@ -105,7 +105,7 @@ the following capture exceptions and one withdrawn proposal:
 | --- | --- |
 | GB10 profile | The first full attempt at `42e039d` failed. After both supplements, `l2-merge`, `closed-loop-mma` and `spill-latency` had 3, 0 and 1 valid rounds. The 36 and 48 MiB capacity sweep points failed the offline rule 3 replay under the old exception. The new capacity sweep exception and the `closed-loop-mma` iteration freeze fix have landed. The adopted `l2-merge` method takes each sample as the median of nine launches and retains all launches. [Adoption evidence](../docs/results/analysis/v0.3-l2-merge-groups-registration.md) The next full run includes the PR #19 spill launch-cost correction, the PR #20 SFU/shuffle and non-MMA issue changes, and the P3a `--dram-references` option after its five-valid-round smoke test at `f801692`. The joint adoption check withdrew both the 15-allocation spill design and the serial 1 KiB exception. The existing `spill-latency` collection remains in force. [Adoption result](../docs/results/analysis/v0.3-gb10-spill-allocation-adoption-result.md) A full qualifying campaign and the same-device non-MMA rate check are still required. |
 | RTX 4070 profile | Pending a quiet Windows desktop slot for the full gated sweep. Capture and check the measured non-MMA issue rate. The same quiet slot dependency applies to the RTX 4070 F-dep microbenchmark and any attempt to qualify form c on this card. An executed-spill counter comparison also needs working profiling permissions. |
-| Four fresh holdout cohorts | The candidate manifests and their CPU AOT/resource audit are in main (`78c664e`). Measurement is pending manifest release and capture approval. Capture both GB10 cohorts on Spark after that approval. Both RTX 4070 cohorts also require a quiet desktop slot. Seal the reports with receipts and keep them unopened until the frozen predictions are archived and release is approved. |
+| Four fresh holdout cohorts | The candidate manifests and CPU AOT/resource audit include the opened Ascend shapes in the novelty inventory. See the [draft manifest release amendment](v03-holdout-release-draft.md). Measurement is pending manifest release and capture approval. Capture both GB10 cohorts on Spark after that approval. Both RTX 4070 cohorts also require a quiet desktop slot. Seal the reports with receipts and keep them unopened until the frozen predictions are archived and release is approved. |
 | Freeze evidence | Recheck the model mechanisms on the qualified profiles, resolve the core-item decisions above, and pin the source, toolchain, profile digests, scoring code and historical baseline fits. Publish all four prediction archives before any label release. |
 
 A pre-timing interruption can resume the same frozen capture. Modes
@@ -178,8 +178,9 @@ sequence lengths. All 16 sequence lengths are distinct.
 The [historical inventory](v03-holdout-history.json) records each
 source manifest's SHA-256 and excluded axes or sequence lengths.
 It includes the original M1 suite, the materialized Phase 1 and
-Phase 2 manifests, and all v0.2 workload groups. The historical
-checks use manifest metadata and published seal/index digests.
+Phase 2 manifests, all v0.2 workload groups, and the opened Ascend
+shapes and documented development exclusions. The historical checks
+use manifest metadata and published seal/index digests.
 
 The [CPU AOT audit](v03-holdout-aot-audit.json) records resource status
 by case, including every configuration exceeding a profile limit,
@@ -206,8 +207,10 @@ and `ptxas-blackwell` 13.4 (V13.4.59) for the GB10 PTX target
 `sm_121a`. The profiles are RTX 4070 `0.21.0-posthoc` and GB10
 `0.22.0-posthoc`. The audit did not collect timing or run either GPU.
 The complete CPU review bundle is
-`results/v03-holdout-review.tar.gz` (SHA-256
-`0063e98648cadd13f7773fc442527ec273929765c65e841226ab2834e88e28dd`).
+`results/v03-holdout-release-aot.tar.gz` (SHA-256
+`f73d6ec8b94897fd2c38f3e33342c7aad58621072ee45d3ee3ed7bbe14873bcf`).
+The [draft release amendment](v03-holdout-release-draft.md) records
+the replacement rule, changed geometries and publication gates.
 
 Run the [candidate generator](v03_candidates.py) on a checkout with
 the archived historical manifests and AOT index:

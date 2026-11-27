@@ -372,6 +372,114 @@
           5888
         ]
       }
+    },
+    "ascend910b3-v2-holdout": {
+      "manifest": "validation/ascend-910b3-gemm-holdout.json",
+      "manifest_sha256": "54c8c3ed702f17be8b9329d3abe23a916346dd48da9d923f754c1883fcaa8f50",
+      "cases": {
+        "ascend-v2-decode-32": [
+          32,
+          4608,
+          2560
+        ],
+        "ascend-v2-decode-96": [
+          96,
+          6144,
+          2816
+        ],
+        "ascend-v2-wave2-below": [
+          128,
+          4992,
+          2816
+        ],
+        "ascend-v2-wave2-exact": [
+          128,
+          5120,
+          2816
+        ],
+        "ascend-v2-wave2-above": [
+          128,
+          5248,
+          2816
+        ],
+        "ascend-v2-prefill-med": [
+          768,
+          4608,
+          2816
+        ],
+        "ascend-v2-prefill-large": [
+          2304,
+          4608,
+          2816
+        ],
+        "ascend-v2-mask-odd": [
+          1153,
+          3329,
+          2689
+        ]
+      }
+    },
+    "ascend910b3-v1-diagnostic": {
+      "manifest": "validation/ascend-910b3-gemm-holdout.json",
+      "manifest_sha256": "54c8c3ed702f17be8b9329d3abe23a916346dd48da9d923f754c1883fcaa8f50",
+      "cases": {
+        "1": [
+          16,
+          3584,
+          3072
+        ],
+        "2": [
+          64,
+          5120,
+          3584
+        ],
+        "3": [
+          128,
+          2432,
+          3072
+        ],
+        "4": [
+          128,
+          2560,
+          3072
+        ],
+        "5": [
+          128,
+          2688,
+          3072
+        ],
+        "6": [
+          1024,
+          3584,
+          3072
+        ],
+        "7": [
+          3072,
+          3584,
+          3072
+        ],
+        "8": [
+          1537,
+          2945,
+          2497
+        ]
+      }
+    },
+    "ascend910b3-development-exclusions": {
+      "manifest": "validation/ascend-910b3-gemm-holdout.json",
+      "manifest_sha256": "54c8c3ed702f17be8b9329d3abe23a916346dd48da9d923f754c1883fcaa8f50",
+      "cases": {
+        "1": [
+          2048,
+          2048,
+          2048
+        ],
+        "2": [
+          4096,
+          4096,
+          4096
+        ]
+      }
     }
   },
   "attention": {
@@ -416,6 +524,39 @@
         "b1-q48-kv8-s1857-d64-causal": 1857,
         "b2-q32-kv8-s2433-d128-causal": 2433
       }
+    },
+    "ascend910b3-v2-holdout": {
+      "manifest": "validation/ascend-910b3-attention-holdout.json",
+      "manifest_sha256": "540b30a7e68765e70d44b912ed1798360d1101a9a901fa8368137988ffd309f1",
+      "cases": {
+        "b2-q16-kv4-s896-d64-full": 896,
+        "b2-q16-kv4-s896-d64-causal": 896,
+        "b2-q16-kv16-s1408-d64-full": 1408,
+        "b1-q32-kv8-s1665-d64-causal": 1665,
+        "b2-q16-kv4-s1152-d128-full": 1152,
+        "b2-q16-kv4-s1152-d128-causal": 1152,
+        "b1-q16-kv16-s1921-d128-full": 1921,
+        "b1-q32-kv8-s2304-d128-causal": 2304
+      }
+    },
+    "ascend910b3-v1-diagnostic": {
+      "manifest": "validation/ascend-910b3-attention-holdout.json",
+      "manifest_sha256": "540b30a7e68765e70d44b912ed1798360d1101a9a901fa8368137988ffd309f1",
+      "cases": {
+        "1": 1024,
+        "2": 1280,
+        "3": 1536,
+        "4": 1537,
+        "5": 1793,
+        "6": 2560
+      }
+    },
+    "ascend910b3-development-exclusions": {
+      "manifest": "validation/ascend-910b3-attention-holdout.json",
+      "manifest_sha256": "540b30a7e68765e70d44b912ed1798360d1101a9a901fa8368137988ffd309f1",
+      "cases": {
+        "1": 2048
+      }
     }
   },
   "excluded_gemm_axes": {
@@ -430,6 +571,7 @@
       48,
       56,
       64,
+      96,
       128,
       129,
       256,
@@ -443,20 +585,33 @@
       1024,
       1153,
       1536,
+      1537,
       1792,
       2048,
+      2304,
+      3072,
       4096
     ],
     "N": [
       1024,
+      2048,
+      2432,
+      2560,
+      2688,
       2880,
       2944,
+      2945,
       3008,
+      3329,
+      3584,
       4096,
       4103,
+      4608,
       4609,
+      4992,
       5120,
       5123,
+      5248,
       5632,
       6144,
       6656,
@@ -479,9 +634,14 @@
     ],
     "K": [
       512,
+      2048,
+      2497,
       2560,
       2688,
+      2689,
+      2816,
       3071,
+      3072,
       3232,
       3328,
       3581,
@@ -505,16 +665,25 @@
     512,
     641,
     768,
+    896,
     897,
     1021,
+    1024,
     1025,
+    1152,
     1153,
+    1280,
     1283,
     1345,
+    1408,
     1409,
     1536,
+    1537,
+    1665,
     1667,
+    1793,
     1857,
+    1921,
     2048,
     2177,
     2304,

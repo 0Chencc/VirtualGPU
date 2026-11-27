@@ -1,13 +1,14 @@
 {
   "audit_class": "candidate_cpu_aot",
-  "recorded_utc": "2026-11-26T20:16:42.182493+00:00",
-  "source_revision": "07de592a2e2224a6c942d4f81adc0006bf69950b",
+  "recorded_utc": "2026-11-27T07:41:38.313108+00:00",
+  "source_revision": "eaa7d7c39e64b76d3adf3968b1904947b16a0785",
+  "generator_sha256": "33c8f0edc63a2d4f0edd8a3cdb1a5d3748b3bb65bd64bbe3bb83b005188bb316",
   "host_arch": "x86_64",
   "triton_version": "3.9.0",
-  "history_sha256": "1e8afe49294d478377a7302a4c7aac606da39eb3ed2725442ed6343497aeef32",
+  "history_sha256": "c7fdec43f70289ab7c17432c312d30ef8bbb54ce3d69f33c1234ecf5dcc83e1f",
   "manifests": {
-    "gemm": "cadd8eaebebb0c84d5d28501c2e1fc4f3600388cca54c1871db20e65347e5e70",
-    "attention": "d50343f183c09d76de35f4b70bcee188da555d7a2e20bf1a5c789d650f07b03e"
+    "gemm": "fa03257073857afb940eb477171db6bb8b91a93af4385c77445d41e21982608b",
+    "attention": "aea8e303eb9a01943b7e762fc853d174c87721f70d104c33d530d247b942bb5d"
   },
   "cohorts": {
     "rtx4070-gemm": {
@@ -49,7 +50,7 @@
         },
         "v03-rtx4070-wave-below": {
           "aot_file": "rtx4070-gemm-v03-rtx4070-wave-below.json",
-          "aot_sha256": "4a1a95e32136b25d8996a97a1ab64895356b18dc17f2d055f0746865b3a24f13",
+          "aot_sha256": "f78a74a15b88d16e43179a55df67c9a03f798aad75c45a6ee235eb1a22417789",
           "status_counts": {
             "fits_profile": 36
           },
@@ -67,7 +68,7 @@
         },
         "v03-rtx4070-wave-exact": {
           "aot_file": "rtx4070-gemm-v03-rtx4070-wave-exact.json",
-          "aot_sha256": "1ae0649091d30ed7683858443cb4559c1ad5c5d3a4887bc0629f91eb3816727e",
+          "aot_sha256": "6d34beff47dd25832ce531066b60fd00785b1531f12c3ae4d6e9c3f4f59700a0",
           "status_counts": {
             "fits_profile": 36
           },
@@ -85,7 +86,7 @@
         },
         "v03-rtx4070-wave-above": {
           "aot_file": "rtx4070-gemm-v03-rtx4070-wave-above.json",
-          "aot_sha256": "1f2609266718c65ce659725fdd16e0699842921196d3cf422df3aa683b780ebd",
+          "aot_sha256": "49c94cce506e716b07fd3d3782674004cae93df9ab8b2f6ed4df18963df2a57e",
           "status_counts": {
             "fits_profile": 36
           },
@@ -121,7 +122,7 @@
     },
     "gb10-gemm": {
       "target": "sm_121",
-      "profile_sha256": "d93e53a533041b39e05d889b7024fe86a7c3efefd59f44e230fb4a6e29ae31cb",
+      "profile_sha256": "10625fa4832c864fcba4d81c9b99480e58f69c81644a9950083b702488442471",
       "profile_revision": "0.22.0-posthoc",
       "cases": {
         "v03-gb10-decode-small": {
@@ -158,7 +159,7 @@
         },
         "v03-gb10-wave-below": {
           "aot_file": "gb10-gemm-v03-gb10-wave-below.json",
-          "aot_sha256": "44f02098790d289f335cfdadd1727a3e5e5ed4c7c198fb7ca8ad061d18ed71f7",
+          "aot_sha256": "af1a05be383053186cb46bdf155292c2fb99f7114b0c91fb67e63e8cfe434dcb",
           "status_counts": {
             "fits_profile": 36
           },
@@ -176,7 +177,7 @@
         },
         "v03-gb10-wave-exact": {
           "aot_file": "gb10-gemm-v03-gb10-wave-exact.json",
-          "aot_sha256": "78cb0064874a66e46ee185a7e6899a78f54be3b6037897f54184137d1a14cbcb",
+          "aot_sha256": "77fd849c65c2a43d2f2cf62ca9b6a6052743113c4cb6eb4614a9659ae59a2e56",
           "status_counts": {
             "fits_profile": 36
           },
@@ -194,7 +195,7 @@
         },
         "v03-gb10-wave-above": {
           "aot_file": "gb10-gemm-v03-gb10-wave-above.json",
-          "aot_sha256": "e54bbd433f6f111094c1034e033557a85ba8c17e71381b8820650a3d29e11f47",
+          "aot_sha256": "23dad935d01a1aabe4080a3e6aaa4326b4c93004eee5ca72b5b117802f5be609",
           "status_counts": {
             "fits_profile": 36
           },
@@ -469,12 +470,12 @@
     },
     "gb10-attention": {
       "target": "sm_121",
-      "profile_sha256": "d93e53a533041b39e05d889b7024fe86a7c3efefd59f44e230fb4a6e29ae31cb",
+      "profile_sha256": "10625fa4832c864fcba4d81c9b99480e58f69c81644a9950083b702488442471",
       "profile_revision": "0.22.0-posthoc",
       "cases": {
-        "b1-q20-kv20-s896-d64-full": {
-          "aot_file": "gb10-attention-b1-q20-kv20-s896-d64-full.json",
-          "aot_sha256": "74a5c9f1ef2e94c740429d0cb4944cfb0bb4f6692650815999b2cde99cb17b63",
+        "b1-q20-kv20-s384-d64-full": {
+          "aot_file": "gb10-attention-b1-q20-kv20-s384-d64-full.json",
+          "aot_sha256": "9f206b3b1036c1e33d251cbc3ecbbb59faedcfb5f1e32a64d5ead4896af10669",
           "status_counts": {
             "fits_profile": 24
           },

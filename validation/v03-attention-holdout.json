@@ -619,12 +619,12 @@
       "target": "sm_121",
       "cases": [
         {
-          "case_id": "b1-q20-kv20-s896-d64-full",
+          "case_id": "b1-q20-kv20-s384-d64-full",
           "split": "holdout",
           "batch": 1,
           "query_heads": 20,
           "kv_heads": 20,
-          "seq_len": 896,
+          "seq_len": 384,
           "head_dim": 64,
           "causal": false,
           "config_ids": [
