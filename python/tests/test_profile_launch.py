@@ -335,3 +335,32 @@ class ProfileLaunchTests(unittest.TestCase):
         pl.attach(profile, "mma-softmax-chain", merged)
         self.assertEqual(entry["iter_time_ns"]["launch"]["length"], 1500)
         self.assertNotIn("launch", entry)
+
+    def test_stage_overhead_probes_and_the_round_trip_scalar(self):
+        pipeline = self.profile["measured"]["pipeline"]
+        stage, fixed = pipeline["stage_sync_overhead_ns"][3], pipeline["fixed_sync_ns"][2]
+        fields = pl.long_launch.DESIGN_FIELDS["stage-overhead"]
+        lists = {"overhead_ns_samples": "overhead_ns"}
+
+        def probe(entry, field, steps):
+            point = timed(entry, fields[field], lists, steps)
+            return point | {"window_ns_samples": [1.2e6] * 5}
+
+        roundtrip = pipeline["min_async_roundtrip_ns"]["value"]
+        merged = {
+            "stage_sync_overhead_ns": [probe(stage, "stage_sync_overhead_ns", 9000)],
+            "fixed_sync_ns": [probe(fixed, "fixed_sync_ns", 40000)],
+            "min_async_roundtrip": {
+                "num_warps": 4,
+                "steps": 8000,
+                "launch_ns_samples": [1.3e6] * 5,
+                "window_ns_samples": [1.2e6] * 5,
+                "overhead_ns_samples": [roundtrip] * 5,
+                "launch": launch(8000),
+            },
+            "min_async_roundtrip_ns_samples": rounds_around(roundtrip),
+        }
+        pl.attach(self.profile, "stage-overhead", merged)
+        self.assertEqual(stage["overhead_ns"]["launch"]["length"], 9000)
+        self.assertEqual(fixed["overhead_ns"]["launch"]["length"], 40000)
+        self.assertEqual(pipeline["min_async_roundtrip_ns"]["launch"]["length"], 8000)

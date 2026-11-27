@@ -62,6 +62,7 @@ MODES = (
     "sync-loop-ablation",
     "serial-fill",
     "mma-softmax-chain",
+    "stage-overhead",
 )
 ROUNDS = 5
 EXTRA_ROUNDS = 2
@@ -79,6 +80,7 @@ PROFILE_FIELD = {
     ("spill-latency", "reload_latency_by_count"): "spill_reload_latency_by_count",
     ("mma", "mma"): "mma_tflops_per_sm_by_warps",
     ("mma", "fp32_fma"): "fp32_fma_tflops",
+    ("stage-overhead", "min_async_roundtrip"): "min_async_roundtrip_ns",
 }
 
 

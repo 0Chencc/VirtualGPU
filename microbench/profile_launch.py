@@ -49,6 +49,9 @@ PROFILE_PATH = {
     ("sync-loop-ablation", "sync_stage_loop_ablation"): ("pipeline", "sync_stage_loop_ablation"),
     ("serial-fill", "serial_stage_fill"): ("pipeline", "serial_stage_fill"),
     ("mma-softmax-chain", "mma_softmax_chain"): ("compute", "mma_softmax_chain"),
+    ("stage-overhead", "stage_sync_overhead_ns"): ("pipeline", "stage_sync_overhead_ns"),
+    ("stage-overhead", "fixed_sync_ns"): ("pipeline", "fixed_sync_ns"),
+    ("stage-overhead", "min_async_roundtrip"): ("pipeline", "min_async_roundtrip_ns"),
 }
 # Raw sample lists whose profile value has another name than the list without "_samples".
 STAGE_LOOP = {
@@ -72,6 +75,7 @@ SCALARS = {
     ("mma", "fp32_fma"): "fp32_fma_tflops_samples",
     ("dram-bw", "write_full"): None,
     ("l2", "write_full"): None,
+    ("stage-overhead", "min_async_roundtrip"): "min_async_roundtrip_ns_samples",
 }
 # Top-level compatibility lists that must equal a point's own list: (mode, raw field) -> list.
 VIEWS = {("l2", "write_full"): "write_full_gbps_samples"}
@@ -80,7 +84,9 @@ VIEWS = {("l2", "write_full"): "write_full_gbps_samples"}
 # solo_mma_ns and solo_softmax_ns, plain numbers in the profile.
 NOT_IN_PROFILE = {("l2", "capacity_sweep"), ("mma-softmax-chain", "solo_calibration")}
 # Sample lists of a point that are not profile values: (mode, list name).
-NOT_A_VALUE = set()
+# stage-overhead's in-kernel windows are checked by long_launch.verify; the per-step
+# overhead_ns is the profile value.
+NOT_A_VALUE = {("stage-overhead", "window_ns_samples")}
 # Modes whose points build_profile merges into one profile field, later overriding earlier
 # on the same design fields; only the last source of each point is annotated.
 OVERRIDE_ORDER = ("sync-loop", "sync-loop-multicta", "sync-loop-reconcile")
