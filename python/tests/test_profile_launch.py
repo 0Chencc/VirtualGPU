@@ -25,6 +25,21 @@ def launch(steps=1000):
     }
 
 
+def timed(entry, names, lists, steps=1000):
+    """A merged timed point for `entry`: its design fields and, per raw list, the rounds
+    around the entry's profile value of that name."""
+    point = {k: entry[k] for k in names}
+    point |= {raw: rounds_around(entry[value]["value"]) for raw, value in lists.items()}
+    return point | {"steps": steps, "launch_ns_samples": [1.3e6] * 5, "launch": launch(steps)}
+
+
+STAGE_LISTS = {
+    "bw_gbps_samples": "delivered_bw_gbps",
+    "turnaround_ns_samples": "mean_stage_turnaround_ns",
+    "mma_tflops_per_sm_samples": "achieved_mma_tflops_per_sm",
+}
+
+
 class ProfileLaunchTests(unittest.TestCase):
     def setUp(self):
         self.profile = json.loads((ROOT / "profiles/gb10.json").read_text())
@@ -245,3 +260,19 @@ class ProfileLaunchTests(unittest.TestCase):
         point["launch"] = launch(81)
         with self.assertRaisesRegex(ValueError, "not the median"):
             pl.attach(self.profile, "dram-bw", {"read_curve": [point]})
+
+    def test_sync_loop_multicta_overrides_sync_loop_on_shared_points(self):
+        names = pl.long_launch.DESIGN_FIELDS["sync-loop-multicta"]["sync_stage_loop"]
+        self.assertEqual(names, pl.long_launch.DESIGN_FIELDS["sync-loop"]["sync_stage_loop"])
+        entry = self.profile["measured"]["pipeline"]["sync_stage_loop"][0]
+        stale = timed(entry, names, STAGE_LISTS, 128)
+        stale["bw_gbps_samples"] = [1.0] * 5  # not the profile value: must be skipped
+        pl.attach_all(
+            self.profile,
+            {
+                "sync-loop": {"sync_stage_loop": [stale]},
+                "sync-loop-multicta": {"sync_stage_loop": [timed(entry, names, STAGE_LISTS, 640)]},
+            },
+        )
+        self.assertEqual(entry["delivered_bw_gbps"]["launch"]["length"], 640)
+        self.assertIn("launch", entry["achieved_mma_tflops_per_sm"])
