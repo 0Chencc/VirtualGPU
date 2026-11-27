@@ -130,10 +130,10 @@ class RepeatMlpTests(unittest.TestCase):
                 (512, 16384, 786432, 48, 16384): [1.0],
             },
         }
-        judged = mlp.judged_points(points, "NVIDIA GB10")
+        judged = mlp.judged_points(points, "NVIDIA GB10", 1)
         self.assertEqual(list(judged[contiguous]), [("cp_async", 270336, 66, 4096)])
         self.assertEqual(list(judged[mlp.STRIDED]), [(512, 16384, 786432, 48, 16384)])
-        self.assertEqual(mlp.judged_points(points, "NVIDIA GeForce RTX 4070"), points)
+        self.assertEqual(mlp.judged_points(points, "NVIDIA GeForce RTX 4070", 1), points)
 
     def test_failed_dispersion_archives_raw_and_exits(self):
         record = {"dispersion_check": {"status": "failed"}, "raw": {"read_curve": [1, 2]}}

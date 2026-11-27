@@ -19,8 +19,10 @@ from pathlib import Path
 
 try:
     import host_quiet
+    from capture_exceptions import exempt
 except ImportError:  # imported as microbench.repeat_mlp
     from microbench import host_quiet
+    from microbench.capture_exceptions import exempt
 
 CONTIGUOUS = ("dram_bw_by_bytes_in_flight", "l2_bw_by_bytes_in_flight")
 STRIDED = "dram_bw_by_bytes_in_flight_strided"
@@ -28,16 +30,6 @@ MLP_MODES = {"mlp": CONTIGUOUS, "strided-mlp": (STRIDED,)}
 ACTIVE_MODES = {"dram-bw": ("dram_bw_by_active_sms",), "l2": ("l2_bw_by_active_sms",)}
 MODES = {**MLP_MODES, **ACTIVE_MODES}
 ACTIVE_FIELDS = {fields[0] for fields in ACTIVE_MODES.values()}
-# Device-specific exception to capture rules 1 and 3, not rule 2
-# (docs/components/long-launch-capture.md, section 4): GB10's low in-flight cold DRAM
-# points. Per field: the position of the limited value in the point key, and its limit.
-LOW_IN_FLIGHT_UNSTABLE = {
-    "NVIDIA GB10": {
-        "dram_bw_by_bytes_in_flight": (1, 256 * 1024),
-        STRIDED: (2, 384 * 1024),
-        "dram_bw_by_active_sms": (0, 2),
-    }
-}
 REPEATS = 5
 SAMPLES = 15
 WARMUP = 3
@@ -121,11 +113,18 @@ def require_quiet(snapshot, own_pid=None):
         )
 
 
+def key_names(field):
+    """The fields a point key holds, in order."""
+    if field in ACTIVE_FIELDS:
+        return ("target_sms",)
+    layout = ("segment_bytes", "stride_bytes") if field == STRIDED else ("issue_mode",)
+    return (*layout, "bytes_in_flight", "active_ctas", "bytes_per_cta")
+
+
 def point_key(field, row):
     if field in ACTIVE_FIELDS:
         return (row["active_sms"] if "active_sms" in row else row["target_sms"],)
-    layout = ("segment_bytes", "stride_bytes") if field == STRIDED else ("issue_mode",)
-    return tuple(row[key] for key in (*layout, "bytes_in_flight", "active_ctas", "bytes_per_cta"))
+    return tuple(row[key] for key in key_names(field))
 
 
 def point_maps(profile, mode, raw, sample_count=SAMPLES):
@@ -242,14 +241,13 @@ def points_raw(points):
     }
 
 
-def judged_points(points, device):
-    """The points rules 1 and 3 judge: all but the device's low in-flight exception."""
-    limits = LOW_IN_FLIGHT_UNSTABLE.get(device, {})
+def judged_points(points, device, rule):
+    """The points `rule` judges: all but those the device's exceptions exempt from it."""
     return {
         field: {
             key: samples
             for key, samples in keys.items()
-            if field not in limits or key[limits[field][0]] > limits[field][1]
+            if not exempt(device, field, dict(zip(key_names(field), key)), rule)
         }
         for field, keys in points.items()
     }
@@ -261,7 +259,7 @@ def dispersion_for_points(points, device=""):
     from microbench.capture_posthoc import dispersion_check
 
     every = dispersion_check(points_raw(points), suffixes=("gbps_samples",))
-    judged = judged_points(points, device)
+    judged = judged_points(points, device, 1)
     rule1 = dispersion_check(points_raw(judged), suffixes=("gbps_samples",))["rules"]["iqr"]
     rules = {"iqr": rule1, "spike": every["rules"]["spike"]}
     failed = (
@@ -282,7 +280,7 @@ def reproducibility_for_runs(point_runs, device=""):
     from microbench.capture_posthoc import reproducibility_check
 
     return reproducibility_check(
-        [points_raw(judged_points(p, device)) for p in point_runs], suffixes=("gbps_samples",)
+        [points_raw(judged_points(p, device, 3)) for p in point_runs], suffixes=("gbps_samples",)
     )
 
 
