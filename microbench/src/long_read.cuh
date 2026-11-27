@@ -70,6 +70,7 @@ struct LongReadSchedule {
         prepare();
         launch(length);
       }
+      CUDA_CHECK(cudaGetLastError());
       CUDA_CHECK(cudaDeviceSynchronize());
       std::vector<double> durations;
       for (int sample = 0; sample < count; ++sample) {
@@ -121,6 +122,7 @@ struct LongReadSchedule {
       prepare();
       launch(length);
     }
+    CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
     std::vector<double> durations;
     for (int sample = 0; sample < count; ++sample) {

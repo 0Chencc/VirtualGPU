@@ -1777,7 +1777,10 @@ static int run_closed_loop(int device, int samples, int warmup, LongReadSchedule
   CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
   const int sm_count = prop.multiProcessorCount;
 
-  const size_t dram_bytes = 256ULL * 1024ULL * 1024ULL;
+  // Scheduled launches run longer, so the DRAM buffer is a power of two of at least
+  // max(256 MiB, 8 x L2); the legacy path keeps its v0.2 size.
+  size_t dram_bytes = 256ULL * LongReadSchedule::MiB;
+  while (schedule && dram_bytes < 8ULL * static_cast<size_t>(prop.l2CacheSize)) dram_bytes *= 2;
   const size_t l2_bytes = 8ULL * 1024ULL * 1024ULL;
   const size_t dram_mask = (dram_bytes / sizeof(uint4)) - 1ULL;
   const size_t l2_mask = (l2_bytes / sizeof(uint4)) - 1ULL;
