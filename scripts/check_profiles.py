@@ -234,6 +234,8 @@ def check(path: Path | str, *, skip_sanity: bool = False) -> tuple[list[str], st
     summary = (
         f"{ident['sku']}, {ident['arch']}, {source}, {measured} measured, {estimated} estimated"
     )
+    if references := profile.get("references"):
+        summary += f", {len(references)} GB10 DRAM reference blocks"
     return errors, summary
 
 

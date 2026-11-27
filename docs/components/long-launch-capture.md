@@ -157,6 +157,35 @@ Points known to make a `spill-latency` capture fail, not from the length and not
 - Implementation: `collect_profile.py --long-launch RUN_DIR` builds the profile from a passed `long_capture.py` run with the usual `build_profile` (whose sample lists are then the round medians, so a value is the median of round medians and its interval comes from them), and refuses unless every timed mode was captured that way. `microbench/profile_launch.py` then attaches to each value built from a sample list its `launch`, the range of its round medians (`round_median_range`) and, for compute rates, `per_cycle`; flags and widens the entries a device exception covers; and fails on a point without its profile entry or a value that is not the median of its list. `non_mma_issue_rate_per_sm_gips` is the larger of the pure FFMA rate (`mma`'s `fp32_fma` point) and the peak of `sfu-shfl`'s ALU curve, compared per MHz since the two run in different processes at different clocks; it gets the `launch`, round range and `per_cycle` of the source that won (`attach_non_mma`), and stores that source's own samples at its own clock. SM clocks come from the probes. `scripts/check_profiles.py` applies the launch check to profiles with `capture_protocol`, skipping the derived values in `UNTIMED_LEAVES`.
 - A mode added to the schedule registers, besides its `DESIGN_FIELDS` in `long_launch.py`: its name in `long_capture.MODES`, its raw-to-profile path in `profile_launch.PROFILE_PATH` (and any renamed sample lists in `METRIC`, compute rates in `COMPUTE`, a point that is one scalar in `SCALARS`, a timed point with no profile value in `NOT_IN_PROFILE`, a sample list that is not a profile value in `NOT_A_VALUE`, and its place in `OVERRIDE_ORDER` if `build_profile` merges it with other modes into one field, later overriding earlier), and any derived values in `check_profiles.UNTIMED_LEAVES`.
 
+### Optional GB10 DRAM references
+
+Enable P3a block references when sizing a **new** GB10 capture:
+
+```sh
+flock /tmp/virtualgpu-gpu.lock python microbench/long_capture.py pilot BINARY RUN_DIR --dram-references
+flock /tmp/virtualgpu-gpu.lock python microbench/long_capture.py capture BINARY RUN_DIR
+flock /tmp/virtualgpu-gpu.lock python microbench/long_capture.py reduce RUN_DIR
+flock /tmp/virtualgpu-gpu.lock python microbench/collect_profile.py --binary BINARY --long-launch RUN_DIR --output gb10.json
+```
+
+The opt-in, device UUID and source commit are bound to the frozen
+manifest. The capture wraps each scheduled MLP process with the
+registered P3a probe under one lock and one host trace. A block
+reference is the mean of its before and after probe medians.
+The profile keeps the complete probe receipts and attaches
+`reference_observations` only to the 14 registered DRAM MLP plateau
+geometries from valid blocks within the drift bound. Incomplete probe
+pairs stay in the raw audit. The capture manifest digest identifies
+the session, and sweep rounds identify its blocks.
+
+Absolute profile values still come from the five accepted rounds.
+The probe is a reference for comparisons within the same block, and
+ratios greater than one are valid. Compute each ratio before reducing
+blocks by session and treat shared reference IDs as a shared
+denominator. The Rust predictor does not consume these fields.
+Older captures follow their original path.
+[Registered scope and evidence](../results/analysis/v0.3-gb10-dram-probe-result.md)
+
 ## 6. Capture gates in `collect_profile.py`
 
 `collect_profile.py` runs the suite as 5 independent rounds. Each round passes the thermal gate and, where they apply, the host and desktop gates once, then runs every mode in turn, each as its own process. A field's value is the median over the 5 rounds of each round's median.

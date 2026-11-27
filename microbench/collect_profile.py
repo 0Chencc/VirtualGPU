@@ -1682,10 +1682,11 @@ def long_launch_profile(binary: Path, device: int, run_dir: Path) -> dict[str, A
     """A 0.23.0 profile from a passed five-round long-launch capture (long_capture.py)."""
     import hashlib
 
-    try:
+    if __package__:
+        from microbench import dram_reference, profile_launch
+    else:
+        import dram_reference
         import profile_launch
-    except ImportError:  # imported as microbench.collect_profile
-        from microbench import profile_launch
 
     state = json.loads((run_dir / "capture-state.json").read_text())
     if state.get("status") != "passed":
@@ -1695,6 +1696,17 @@ def long_launch_profile(binary: Path, device: int, run_dir: Path) -> dict[str, A
         raise SystemExit(
             f"{run_dir}: no long-launch capture of {missing}; a profile mixes no protocols"
         )
+    manifest = (run_dir / "freeze-manifest.json").read_bytes()
+    manifest_data = json.loads(manifest)
+    manifest_digest = hashlib.sha256(manifest).hexdigest()
+    if "dram_reference" in manifest_data:
+        dram_reference.require_lock()
+        if (
+            device != 0
+            or hashlib.sha256(binary.read_bytes()).hexdigest() != manifest_data["binary_sha256"]
+            or dram_reference.current_uuid() != manifest_data["dram_reference"]["device_uuid"]
+        ):
+            raise ValueError("DRAM references require the frozen CUDA binary and GB10 device")
     merged = {m: json.loads((run_dir / f"merged-{m}.json").read_text()) for m in state["modes"]}
     query, _ = run_bench_with_clock_polling(binary, "query", device, poll_interval_s=0.05)
     dispatch, _ = run_bench_with_clock_polling(binary, "cta-dispatch", device, ["--repeats", "5"])
@@ -1712,11 +1724,10 @@ def long_launch_profile(binary: Path, device: int, run_dir: Path) -> dict[str, A
         query, merged["dram-bw"], dispatch, *[merged[m] for m in BUILD_MODES[1:]], smi_samples
     )
     profile_launch.attach_all(profile, merged)
-    manifest = (run_dir / "freeze-manifest.json").read_bytes()
     profile["provenance"]["profile_revision"] = LONG_LAUNCH_REVISION
     profile["provenance"]["capture_protocol"] = {
         "minimum_launch_ns": 1e6,
-        "freeze_manifest_sha256": hashlib.sha256(manifest).hexdigest(),
+        "freeze_manifest_sha256": manifest_digest,
         "rounds": [
             {
                 "round": r["round"],
@@ -1729,6 +1740,7 @@ def long_launch_profile(binary: Path, device: int, run_dir: Path) -> dict[str, A
         ],
         "rule_three": state["rule_three"],
     }
+    dram_reference.attach(profile, run_dir, manifest_data, manifest_digest, state)
     validate_profile(profile)
     return profile
 

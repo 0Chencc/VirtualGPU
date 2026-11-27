@@ -3,13 +3,131 @@
 from __future__ import annotations
 
 import json
+import math
+import statistics
 import sys
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 from jsonschema import Draft202012Validator
 
 DEFAULT_SCHEMA_PATH = Path(__file__).resolve().parents[2] / "schemas" / "gpu_profile.schema.json"
+GB10_REFERENCE_PROTOCOL = "gb10-mlp-plateau-p3a-v1"
+GB10_REFERENCE_GEOMETRIES = frozenset(
+    (mode, ctas * size, ctas, size)
+    for mode in ("cp_async", "ld_global_v4")
+    for ctas, size in (
+        (32, 16384),
+        (48, 16384),
+        (96, 16384),
+        (144, 16384),
+        (144, 32768),
+        (192, 32768),
+        (240, 32768),
+    )
+)
+
+
+def dram_mlp_geometry(point):
+    return tuple(
+        point[k] for k in ("issue_mode", "bytes_in_flight", "active_ctas", "bytes_per_cta")
+    )
+
+
+def dram_reference_value(before, after):
+    first, last = statistics.median(before), statistics.median(after)
+    value = (first + last) / 2
+    return value, abs(first - last) / value > 0.03
+
+
+def _utc(value):
+    parsed = datetime.fromisoformat(f"{value[:-1]}+00:00" if value.endswith("Z") else value)
+    if parsed.utcoffset() != timedelta(0) or "T" not in value:
+        raise ValueError("expected UTC")
+    return parsed
+
+
+def _dram_reference_checks(profile):
+    references = profile.get("references", {})
+    points = profile["measured"]["memory"].get("dram_bw_by_bytes_in_flight", [])
+    protocol = profile["provenance"].get("capture_protocol", {})
+    opted_in = protocol.get("dram_reference_protocol") == GB10_REFERENCE_PROTOCOL
+    if not (references or opted_in or any("reference_observations" in p for p in points)):
+        return []
+    ident = profile["identity"]
+    if (ident["vendor"], ident["arch"], ident["sku"], ident["memory_type"]) != (
+        "nvidia",
+        "sm_121",
+        "NVIDIA GB10",
+        "unified",
+    ) or profile["specs"]["sm_count"] != 48:
+        return ["DRAM references require the NVIDIA GB10"]
+    if not (opted_in and references):
+        return ["DRAM references require a matching opt-in capture and reference table"]
+
+    errors = []
+    identities = {
+        (r["device_uuid"], r["source_revision"], r["binary_sha256"]) for r in references.values()
+    }
+    if len(identities) != 1:
+        errors.append("DRAM reference blocks must share the frozen device and binary")
+    seen_blocks = set()
+    used = {ref_id: set() for ref_id in references}
+    session = protocol["freeze_manifest_sha256"]
+    mlp_rounds = {}
+    for rnd in protocol["rounds"]:
+        if not isinstance(rnd, dict) or not isinstance(rnd.get("results"), dict):
+            return ["DRAM references require round results in the capture protocol"]
+        mlp = rnd["results"].get("mlp")
+        if mlp is not None:
+            if not isinstance(mlp, dict) or type(rnd.get("round")) is not int:
+                return ["DRAM references require numbered MLP round results"]
+            mlp_rounds[rnd["round"]] = mlp.get("status")
+    for ref_id, ref in references.items():
+        path = f"references.{ref_id}"
+        block = ref["session_id"], ref["block_id"]
+        if block[0] != session or block in seen_blocks:
+            errors.append(f"{path}: reference must name a unique block of the frozen capture")
+        seen_blocks.add(block)
+        expected_status = "void" if ref["status"] == "void" else "valid"
+        if mlp_rounds.get(ref["block_id"]) != expected_status:
+            errors.append(f"{path}: status does not match the MLP capture round")
+        try:
+            if _utc(ref["before"]["utc"]) >= _utc(ref["after"]["utc"]):
+                raise ValueError("before must precede after")
+        except ValueError as exc:
+            errors.append(f"{path}: invalid probe timestamps ({exc})")
+        before, after = (ref[side]["gbps_samples"] for side in ("before", "after"))
+        if not all(math.isfinite(x) for x in (*before, *after, ref["value_gbps"])):
+            errors.append(f"{path}: probe samples and value must be finite")
+            continue
+        value, drift = dram_reference_value(before, after)
+        if not math.isclose(ref["value_gbps"], value, rel_tol=1e-12):
+            errors.append(f"{path}: value_gbps must be the mean of the two probe medians")
+        if ref["status"] != "void" and (ref["status"] == "drift") != drift:
+            errors.append(f"{path}: status disagrees with the 3% probe drift bound")
+
+    for point in points:
+        for observation in point.get("reference_observations", []):
+            key = dram_mlp_geometry(point)
+            ref_id = observation["reference_id"]
+            if key not in GB10_REFERENCE_GEOMETRIES:
+                errors.append(f"DRAM MLP point {key}: geometry is outside the registered plateau")
+            elif ref_id not in references or references[ref_id]["status"] != "valid":
+                errors.append(
+                    f"DRAM MLP point {key}: reference {ref_id!r} is missing or ineligible"
+                )
+            elif key in used[ref_id]:
+                errors.append(f"DRAM MLP point {key}: repeated reference {ref_id!r}")
+            else:
+                used[ref_id].add(key)
+            if not math.isfinite(observation["value_gbps"]):
+                errors.append(f"DRAM MLP point {key}: observation bandwidth must be finite")
+    for ref_id, ref in references.items():
+        if ref["status"] == "valid" and used[ref_id] != GB10_REFERENCE_GEOMETRIES:
+            errors.append(f"references.{ref_id}: valid block must cover all 14 plateau geometries")
+    return errors
 
 
 def _profile_search_dirs() -> list[Path]:
@@ -105,7 +223,7 @@ def _check_monotonic_curve(
 
 
 def _semantic_checks(profile: dict[str, Any]) -> list[str]:
-    errors: list[str] = []
+    errors = _dram_reference_checks(profile)
     specs = profile["specs"]
     measured = profile["measured"]
 

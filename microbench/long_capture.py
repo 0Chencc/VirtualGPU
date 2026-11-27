@@ -38,6 +38,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import dram_reference  # noqa: E402
 import host_quiet  # noqa: E402
 import long_launch  # noqa: E402
 from capture_exceptions import exceptions_for, exempt  # noqa: E402
@@ -225,15 +226,25 @@ def capture(run_dir, manifest, state, run, gates, telemetry=dict):
         schedule = run_dir / entry["schedule"]
         receipt = json.loads((run_dir / entry["record"]).read_text())
         long_launch.check_schedule(receipt, schedule.read_bytes())
-        out = run(command(manifest["binary"], mode, schedule, manifest["samples"]))
+        cmd = command(manifest["binary"], mode, schedule, manifest["samples"])
+        paired = mode == "mlp" and "dram_reference" in manifest
+        out = run(dram_reference.block_command(cmd) if paired else cmd)
         raw = json.loads(out.pop("stdout"))
         stem = f"round{number}-{mode}"
+        reference = {}
+        if paired:
+            name = f"{stem}.reference.json"
+            path = run_dir / name
+            write_new(path, raw)
+            reference["dram_reference"] = {"raw": name, "sha256": sha256(path.read_bytes())}
+            raw = raw["workload"]
         (run_dir / f"{stem}.json").write_text(json.dumps(raw) + "\n")
         (run_dir / f"{stem}.trace.json").write_text(json.dumps(out) + "\n")
         current["results"][mode] = {
             "raw": f"{stem}.json",
             "host_check": out["host_check"],
             "gpu": telemetry(),
+            **reference,
             **judge_output(mode, receipt, raw, out["host_check"], device, l2_bytes),
         }
         save(run_dir, state)
@@ -342,9 +353,14 @@ def query(binary):
     return json.loads(subprocess.check_output([str(binary), "--mode", "query"], text=True))
 
 
-def pilot(binary, run_dir, modes):
+def pilot(binary, run_dir, modes, *, dram_references=False):
     run_dir.mkdir(parents=True, exist_ok=True)
+    if dram_references:
+        dram_reference.require_lock()
     device = query(binary)
+    options = (
+        {"dram_reference": dram_reference.freeze_options(device, modes)} if dram_references else {}
+    )
     entries = {}
     for mode in modes:
         out = host_quiet.run_traced(command(binary, mode, "pilot", PILOT_SAMPLES, probe=False))
@@ -370,6 +386,7 @@ def pilot(binary, run_dir, modes):
             "samples": SAMPLES,
             "warmup": WARMUP,
             "modes": entries,
+            **options,
         },
     )
 
@@ -415,6 +432,9 @@ def main():
     p.add_argument("binary", type=Path)
     p.add_argument("run_dir", type=Path)
     p.add_argument("--modes", nargs="+", default=list(MODES), choices=MODES)
+    p.add_argument(
+        "--dram-references", action="store_true", help="Record GB10 P3a MLP block references"
+    )
     c = sub.add_parser("capture")
     c.add_argument("binary", type=Path)
     c.add_argument("run_dir", type=Path)
@@ -423,7 +443,7 @@ def main():
     r.add_argument("run_dir", type=Path)
     args = parser.parse_args()
     if args.action == "pilot":
-        pilot(args.binary, args.run_dir, args.modes)
+        pilot(args.binary, args.run_dir, args.modes, dram_references=args.dram_references)
     elif args.action == "capture":
         manifest = check_manifest(args.run_dir, args.binary)
         path = args.run_dir / "capture-state.json"
@@ -432,6 +452,19 @@ def main():
             if path.exists()
             else {"modes": list(manifest["modes"]), "rounds": []}
         )
+        if "dram_reference" in manifest:
+            dram_reference.require_lock()
+            options = manifest["dram_reference"]
+            if options["protocol"] != dram_reference.PROTOCOL:
+                raise ValueError("Unknown DRAM reference protocol")
+            if dram_reference.current_uuid() != options["device_uuid"]:
+                raise ValueError("DRAM reference capture is on a different device")
+            digest = sha256((args.run_dir / "freeze-manifest.json").read_bytes())
+            if state["rounds"] and state.get("dram_reference_manifest_sha256") != digest:
+                raise ValueError("Cannot add DRAM references to an existing capture")
+            state["dram_reference_manifest_sha256"] = digest
+        elif "dram_reference_manifest_sha256" in state:
+            raise ValueError("Opt-in DRAM reference freeze is missing")
         from collect_profile import sample_nvidia_smi
 
         state = capture(
