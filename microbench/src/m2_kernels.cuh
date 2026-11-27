@@ -4532,36 +4532,6 @@ __global__ void shfl_issue_kernel(uint32_t* __restrict__ sink, int iters) {
   }
 }
 
-// Independent fma.rn.f32 and lop3.b32 chains, 1:1: the issue rate of a mix of FP32
-// and integer instructions. 128 per iteration.
-__global__ void alu_issue_kernel(uint32_t* __restrict__ sink, int iters) {
-  const uint32_t tid = threadIdx.x;
-  const float fa = 0.999f - static_cast<float>(tid & 7u) * 1e-4f;
-  const float fb = 1e-3f;
-  const uint32_t k1 = tid * 2654435761u;
-  const uint32_t k2 = tid ^ 0x5bd1e995u;
-  float f0 = 1.0f, f1 = 1.1f, f2 = 1.2f, f3 = 1.3f;
-  uint32_t r0 = tid + 1u, r1 = tid + 17u, r2 = tid + 33u, r3 = tid + 65u;
-
-  for (int it = 0; it < iters; ++it) {
-    #pragma unroll
-    for (int u = 0; u < 16; ++u) {
-      asm volatile("fma.rn.f32 %0, %0, %1, %2;\n" : "+f"(f0) : "f"(fa), "f"(fb));
-      asm volatile("lop3.b32 %0, %0, %1, %2, 0x96;\n" : "+r"(r0) : "r"(k1), "r"(k2));
-      asm volatile("fma.rn.f32 %0, %0, %1, %2;\n" : "+f"(f1) : "f"(fa), "f"(fb));
-      asm volatile("lop3.b32 %0, %0, %1, %2, 0x96;\n" : "+r"(r1) : "r"(k1), "r"(k2));
-      asm volatile("fma.rn.f32 %0, %0, %1, %2;\n" : "+f"(f2) : "f"(fa), "f"(fb));
-      asm volatile("lop3.b32 %0, %0, %1, %2, 0x96;\n" : "+r"(r2) : "r"(k1), "r"(k2));
-      asm volatile("fma.rn.f32 %0, %0, %1, %2;\n" : "+f"(f3) : "f"(fa), "f"(fb));
-      asm volatile("lop3.b32 %0, %0, %1, %2, 0x96;\n" : "+r"(r3) : "r"(k1), "r"(k2));
-    }
-  }
-  uint32_t sum = r0 ^ r1 ^ r2 ^ r3 ^ __float_as_uint(f0 + f1 + f2 + f3);
-  if (sum == 0xdeadbeefu) {
-    sink[blockIdx.x * blockDim.x + tid] = sum;
-  }
-}
-
 __global__ void shfl_latency_chain_kernel(uint32_t* __restrict__ sink, int iters) {
   uint32_t r = threadIdx.x + 1u;
   for (int it = 0; it < iters; ++it) {
@@ -4597,15 +4567,13 @@ static int run_sfu_shfl(int device, int samples, int warmup) {
     for (int warps : warp_list) {
       int threads = warps * 32;
       int iters = (warps <= 4) ? 16384 : ((warps <= 16) ? 8192 : 4096);
-      const double insts_per_iter = (kind == 4) ? 128.0 : 16.0;
-      double warp_insts_per_sm = static_cast<double>(warps) * static_cast<double>(iters) * insts_per_iter;
+      double warp_insts_per_sm = static_cast<double>(warps) * static_cast<double>(iters) * 16.0;
 
       auto launch = [&]() {
         if (kind == 0) sfu_issue_kernel<false><<<sm_count, threads>>>(d_sink_f, iters);
         else if (kind == 1) sfu_issue_kernel<true><<<sm_count, threads>>>(d_sink_f, iters);
         else if (kind == 2) shfl_issue_kernel<false><<<sm_count, threads>>>(d_sink_u, iters);
-        else if (kind == 3) shfl_issue_kernel<true><<<sm_count, threads>>>(d_sink_u, iters);
-        else alu_issue_kernel<<<sm_count, threads>>>(d_sink_u, iters);
+        else shfl_issue_kernel<true><<<sm_count, threads>>>(d_sink_u, iters);
       };
 
       for (int w = 0; w < warmup; ++w) launch();
@@ -4637,7 +4605,6 @@ static int run_sfu_shfl(int device, int samples, int warmup) {
   measure_curve("sfu_rcp_issue_rate_per_sm_gips", 1, true);
   measure_curve("shfl_issue_rate_per_sm_gips", 2, true);
   measure_curve("shfl_idx_issue_rate_per_sm_gips", 3, true);
-  measure_curve("alu_issue_rate_per_sm_gips", 4, true);
 
   // Measure single-warp dependent shfl.sync.bfly chain latency.
   const int lat_iters = 4096;
