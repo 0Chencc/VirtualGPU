@@ -4,6 +4,7 @@
 
 ### Added
 
+- Huawei Ascend 910B3 preregistered sealed multi-shape holdout (`validation/ascend-910b3-*`, `docs/results/ascend910b3-holdout.md`): 16 unseen GEMM and Attention shapes across 48 sessions on `0.3.1-ascend`; both Attention cohorts passed (`0.00%` top-5 regret, `+0.089` to `+0.122` tau-b above baselines) while GEMM failed, keeping `unvalidated_target_ascend` gating in place and recording post-hoc frontend and harness findings
 - Post-hoc GB10 microbenchmarks for single-buffer bursts and L2 sharing (`sync-loop-burst`, `l2-paths`), dependent MMA chains (`mma-ilp`) and the attention compute base (`attention_compute`), with their registrations and data
 - Design for long-launch profile capture and a launch-duration audit of the reference profiles
 - Huawei Ascend 910B3 Cube/Vector split modeling and Triton-Ascend forward GQA Attention frontend: L2-resident inter-core GM workspace accounting, multi-buffered AIC/AIV steady-state overlap, isolated FFTS+ cross-core sync microbenchmark (`cv_sync_hop_ns_by_active_sms`, profile `0.3.1-ascend`), `equal_to_1` stride specialization in Ascend AOT (fixing GEMM `multibuffer=False` overestimate), and CPU-only `extract_ascend_attention_kernel_ir` routed via `extract_attention_kernel_ir`
