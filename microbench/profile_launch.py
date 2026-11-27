@@ -68,6 +68,11 @@ SCALARS = {
 VIEWS = {("l2", "write_full"): "write_full_gbps_samples"}
 # Timed points with no profile value of their own (their result is derived).
 NOT_IN_PROFILE = {("l2", "capacity_sweep")}
+# Sample lists of a point that are not profile values: (mode, list name).
+NOT_A_VALUE = set()
+# Modes whose points build_profile merges into one profile field, later overriding earlier
+# on the same design fields; only the last source of each point is annotated.
+OVERRIDE_ORDER = ()
 # Profile values that are compute rates and get a per-cycle value.
 COMPUTE = {"tflops_per_sm", "fp32_fma_tflops", "issue_rate_gwarp_inst_per_sm"}
 # Design fields the profile names differently.
@@ -129,16 +134,41 @@ def cover(value):
     value["rel_uncertainty"] = round(min(1.0, max(value["rel_uncertainty"], spread)), 4)
 
 
-def attach(profile, mode, merged):
-    """Annotate `profile` in place from one mode's merged raw."""
+def key(mode, path, point):
+    """A point's profile field and design fields, comparable across modes."""
+    names = long_launch.DESIGN_FIELDS[mode][path[0]]
+    return PROFILE_PATH[(mode, path[0])], tuple(point[k] for k in names)
+
+
+def overridden(merged_by_mode):
+    """Per mode, the keys of its points a later mode in OVERRIDE_ORDER overrides."""
+    out, later = {}, set()
+    for mode in reversed([m for m in OVERRIDE_ORDER if m in merged_by_mode]):
+        mine = {key(mode, p, pt) for p, pt in long_launch.points(merged_by_mode[mode])}
+        out[mode] = mine & later
+        later |= mine
+    return out
+
+
+def attach_all(profile, merged_by_mode):
+    """Annotate `profile` from every mode's merged raw."""
+    skip = overridden(merged_by_mode)
+    for mode, merged in merged_by_mode.items():
+        attach(profile, mode, merged, skip.get(mode, set()))
+    return profile
+
+
+def attach(profile, mode, merged, skip=frozenset()):
+    """Annotate `profile` in place from one mode's merged raw, except the points whose
+    key is in `skip` (overridden by a later source)."""
     for path, point in long_launch.points(merged):
-        if (mode, path[0]) in NOT_IN_PROFILE:
+        if (mode, path[0]) in NOT_IN_PROFILE or (skip and key(mode, path, point) in skip):
             continue
         entry, scalar = entry_for(profile, mode, path, point)
         lists = {
             metric(mode, k): v
             for k, v in point.items()
-            if k.endswith("_samples") and k != "launch_ns_samples"
+            if k.endswith("_samples") and k != "launch_ns_samples" and (mode, k) not in NOT_A_VALUE
         }
         view = VIEWS.get((mode, path[0]))
         if view and [merged[view]] != list(lists.values()):
@@ -149,6 +179,11 @@ def attach(profile, mode, merged):
             values = {scalar: rounds}
         else:
             values = lists
+        absent = [name for name in values if name not in entry]
+        if absent:
+            raise ValueError(
+                f"{mode} {path}: no profile value {absent}; list it in NOT_A_VALUE if it is none"
+            )
         targets = {name: entry[name] for name in values}
         for name, rounds in values.items():
             annotate(targets[name], rounds, point["launch"], name in COMPUTE)

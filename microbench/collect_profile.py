@@ -1634,8 +1634,7 @@ def long_launch_profile(binary: Path, device: int, run_dir: Path) -> dict[str, A
     profile = build_profile(
         query, merged["dram-bw"], dispatch, *[merged[m] for m in BUILD_MODES[1:]], smi_samples
     )
-    for mode in state["modes"]:
-        profile_launch.attach(profile, mode, merged[mode])
+    profile_launch.attach_all(profile, merged)
     manifest = (run_dir / "freeze-manifest.json").read_bytes()
     profile["provenance"]["profile_revision"] = LONG_LAUNCH_REVISION
     profile["provenance"]["capture_protocol"] = {

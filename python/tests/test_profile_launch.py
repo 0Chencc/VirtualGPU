@@ -154,6 +154,68 @@ class ProfileLaunchTests(unittest.TestCase):
                 {"write_full": point, "write_full_gbps_samples": [write] * 4 + [1.0]},
             )
 
+    def test_overridden_points_are_annotated_from_their_last_source(self):
+        entry = self.profile["measured"]["pipeline"]["sync_stage_loop"][0]
+        names = (
+            "mem_level",
+            "transfer_mode",
+            "ctas_per_sm",
+            "num_warps",
+            "stage_bytes",
+            "mma_chain_len",
+        )
+        values = {
+            m: entry[m]["value"]
+            for m in ("delivered_bw_gbps", "mean_stage_turnaround_ns", "achieved_mma_tflops_per_sm")
+        }
+
+        def point(scale, steps):
+            return {k: entry[k] for k in names} | {
+                "steps": steps,
+                "launch_ns_samples": [1.3e6] * 5,
+                "bw_gbps_samples": [values["delivered_bw_gbps"] * scale] * 5,
+                "turnaround_ns_samples": [values["mean_stage_turnaround_ns"] * scale] * 5,
+                "mma_tflops_per_sm_samples": [values["achieved_mma_tflops_per_sm"] * scale] * 5,
+                "launch": launch(steps),
+            }
+
+        later = "sync-loop-later"
+        with (
+            patch.dict(
+                pl.long_launch.DESIGN_FIELDS, {later: pl.long_launch.DESIGN_FIELDS["sync-loop"]}
+            ),
+            patch.dict(
+                pl.PROFILE_PATH, {(later, "sync_stage_loop"): ("pipeline", "sync_stage_loop")}
+            ),
+            patch.dict(pl.METRIC, {later: pl.STAGE_LOOP}),
+            patch.object(pl, "OVERRIDE_ORDER", ("sync-loop", later)),
+        ):
+            merged = {
+                "sync-loop": {"sync_stage_loop": [point(1.2, 128)]},
+                later: {"sync_stage_loop": [point(1.0, 700)]},
+            }
+            pl.attach_all(self.profile, merged)
+        self.assertEqual(entry["delivered_bw_gbps"]["launch"]["length"], 700)
+
+    def test_lists_that_are_not_values_are_left_out(self):
+        entry = self.profile["measured"]["compute"]["mma_chain_latency"][0]
+        point = {
+            k: entry[k]
+            for k in ("variant", "num_warps", "tile_bytes", "ldmatrix_x4_per_warp", "mma_chain_len")
+        }
+        point |= {
+            "steps": 900,
+            "launch_ns_samples": [1.3e6] * 5,
+            "stage_time_ns_samples": [entry["stage_time_ns"]["value"]] * 5,
+            "window_ns_samples": [5.0] * 5,
+            "launch": launch(900),
+        }
+        with self.assertRaisesRegex(ValueError, "NOT_A_VALUE"):
+            pl.attach(copy.deepcopy(self.profile), "mma-chain", {"mma_chain_latency": [point]})
+        with patch.object(pl, "NOT_A_VALUE", {("mma-chain", "window_ns_samples")}):
+            pl.attach(self.profile, "mma-chain", {"mma_chain_latency": [point]})
+        self.assertIn("launch", entry["stage_time_ns"])
+
     def test_exception_flags_the_entry_and_covers_the_rounds(self):
         entry = self.profile["measured"]["memory"]["dram_bw_by_active_sms"][0]
         bw = entry["bw_gbps"]["value"]
