@@ -1,0 +1,2511 @@
+{
+  "schema_version": 1,
+  "result_class": "post-hoc",
+  "provenance": {
+    "utc": "2026-11-27T01:33:23.182454+00:00",
+    "commit": "1b9b0e9e63b7e218cae9e7fe07ce70010ba928c5",
+    "gpu": "NVIDIA GeForce RTX 3070",
+    "gpu_uuid": "GPU-26e806ea-82b5-a061-d1c1-be89f882b1ed",
+    "driver": "610.88",
+    "ncu": "NVIDIA (R) Nsight Compute Command Line Profiler\nCopyright (c) 2018-2026 NVIDIA Corporation\nVersion 2026.4.0.0 (build 39012641) (public-release)",
+    "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2026 NVIDIA Corporation\nBuilt on Fri_May_08_10:53:34_AM_PDT_2026\nCuda compilation tools, release 13.2, V13.2.86\nBuild cuda_13.2.r13.2/compiler.37953736_0",
+    "metrics": [
+      "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum",
+      "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum",
+      "inst_executed",
+      "thread_inst_executed_true"
+    ],
+    "target": "sm_86",
+    "clock_control": "none",
+    "cache_control": "none",
+    "spill_binary_sha256": "0462a85613d2c3f5706d7a222601c76b230095c85b646b714cdf888f953274a3",
+    "attention_manifest_sha256": "a1273886f7d48505f90191ce0bbf2df74dd6f9707fe9089551c2e15347ff5cfe"
+  },
+  "spill_reload_latency_by_count": [
+    {
+      "frame_bytes_per_thread": 128,
+      "dependency_mode": "serial_chain",
+      "reload_count": 0,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 23552,
+          "warp_local_load": 0,
+          "warp_local_store": 1472,
+          "thread_local_load": 0,
+          "thread_local_store": 47104
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 23552,
+          "warp_local_load": 0,
+          "warp_local_store": 1472,
+          "thread_local_load": 0,
+          "thread_local_store": 47104
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 0.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 0.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 0.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 128,
+      "dependency_mode": "serial_chain",
+      "reload_count": 8,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 23552,
+          "warp_local_load": 0,
+          "warp_local_store": 1472,
+          "thread_local_load": 0,
+          "thread_local_store": 47104
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 753664,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 23552,
+          "warp_local_load": 188416,
+          "warp_local_store": 1472,
+          "thread_local_load": 6029312,
+          "thread_local_store": 47104
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 128.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 32.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 1024.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 8.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 128,
+      "dependency_mode": "serial_chain",
+      "reload_count": 32,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 23552,
+          "warp_local_load": 0,
+          "warp_local_store": 1472,
+          "thread_local_load": 0,
+          "thread_local_store": 47104
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 3014656,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 23552,
+          "warp_local_load": 753664,
+          "warp_local_store": 1472,
+          "thread_local_load": 24117248,
+          "thread_local_store": 47104
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 512.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 128.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 4096.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 32.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 128,
+      "dependency_mode": "serial_chain",
+      "reload_count": 68,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 23552,
+          "warp_local_load": 0,
+          "warp_local_store": 1472,
+          "thread_local_load": 0,
+          "thread_local_store": 47104
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 6406144,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 23552,
+          "warp_local_load": 1601536,
+          "warp_local_store": 1472,
+          "thread_local_load": 51249152,
+          "thread_local_store": 47104
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 1088.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 272.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 8704.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 68.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 128,
+      "dependency_mode": "serial_chain",
+      "reload_count": 128,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 23552,
+          "warp_local_load": 0,
+          "warp_local_store": 1472,
+          "thread_local_load": 0,
+          "thread_local_store": 47104
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 12058624,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 23552,
+          "warp_local_load": 3014656,
+          "warp_local_store": 1472,
+          "thread_local_load": 96468992,
+          "thread_local_store": 47104
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 2048.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 512.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 16384.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 128.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 128,
+      "dependency_mode": "batch_before_dep",
+      "reload_count": 0,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 23552,
+          "warp_local_load": 0,
+          "warp_local_store": 1472,
+          "thread_local_load": 0,
+          "thread_local_store": 47104
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 23552,
+          "warp_local_load": 0,
+          "warp_local_store": 1472,
+          "thread_local_load": 0,
+          "thread_local_store": 47104
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 0.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 0.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 0.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 128,
+      "dependency_mode": "batch_before_dep",
+      "reload_count": 8,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 23552,
+          "warp_local_load": 0,
+          "warp_local_store": 1472,
+          "thread_local_load": 0,
+          "thread_local_store": 47104
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 753664,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 23552,
+          "warp_local_load": 188416,
+          "warp_local_store": 1472,
+          "thread_local_load": 6029312,
+          "thread_local_store": 47104
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 128.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 32.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 1024.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 8.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 128,
+      "dependency_mode": "batch_before_dep",
+      "reload_count": 32,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 23552,
+          "warp_local_load": 0,
+          "warp_local_store": 1472,
+          "thread_local_load": 0,
+          "thread_local_store": 47104
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 3014656,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 23552,
+          "warp_local_load": 753664,
+          "warp_local_store": 1472,
+          "thread_local_load": 24117248,
+          "thread_local_store": 47104
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 512.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 128.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 4096.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 32.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 128,
+      "dependency_mode": "batch_before_dep",
+      "reload_count": 68,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 23552,
+          "warp_local_load": 0,
+          "warp_local_store": 1472,
+          "thread_local_load": 0,
+          "thread_local_store": 47104
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 6406144,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 23552,
+          "warp_local_load": 1601536,
+          "warp_local_store": 1472,
+          "thread_local_load": 51249152,
+          "thread_local_store": 47104
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 1088.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 272.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 8704.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 68.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 128,
+      "dependency_mode": "batch_before_dep",
+      "reload_count": 128,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 23552,
+          "warp_local_load": 0,
+          "warp_local_store": 1472,
+          "thread_local_load": 0,
+          "thread_local_store": 47104
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 12058624,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 23552,
+          "warp_local_load": 3014656,
+          "warp_local_store": 1472,
+          "thread_local_load": 96468992,
+          "thread_local_store": 47104
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 2048.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 512.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 16384.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 128.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 256,
+      "dependency_mode": "serial_chain",
+      "reload_count": 0,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 47104,
+          "warp_local_load": 0,
+          "warp_local_store": 2944,
+          "thread_local_load": 0,
+          "thread_local_store": 94208
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 47104,
+          "warp_local_load": 0,
+          "warp_local_store": 2944,
+          "thread_local_load": 0,
+          "thread_local_store": 94208
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 0.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 0.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 0.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 256,
+      "dependency_mode": "serial_chain",
+      "reload_count": 8,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 47104,
+          "warp_local_load": 0,
+          "warp_local_store": 2944,
+          "thread_local_load": 0,
+          "thread_local_store": 94208
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 753664,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 47104,
+          "warp_local_load": 188416,
+          "warp_local_store": 2944,
+          "thread_local_load": 6029312,
+          "thread_local_store": 94208
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 128.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 32.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 1024.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 8.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 256,
+      "dependency_mode": "serial_chain",
+      "reload_count": 32,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 47104,
+          "warp_local_load": 0,
+          "warp_local_store": 2944,
+          "thread_local_load": 0,
+          "thread_local_store": 94208
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 3014656,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 47104,
+          "warp_local_load": 753664,
+          "warp_local_store": 2944,
+          "thread_local_load": 24117248,
+          "thread_local_store": 94208
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 512.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 128.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 4096.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 32.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 256,
+      "dependency_mode": "serial_chain",
+      "reload_count": 68,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 47104,
+          "warp_local_load": 0,
+          "warp_local_store": 2944,
+          "thread_local_load": 0,
+          "thread_local_store": 94208
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 6406144,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 47104,
+          "warp_local_load": 1601536,
+          "warp_local_store": 2944,
+          "thread_local_load": 51249152,
+          "thread_local_store": 94208
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 1088.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 272.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 8704.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 68.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 256,
+      "dependency_mode": "serial_chain",
+      "reload_count": 128,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 47104,
+          "warp_local_load": 0,
+          "warp_local_store": 2944,
+          "thread_local_load": 0,
+          "thread_local_store": 94208
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 12058624,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 47104,
+          "warp_local_load": 3014656,
+          "warp_local_store": 2944,
+          "thread_local_load": 96468992,
+          "thread_local_store": 94208
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 2048.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 512.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 16384.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 128.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 256,
+      "dependency_mode": "batch_before_dep",
+      "reload_count": 0,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 47104,
+          "warp_local_load": 0,
+          "warp_local_store": 2944,
+          "thread_local_load": 0,
+          "thread_local_store": 94208
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 47104,
+          "warp_local_load": 0,
+          "warp_local_store": 2944,
+          "thread_local_load": 0,
+          "thread_local_store": 94208
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 0.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 0.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 0.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 256,
+      "dependency_mode": "batch_before_dep",
+      "reload_count": 8,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 47104,
+          "warp_local_load": 0,
+          "warp_local_store": 2944,
+          "thread_local_load": 0,
+          "thread_local_store": 94208
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 753664,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 47104,
+          "warp_local_load": 188416,
+          "warp_local_store": 2944,
+          "thread_local_load": 6029312,
+          "thread_local_store": 94208
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 128.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 32.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 1024.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 8.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 256,
+      "dependency_mode": "batch_before_dep",
+      "reload_count": 32,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 47104,
+          "warp_local_load": 0,
+          "warp_local_store": 2944,
+          "thread_local_load": 0,
+          "thread_local_store": 94208
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 3014656,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 47104,
+          "warp_local_load": 753664,
+          "warp_local_store": 2944,
+          "thread_local_load": 24117248,
+          "thread_local_store": 94208
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 512.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 128.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 4096.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 32.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 256,
+      "dependency_mode": "batch_before_dep",
+      "reload_count": 68,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 47104,
+          "warp_local_load": 0,
+          "warp_local_store": 2944,
+          "thread_local_load": 0,
+          "thread_local_store": 94208
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 6406144,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 47104,
+          "warp_local_load": 1601536,
+          "warp_local_store": 2944,
+          "thread_local_load": 51249152,
+          "thread_local_store": 94208
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 1088.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 272.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 8704.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 68.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 256,
+      "dependency_mode": "batch_before_dep",
+      "reload_count": 128,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 47104,
+          "warp_local_load": 0,
+          "warp_local_store": 2944,
+          "thread_local_load": 0,
+          "thread_local_store": 94208
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 12058624,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 47104,
+          "warp_local_load": 3014656,
+          "warp_local_store": 2944,
+          "thread_local_load": 96468992,
+          "thread_local_store": 94208
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 2048.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 512.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 16384.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 128.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 512,
+      "dependency_mode": "serial_chain",
+      "reload_count": 0,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 94208,
+          "warp_local_load": 0,
+          "warp_local_store": 5888,
+          "thread_local_load": 0,
+          "thread_local_store": 188416
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 94208,
+          "warp_local_load": 0,
+          "warp_local_store": 5888,
+          "thread_local_load": 0,
+          "thread_local_store": 188416
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 0.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 0.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 0.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 512,
+      "dependency_mode": "serial_chain",
+      "reload_count": 8,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 94208,
+          "warp_local_load": 0,
+          "warp_local_store": 5888,
+          "thread_local_load": 0,
+          "thread_local_store": 188416
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 753664,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 94208,
+          "warp_local_load": 188416,
+          "warp_local_store": 5888,
+          "thread_local_load": 6029312,
+          "thread_local_store": 188416
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 128.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 32.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 1024.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 8.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 512,
+      "dependency_mode": "serial_chain",
+      "reload_count": 32,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 94208,
+          "warp_local_load": 0,
+          "warp_local_store": 5888,
+          "thread_local_load": 0,
+          "thread_local_store": 188416
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 3014656,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 94208,
+          "warp_local_load": 753664,
+          "warp_local_store": 5888,
+          "thread_local_load": 24117248,
+          "thread_local_store": 188416
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 512.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 128.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 4096.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 32.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 512,
+      "dependency_mode": "serial_chain",
+      "reload_count": 68,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 94208,
+          "warp_local_load": 0,
+          "warp_local_store": 5888,
+          "thread_local_load": 0,
+          "thread_local_store": 188416
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 6406144,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 94208,
+          "warp_local_load": 1601536,
+          "warp_local_store": 5888,
+          "thread_local_load": 51249152,
+          "thread_local_store": 188416
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 1088.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 272.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 8704.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 68.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 512,
+      "dependency_mode": "serial_chain",
+      "reload_count": 128,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 94208,
+          "warp_local_load": 0,
+          "warp_local_store": 5888,
+          "thread_local_load": 0,
+          "thread_local_store": 188416
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 12058624,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 94208,
+          "warp_local_load": 3014656,
+          "warp_local_store": 5888,
+          "thread_local_load": 96468992,
+          "thread_local_store": 188416
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 2048.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 512.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 16384.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 128.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 512,
+      "dependency_mode": "batch_before_dep",
+      "reload_count": 0,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 94208,
+          "warp_local_load": 0,
+          "warp_local_store": 5888,
+          "thread_local_load": 0,
+          "thread_local_store": 188416
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 94208,
+          "warp_local_load": 0,
+          "warp_local_store": 5888,
+          "thread_local_load": 0,
+          "thread_local_store": 188416
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 0.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 0.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 0.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 512,
+      "dependency_mode": "batch_before_dep",
+      "reload_count": 8,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 94208,
+          "warp_local_load": 0,
+          "warp_local_store": 5888,
+          "thread_local_load": 0,
+          "thread_local_store": 188416
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 753664,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 94208,
+          "warp_local_load": 188416,
+          "warp_local_store": 5888,
+          "thread_local_load": 6029312,
+          "thread_local_store": 188416
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 128.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 32.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 1024.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 8.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 512,
+      "dependency_mode": "batch_before_dep",
+      "reload_count": 32,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 94208,
+          "warp_local_load": 0,
+          "warp_local_store": 5888,
+          "thread_local_load": 0,
+          "thread_local_store": 188416
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 3014656,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 94208,
+          "warp_local_load": 753664,
+          "warp_local_store": 5888,
+          "thread_local_load": 24117248,
+          "thread_local_store": 188416
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 512.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 128.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 4096.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 32.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 512,
+      "dependency_mode": "batch_before_dep",
+      "reload_count": 68,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 94208,
+          "warp_local_load": 0,
+          "warp_local_store": 5888,
+          "thread_local_load": 0,
+          "thread_local_store": 188416
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 6406144,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 94208,
+          "warp_local_load": 1601536,
+          "warp_local_store": 5888,
+          "thread_local_load": 51249152,
+          "thread_local_store": 188416
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 1088.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 272.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 8704.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 68.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 512,
+      "dependency_mode": "batch_before_dep",
+      "reload_count": 128,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 94208,
+          "warp_local_load": 0,
+          "warp_local_store": 5888,
+          "thread_local_load": 0,
+          "thread_local_store": 188416
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 12058624,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 94208,
+          "warp_local_load": 3014656,
+          "warp_local_store": 5888,
+          "thread_local_load": 96468992,
+          "thread_local_store": 188416
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 2048.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 512.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 16384.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 128.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 1024,
+      "dependency_mode": "serial_chain",
+      "reload_count": 0,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 188416,
+          "warp_local_load": 0,
+          "warp_local_store": 11776,
+          "thread_local_load": 0,
+          "thread_local_store": 376832
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 188416,
+          "warp_local_load": 0,
+          "warp_local_store": 11776,
+          "thread_local_load": 0,
+          "thread_local_store": 376832
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 0.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 0.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 0.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 1024,
+      "dependency_mode": "serial_chain",
+      "reload_count": 8,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 188416,
+          "warp_local_load": 0,
+          "warp_local_store": 11776,
+          "thread_local_load": 0,
+          "thread_local_store": 376832
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 753664,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 188416,
+          "warp_local_load": 188416,
+          "warp_local_store": 11776,
+          "thread_local_load": 6029312,
+          "thread_local_store": 376832
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 128.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 32.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 1024.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 8.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 1024,
+      "dependency_mode": "serial_chain",
+      "reload_count": 32,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 188416,
+          "warp_local_load": 0,
+          "warp_local_store": 11776,
+          "thread_local_load": 0,
+          "thread_local_store": 376832
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 3014656,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 188416,
+          "warp_local_load": 753664,
+          "warp_local_store": 11776,
+          "thread_local_load": 24117248,
+          "thread_local_store": 376832
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 512.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 128.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 4096.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 32.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 1024,
+      "dependency_mode": "serial_chain",
+      "reload_count": 68,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 188416,
+          "warp_local_load": 0,
+          "warp_local_store": 11776,
+          "thread_local_load": 0,
+          "thread_local_store": 376832
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 6406144,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 188416,
+          "warp_local_load": 1601536,
+          "warp_local_store": 11776,
+          "thread_local_load": 51249152,
+          "thread_local_store": 376832
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 1088.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 272.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 8704.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 68.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 1024,
+      "dependency_mode": "serial_chain",
+      "reload_count": 128,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 188416,
+          "warp_local_load": 0,
+          "warp_local_store": 11776,
+          "thread_local_load": 0,
+          "thread_local_store": 376832
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 12058624,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 188416,
+          "warp_local_load": 3014656,
+          "warp_local_store": 11776,
+          "thread_local_load": 96468992,
+          "thread_local_store": 376832
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 2048.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 512.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 16384.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 128.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 1024,
+      "dependency_mode": "batch_before_dep",
+      "reload_count": 0,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 188416,
+          "warp_local_load": 0,
+          "warp_local_store": 11776,
+          "thread_local_load": 0,
+          "thread_local_store": 376832
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 188416,
+          "warp_local_load": 0,
+          "warp_local_store": 11776,
+          "thread_local_load": 0,
+          "thread_local_store": 376832
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 0.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 0.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 0.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 1024,
+      "dependency_mode": "batch_before_dep",
+      "reload_count": 8,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 188416,
+          "warp_local_load": 0,
+          "warp_local_store": 11776,
+          "thread_local_load": 0,
+          "thread_local_store": 376832
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 753664,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 188416,
+          "warp_local_load": 188416,
+          "warp_local_store": 11776,
+          "thread_local_load": 6029312,
+          "thread_local_store": 376832
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 128.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 32.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 1024.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 8.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 1024,
+      "dependency_mode": "batch_before_dep",
+      "reload_count": 32,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 188416,
+          "warp_local_load": 0,
+          "warp_local_store": 11776,
+          "thread_local_load": 0,
+          "thread_local_store": 376832
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 3014656,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 188416,
+          "warp_local_load": 753664,
+          "warp_local_store": 11776,
+          "thread_local_load": 24117248,
+          "thread_local_store": 376832
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 512.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 128.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 4096.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 32.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 1024,
+      "dependency_mode": "batch_before_dep",
+      "reload_count": 68,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 188416,
+          "warp_local_load": 0,
+          "warp_local_store": 11776,
+          "thread_local_load": 0,
+          "thread_local_store": 376832
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 6406144,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 188416,
+          "warp_local_load": 1601536,
+          "warp_local_store": 11776,
+          "thread_local_load": 51249152,
+          "thread_local_store": 376832
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 1088.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 272.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 8704.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 68.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 1024,
+      "dependency_mode": "batch_before_dep",
+      "reload_count": 128,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 188416,
+          "warp_local_load": 0,
+          "warp_local_store": 11776,
+          "thread_local_load": 0,
+          "thread_local_store": 376832
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 12058624,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 188416,
+          "warp_local_load": 3014656,
+          "warp_local_store": 11776,
+          "thread_local_load": 96468992,
+          "thread_local_store": 376832
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 2048.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 512.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 16384.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 128.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 2048,
+      "dependency_mode": "serial_chain",
+      "reload_count": 0,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 376832,
+          "warp_local_load": 0,
+          "warp_local_store": 23552,
+          "thread_local_load": 0,
+          "thread_local_store": 753664
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 376832,
+          "warp_local_load": 0,
+          "warp_local_store": 23552,
+          "thread_local_load": 0,
+          "thread_local_store": 753664
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 0.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 0.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 0.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 2048,
+      "dependency_mode": "serial_chain",
+      "reload_count": 8,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 376832,
+          "warp_local_load": 0,
+          "warp_local_store": 23552,
+          "thread_local_load": 0,
+          "thread_local_store": 753664
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 753664,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 376832,
+          "warp_local_load": 188416,
+          "warp_local_store": 23552,
+          "thread_local_load": 6029312,
+          "thread_local_store": 753664
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 128.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 32.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 1024.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 8.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 2048,
+      "dependency_mode": "serial_chain",
+      "reload_count": 32,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 376832,
+          "warp_local_load": 0,
+          "warp_local_store": 23552,
+          "thread_local_load": 0,
+          "thread_local_store": 753664
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 3014656,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 376832,
+          "warp_local_load": 753664,
+          "warp_local_store": 23552,
+          "thread_local_load": 24117248,
+          "thread_local_store": 753664
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 512.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 128.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 4096.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 32.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 2048,
+      "dependency_mode": "serial_chain",
+      "reload_count": 68,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 376832,
+          "warp_local_load": 0,
+          "warp_local_store": 23552,
+          "thread_local_load": 0,
+          "thread_local_store": 753664
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 6406144,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 376832,
+          "warp_local_load": 1601536,
+          "warp_local_store": 23552,
+          "thread_local_load": 51249152,
+          "thread_local_store": 753664
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 1088.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 272.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 8704.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 68.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 2048,
+      "dependency_mode": "serial_chain",
+      "reload_count": 128,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 376832,
+          "warp_local_load": 0,
+          "warp_local_store": 23552,
+          "thread_local_load": 0,
+          "thread_local_store": 753664
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 12058624,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 376832,
+          "warp_local_load": 3014656,
+          "warp_local_store": 23552,
+          "thread_local_load": 96468992,
+          "thread_local_store": 753664
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 2048.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 512.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 16384.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 128.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 2048,
+      "dependency_mode": "batch_before_dep",
+      "reload_count": 0,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 376832,
+          "warp_local_load": 0,
+          "warp_local_store": 23552,
+          "thread_local_load": 0,
+          "thread_local_store": 753664
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 376832,
+          "warp_local_load": 0,
+          "warp_local_store": 23552,
+          "thread_local_load": 0,
+          "thread_local_store": 753664
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 0.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 0.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 0.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 2048,
+      "dependency_mode": "batch_before_dep",
+      "reload_count": 8,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 376832,
+          "warp_local_load": 0,
+          "warp_local_store": 23552,
+          "thread_local_load": 0,
+          "thread_local_store": 753664
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 753664,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 376832,
+          "warp_local_load": 188416,
+          "warp_local_store": 23552,
+          "thread_local_load": 6029312,
+          "thread_local_store": 753664
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 128.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 32.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 1024.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 8.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 2048,
+      "dependency_mode": "batch_before_dep",
+      "reload_count": 32,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 376832,
+          "warp_local_load": 0,
+          "warp_local_store": 23552,
+          "thread_local_load": 0,
+          "thread_local_store": 753664
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 3014656,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 376832,
+          "warp_local_load": 753664,
+          "warp_local_store": 23552,
+          "thread_local_load": 24117248,
+          "thread_local_store": 753664
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 512.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 128.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 4096.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 32.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 2048,
+      "dependency_mode": "batch_before_dep",
+      "reload_count": 68,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 376832,
+          "warp_local_load": 0,
+          "warp_local_store": 23552,
+          "thread_local_load": 0,
+          "thread_local_store": 753664
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 6406144,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 376832,
+          "warp_local_load": 1601536,
+          "warp_local_store": 23552,
+          "thread_local_load": 51249152,
+          "thread_local_store": 753664
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 1088.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 272.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 8704.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 68.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 2048,
+      "dependency_mode": "batch_before_dep",
+      "reload_count": 128,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 376832,
+          "warp_local_load": 0,
+          "warp_local_store": 23552,
+          "thread_local_load": 0,
+          "thread_local_store": 753664
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 12058624,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 376832,
+          "warp_local_load": 3014656,
+          "warp_local_store": 23552,
+          "thread_local_load": 96468992,
+          "thread_local_store": 753664
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 2048.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 512.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 16384.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 128.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 4096,
+      "dependency_mode": "serial_chain",
+      "reload_count": 0,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 753664,
+          "warp_local_load": 0,
+          "warp_local_store": 47104,
+          "thread_local_load": 0,
+          "thread_local_store": 1507328
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 753664,
+          "warp_local_load": 0,
+          "warp_local_store": 47104,
+          "thread_local_load": 0,
+          "thread_local_store": 1507328
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 0.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 0.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 0.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 4096,
+      "dependency_mode": "serial_chain",
+      "reload_count": 8,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 753664,
+          "warp_local_load": 0,
+          "warp_local_store": 47104,
+          "thread_local_load": 0,
+          "thread_local_store": 1507328
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 753664,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 753664,
+          "warp_local_load": 188416,
+          "warp_local_store": 47104,
+          "thread_local_load": 6029312,
+          "thread_local_store": 1507328
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 128.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 32.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 1024.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 8.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 4096,
+      "dependency_mode": "serial_chain",
+      "reload_count": 32,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 753664,
+          "warp_local_load": 0,
+          "warp_local_store": 47104,
+          "thread_local_load": 0,
+          "thread_local_store": 1507328
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 3014656,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 753664,
+          "warp_local_load": 753664,
+          "warp_local_store": 47104,
+          "thread_local_load": 24117248,
+          "thread_local_store": 1507328
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 512.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 128.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 4096.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 32.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 4096,
+      "dependency_mode": "serial_chain",
+      "reload_count": 68,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 753664,
+          "warp_local_load": 0,
+          "warp_local_store": 47104,
+          "thread_local_load": 0,
+          "thread_local_store": 1507328
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 6406144,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 753664,
+          "warp_local_load": 1601536,
+          "warp_local_store": 47104,
+          "thread_local_load": 51249152,
+          "thread_local_store": 1507328
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 1088.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 272.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 8704.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 68.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 4096,
+      "dependency_mode": "serial_chain",
+      "reload_count": 128,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 753664,
+          "warp_local_load": 0,
+          "warp_local_store": 47104,
+          "thread_local_load": 0,
+          "thread_local_store": 1507328
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 12058624,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 753664,
+          "warp_local_load": 3014656,
+          "warp_local_store": 47104,
+          "thread_local_load": 96468992,
+          "thread_local_store": 1507328
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 2048.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 512.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 16384.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 128.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 4096,
+      "dependency_mode": "batch_before_dep",
+      "reload_count": 0,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 753664,
+          "warp_local_load": 0,
+          "warp_local_store": 47104,
+          "thread_local_load": 0,
+          "thread_local_store": 1507328
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 753664,
+          "warp_local_load": 0,
+          "warp_local_store": 47104,
+          "thread_local_load": 0,
+          "thread_local_store": 1507328
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 0.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 0.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 0.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 4096,
+      "dependency_mode": "batch_before_dep",
+      "reload_count": 8,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 753664,
+          "warp_local_load": 0,
+          "warp_local_store": 47104,
+          "thread_local_load": 0,
+          "thread_local_store": 1507328
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 753664,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 753664,
+          "warp_local_load": 188416,
+          "warp_local_store": 47104,
+          "thread_local_load": 6029312,
+          "thread_local_store": 1507328
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 128.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 32.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 1024.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 8.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 4096,
+      "dependency_mode": "batch_before_dep",
+      "reload_count": 32,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 753664,
+          "warp_local_load": 0,
+          "warp_local_store": 47104,
+          "thread_local_load": 0,
+          "thread_local_store": 1507328
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 3014656,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 753664,
+          "warp_local_load": 753664,
+          "warp_local_store": 47104,
+          "thread_local_load": 24117248,
+          "thread_local_store": 1507328
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 512.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 128.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 4096.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 32.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 4096,
+      "dependency_mode": "batch_before_dep",
+      "reload_count": 68,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 753664,
+          "warp_local_load": 0,
+          "warp_local_store": 47104,
+          "thread_local_load": 0,
+          "thread_local_store": 1507328
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 6406144,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 753664,
+          "warp_local_load": 1601536,
+          "warp_local_store": 47104,
+          "thread_local_load": 51249152,
+          "thread_local_store": 1507328
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 1088.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 272.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 8704.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 68.0,
+        "thread_local_store": 0.0
+      }
+    },
+    {
+      "frame_bytes_per_thread": 4096,
+      "dependency_mode": "batch_before_dep",
+      "reload_count": 128,
+      "ctas": 46,
+      "threads_per_cta": 128,
+      "steps": 128,
+      "launch_totals": {
+        "zero_step": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 753664,
+          "warp_local_load": 0,
+          "warp_local_store": 47104,
+          "thread_local_load": 0,
+          "thread_local_store": 1507328
+        },
+        "measured": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 12058624,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 753664,
+          "warp_local_load": 3014656,
+          "warp_local_store": 47104,
+          "thread_local_load": 96468992,
+          "thread_local_store": 1507328
+        }
+      },
+      "per_cta_iteration": {
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 2048.0,
+        "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+        "warp_local_load": 512.0,
+        "warp_local_store": 0.0,
+        "thread_local_load": 16384.0,
+        "thread_local_store": 0.0
+      },
+      "per_thread_iteration": {
+        "thread_local_load": 128.0,
+        "thread_local_store": 0.0
+      }
+    }
+  ],
+  "causal_attention": {
+    "case": {
+      "case_id": "b2-q32-kv4-s768-d128-causal",
+      "split": "development",
+      "batch": 2,
+      "query_heads": 32,
+      "kv_heads": 4,
+      "seq_len": 768,
+      "head_dim": 128,
+      "causal": true,
+      "config_ids": [
+        "m64n32-w4-s2",
+        "m64n32-w8-s2",
+        "m64n32-w4-s3",
+        "m64n32-w8-s3",
+        "m64n32-w4-s4",
+        "m64n32-w8-s4",
+        "m64n64-w4-s2",
+        "m64n64-w8-s2",
+        "m64n64-w4-s3",
+        "m64n64-w8-s3",
+        "m64n64-w4-s4",
+        "m64n64-w8-s4",
+        "m128n32-w4-s2",
+        "m128n32-w8-s2",
+        "m128n32-w4-s3",
+        "m128n32-w8-s3",
+        "m128n32-w4-s4",
+        "m128n32-w8-s4",
+        "m128n64-w4-s2",
+        "m128n64-w8-s2",
+        "m128n64-w4-s3",
+        "m128n64-w8-s3",
+        "m128n64-w4-s4",
+        "m128n64-w8-s4",
+        "m128n128-w4-s2",
+        "m128n128-w8-s2",
+        "m128n128-w4-s3",
+        "m128n128-w8-s3",
+        "m128n128-w4-s4",
+        "m128n128-w8-s4"
+      ]
+    },
+    "configs": [
+      {
+        "config_id": "m64n32-w4-s2",
+        "kernel_totals": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0,
+          "warp_local_load": 0,
+          "warp_local_store": 0
+        },
+        "loops": {
+          "main": {
+            "cta_iterations": 8448,
+            "thread_local_load": 0,
+            "thread_local_store": 0,
+            "per_cta_iteration": {
+              "load": 0.0,
+              "store": 0.0
+            },
+            "per_thread_iteration": {
+              "load": 0.0,
+              "store": 0.0
+            }
+          },
+          "diagonal": {
+            "cta_iterations": 1536,
+            "thread_local_load": 0,
+            "thread_local_store": 0,
+            "per_cta_iteration": {
+              "load": 0.0,
+              "store": 0.0
+            },
+            "per_thread_iteration": {
+              "load": 0.0,
+              "store": 0.0
+            }
+          }
+        },
+        "outside_or_unattributed": {
+          "load": 0,
+          "store": 0
+        },
+        "artifact": {
+          "ptx_sha256": "0fa7cd1421dddbf12973f9185ba9c7dd7e53bc022a9ce637f5e502943991c19d",
+          "registers_per_thread": 167,
+          "shared_bytes": 36864,
+          "runtime_local_spill_count": 0
+        },
+        "grid": [
+          12,
+          64,
+          1
+        ],
+        "triton_version": "3.9.0"
+      },
+      {
+        "config_id": "m128n64-w4-s2",
+        "kernel_totals": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 1622016,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 1584128,
+          "warp_local_load": 405504,
+          "warp_local_store": 396032
+        },
+        "loops": {
+          "main": {
+            "cta_iterations": 1920,
+            "thread_local_load": 7962624,
+            "thread_local_store": 10018816,
+            "per_cta_iteration": {
+              "load": 4147.2,
+              "store": 5218.133333333333
+            },
+            "per_thread_iteration": {
+              "load": 32.4,
+              "store": 40.766666666666666
+            }
+          },
+          "diagonal": {
+            "cta_iterations": 768,
+            "thread_local_load": 2310144,
+            "thread_local_store": 2113536,
+            "per_cta_iteration": {
+              "load": 3008.0,
+              "store": 2752.0
+            },
+            "per_thread_iteration": {
+              "load": 23.5,
+              "store": 21.5
+            }
+          }
+        },
+        "outside_or_unattributed": {
+          "load": 2703360,
+          "store": 540672
+        },
+        "artifact": {
+          "ptx_sha256": "4b7300d0cf05e9d72bf355ca09fb3beacde3b3dcd6d1d4764016699348d2d929",
+          "registers_per_thread": 255,
+          "shared_bytes": 65536,
+          "runtime_local_spill_count": 54
+        },
+        "grid": [
+          6,
+          64,
+          1
+        ],
+        "triton_version": "3.9.0"
+      },
+      {
+        "config_id": "m128n128-w8-s2",
+        "kernel_totals": {
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 86016,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 86016,
+          "warp_local_load": 21504,
+          "warp_local_store": 21504
+        },
+        "loops": {
+          "main": {
+            "cta_iterations": 960,
+            "thread_local_load": 0,
+            "thread_local_store": 98304,
+            "per_cta_iteration": {
+              "load": 0.0,
+              "store": 102.4
+            },
+            "per_thread_iteration": {
+              "load": 0.0,
+              "store": 0.4
+            }
+          },
+          "diagonal": {
+            "cta_iterations": 384,
+            "thread_local_load": 294912,
+            "thread_local_store": 294912,
+            "per_cta_iteration": {
+              "load": 768.0,
+              "store": 768.0
+            },
+            "per_thread_iteration": {
+              "load": 3.0,
+              "store": 3.0
+            }
+          }
+        },
+        "outside_or_unattributed": {
+          "load": 393216,
+          "store": 294912
+        },
+        "artifact": {
+          "ptx_sha256": "8bf5a3ad2905fd7ae8ec7b4f9570b45b132fe893829be458c61e73844feeedd2",
+          "registers_per_thread": 255,
+          "shared_bytes": 98304,
+          "runtime_local_spill_count": 8
+        },
+        "grid": [
+          6,
+          64,
+          1
+        ],
+        "triton_version": "3.9.0"
+      }
+    ]
+  }
+}
