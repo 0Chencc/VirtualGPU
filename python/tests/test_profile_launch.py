@@ -317,3 +317,21 @@ class ProfileLaunchTests(unittest.TestCase):
         )
         self.assertEqual(entry["effective_bytes_per_ns_per_cta"]["launch"]["length"], 9000)
         self.assertIn("launch", entry["stage_time_ns"])
+
+    def test_mma_softmax_chain_points_but_not_its_calibrations(self):
+        profile = json.loads((ROOT / "profiles/rtx4070.json").read_text())  # GB10 has none
+        names = pl.long_launch.DESIGN_FIELDS["mma-softmax-chain"]["mma_softmax_chain"]
+        entry = profile["measured"]["compute"]["mma_softmax_chain"][7]
+        point = timed(entry, names, {"iter_time_ns_samples": "iter_time_ns"}, 1500)
+        calibration = {k: entry[k] for k in names} | {
+            "ctas_per_sm": 1,
+            "softmax_ops": 0,
+            "steps": 4000,
+            "launch_ns_samples": [1.3e6] * 5,
+            "iter_time_ns_samples": [1.0] * 5,
+            "launch": launch(4000),
+        }
+        merged = {"solo_calibration": [calibration], "mma_softmax_chain": [point]}
+        pl.attach(profile, "mma-softmax-chain", merged)
+        self.assertEqual(entry["iter_time_ns"]["launch"]["length"], 1500)
+        self.assertNotIn("launch", entry)

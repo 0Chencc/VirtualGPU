@@ -61,6 +61,7 @@ MODES = (
     "sync-loop-reconcile",
     "sync-loop-ablation",
     "serial-fill",
+    "mma-softmax-chain",
 )
 ROUNDS = 5
 EXTRA_ROUNDS = 2

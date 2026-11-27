@@ -48,6 +48,7 @@ PROFILE_PATH = {
     ("sync-loop-reconcile", "sync_stage_loop"): ("pipeline", "sync_stage_loop"),
     ("sync-loop-ablation", "sync_stage_loop_ablation"): ("pipeline", "sync_stage_loop_ablation"),
     ("serial-fill", "serial_stage_fill"): ("pipeline", "serial_stage_fill"),
+    ("mma-softmax-chain", "mma_softmax_chain"): ("compute", "mma_softmax_chain"),
 }
 # Raw sample lists whose profile value has another name than the list without "_samples".
 STAGE_LOOP = {
@@ -75,7 +76,9 @@ SCALARS = {
 # Top-level compatibility lists that must equal a point's own list: (mode, raw field) -> list.
 VIEWS = {("l2", "write_full"): "write_full_gbps_samples"}
 # Timed points with no profile value of their own (their result is derived).
-NOT_IN_PROFILE = {("l2", "capacity_sweep")}
+# The mma-softmax-chain calibrations are timed points whose medians become every point's
+# solo_mma_ns and solo_softmax_ns, plain numbers in the profile.
+NOT_IN_PROFILE = {("l2", "capacity_sweep"), ("mma-softmax-chain", "solo_calibration")}
 # Sample lists of a point that are not profile values: (mode, list name).
 NOT_A_VALUE = set()
 # Modes whose points build_profile merges into one profile field, later overriding earlier
