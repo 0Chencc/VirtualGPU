@@ -1688,8 +1688,14 @@ static int run_l2_rescan(int device, int samples, int warmup = 1, LaunchSchedule
       };
       std::printf("%s\n    {\"working_set_bytes\": %zu, \"ratio_to_l2\": %.4f", wi ? "," : "", ws,
                   static_cast<double>(ws) / static_cast<double>(l2_bytes));
+      // In GB10's L2 bistable band the pass-2 time differs up to twice between processes,
+      // so the pilot sizes those points to twice the floor.
+      const double ratio = static_cast<double>(ws) / static_cast<double>(l2_bytes);
+      const bool band = ratio >= 0.75 && ratio <= 1.25;
+      schedule->observed_target_ns = band ? 2.0 * LaunchSchedule::pilot_min_ns : LaunchSchedule::pilot_min_ns;
       auto timed = schedule->time_point(1, 1, 1 << 16, std::max(warmup, 1), samples, ev0, ev1, [] {}, group,
                                         observe);
+      schedule->observed_target_ns = LaunchSchedule::pilot_min_ns;
       const size_t n = timed.observed.size();
       auto tail = [&](const char* key, const std::vector<double>& v) {
         std::printf(", \"%s\": [", key);

@@ -7,6 +7,10 @@
 struct LaunchSchedule {
   static constexpr size_t MiB = 1024ULL * 1024ULL;
   static constexpr double pilot_min_ns = 1250000.0;
+  // What the pilot sizes the observed window to in the overload with `observe`. A mode may
+  // raise it for points whose window varies between processes by a known factor (GB10's
+  // L2 bistable band), so the frozen length still clears the capture floor in either state.
+  double observed_target_ns = pilot_min_ns;
   std::function<double()> clock_probe;
 
   explicit LaunchSchedule(const std::string& path) : pilot(path == "pilot") {
@@ -81,6 +85,7 @@ struct LaunchSchedule {
     }
     std::vector<double> durations, observed;
     if (pilot) {
+      const double target = windowed ? std::max(pilot_min_ns, observed_target_ns) : pilot_min_ns;
       std::printf(", \"sizing_trials\": [");
       for (int attempt = 0; ; ++attempt) {
         observed.clear();
@@ -96,8 +101,8 @@ struct LaunchSchedule {
           fastest = std::min(fastest, *std::min_element(observed.begin(), observed.end()));
         }
         std::printf("}");
-        if (fastest >= pilot_min_ns || length == maximum || attempt == 7) break;
-        const double scaled = std::ceil(length * (pilot_min_ns + 50000.0) / std::max(fastest, 1.0));
+        if (fastest >= target || length == maximum || attempt == 7) break;
+        const double scaled = std::ceil(length * (target + 50000.0) / std::max(fastest, 1.0));
         length = static_cast<int>(std::min<double>(maximum, std::max(length + 1.0, scaled)));
       }
       std::printf("]");
