@@ -28,13 +28,15 @@ except ImportError:  # imported as microbench.long_compare
     from microbench import capture_posthoc, long_launch
 
 
-def x1_schedule(pilot):
-    """The first sizing trial of every point, in emission order."""
-    lengths = []
-    for _, point in long_launch.points(pilot):
+def x1_schedule(mode, pilot):
+    """The first sizing trial of every point, in emission order, after the point's frozen
+    parameters (long_launch.FROZEN_PARAMETERS)."""
+    lines = []
+    for path, point in long_launch.points(pilot):
         trials = point.get("sizing_trials")
-        lengths.append(trials[0]["steps"] if trials else point["steps"])
-    return "".join(f"{n}\n" for n in lengths)
+        steps = trials[0]["steps"] if trials else point["steps"]
+        lines.append(long_launch.schedule_lines(mode, path, {**point, "steps": steps}))
+    return "".join(lines)
 
 
 def per_step(mode, capture):
@@ -97,7 +99,9 @@ def main():
     if args.action == "x1":
         if args.schedule.exists():
             raise FileExistsError(args.schedule)
-        args.schedule.write_text(x1_schedule(json.loads(args.pilot.read_text())))
+        args.schedule.write_text(
+            x1_schedule(args.mode, json.loads(args.pilot.read_text())), newline="\n"
+        )
     else:
         load = [json.loads(p.read_text()) for p in args.x1]
         load_long = [json.loads(p.read_text()) for p in args.long]
