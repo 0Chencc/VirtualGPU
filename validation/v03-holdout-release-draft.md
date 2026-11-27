@@ -64,9 +64,8 @@ and reason. The smoke checks in this draft use CPU fixtures only.
 The release lead publishes the reviewed plan on origin/main after
 independent review and informs the project owner. The reviewed code
 commit must be reachable from the plan commit. If the code is squashed
-on merge, bind the published commit containing the reviewed code. This draft
-reviews code at `1e11b8d`. The
-payload at `validation/v03-manifest-release.json` has
+on merge, use the published commit containing the reviewed code.
+Record that commit in the publication payload. The payload at `validation/v03-manifest-release.json` has
 `status: released`, `timestamp_utc`, `code_commit`, an `inputs`
 object with the SHA-256 for each of `gemm`, `attention`, `history`
 and `aot`, and a `capture_profiles` object mapping `gb10` and

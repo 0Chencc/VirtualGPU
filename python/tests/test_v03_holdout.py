@@ -23,7 +23,11 @@ def test_capture_authorization_follows_the_manifest_release(monkeypatch):
 
     monkeypatch.setattr(v03_plan, "read_published", read)
     monkeypatch.setattr(v03_plan, "require_ancestor", lambda a, b: ancestry.append((a, b)))
-    monkeypatch.setattr(v03_plan, "introduction", lambda _, path: plan_commit if path == v03_plan.PLAN else approval_commit)
+    monkeypatch.setattr(
+        v03_plan,
+        "introduction",
+        lambda _, path: plan_commit if path == v03_plan.PLAN else approval_commit,
+    )
     assert v03_plan.require_capture("main", "gb10", HASH) == ("receipt-digest", None)
     assert ancestry == [(plan_commit, approval_commit)]
     with pytest.raises(ValueError, match="must follow"):
@@ -35,11 +39,19 @@ def test_capture_authorization_follows_the_manifest_release(monkeypatch):
 
 def test_missing_device_approval_never_reaches_lock_or_runtime(monkeypatch, tmp_path):
     monkeypatch.setattr(v03_capture, "published_main", lambda: "main")
-    monkeypatch.setattr(v03_capture, "load_plan", lambda _: (
-        {"code_commit": "code"}, HASH, {FAMILY: {"devices": {DEVICE: {"cases": [CASE]}}}},
-    ))
+    monkeypatch.setattr(
+        v03_capture,
+        "load_plan",
+        lambda _: (
+            {"code_commit": "code"},
+            HASH,
+            {FAMILY: {"devices": {DEVICE: {"cases": [CASE]}}}},
+        ),
+    )
     monkeypatch.setattr(v03_capture, "require_reviewed_code", lambda *args, **kwargs: "clean")
-    monkeypatch.setattr(v03_capture, "require_capture", lambda *args: pytest.fail("missing approval"))
+    monkeypatch.setattr(
+        v03_capture, "require_capture", lambda *args: pytest.fail("missing approval")
+    )
     monkeypatch.setattr(v03_capture, "require_lock", lambda: pytest.fail("reached lock"))
     with pytest.raises(pytest.fail.Exception, match="missing approval"):
         v03_capture.capture(tmp_path, tmp_path, DEVICE, FAMILY, CASE["case_id"], 1, 1)
@@ -47,13 +59,20 @@ def test_missing_device_approval_never_reaches_lock_or_runtime(monkeypatch, tmp_
 
 
 @pytest.mark.parametrize("cold,expected", [(20, "complete"), (5, "protocol_failed")])
-def test_sealing_and_audit_validate_the_probe_without_reading_labels(monkeypatch, tmp_path, cold, expected):
+def test_sealing_and_audit_validate_the_probe_without_reading_labels(
+    monkeypatch, tmp_path, cold, expected
+):
     release = {"code_commit": "code", "capture_profiles": {DEVICE: HASH}, "inputs": {FAMILY: HASH}}
     inputs = {
         FAMILY: {"devices": {DEVICE: {"cases": [CASE]}}, "configs": [{"config_id": "config"}]},
-        "aot": {"cohorts": {f"{DEVICE}-{FAMILY}": {
-            "profile_sha256": HASH, "cases": {CASE["case_id"]: {"aot_sha256": HASH}},
-        }}},
+        "aot": {
+            "cohorts": {
+                f"{DEVICE}-{FAMILY}": {
+                    "profile_sha256": HASH,
+                    "cases": {CASE["case_id"]: {"aot_sha256": HASH}},
+                }
+            }
+        },
     }
     for module in (v03_capture, v03_audit):
         monkeypatch.setattr(module, "published_main", lambda: "main")
@@ -65,14 +84,21 @@ def test_sealing_and_audit_validate_the_probe_without_reading_labels(monkeypatch
     monkeypatch.setattr(v03_capture, "require_lock", lambda: None)
     monkeypatch.setattr(v03_capture.host_quiet, "wait_for_quiet_host", lambda *args: {})
     monkeypatch.setattr(v03_capture, "host_trace", lambda samples: nullcontext())
-    monkeypatch.setattr(v03_capture, "run_session", lambda *args: ({
-        "timestamp_utc": v03_capture.utc(),
-        "complete_blocks": 10,
-        "spark": {"after": {"compute_processes": {"status": 0, "stdout": ""}}},
-        "configs": {"config": {"status": "ok"}},
-        "cache_control_ns": {"warm": [10], "cold": [cold]},
-        "samples": [{"latency_ns": 12345}],
-    }, "kernel"))
+    monkeypatch.setattr(
+        v03_capture,
+        "run_session",
+        lambda *args: (
+            {
+                "timestamp_utc": v03_capture.utc(),
+                "complete_blocks": 10,
+                "spark": {"after": {"compute_processes": {"status": 0, "stdout": ""}}},
+                "configs": {"config": {"status": "ok"}},
+                "cache_control_ns": {"warm": [10], "cold": [cold]},
+                "samples": [{"latency_ns": 12345}],
+            },
+            "kernel",
+        ),
+    )
     capture = v03_capture.capture
     if expected == "complete":
         capture(tmp_path, tmp_path, DEVICE, FAMILY, CASE["case_id"], 1, 1)
@@ -92,9 +118,14 @@ def test_sealing_and_audit_validate_the_probe_without_reading_labels(monkeypatch
 
 
 def test_freeze_requires_separate_opening_approval_before_any_report_access(monkeypatch, tmp_path):
-    monkeypatch.setattr(v03_score, "read_published", lambda _, path, status: (
-        {"timestamp_utc": "2026-11-27T00:00:00Z", "freeze_sha256": HASH}, HASH,
-    ))
+    monkeypatch.setattr(
+        v03_score,
+        "read_published",
+        lambda _, path, status: (
+            {"timestamp_utc": "2026-11-27T00:00:00Z", "freeze_sha256": HASH},
+            HASH,
+        ),
+    )
     monkeypatch.setattr(v03_score, "introduction", lambda *args: "same-commit")
     monkeypatch.setattr(v03_score, "require_ancestor", lambda *args: None)
     monkeypatch.setattr(v03_score, "git", lambda *args: pytest.fail("opening gate was skipped"))
@@ -107,7 +138,10 @@ def test_aot_resource_status_and_digest(tmp_path):
     file.write_text(json.dumps({"config": {"status": "fits_profile"}}))
     row = {"aot_file": file.name, "aot_sha256": sha256(file.read_bytes())}
     inputs = {"aot": {"cohorts": {"gb10-gemm": {"cases": {"synthetic": row}}}}}
-    assert v03_plan.aot_case(tmp_path, inputs, DEVICE, FAMILY, CASE)["configs"]["config"]["status"] == "ok"
+    assert (
+        v03_plan.aot_case(tmp_path, inputs, DEVICE, FAMILY, CASE)["configs"]["config"]["status"]
+        == "ok"
+    )
     file.write_text("{}")
     with pytest.raises(ValueError, match="SHA-256 mismatch"):
         v03_plan.aot_case(tmp_path, inputs, DEVICE, FAMILY, CASE)

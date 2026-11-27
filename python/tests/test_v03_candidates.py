@@ -67,7 +67,11 @@ def test_replaces_attention_length_with_nearest_available_aligned_length(inputs)
     original = create_manifests(inventory, profiles)["attention"]["devices"]["gb10"]["cases"][0]
     inventory["excluded_attention_seq_len"] = [original["seq_len"], 768]
     revised = create_manifests(inventory, profiles)["attention"]["devices"]["gb10"]["cases"][0]
-    assert revised == {**original, "seq_len": 1024, "case_id": original["case_id"].replace("s896", "s1024")}
+    assert revised == {
+        **original,
+        "seq_len": 1024,
+        "case_id": original["case_id"].replace("s896", "s1024"),
+    }
 
 
 def test_stops_if_wave_repair_would_change_the_registered_cta_count(inputs):
