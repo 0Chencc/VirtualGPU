@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <numeric>
 #include <random>
+#include <map>
 #include <vector>
 
 // ---------------------------------------------------------------------------
@@ -1023,8 +1024,91 @@ static int run_latency(int device, int samples) {
 
 __global__ void empty_kernel() {}
 
-static int run_launch(int device, int samples, int warmup) {
+// Launch overheads under a launch schedule: the length is the number of launches per
+// timed batch. Graphs are built per length during warmup, outside the timed window.
+static int run_launch_scheduled(int samples, int warmup, LaunchSchedule* schedule) {
+  cudaStream_t stream;
+  CUDA_CHECK(cudaStreamCreate(&stream));
+  cudaEvent_t ev_start, ev_stop;
+  CUDA_CHECK(cudaEventCreate(&ev_start));
+  CUDA_CHECK(cudaEventCreate(&ev_stop));
+  const int batch = 500;
+  const int large_grid = 4096;
+  warmup = std::max(warmup, 1);
+  std::map<std::pair<int, int>, std::pair<cudaGraph_t, cudaGraphExec_t>> graphs;
+  auto graph = [&](int grid, int length) {
+    auto key = std::make_pair(grid, length);
+    auto it = graphs.find(key);
+    if (it != graphs.end()) return it->second.second;
+    cudaGraph_t g = nullptr;
+    cudaGraphExec_t e = nullptr;
+    CUDA_CHECK(cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal));
+    for (int i = 0; i < length; ++i) empty_kernel<<<grid, 1, 0, stream>>>();
+    CUDA_CHECK(cudaStreamEndCapture(stream, &g));
+    CUDA_CHECK(cudaGraphInstantiate(&e, g, nullptr, nullptr, 0));
+    graphs[key] = {g, e};
+    return e;
+  };
+  // time_point records its events on the legacy stream, so batches run there too.
+  auto run_graph = [&](int grid, int length) { CUDA_CHECK(cudaGraphLaunch(graph(grid, length), 0)); };
+  auto print_per_launch = [](const std::vector<double>& ns, int length, double scale) {
+    for (size_t k = 0; k < ns.size(); ++k) std::printf("%s%.4f", k ? ", " : "", ns[k] / length * scale);
+  };
+
+  std::printf("{\n  \"samples\": %d,\n  \"legacy_batch\": %d,\n  \"large_grid\": %d,\n", samples, batch,
+              large_grid);
+  std::printf("  \"graph_launch\": {\"ctas\": 1");
+  auto small = schedule->time_point(batch, 1, 1 << 20, warmup, samples, ev_start, ev_stop, [] {},
+                                    [&](int length) { run_graph(1, length); });
+  std::printf("},\n  \"device_launch_overhead_us_samples\": [");
+  print_per_launch(small.launch_ns, small.length, 1e-3);
+
+  // Per-CTA slope: sized on the 1-CTA graph, then the 4096-CTA graph of the same count.
+  std::printf("],\n  \"per_cta\": {\"ctas\": 1, \"large_ctas\": %d", large_grid);
+  auto slope = schedule->time_point(batch, 1, 1 << 20, warmup, samples, ev_start, ev_stop, [] {},
+                                    [&](int length) { run_graph(1, length); });
+  for (int w = 0; w < warmup; ++w) run_graph(large_grid, slope.length);
+  CUDA_CHECK(cudaDeviceSynchronize());
+  std::vector<double> large_ns;
+  for (int k = 0; k < samples; ++k) {
+    CUDA_CHECK(cudaEventRecord(ev_start));
+    run_graph(large_grid, slope.length);
+    CUDA_CHECK(cudaEventRecord(ev_stop));
+    CUDA_CHECK(cudaEventSynchronize(ev_stop));
+    float ms = 0.0f;
+    CUDA_CHECK(cudaEventElapsedTime(&ms, ev_start, ev_stop));
+    large_ns.push_back(static_cast<double>(ms) * 1e6);
+  }
+  std::printf(", \"large_graph_ns_samples\": [");
+  for (size_t k = 0; k < large_ns.size(); ++k) std::printf("%s%.6f", k ? ", " : "", large_ns[k]);
+  std::printf("]},\n  \"per_cta_launch_latency_ns_samples\": [");
+  for (size_t k = 0; k < large_ns.size(); ++k) {
+    const double diff = (large_ns[k] - slope.launch_ns[k]) / slope.length;
+    std::printf("%s%.4f", k ? ", " : "", std::max(0.05, diff / (large_grid - 1)));
+  }
+
+  std::printf("],\n  \"stream_launch\": {\"ctas\": 1");
+  auto host = schedule->time_point(batch, 1, 1 << 20, warmup, samples, ev_start, ev_stop, [] {},
+                                   [&](int length) {
+                                     for (int i = 0; i < length; ++i) empty_kernel<<<1, 1>>>();
+                                   });
+  std::printf("},\n  \"host_launch_overhead_us_samples\": [");
+  print_per_launch(host.launch_ns, host.length, 1e-3);
+  std::printf("]\n}\n");
+
+  for (auto& kv : graphs) {
+    CUDA_CHECK(cudaGraphExecDestroy(kv.second.second));
+    CUDA_CHECK(cudaGraphDestroy(kv.second.first));
+  }
+  CUDA_CHECK(cudaEventDestroy(ev_start));
+  CUDA_CHECK(cudaEventDestroy(ev_stop));
+  CUDA_CHECK(cudaStreamDestroy(stream));
+  return 0;
+}
+
+static int run_launch(int device, int samples, int warmup, LaunchSchedule* schedule = nullptr) {
   (void)device;
+  if (schedule) return run_launch_scheduled(samples, warmup, schedule);
   cudaStream_t stream;
   CUDA_CHECK(cudaStreamCreate(&stream));
   cudaEvent_t ev_start, ev_stop;

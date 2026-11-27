@@ -98,6 +98,11 @@ DESIGN_FIELDS = {
         "shfl_latency": ("warps",),
     },
     "cp-async": {"cp_async": ("threads_per_sm",), "smem": ("threads_per_sm",)},
+    "launch": {
+        "graph_launch": ("ctas",),
+        "per_cta": ("ctas", "large_ctas"),
+        "stream_launch": ("ctas",),
+    },
     "mma-chain": {
         "mma_chain_latency": (
             "variant",

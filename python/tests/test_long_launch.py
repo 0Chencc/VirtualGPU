@@ -487,3 +487,27 @@ class LongLaunchTests(unittest.TestCase):
         schedule, record = long_launch.freeze("cp-async", pilot)
         self.assertEqual(schedule, "16384\n16384\n")
         self.assertEqual([p["point"]["field"] for p in record["points"]], ["cp_async", "smem"])
+
+    def test_launch_batches_are_keyed_by_their_grids(self):
+        def timed(steps):
+            return {"steps": steps, "launch_ns_samples": [1.3e6] * 3}
+
+        pilot = {
+            "samples": 3,
+            "graph_launch": {"ctas": 1, **timed(2600)},
+            "device_launch_overhead_us_samples": [0.5] * 3,
+            "per_cta": {
+                "ctas": 1,
+                "large_ctas": 4096,
+                **timed(2600),
+                "large_graph_ns_samples": [2e6] * 3,
+            },
+            "per_cta_launch_latency_ns_samples": [0.1] * 3,
+            "stream_launch": {"ctas": 1, **timed(1900)},
+            "host_launch_overhead_us_samples": [0.7] * 3,
+        }
+        schedule, record = long_launch.freeze("launch", pilot)
+        self.assertEqual(schedule, "2600\n2600\n1900\n")
+        self.assertEqual(
+            record["points"][1]["point"], {"field": "per_cta", "ctas": 1, "large_ctas": 4096}
+        )
