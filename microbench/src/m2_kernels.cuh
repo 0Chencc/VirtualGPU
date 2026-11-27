@@ -3998,7 +3998,7 @@ static int run_spill_counters(int device, bool probe_only) {
   return 0;
 }
 
-static int run_spill_latency(int device, int samples, int warmup) {
+static int run_spill_latency(int device, int samples, int warmup, LaunchSchedule* schedule = nullptr) {
   cudaDeviceProp prop{};
   CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
   const int sm_count = prop.multiProcessorCount;
@@ -4033,6 +4033,19 @@ static int run_spill_latency(int device, int samples, int warmup) {
           if (serial) dispatch_spill_frame<true>(fb, sm_count, d_sink, rc, stride_u32, steps);
           else dispatch_spill_frame<false>(fb, sm_count, d_sink, rc, stride_u32, steps);
         };
+        if (schedule) {
+          std::printf("%s\n    {\"regime\": \"%s\", \"dependency_mode\": \"%s\", \"num_warps\": 4, "
+                      "\"resident_threads_per_sm\": %d, \"frame_bytes_per_thread\": %d, \"reload_count\": %d",
+                      first ? "" : ",", regime, dep_mode, resident_threads_per_sm, fb, rc);
+          first = false;
+          auto timed = schedule->time_point(steps, 1, 1 << 24, warmup, samples, ev_start, ev_stop, [] {},
+                                            [&](int length) { steps = length; launch_once(); });
+          std::printf(", \"iter_time_ns_samples\": [");
+          for (size_t i = 0; i < timed.launch_ns.size(); ++i)
+            std::printf("%s%.3f", i ? ", " : "", timed.launch_ns[i] / timed.length);
+          std::printf("]}");
+          continue;
+        }
 
         for (int w = 0; w < warmup; ++w) launch_once();
         CUDA_CHECK(cudaDeviceSynchronize());

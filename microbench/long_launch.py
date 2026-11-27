@@ -57,6 +57,15 @@ DESIGN_FIELDS = {
             "mma_iters_per_stage",
         )
     },
+    "spill-latency": {
+        "reload_latency_by_count": (
+            "dependency_mode",
+            "num_warps",
+            "resident_threads_per_sm",
+            "frame_bytes_per_thread",
+            "reload_count",
+        )
+    },
 }
 
 
