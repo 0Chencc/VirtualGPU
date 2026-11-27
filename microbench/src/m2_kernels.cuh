@@ -3528,7 +3528,7 @@ static void dispatch_serial_fill_bytes(int stage_bytes, int grid, const uint4* d
   }
 }
 
-static int run_serial_fill(int device, int samples, int warmup) {
+static int run_serial_fill(int device, int samples, int warmup, LaunchSchedule* schedule = nullptr) {
   cudaDeviceProp prop{};
   CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
   const int sm_count = prop.multiProcessorCount;
@@ -3549,7 +3549,6 @@ static int run_serial_fill(int device, int samples, int warmup) {
   const std::vector<int> grid_list = {1, sm_count};
   const std::vector<int> warp_list = {4, 8};
   const std::vector<int> bytes_list = {2048, 4096, 8192, 16384};
-  const int steps = 4096;
 
   std::printf("{\n  \"samples\": %d,\n  \"serial_stage_fill\": [", samples);
   bool first = true;
@@ -3561,6 +3560,7 @@ static int run_serial_fill(int device, int samples, int warmup) {
         const char* r_mode = with_ldm ? "fill_and_ldmatrix" : "fill_only";
         for (int warps : warp_list) {
           for (int sb : bytes_list) {
+            int steps = 4096;
             auto launch_once = [&]() {
               if (warps == 4) {
                 if (use_cp && !with_ldm) dispatch_serial_fill_bytes<4, true, false>(sb, grid, d_l2, d_sink, l2_mask, steps);
@@ -3575,6 +3575,21 @@ static int run_serial_fill(int device, int samples, int warmup) {
               }
             };
 
+            if (schedule) {
+              std::printf("%s\n    {\"transfer_mode\": \"%s\", \"read_mode\": \"%s\", \"num_warps\": %d, "
+                          "\"stage_bytes\": %d, \"active_ctas\": %d",
+                          first ? "" : ",", t_mode, r_mode, warps, sb, grid);
+              first = false;
+              auto timed = schedule->time_point(steps, 1, 1 << 24, warmup, samples, ev_start, ev_stop, [] {},
+                                                [&](int length) { steps = length; launch_once(); });
+              const auto& ns = timed.launch_ns;
+              std::printf(", \"stage_time_ns_samples\": [");
+              for (size_t i = 0; i < ns.size(); ++i) std::printf("%s%.3f", i ? ", " : "", ns[i] / timed.length);
+              std::printf("], \"effective_bytes_per_ns_samples\": [");
+              for (size_t i = 0; i < ns.size(); ++i) std::printf("%s%.3f", i ? ", " : "", static_cast<double>(sb) * timed.length / ns[i]);
+              std::printf("]}");
+              continue;
+            }
             for (int w = 0; w < warmup; ++w) launch_once();
             CUDA_CHECK(cudaDeviceSynchronize());
 

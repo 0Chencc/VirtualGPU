@@ -386,3 +386,30 @@ class LongLaunchTests(unittest.TestCase):
                 },
             ],
         )
+
+    def test_serial_fill_is_keyed_by_transfer_read_warps_bytes_and_grid(self):
+        row = {
+            "transfer_mode": "cp_async",
+            "read_mode": "fill_and_ldmatrix",
+            "num_warps": 8,
+            "stage_bytes": 16384,
+            "active_ctas": 48,
+            "steps": 9000,
+            "launch_ns_samples": [1.3e6] * 3,
+            "stage_time_ns_samples": [144.0] * 3,
+        }
+        schedule, record = long_launch.freeze(
+            "serial-fill", {"samples": 3, "serial_stage_fill": [row]}
+        )
+        self.assertEqual(schedule, "9000\n")
+        self.assertEqual(
+            record["points"][0]["point"],
+            {
+                "field": "serial_stage_fill",
+                "transfer_mode": "cp_async",
+                "read_mode": "fill_and_ldmatrix",
+                "num_warps": 8,
+                "stage_bytes": 16384,
+                "active_ctas": 48,
+            },
+        )

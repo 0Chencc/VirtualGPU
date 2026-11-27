@@ -127,6 +127,15 @@ DESIGN_FIELDS = {
         key: ("ctas_per_sm", "num_warps", "mma_per_half", "softmax_ops")
         for key in ("solo_calibration", "mma_softmax_chain")
     },
+    "serial-fill": {
+        "serial_stage_fill": (
+            "transfer_mode",
+            "read_mode",
+            "num_warps",
+            "stage_bytes",
+            "active_ctas",
+        )
+    },
 }
 
 
