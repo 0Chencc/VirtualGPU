@@ -44,6 +44,7 @@ DESIGN_FIELDS = {
         "read_curve": ("target_sms",),
         "read_curve_cp_async": ("target_sms",),
         "write_full": ("working_set_bytes",),
+        "capacity_sweep": ("working_set_bytes",),
     },
     "closed-loop": {"dram_closed_loop": CLOSED_LOOP, "l2_closed_loop": CLOSED_LOOP},
     "l2-merge": {

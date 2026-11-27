@@ -9,6 +9,30 @@ from pathlib import Path
 from microbench import long_capture as lc
 from microbench import long_launch
 
+
+def test_l2_capacity_sweep_bistability_exempts_only_gb10_rule_three():
+    mib = 1024**2
+    raw = {
+        "capacity_sweep": [
+            {"working_set_bytes": size * mib, "launch_ns_samples": [1.3e6]}
+            for size in (17, 18, 24, 30, 31)
+        ],
+        "write_full": {"working_set_bytes": 24 * mib, "launch_ns_samples": [1.3e6]},
+    }
+    for device, rule in (("NVIDIA GB10", 1), ("NVIDIA GB10", 2), ("NVIDIA GeForce RTX 4070", 3)):
+        assert lc.judged("l2", raw, device, rule, 24 * mib) == raw
+    judged = lc.judged("l2", raw, "NVIDIA GB10", 3, 24 * mib)
+    assert [point["working_set_bytes"] for point in judged["capacity_sweep"]] == [
+        17 * mib,
+        31 * mib,
+    ]
+    assert judged["write_full"] == raw["write_full"]
+    assert [
+        point.get("exceptions")
+        for point in lc.mark_exceptions("l2", raw, "NVIDIA GB10", 24 * mib)["capacity_sweep"]
+    ] == [None, ["bistable_band"], ["bistable_band"], ["bistable_band"], None]
+
+
 STEADY = [1.3e6] * lc.SAMPLES
 SPIKY = [1.3e6] * 13 + [2.0e6, 2.0e6]
 

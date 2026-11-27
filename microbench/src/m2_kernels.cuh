@@ -583,6 +583,23 @@ static int run_l2(int device, int samples, int warmup, LaunchSchedule* schedule 
     }
     CUDA_CHECK(cudaDeviceSynchronize());
 
+    if (schedule) {
+      auto launch = [&](int count) {
+        l2_read_cg_kernel<<<sweep_grid, threads>>>(d_buf, d_sink, n_vec4, count);
+      };
+      std::printf("%s\n    {\"working_set_bytes\": %zu", si ? "," : "", ws);
+      auto timed = schedule->measure(passes, 4, std::numeric_limits<int>::max(), ws, ws,
+                                     0, samples, ev_start, ev_stop, [] {}, launch);
+      auto& durations = timed.launch_ns;
+      std::sort(durations.begin(), durations.end());
+      const double transferred = static_cast<double>(timed.length) * ws;
+      const size_t mid = durations.size() / 2;
+      const double median_bw =
+          (transferred / durations[(durations.size() - 1) / 2] + transferred / durations[mid]) / 2;
+      std::printf(", \"median_gbps\": %.6f}", median_bw);
+      continue;
+    }
+
     std::vector<double> gbps;
     gbps.reserve(5);
     for (int s = 0; s < 5; ++s) {

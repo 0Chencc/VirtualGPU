@@ -31,6 +31,16 @@ def output(*rows_per_field, samples=15):
 
 
 class LongLaunchTests(unittest.TestCase):
+    def test_l2_capacity_freezes_passes_and_working_set(self):
+        row = {"working_set_bytes": 24 * 1024**2, "steps": 32, "launch_ns_samples": [1.3e6] * 3}
+        raw = {"samples": 3, "capacity_sweep": [row]}
+        schedule, freeze = long_launch.freeze("l2", raw)
+        self.assertEqual(schedule, "32\n")
+        long_launch.verify(freeze, raw)
+        row["steps"] = 31
+        with self.assertRaisesRegex(ValueError, "froze"):
+            long_launch.verify(freeze, raw)
+
     def test_l2_write_legacy_samples_do_not_duplicate_the_scheduled_point(self):
         bandwidth = [100.0] * 3
         raw = {
