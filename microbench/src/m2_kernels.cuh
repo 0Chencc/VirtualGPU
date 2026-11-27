@@ -3943,6 +3943,8 @@ static int run_spill_counters(int device, bool probe_only) {
           CUDA_CHECK(cudaDeviceSynchronize());
           std::printf("SPILL_COUNTER_LAUNCH %d %d %d %d %d\n",
                       frame, serial, reloads, steps, ctas);
+          // NCU writes to the same pipe, so send each line whole.
+          std::fflush(stdout);
           if (probe_only) {
             CUDA_CHECK(cudaFree(sink));
             return 0;
