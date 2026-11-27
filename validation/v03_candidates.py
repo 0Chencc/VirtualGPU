@@ -174,6 +174,24 @@ def history():
         result["attention"]["rtx4070-phase4-v02-holdout"]["cases"]
     ):
         raise ValueError("v0.2 RTX 4070 attention case references do not match Phase 4")
+    ascend_seal, _ = read("validation/ascend-910b3-seal.json")
+    for family in result:
+        path = f"validation/ascend-910b3-{family}-holdout.json"
+        data, digest = read(path, ascend_seal["manifest_sha256"][family])
+        dimension = "shape" if family == "gemm" else "seq_len"
+        v1_key = "excluded_v1_shapes" if family == "gemm" else "excluded_v1_seq_lens"
+        dev_key = "excluded_dev_axes" if family == "gemm" else "excluded_dev_seq_lens"
+        development = data[dev_key]
+        if family == "gemm":
+            development = [[value] * 3 for value in development]
+        for name, cases in (
+            ("ascend910b3-v2-holdout", {case["case_id"]: case[dimension] for case in data["cases"]}),
+            ("ascend910b3-v1-diagnostic", dict(enumerate(data[v1_key], 1))),
+            ("ascend910b3-development-exclusions", dict(enumerate(development, 1))),
+        ):
+            result[family][name] = {
+                "manifest": path, "manifest_sha256": digest, "cases": cases,
+            }
     axes = [
         sorted(
             {shape[i] for source in result["gemm"].values() for shape in source["cases"].values()}
@@ -190,6 +208,60 @@ def history():
     }
 
 
+def nearest_offset(values, stride, excluded, allowed):
+    # One representative beyond the finite exclusion set suffices on the
+    # positive side for unconstrained axes.
+    for distance in range(1, len(excluded) * len(values) + 2):
+        for offset in (-distance * stride, distance * stride):
+            replacements = [value + offset for value in values]
+            if min(replacements) > 0 and not excluded.intersection(replacements) and allowed(replacements):
+                return offset
+    raise ValueError(f"No replacement on the registered grid for {values}")
+
+
+def repair_gemm(inventory, configs):
+    shapes = {device: [list(shape) for shape in rows] for device, rows in GEMM.items()}
+    historical = [set(inventory["excluded_gemm_axes"][axis]) for axis in ("M", "N", "K")]
+    strides = [math.lcm(*(item["tile"][axis] for item in configs)) for axis in range(3)]
+    wave = [index for index, label in enumerate(FAMILIES) if label.startswith("wave")]
+    for device, rows in shapes.items():
+        other = next(key for key in shapes if key != device)
+        for index, row in enumerate(rows):
+            for axis, value in enumerate(row):
+                if value not in historical[axis]:
+                    continue
+                indices = wave if index in wave else [index]
+                original = [rows[i][axis] for i in indices]
+                excluded = historical[axis] | {shape[axis] for shape in shapes[other]}
+                bm, bn, _ = next(cfg["tile"] for cfg in configs if cfg["config_id"] == REFERENCE)
+
+                def preserves_wave(replacements):
+                    if index not in wave or axis == 2:
+                        return True
+                    tile = (bm, bn)[axis]
+                    return all(
+                        math.ceil(before / tile) == math.ceil(after / tile)
+                        for before, after in zip(original, replacements, strict=True)
+                    )
+
+                offset = nearest_offset(original, strides[axis], excluded, preserves_wave)
+                for i in indices:
+                    rows[i][axis] += offset
+    if any({row[i] for row in shapes["gb10"]} & {row[i] for row in shapes["rtx4070"]} for i in range(3)):
+        raise ValueError("The two GEMM cohorts share an axis")
+    return shapes
+
+
+def attention_configs(configs, seq, dim, causal):
+    return [
+        config["config_id"]
+        for config in configs
+        if config["block_m"] <= seq
+        and config["block_n"] <= dim
+        and (not causal or config["block_n"] <= config["block_m"])
+    ]
+
+
 def create_manifests(inventory, profiles):
     bases = {
         family: read(f"validation/v02-{family}-holdout.json")[0] for family in ("gemm", "attention")
@@ -198,10 +270,16 @@ def create_manifests(inventory, profiles):
         family: {**base, "status": "candidate", "devices": {}} for family, base in bases.items()
     }
     used_shapes, used_lengths = set(), set()
+    shapes = repair_gemm(inventory, bases["gemm"]["configs"])
+    attn_configs = bases["attention"]["configs"]
+    seq_stride = math.lcm(*(cfg["block_m"] for cfg in attn_configs))
+    historical_lengths = set(inventory["excluded_attention_seq_len"])
+    reserved_lengths = {case[3] for cases in ATTENTION.values() for case in cases}
     for device, target in TARGETS.items():
         sm_count = profiles[device]["specs"]["sm_count"]
         cases = []
-        for label, shape in zip(FAMILIES, GEMM[device], strict=True):
+        for label, dimensions in zip(FAMILIES, shapes[device], strict=True):
+            shape = tuple(dimensions)
             if shape in used_shapes or any(
                 value in inventory["excluded_gemm_axes"][axis]
                 for axis, value in zip(("M", "N", "K"), shape)
@@ -233,19 +311,19 @@ def create_manifests(inventory, profiles):
         }
         cases, strata = [], set()
         for batch, hq, hk, seq, dim, causal in ATTENTION[device]:
-            if seq in used_lengths or seq in inventory["excluded_attention_seq_len"]:
+            ids = attention_configs(attn_configs, seq, dim, causal)
+            if seq in historical_lengths:
+                offset = nearest_offset(
+                    [seq], seq_stride, historical_lengths | reserved_lengths | used_lengths,
+                    lambda values: attention_configs(attn_configs, values[0], dim, causal) == ids,
+                )
+                seq += offset
+            if seq in used_lengths or seq in historical_lengths:
                 raise ValueError(f"{device}: attention sequence length is reused: {seq}")
             used_lengths.add(seq)
             strata.add((hq == hk, dim, causal))
             case = dict(zip(ATTENTION_FIELDS, (batch, hq, hk, seq, dim, causal)))
             case_id = f"b{batch}-q{hq}-kv{hk}-s{seq}-d{dim}-{'causal' if causal else 'full'}"
-            ids = [
-                config["config_id"]
-                for config in bases["attention"]["configs"]
-                if config["block_m"] <= seq
-                and config["block_n"] <= dim
-                and (not causal or config["block_n"] <= config["block_m"])
-            ]
             cases.append({"case_id": case_id, "split": "holdout", **case, "config_ids": ids})
         if len(strata) != 8:
             raise ValueError(f"{device}: attention strata are incomplete")
@@ -324,6 +402,7 @@ def main():
         "source_revision": subprocess.check_output(
             ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
         ).strip(),
+        "generator_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "host_arch": platform.machine(),
         "triton_version": triton.__version__,
         "history_sha256": write(args.output / "v03-holdout-history.json", inventory),
