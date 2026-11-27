@@ -40,7 +40,7 @@ def test_compare_defaults_to_one_loop():
 def test_main_compiles_for_the_captured_target(tmp_path, monkeypatch):
     from scripts import posthoc_spill_split as split
 
-    row = {"config_id": "m64n32-w4-s2", "registers_per_thread": 1, "loops": {}}
+    row = {"config_id": "m64n32-w4-s2", "artifact": {"registers_per_thread": 1}, "loops": {}}
     capture = {
         "provenance": {"commit": "abc", "target": "sm_86"},
         "causal_attention": {"case": {}, "configs": [row]},

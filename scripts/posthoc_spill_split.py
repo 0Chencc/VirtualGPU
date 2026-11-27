@@ -81,7 +81,7 @@ def main():
     for row in attention["configs"]:
         config = configs[row["config_id"]]
         resources = frontend_resources(attention["case"], config, target)
-        if resources["registers_per_thread"] != row["registers_per_thread"]:
+        if resources["registers_per_thread"] != row["artifact"]["registers_per_thread"]:
             print(f"{row['config_id']}: registers differ from the capture, toolchain mismatch?")
         rows.append(compare(row, resources, config["num_warps"]))
     for r in rows:
