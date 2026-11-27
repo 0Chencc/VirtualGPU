@@ -27,6 +27,7 @@ CAPTURE_MIN_NS = 1_000_000
 # results, run-time diagnostics such as observed_sms) stays out of the freeze.
 DESIGN_FIELDS = {
     "closed-loop": ("issue_mode", "tokens", "active_ctas", "stage_bytes", "compute_ns"),
+    "l2-merge": ("active_ctas", "sharing", "bytes_per_cta", "stagger_stages"),
 }
 
 

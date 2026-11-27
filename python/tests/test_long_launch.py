@@ -98,4 +98,24 @@ class LongLaunchTests(unittest.TestCase):
 
     def test_unregistered_mode_is_refused(self):
         with self.assertRaisesRegex(ValueError, "no design fields"):
-            long_launch.freeze("l2-merge", self.pilot())
+            long_launch.freeze("sync-loop", self.pilot())
+
+    def test_l2_merge_points_are_keyed_by_sharing_and_stagger(self):
+        def merge(stagger, steps):
+            return {
+                "active_ctas": 48,
+                "sharing": 4,
+                "bytes_per_cta": 8192,
+                "stagger_stages": stagger,
+                "steps": steps,
+                "launch_ns_samples": [1.3e6] * 3,
+                "turnaround_ns_samples": [900.0] * 3,
+            }
+
+        pilot = {"samples": 3, "l2_merge_by_sharing": [merge(0, 2000), merge(16, 2100)]}
+        schedule, record = long_launch.freeze("l2-merge", pilot)
+        self.assertEqual(schedule, "2000\n2100\n")
+        self.assertEqual([p["point"]["stagger_stages"] for p in record["points"]], [0, 16])
+        swapped = {"samples": 3, "l2_merge_by_sharing": [merge(16, 2000), merge(0, 2100)]}
+        with self.assertRaisesRegex(ValueError, "differs from the freeze"):
+            long_launch.verify(record, swapped)

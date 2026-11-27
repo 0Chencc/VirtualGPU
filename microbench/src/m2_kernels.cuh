@@ -2007,27 +2007,32 @@ __global__ void l2_merge_cp_async_kernel(const uint4* __restrict__ src,
   }
 }
 
-static int run_l2_merge(int device, int samples, int warmup) {
+static int run_l2_merge(int device, int samples, int warmup, LaunchSchedule* schedule = nullptr) {
   cudaDeviceProp prop{};
   CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
   const int sm_count = prop.multiProcessorCount;
 
-  const size_t dram_bytes = 256ULL * 1024ULL * 1024ULL;
+  // With a schedule, leaders read cold data from a 1 GiB buffer without wrapping.
+  const size_t flush_bytes = 256ULL * 1024ULL * 1024ULL;
+  const size_t dram_bytes = schedule ? 1024ULL * LaunchSchedule::MiB : flush_bytes;
   const size_t dram_mask = (dram_bytes / sizeof(uint4)) - 1ULL;
-  const size_t flush_vec4 = dram_bytes / sizeof(uint4);
+  const size_t flush_vec4 = flush_bytes / sizeof(uint4);
 
   uint4* d_dram = nullptr;
   uint4* d_flush = nullptr;
   uint4* d_sink = nullptr;
   double* d_cta_turn = nullptr;
   CUDA_CHECK(cudaMalloc(&d_dram, dram_bytes));
-  CUDA_CHECK(cudaMalloc(&d_flush, dram_bytes));
+  CUDA_CHECK(cudaMalloc(&d_flush, flush_bytes));
   CUDA_CHECK(cudaMalloc(&d_sink, 1024 * sizeof(uint4)));
-  // One slot per CTA; the largest launch below is sm_count * 2.
+  // One slot per CTA; the largest launch below is sm_count * 2. A schedule times its
+  // samples in one loop, so each launch writes its own row of a ring of `ring` rows
+  // and the last rows hold the timed samples.
   const size_t max_ctas = std::max<size_t>(256, static_cast<size_t>(sm_count) * 2);
-  CUDA_CHECK(cudaMalloc(&d_cta_turn, max_ctas * sizeof(double)));
+  const int ring = schedule ? std::max(samples, 3) : 1;
+  CUDA_CHECK(cudaMalloc(&d_cta_turn, max_ctas * ring * sizeof(double)));
   CUDA_CHECK(cudaMemset(d_dram, 21, dram_bytes));
-  CUDA_CHECK(cudaMemset(d_flush, 22, dram_bytes));
+  CUDA_CHECK(cudaMemset(d_flush, 22, flush_bytes));
 
   cudaEvent_t ev_start, ev_stop;
   CUDA_CHECK(cudaEventCreate(&ev_start));
@@ -2037,7 +2042,6 @@ static int run_l2_merge(int device, int samples, int warmup) {
   const std::vector<int> n_list = {16, 23, sm_count, sm_count * 2};
   const std::vector<int> r_list = {1, 2, 4, 8, 16, 23};
   const std::vector<int> k_list = {4096, 8192, 16384};
-  const int steps = 256;
 
   std::vector<double> h_cta_turn(max_ctas, 0.0);
   std::printf("{\n  \"samples\": %d,\n  \"cycles_per_ns\": %.4f,\n  \"l2_merge_by_sharing\": [",
@@ -2054,13 +2058,59 @@ static int run_l2_merge(int device, int samples, int warmup) {
         for (int stag : staggers) {
           // ~300 ns per staggered stage so rank 0 populates L2 ahead of followers.
           uint64_t stag_cyc = static_cast<uint64_t>(static_cast<double>(stag) * 300.0 * cycles_per_ns);
-          double total_l2_bytes = static_cast<double>(n) * static_cast<double>(k) * steps;
-
+          int steps = 256;
+          const double total_l2_bytes = static_cast<double>(n) * static_cast<double>(k) * steps;
+          double* turn_row = d_cta_turn;
           auto launch_once = [&]() {
-            if (vecs == 1) l2_merge_cp_async_kernel<1><<<n, 256, dyn_smem>>>(d_dram, d_sink, d_cta_turn, dram_mask, steps, r, stag_cyc);
-            else if (vecs == 2) l2_merge_cp_async_kernel<2><<<n, 256, dyn_smem>>>(d_dram, d_sink, d_cta_turn, dram_mask, steps, r, stag_cyc);
-            else l2_merge_cp_async_kernel<4><<<n, 256, dyn_smem>>>(d_dram, d_sink, d_cta_turn, dram_mask, steps, r, stag_cyc);
+            if (vecs == 1) l2_merge_cp_async_kernel<1><<<n, 256, dyn_smem>>>(d_dram, d_sink, turn_row, dram_mask, steps, r, stag_cyc);
+            else if (vecs == 2) l2_merge_cp_async_kernel<2><<<n, 256, dyn_smem>>>(d_dram, d_sink, turn_row, dram_mask, steps, r, stag_cyc);
+            else l2_merge_cp_async_kernel<4><<<n, 256, dyn_smem>>>(d_dram, d_sink, turn_row, dram_mask, steps, r, stag_cyc);
           };
+          auto mean_turn_ns = [&](const double* row) {
+            double avg_cyc = 0.0;
+            for (int c = 0; c < n; ++c) avg_cyc += row[c];
+            return avg_cyc / static_cast<double>(n) / cycles_per_ns;
+          };
+
+          if (schedule) {
+            std::printf("%s\n    {\"active_ctas\": %d, \"sharing\": %d, \"bytes_per_cta\": %d, \"stagger_stages\": %d",
+                        first ? "" : ",", n, r, k, stag);
+            first = false;
+            long calls = 0;
+            auto prepare = [&]() { l2_read_cg_kernel<<<sm_count * 4, 512>>>(d_flush, d_sink, flush_vec4, 1); };
+            auto launch = [&](int length) {
+              steps = length;
+              turn_row = d_cta_turn + static_cast<size_t>(calls++ % ring) * max_ctas;
+              launch_once();
+            };
+            // Each step reads a fresh stripe of one stage per group; no wrap within a launch.
+            const size_t stripe = static_cast<size_t>(n / r) * static_cast<size_t>(k);
+            const int maximum = static_cast<int>(std::min<size_t>(dram_bytes / stripe, 1u << 30));
+            auto timed = schedule->time_point(256, 1, maximum, warmup, samples, ev_start, ev_stop, prepare, launch);
+            std::vector<double> rows(max_ctas * ring);
+            CUDA_CHECK(cudaMemcpy(rows.data(), d_cta_turn, rows.size() * sizeof(double), cudaMemcpyDeviceToHost));
+            const double l2_bytes = static_cast<double>(n) * static_cast<double>(k) * timed.length;
+            std::vector<double> turn, l2_bw, dram_bw;
+            const long count = static_cast<long>(timed.launch_ns.size());
+            for (long i = 0; i < count; ++i) {
+              turn.push_back(mean_turn_ns(rows.data() + static_cast<size_t>((calls - count + i) % ring) * max_ctas));
+              l2_bw.push_back(l2_bytes / timed.launch_ns[i]);
+              dram_bw.push_back(l2_bw.back() / static_cast<double>(r));
+            }
+            auto list = [](const char* key, const std::vector<double>& v, const char* fmt) {
+              std::printf(", \"%s\": [", key);
+              for (size_t i = 0; i < v.size(); ++i) {
+                if (i > 0) std::printf(", ");
+                std::printf(fmt, v[i]);
+              }
+              std::printf("]");
+            };
+            list("turnaround_ns_samples", turn, "%.2f");
+            list("dram_unique_bw_gbps_samples", dram_bw, "%.3f");
+            list("l2_to_sm_bw_gbps_samples", l2_bw, "%.3f");
+            std::printf("}");
+            continue;
+          }
 
           for (int w = 0; w < warmup; ++w) {
             l2_read_cg_kernel<<<sm_count * 4, 512>>>(d_flush, d_sink, flush_vec4, 1);
@@ -2083,11 +2133,8 @@ static int run_l2_merge(int device, int samples, int warmup) {
             CUDA_CHECK(cudaEventElapsedTime(&ms, ev_start, ev_stop));
             CUDA_CHECK(cudaMemcpy(h_cta_turn.data(), d_cta_turn,
                                   static_cast<size_t>(n) * sizeof(double), cudaMemcpyDeviceToHost));
-            double avg_cyc = 0.0;
-            for (int c = 0; c < n; ++c) avg_cyc += h_cta_turn[c];
-            avg_cyc /= static_cast<double>(n);
             double l2_bw = (total_l2_bytes / 1e9) / (static_cast<double>(ms) / 1e3);
-            turn_ns_s.push_back(avg_cyc / cycles_per_ns);
+            turn_ns_s.push_back(mean_turn_ns(h_cta_turn.data()));
             l2_bw_s.push_back(l2_bw);
             dram_bw_s.push_back(l2_bw / static_cast<double>(r));
           }

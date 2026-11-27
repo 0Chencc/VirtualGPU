@@ -545,8 +545,8 @@ int main(int argc, char** argv) {
   }
 
   if (schedule && mode != "mlp" && mode != "strided-mlp" && mode != "dram-bw" && mode != "l2" &&
-      mode != "closed-loop") {
-    std::fprintf(stderr, "Launch schedules apply only to mlp, strided-mlp, dram-bw, l2 and closed-loop\n");
+      mode != "closed-loop" && mode != "l2-merge") {
+    std::fprintf(stderr, "Launch schedules apply only to mlp, strided-mlp, dram-bw, l2, closed-loop and l2-merge\n");
     return 2;
   }
 
@@ -557,6 +557,7 @@ int main(int argc, char** argv) {
     else if (mode == "strided-mlp") result = run_strided_mlp(device, samples, warmup, schedule.get());
     else if (mode == "dram-bw") result = run_dram_bw(device, samples, warmup, buffer_mb, schedule.get());
     else if (mode == "closed-loop") result = run_closed_loop(device, samples, warmup, schedule.get());
+    else if (mode == "l2-merge") result = run_l2_merge(device, samples, warmup, schedule.get());
     else result = run_l2(device, samples, warmup, schedule.get());
     schedule->finish();
     return result;
