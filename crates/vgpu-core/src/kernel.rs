@@ -61,6 +61,8 @@ pub enum SpillScope {
 pub struct Spill {
     /// Spill load plus store bytes per thread per execution of the scope.
     pub bytes_per_thread: f64,
+    /// Spill load bytes per thread per execution of the scope.
+    pub load_bytes_per_thread: f64,
     /// Local memory frame per thread.
     pub stack_frame_bytes: u64,
     pub scope: SpillScope,

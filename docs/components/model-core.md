@@ -165,7 +165,7 @@ The assembler reports static spill bytes, not dynamic counts. The core uses:
 - `prologue_epilogue`: added once to the prologue or epilogue.
 - `none`: no spill cost.
 
-This overestimates dynamic traffic when spill code is on a cold path. That is acceptable for ranking: a spilling config should rank below an otherwise similar non-spilling one, and the sign matters more than the magnitude. Every spilling variant carries the spill flag, and the validation must check spilling configs separately.
+Reloads also add latency to the CTA's dependent chain, from the measured reload curves at the spill load bytes over 4 B (design.md 6.4). Both overestimate dynamic traffic when spill code is on a cold path. That is acceptable for ranking: a spilling config should rank below an otherwise similar non-spilling one, and the sign matters more than the magnitude. Every spilling variant carries the spill flag, and the validation must check spilling configs separately.
 
 ### 3.8 Launch overhead
 

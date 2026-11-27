@@ -116,6 +116,7 @@ pub fn kernel_from_ir(ir: &KernelIR) -> Result<Kernel, ModelError> {
     let r = &ir.resources;
     let spill = Spill {
         bytes_per_thread: (r.spill_loads_bytes + r.spill_stores_bytes) as f64,
+        load_bytes_per_thread: r.spill_loads_bytes as f64,
         stack_frame_bytes: r.stack_frame_bytes,
         scope: match r.spill_scope {
             ir::SpillScope::None => SpillScope::None,

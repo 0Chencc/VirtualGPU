@@ -14,7 +14,7 @@
 
 use crate::kernel::{Access, Kernel, Spill, SpillScope, Work};
 use crate::occupancy::{occupancy, Occupancy, OccupancyError};
-use crate::profile::{interpolate, MlpPoint, Profile, WarpRate};
+use crate::profile::{interpolate, MlpPoint, Profile, SpillReloadPoint, WarpRate};
 
 /// Where the bytes of an access are served from.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
@@ -159,6 +159,10 @@ pub struct Machine {
     pub cta_launch_ns: f64,
     /// Multiplier on per-iteration spill traffic whose loop placement is assumed.
     pub assumed_spill_scale: f64,
+    /// (local memory footprint per SM, (reloads, extra ns per iteration)) of
+    /// batched spill reloads served by L1 and by L2.
+    pub spill_reload_l1: Vec<(f64, Vec<(f64, f64)>)>,
+    pub spill_reload_l2: Vec<(f64, Vec<(f64, f64)>)>,
     /// (warps, stage buffers, ns): per-stage synchronization cost.
     pub fixed_sync: Vec<(u32, u32, f64)>,
     /// (active AI Cores, ns): cross-core AIC <-> AIV handoff latency (empty on non-Ascend).
@@ -190,6 +194,55 @@ fn warp_curve(points: &[WarpRate], fallback: f64) -> Vec<(f64, f64)> {
         "warp_rate",
     )
     .unwrap_or_else(|_| vec![(1.0, fallback)])
+}
+
+/// Bytes of one spill reload: the reload microbenchmark uses 4 B loads, and
+/// the assembler's static report gives bytes, not instructions.
+pub const SPILL_RELOAD_BYTES: f64 = 4.0;
+
+/// Batched reload points of one regime, by footprint per SM, each sorted by
+/// reload count.
+fn reload_table(points: &[SpillReloadPoint], regime: &str) -> Vec<(f64, Vec<(f64, f64)>)> {
+    let mut table: Vec<(f64, Vec<(f64, f64)>)> = Vec::new();
+    for q in points
+        .iter()
+        .filter(|q| q.regime == regime && q.dependency_mode == "batch_before_dep")
+    {
+        let (Some(frame), Some(threads)) = (q.frame_bytes_per_thread, q.resident_threads_per_sm)
+        else {
+            continue;
+        };
+        let footprint = (frame * threads) as f64;
+        let point = (f64::from(q.reload_count), q.extra_ns_vs_zero.value.max(0.0));
+        match table.iter_mut().find(|e| e.0 == footprint) {
+            Some(e) => e.1.push(point),
+            None => table.push((footprint, vec![point])),
+        }
+    }
+    for e in &mut table {
+        e.1.sort_by(|a, b| a.0.total_cmp(&b.0));
+    }
+    table.sort_by(|a, b| a.0.total_cmp(&b.0));
+    table
+}
+
+/// Extra ns for `count` reloads at `footprint`: interpolated over the
+/// count, beyond the largest count at its average cost per reload, then
+/// over the footprint, clamped at both ends.
+fn reload_table_ns(table: &[(f64, Vec<(f64, f64)>)], count: f64, footprint: f64) -> f64 {
+    let at: Vec<(f64, f64)> = table
+        .iter()
+        .map(|(f, c)| {
+            let (n, ns) = c[c.len() - 1];
+            let v = if count > n && n > 0.0 {
+                ns * count / n
+            } else {
+                interpolate(c, count)
+            };
+            (*f, v)
+        })
+        .collect();
+    interpolate(&at, footprint)
 }
 
 /// Throughput of each of `u` CTAs using a pipe on one SM, at index `u`.
@@ -274,6 +327,22 @@ impl Machine {
             .iter()
             .min_by_key(|&&(w, t, _)| (w.abs_diff(warps), t.abs_diff(buffers)))
             .map_or(0.0, |&(_, _, ns)| ns)
+    }
+
+    /// Latency that `count` batched spill reloads per thread add to a CTA's
+    /// dependent chain, for frames of `footprint` bytes per SM of which the
+    /// fraction `miss` is served by L2. Zero without measured reloads.
+    pub fn spill_reload_ns(&self, count: f64, footprint: f64, miss: f64) -> f64 {
+        if count <= 0.0 || self.spill_reload_l1.is_empty() {
+            return 0.0;
+        }
+        let hit = reload_table_ns(&self.spill_reload_l1, count, footprint);
+        if self.spill_reload_l2.is_empty() {
+            return hit;
+        }
+        let l2 = reload_table_ns(&self.spill_reload_l2, count, footprint);
+        let miss = miss.clamp(0.0, 1.0);
+        (1.0 - miss) * hit + miss * l2
     }
 
     fn peak(curve: &[(f64, f64)]) -> f64 {
@@ -361,6 +430,8 @@ impl Machine {
             launch_overhead_ns: m.overhead.launch_overhead_us.value * 1e3,
             cta_launch_ns: m.overhead.per_cta_launch_latency_ns.value,
             assumed_spill_scale: 1.0,
+            spill_reload_l1: reload_table(&m.memory.spill_reload_latency_by_count, "l1_hit"),
+            spill_reload_l2: reload_table(&m.memory.spill_reload_latency_by_count, "l2_spill"),
             fixed_sync: m
                 .pipeline
                 .fixed_sync_ns
@@ -422,6 +493,7 @@ pub const RESOURCES: [&str; 13] = [
     "launch",
 ];
 const MMA: usize = 0;
+const LOCAL: usize = 3;
 const SYNC: usize = 7;
 const L2_LATENCY: usize = 8;
 const DRAM_LATENCY: usize = 9;
@@ -467,6 +539,8 @@ struct Demand {
     /// buffers each CTA cycles through them.
     stages: f64,
     tokens: u32,
+    /// Spill reload latency over the phase, on the CTA's dependent chain.
+    reload_ns: f64,
     /// Per-stage synchronization over the phase. It stalls the SM's pipes,
     /// so the other resident CTAs cannot fill it.
     sync_ns: f64,
@@ -550,6 +624,8 @@ struct Sim<'a, L: L2> {
     /// Spill traffic of one CTA per execution of the spill scope, as
     /// `(L1 bytes, L2 bytes, DRAM bytes)`.
     spill: (f64, f64, f64),
+    /// Spill reload latency of one CTA per execution of the spill scope.
+    reload_ns: f64,
 }
 
 impl<'a, L: L2> Sim<'a, L> {
@@ -697,6 +773,7 @@ impl<'a, L: L2> Sim<'a, L> {
             round_trips: if load_bytes > 0.0 { round_trips } else { 0.0 },
             stages: if phase == Phase::Main { steps } else { 0.0 },
             tokens: d + 1,
+            reload_ns: self.reload_ns * spill_executions,
             sync_ns: {
                 let base_sync = match phase {
                     Phase::Main => self.m.sync_ns(k.num_warps, d + 1) * steps,
@@ -868,6 +945,8 @@ struct Parts {
     dram_latency: f64,
     exposed: f64,
     exposed_kind: usize,
+    /// `RESOURCES` index of what dominates the dependent chain.
+    chain_kind: usize,
     /// Shared compute path: pipes by `RESOURCES` index, plus synchronization.
     pipes: [f64; 7],
     sync: f64,
@@ -938,7 +1017,7 @@ impl Parts {
                 (p[5], 5),
                 (p[6], 6),
                 (self.sync, SYNC),
-                (self.chain, self.exposed_kind),
+                (self.chain, self.chain_kind),
             ])
         }
     }
@@ -1069,7 +1148,7 @@ fn rates(ctas: &[Cta], m: &Machine, per_cta: &[PerCta], lat: Latency, s: &mut Sc
         let queued = (d.stages > 0.0 && d.round_trips > 0.0 && longest > 0.0).then(|| {
             let users = s.mma_users[i].max(1);
             let service = (longest + d.sync_ns) / d.stages;
-            let delay = (l2_latency + dram_latency) / d.round_trips;
+            let delay = (l2_latency + dram_latency) / d.round_trips + d.reload_ns / d.stages;
             let x = mva_throughput(users * d.tokens, service, delay);
             d.stages * f64::from(users) / x
         });
@@ -1077,11 +1156,16 @@ fn rates(ctas: &[Cta], m: &Machine, per_cta: &[PerCta], lat: Latency, s: &mut Sc
             launch,
             l2_latency,
             dram_latency,
-            exposed: d.exposed_compute * longest,
+            exposed: d.exposed_compute * (longest + d.reload_ns),
             exposed_kind: kind,
+            chain_kind: if d.reload_ns > longest + d.sync_ns {
+                LOCAL
+            } else {
+                kind
+            },
             pipes: [t_mma, t_issue, t_smem, t_local, t_sfu, t_shfl, t_lsu],
             sync: d.sync_ns * f64::from(s.resident[i]),
-            chain: longest + d.sync_ns,
+            chain: longest + d.sync_ns + d.reload_ns,
             queued,
         };
         s.terms.push(parts);
@@ -1175,6 +1259,15 @@ pub fn simulate<L: L2>(
     };
     let per_cta = f64::from(occ.ctas_per_sm);
     let spill = (split.l1 / per_cta, split.l2 / per_cta, split.dram / per_cta);
+    let reload_ns = if k.spill.scope == SpillScope::None {
+        0.0
+    } else {
+        m.spill_reload_ns(
+            k.spill.load_bytes_per_thread / SPILL_RELOAD_BYTES,
+            k.spill.stack_frame_bytes as f64 * f64::from(threads_in_sm),
+            split.miss,
+        )
+    };
     let mut sim = Sim {
         k,
         m,
@@ -1185,6 +1278,7 @@ pub fn simulate<L: L2>(
         merged_bytes: 0.0,
         dram_bytes: 0.0,
         spill,
+        reload_ns,
     };
 
     // First wave: breadth-first round robin over SMs. Later: first SM to free a slot.

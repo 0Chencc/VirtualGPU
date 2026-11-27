@@ -317,6 +317,7 @@ fn spills_cost_local_memory_bandwidth_per_scope() {
         let mut k = compute_only(46);
         k.spill = Spill {
             bytes_per_thread: 4096.0,
+            load_bytes_per_thread: 0.0,
             stack_frame_bytes: 64,
             scope,
         };
@@ -374,6 +375,7 @@ fn spills_served_by_l2_still_take_the_local_port() {
     let mut k = compute_only(46);
     k.spill = Spill {
         bytes_per_thread: 4096.0,
+        load_bytes_per_thread: 0.0,
         stack_frame_bytes: 64,
         scope: SpillScope::PerIteration { assumed: false },
     };
@@ -390,6 +392,125 @@ fn spills_served_by_l2_still_take_the_local_port() {
         in_l2.makespan_ns,
         in_l1.makespan_ns
     );
+}
+
+/// Eight 4 B reloads per thread with a 64 B frame, and a fast local port so
+/// only their latency shows.
+fn reloading(scope: SpillScope) -> Kernel {
+    let mut k = compute_only(46);
+    k.spill = Spill {
+        bytes_per_thread: 32.0,
+        load_bytes_per_thread: 32.0,
+        stack_frame_bytes: 64,
+        scope,
+    };
+    k
+}
+
+fn reload_machine(k: &Kernel) -> Machine {
+    let mut m = machine(k);
+    m.local_bw = 1e12;
+    m.spill_reload_l1 = vec![(1.0, vec![(0.0, 0.0), (8.0, 1000.0)])];
+    m.spill_reload_l2 = vec![(1.0, vec![(0.0, 0.0), (8.0, 5000.0)])];
+    m
+}
+
+#[test]
+fn spill_reloads_add_latency_to_the_dependent_chain_per_scope() {
+    let base = compute_only(46);
+    let m = reload_machine(&base);
+    let t = |k: &Kernel| run(k, m.clone()).makespan_ns;
+    let none = t(&base);
+    let once = t(&reloading(SpillScope::Once));
+    let per_iter = reloading(SpillScope::PerIteration { assumed: false });
+    let every = t(&per_iter);
+    assert!(close(once, none + 1000.0), "{none} {once}");
+    assert!(close(every, none + 64.0 * 1000.0), "{none} {every}");
+    // The reloads dominate the chain, so the phase is bound by local memory.
+    let mut slow = m.clone();
+    slow.spill_reload_l1 = vec![(1.0, vec![(0.0, 0.0), (8.0, 1e6)])];
+    assert!(run(&per_iter, slow).bound_fraction[3] > 0.99);
+}
+
+#[test]
+fn spill_reloads_served_by_l2_cost_their_l2_latency() {
+    let k = reloading(SpillScope::PerIteration { assumed: false });
+    let mut m = reload_machine(&k);
+    m.launch_overhead_ns = 0.0;
+    let p = profile();
+    let in_l1 = simulate(&k, &p, &m, &mut ConstantHitRatio(1.0)).unwrap();
+    let in_l2 = simulate(&k, &p, &m, &mut SpillToL2).unwrap();
+    assert!(
+        close(in_l2.makespan_ns - in_l1.makespan_ns, 64.0 * 4000.0),
+        "{} vs {}",
+        in_l2.makespan_ns,
+        in_l1.makespan_ns
+    );
+}
+
+#[test]
+fn spill_reload_latency_interpolates_and_extrapolates() {
+    let mut m = machine(&compute_only(1));
+    m.spill_reload_l1 = vec![
+        (1000.0, vec![(0.0, 0.0), (8.0, 80.0), (32.0, 200.0)]),
+        (2000.0, vec![(0.0, 0.0), (8.0, 160.0), (32.0, 400.0)]),
+    ];
+    m.spill_reload_l2 = vec![(1000.0, vec![(0.0, 0.0), (32.0, 1000.0)])];
+    assert_eq!(m.spill_reload_ns(0.0, 1000.0, 0.0), 0.0);
+    assert!(close(m.spill_reload_ns(20.0, 1000.0, 0.0), 140.0));
+    // Past the largest count, at that point's average cost per reload.
+    assert!(close(m.spill_reload_ns(64.0, 1000.0, 0.0), 400.0));
+    // Between footprints, and clamped outside them.
+    assert!(close(m.spill_reload_ns(8.0, 1500.0, 0.0), 120.0));
+    assert!(close(m.spill_reload_ns(8.0, 9000.0, 0.0), 160.0));
+    assert!(close(m.spill_reload_ns(32.0, 1000.0, 0.5), 600.0));
+    m.spill_reload_l1.clear();
+    assert_eq!(m.spill_reload_ns(32.0, 1000.0, 1.0), 0.0);
+}
+
+/// The model's reload latency at the L1 boundary (128 KiB of frames, left
+/// out of the model) against the measurement, with the miss rate of the
+/// zero carveout curve.
+#[test]
+fn spill_reload_latency_at_the_l1_boundary_matches_the_microbenchmark() {
+    for json in [
+        include_str!("../../../profiles/rtx4070.json"),
+        include_str!("../../../profiles/gb10.json"),
+    ] {
+        let p = Profile::from_json(json).unwrap();
+        let m = Machine::nominal(&p, MMA).unwrap();
+        let curve = &p.measured.memory.l1_to_l2_spill_threshold_by_carveout[0];
+        assert_eq!(curve.smem_carveout_bytes, 0);
+        let mut miss_curve: Vec<(f64, f64)> = curve
+            .miss_rate_by_working_set
+            .iter()
+            .map(|q| (q.working_set_bytes as f64, q.estimated_miss_rate.value))
+            .collect();
+        for i in 1..miss_curve.len() {
+            miss_curve[i].1 = miss_curve[i].1.max(miss_curve[i - 1].1).clamp(0.0, 1.0);
+        }
+        let mut errors = Vec::new();
+        for q in p
+            .measured
+            .memory
+            .spill_reload_latency_by_count
+            .iter()
+            .filter(|q| {
+                q.regime == "l1_boundary"
+                    && q.dependency_mode == "batch_before_dep"
+                    && q.reload_count > 0
+            })
+        {
+            let footprint =
+                (q.frame_bytes_per_thread.unwrap() * q.resident_threads_per_sm.unwrap()) as f64;
+            let miss = vgpu_core::profile::interpolate(&miss_curve, footprint);
+            let predicted = m.spill_reload_ns(f64::from(q.reload_count), footprint, miss);
+            errors.push(predicted / q.extra_ns_vs_zero.value - 1.0);
+        }
+        let mape = errors.iter().map(|e| e.abs()).sum::<f64>() / errors.len() as f64;
+        assert_eq!(errors.len(), 4);
+        assert!(mape < 0.2, "{errors:?}");
+    }
 }
 
 #[test]
